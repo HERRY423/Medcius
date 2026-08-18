@@ -1,53 +1,56 @@
-import { mkdirSync, existsSync, renameSync, readFileSync } from "node:fs";
+// Medcius documents storage: connection, schema lifecycle, transactions, and
+// the write-validation allowlists. This module is all side effects at import
+// time — by the time any handler runs, the database is open and current.
+//
+// The data directory follows the plugin-wide convention (plugins/medcius/CLAUDE.md):
+// $CLAUDE_MEDCIUS_DATA overrides the parent; this component appends its own
+// name. Data that predates the rename from "contracts" is moved over once.
+import { existsSync, mkdirSync, readFileSync, renameSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 
 const schemaSql = readFileSync(new URL("../schema.sql", import.meta.url), "utf8");
 
 // ---------------------------------------------------------------------------
-// Paths & identifier rules
+// Paths and identifier rules
 // ---------------------------------------------------------------------------
 
-// Plugin-wide convention: $CLAUDE_MEDCIUS_DATA overrides the parent dir;
-// each component appends its own name (see plugins/medcius/CLAUDE.md).
-const DATA_ROOT =
-  process.env.CLAUDE_MEDCIUS_DATA ??
-  join(process.env.HOME ?? ".", ".claude", "data", "healthcare");
-// Data lived under "contracts" before the engine went generic; migrate once.
-const LEGACY_DATA = join(DATA_ROOT, "contracts");
-export const DATA = join(DATA_ROOT, "documents");
-if (existsSync(LEGACY_DATA) && !existsSync(DATA)) renameSync(LEGACY_DATA, DATA);
+const PARENT =
+  process.env.CLAUDE_MEDCIUS_DATA ?? join(process.env.HOME ?? ".", ".claude", "data", "medcius");
+const LEGACY = join(PARENT, "contracts");
+
+export const DATA = join(PARENT, "documents");
+if (existsSync(LEGACY) && !existsSync(DATA)) renameSync(LEGACY, DATA);
+
 export const DB_PATH = join(DATA, "data.sqlite");
 export const PARSED = join(DATA, "parsed");
 
-// Identifiers are used in filesystem paths, so they must not contain "..".
+// Identifiers become filesystem path components, so ".." is never allowed.
 export const RUN_ID_RE = /^(?!.*\.\.)[A-Za-z0-9_.:-]{1,64}$/;
 export const NAME_RE = /^(?!.*\.\.)[A-Za-z0-9_.-]{1,64}$/;
 export const SCHEMA_VERSION = 4;
 
 // ---------------------------------------------------------------------------
-// Database connection
+// Connection
 // ---------------------------------------------------------------------------
 
 mkdirSync(DATA, { recursive: true, mode: 0o700 });
 
-// Loaded at evaluation time, not link time: a static `import "node:sqlite"`
-// would fail during ESM linking on old node, before requirements.ts can
-// print its friendly version message.
+// node:sqlite is pulled in lazily so that on old node the failure surfaces as a
+// clear message from requirements.mjs instead of an ESM link error.
 const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite");
 export const db = new DatabaseSync(DB_PATH);
-// 30s, and set before anything that can take a lock: other sessions' MCP
-// servers share this file, and on a fresh database the WAL conversion below
-// needs an exclusive lock — without the timeout a concurrent open bounces.
+
 db.exec("PRAGMA busy_timeout = 30000");
 db.exec("PRAGMA foreign_keys = ON");
-// node:sqlite reports EXTENDED result codes (261 SQLITE_BUSY_RECOVERY, 517
-// SQLITE_BUSY_SNAPSHOT, ...); the primary code is the low byte.
+
+// node:sqlite yields extended result codes (261 = SQLITE_BUSY_RECOVERY, ...);
+// the primary code is the low byte.
 const isBusy = (e) => ((e.errcode ?? 0) & 0xff) === 5;
-// Converting a fresh database to WAL bypasses the busy handler, so when
-// first-opens race the losers see SQLITE_BUSY while the winner converts.
-// WAL is persistent in the file: only one process ever needs this to
-// succeed, so losing the race is fine and anything else still throws.
+
+// First-open WAL conversion bypasses the busy handler, so racers see BUSY
+// while the winner converts. WAL is persistent, so only one process ever needs
+// this to succeed.
 try {
   db.exec("PRAGMA journal_mode = WAL");
 } catch (e) {
@@ -55,63 +58,48 @@ try {
 }
 db.exec("PRAGMA synchronous = NORMAL");
 
-/** [table, column, declaration] — applied when missing. Additive only; a
- *  dropped column or a moved primary key still needs a version bump. */
+// ---------------------------------------------------------------------------
+// Schema lifecycle
+// ---------------------------------------------------------------------------
+
+// Additive-only column additions; a dropped column or moved primary key is a
+// breaking change and needs a version bump (delete-and-reingest) instead.
 const ADDITIVE_COLUMNS = [
   ["audits", "doc_id", "INTEGER REFERENCES documents(id) ON DELETE CASCADE"],
   ["audits", "start_off", "INTEGER"],
   ["audits", "end_off", "INTEGER"],
 ];
 
-// Schema: every statement in schema.sql is idempotent (tables IF NOT EXISTS;
-// views and triggers dropped then recreated), so run it on EVERY open. That is
-// the only way an added trigger, a fixed view, or DDL damaged at runtime ever
-// reaches a database that already exists — a skip-when-current fast path
-// shipped briefly and was dropped: it froze accidental damage in place and
-// trusted a marker that older plugin versions sharing this file never
-// maintain.
+// schema.sql is applied on every open because every statement in it is
+// idempotent — that is the only way a new trigger, a repaired view, or
+// runtime-damaged DDL reaches an existing database. user_version gates breaking
+// changes that cannot be patched in place.
 //
-// user_version stays as the gate for genuinely BREAKING changes (a column
-// dropped, a primary key moved): those can't be patched in place, and the user
-// has to delete the file.
-//
-// Probe and apply run as ONE immediate transaction: every client (each
-// Desktop window, the Cowork device bridge, every CLI session) spawns its own
-// server process against this shared file, often within the same millisecond;
-// unserialized, the DROP/CREATE pairs race ("view already exists") and the
-// version probe can read another process's half-applied state and misdiagnose
-// a current database as a stale one.
+// The probe and apply share one immediate transaction: several server
+// processes can open this file within the same millisecond, and unserialized
+// DROP/CREATE pairs race.
 try {
   tx(() => {
-    const version = db.prepare("PRAGMA user_version").get().user_version;
-    const hasTables = db
+    const current = db.prepare("PRAGMA user_version").get().user_version;
+    const seeded = db
       .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='documents'")
       .get();
-    if (version !== SCHEMA_VERSION && !(version === 0 && !hasTables)) {
+    if (current !== SCHEMA_VERSION && !(current === 0 && !seeded)) {
       const msg =
-        `schema version ${version} != ${SCHEMA_VERSION} — the database at ${DB_PATH} is from an older version. ` +
+        `schema version ${current} != ${SCHEMA_VERSION} — the database at ${DB_PATH} is from an older version. ` +
         `Delete ${DB_PATH} (the parsed/ cache can stay) and re-ingest.`;
-      // The MCP host only shows "server failed to start" — put the remedy
-      // on stderr where the MCP log (and a curious human) can find it.
       process.stderr.write(`mcp-server-documents: ${msg}\n`);
       throw new Error(msg);
     }
     db.exec(schemaSql);
-    // Columns can't be added with IF NOT EXISTS. Add them here so an
-    // additive change reaches databases that already exist, instead of
-    // forcing a wipe.
     for (const [table, col, decl] of ADDITIVE_COLUMNS) {
       const cols = db.prepare(`PRAGMA table_info(${table})`).all();
-      if (!cols.some((c) => c.name === col))
-        db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${decl}`);
+      if (!cols.some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${decl}`);
     }
-    // Rows ingested before parse_status existed carry extraction placeholders
-    // under a NULL status: v_coverage_gaps counts them as readable, but dump /
-    // doc_text / cite all refuse placeholder content — permanent phantom gaps
-    // no reader can ever clear. Backfill the status so the view excludes them.
-    // Prefixes mirror ingest.mjs CACHE_MARK verbatim (every marker that has
-    // ever meant failed/empty); ingest.mjs imports this module, so the
-    // constant can't be imported from there without a cycle.
+    // Rows written before parse_status existed carry extraction placeholders
+    // under a NULL status. Backfill the status so v_coverage_gaps stops
+    // counting them as readable. The prefixes mirror ingest.mjs CACHE_MARK
+    // verbatim; importing that constant here would create an import cycle.
     db.exec(`UPDATE corpus_documents SET parse_status = 'failed'
       WHERE parse_status IS NULL AND doc_id IN (
         SELECT id FROM documents
@@ -127,13 +115,9 @@ try {
   throw e;
 }
 
-// The schema transaction serialized us behind any concurrent first-open, so
-// the journal mode is settled: a non-WAL reading here is real degradation
-// (backup restored without conversion, conversion blocked by a long-lived
-// reader) that runs readers-block-writers — log it, or it's invisible.
+// With the schema transaction done, journal mode is settled. A non-WAL value
+// here is real degradation worth surfacing.
 {
-  // In a delete-mode db this read can itself go busy behind a writer —
-  // which is the very contention being reported, so warn rather than die.
   let journal_mode = "unreadable (locked)";
   try {
     journal_mode = db.prepare("PRAGMA journal_mode").get().journal_mode;
@@ -180,9 +164,9 @@ export const setSchemas = {
 };
 
 /** Insert validation per table; the key set is also the insert allowlist.
- *  Plain JSON Schema, checked by src/validate.ts — same grammar as the tool
- *  schemas, one validator for everything. `nullable` fields use type arrays
- *  (internal only; nothing here is emitted on the wire). */
+ *  Plain JSON Schema, checked by shared/validate.mjs — the same grammar as the
+ *  tool schemas, one validator for everything. `nullable` columns use type
+ *  arrays (internal only; nothing here is emitted on the wire). */
 const str = { type: "string" };
 const int = { type: "integer" };
 const nstr = { type: ["string", "null"] };

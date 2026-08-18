@@ -28,6 +28,9 @@ function spanSupportsQuote(spanText, quote) {
   return true;
 }
 
+// First occurrence of needle in haystack; when `near` is given, the occurrence
+// closest to it. Returns -1 for "not found", -2 for "ambiguous" — more than one
+// occurrence and no `near` to disambiguate.
 function nearestIndex(haystack, needle, near) {
   if (near === undefined) {
     const first = haystack.indexOf(needle);
@@ -118,8 +121,8 @@ export const asSpan = (s) => (s ? [s[0], s[1]] : undefined);
 
 // One cap for every located span — judged citations and line-resolved spans
 // alike. Past this the "quote" stops being a passage and starts being a
-// chapter. (Verbatim quotes stay uncapped: typing 4000+ chars is its own
-// proof of intent.)
+// chapter. (Verbatim quotes stay uncapped: typing 4000+ chars is its own proof
+// of intent.)
 const SPAN_CAP = 4000;
 
 // Cites per finding. One is the norm; two is a contradiction; past a handful
@@ -192,18 +195,20 @@ function dieQuoteNotFound(content, nearOff) {
   );
 }
 
-// Sized to the cite cap: one finding can cite several documents, and anything
-// smaller evicts on every mint. Content is sha256-pinned, so re-deriving the
-// surrogate index / norm / line starts per cite is pure waste.
-const docCache = [];
+// LRU over loaded documents, sized to the cite cap: one finding can cite
+// several documents, and anything smaller evicts on every mint. Content is
+// sha256-pinned, so re-deriving the surrogate index / norm / line starts per
+// cite is pure waste. A Map preserves insertion order — re-setting a key
+// promotes it to most-recent, and the first key is the coldest.
+const docCache = new Map();
 
 function loadDoc(docId) {
-  const i = docCache.findIndex((d) => d.docId === docId);
-  if (i >= 0) {
+  const hit = docCache.get(docId);
+  if (hit) {
     // Promote: eviction must take the cold doc, not the hot one a
     // multi-cite finding keeps returning to.
-    const [hit] = docCache.splice(i, 1);
-    docCache.unshift(hit);
+    docCache.delete(docId);
+    docCache.set(docId, hit);
     return hit;
   }
   const doc = db.prepare(`SELECT content, sha256 FROM documents WHERE id = ?`).get(docId);
@@ -223,8 +228,8 @@ function loadDoc(docId) {
     if (unit >= 0xd800 && unit <= 0xdbff) surrogates.push(k);
   }
   const entry = { docId, sha256: doc.sha256, content: doc.content, surrogates };
-  docCache.unshift(entry);
-  if (docCache.length > MAX_CITES) docCache.pop();
+  docCache.set(docId, entry);
+  if (docCache.size > MAX_CITES) docCache.delete(docCache.keys().next().value);
   return entry;
 }
 
@@ -280,35 +285,40 @@ function mintCitation(docId, briefId, by, quote, opts) {
   // Store the canonical slice: on a normalized match the worker's quote differs
   // in whitespace/punctuation, and citations.quote must be verbatim content.
   if (span) return ins("exact", doc.content.slice(span[0], span[1]), span[0], span[1], null);
-  if (opts.span && opts.audit) {
-    const [s, e] = opts.span; // UTF-16, from the caller's own reading; converted in ins()
-    if (e - s > SPAN_CAP)
-      die(`cite: span is ${e - s} chars; cap is ${SPAN_CAP}. Narrow to the passage.`);
-    const a = db
-      .prepare(
-        `SELECT id, doc_id, start_off, end_off FROM audits WHERE id=? AND kind='citation_judge'`,
-      )
-      .get(opts.audit);
-    if (!a) die(`cite: audit ${opts.audit} not found or not kind=citation_judge`);
-    // The verdict must be about this document and this span — otherwise one
-    // audit row authorizes anything. (The trigger enforces this too; this is
-    // where the worker gets a sentence they can act on.)
-    if (
-      a.doc_id !== docId ||
-      toCodePoints(doc, s) !== a.start_off ||
-      toCodePoints(doc, e) !== a.end_off
-    )
-      die(
-        `cite: audit ${opts.audit} judged doc ${a.doc_id} [${a.start_off},${a.end_off}) — ` +
-          `not this document and span. Write an audit for the span you actually read.`,
-      );
-    if (!spanSupportsQuote(doc.content.slice(s, e), quote))
-      die(
-        `cite: the judged span doesn't contain the words of this quote — you cannot cite what isn't there`,
-      );
-    return ins("judged", quote, s, e, opts.audit);
-  }
+  if (opts.span && opts.audit) return mintJudged(doc, docId, briefId, by, quote, opts, ins);
   dieQuoteNotFound(doc.content, nearOff);
+}
+
+// The judged-citation path: a quote that cannot be expressed as a contiguous
+// passage (a table row, a reflowed clause) is authorized by a human audit that
+// attests the values are present in ONE span of ONE document. The verdict must
+// be about this document and this span — otherwise one audit row authorizes
+// anything. (The trigger enforces this too; this is where the worker gets a
+// sentence they can act on.)
+function mintJudged(doc, docId, briefId, by, quote, opts, ins) {
+  const [s, e] = opts.span; // UTF-16, from the caller's own reading; converted in ins()
+  if (e - s > SPAN_CAP)
+    die(`cite: span is ${e - s} chars; cap is ${SPAN_CAP}. Narrow to the passage.`);
+  const a = db
+    .prepare(
+      `SELECT id, doc_id, start_off, end_off FROM audits WHERE id=? AND kind='citation_judge'`,
+    )
+    .get(opts.audit);
+  if (!a) die(`cite: audit ${opts.audit} not found or not kind=citation_judge`);
+  if (
+    a.doc_id !== docId ||
+    toCodePoints(doc, s) !== a.start_off ||
+    toCodePoints(doc, e) !== a.end_off
+  )
+    die(
+      `cite: audit ${opts.audit} judged doc ${a.doc_id} [${a.start_off},${a.end_off}) — ` +
+        `not this document and span. Write an audit for the span you actually read.`,
+    );
+  if (!spanSupportsQuote(doc.content.slice(s, e), quote))
+    die(
+      `cite: the judged span doesn't contain the words of this quote — you cannot cite what isn't there`,
+    );
+  return ins("judged", quote, s, e, opts.audit);
 }
 
 /** Mint one citation. opts: near (occurrence hint), span ([start,end]), audit (audits row id). */
@@ -318,7 +328,7 @@ export function cite(docId, briefId, by, quote, opts) {
 
 /** Mint many citations in one call. Each mint is a single INSERT, so rows are
  *  independent: good rows land, bad rows come back in `rejected` with the same
- *  error+hint the single form gives (quote-not-found includes the context window).
+ *  error+hint the single form gives.
  *  @param rows {{doc_id, quote, near?, span?, audit?}[]} */
 export function citeMany(briefId, by, rows) {
   const minted = [];
@@ -343,15 +353,13 @@ export function citeMany(briefId, by, rows) {
 // ---------------------------------------------------------------------------
 
 // Validation for the two find forms — same JSON-schema grammar as everything
-// else (src/validate.ts). span is a length-2 array, not a tuple: tuples emit
-// draft-07's array-form `items`, which the wire validator rejects.
+// else (shared/validate.mjs). span is a length-2 array, not a tuple: tuples
+// emit draft-07's array-form `items`, which the wire validator rejects.
 const spanSchema = { type: "array", items: { type: "integer" }, minItems: 2, maxItems: 2 };
 // ONE citation. doc_id belongs here, not on the finding: `findings` has no
-// doc_id column and never did. A finding rests on one span or several — a
-// contradiction cites both clauses, across documents if it spans an amendment
-// — which finding_citations has always modelled.
-// `has` is looser here than at the wire on purpose: a wire violation fails the
-// whole call, while this rejects the one row (see findMany).
+// doc_id column and never did. `has` is looser here than at the wire on
+// purpose: a wire violation fails the whole call, while this rejects the one
+// row (see findMany).
 const citeSchema = {
   type: "object",
   required: ["doc_id"],
@@ -449,9 +457,25 @@ function findCore(m) {
   };
 }
 
-/** Record one finding with its citation(s). m: run_id, brief_id, round, worker, kind, claim, cites: [{doc_id, quote | lines+has}, …]. */
+/** Record one finding with its citation(s). m: run_id, brief_id, round, worker, kind, claim, cites. */
 export function find(m) {
   return tx(() => findCore(m));
+}
+
+// Run one row's work inside a named savepoint. A failure rolls back only that
+// row's inserts and re-raises as a {rejected} entry — the documented
+// partial-success contract (49 good findings must not die for one bad field).
+function inRowSavepoint(work) {
+  db.exec("SAVEPOINT find_row");
+  try {
+    const value = work();
+    db.exec("RELEASE find_row");
+    return { value };
+  } catch (e) {
+    db.exec("ROLLBACK TO find_row");
+    db.exec("RELEASE find_row");
+    return { error: e };
+  }
 }
 
 /** Many findings, partial success: each row runs in its own savepoint through
@@ -463,32 +487,25 @@ export function findMany(ctx, rows) {
     const inserted = [];
     const rejected = [];
     rows.forEach((raw, index) => {
-      db.exec("SAVEPOINT find_row");
-      try {
-        // Validate INSIDE the per-row savepoint: a schema-invalid row must
-        // reject that row, never fail the batch — 49 good findings dying for
-        // one bad field breaks the documented partial-success contract.
-        const r = checkFindRow(raw);
-        const res = findCore({ ...ctx, ...r });
-        db.exec("RELEASE find_row");
-        inserted.push({ index, ...res });
-      } catch (e) {
-        db.exec("ROLLBACK TO find_row");
-        db.exec("RELEASE find_row");
+      // Validate INSIDE the per-row savepoint: a schema-invalid row must
+      // reject that row, never fail the batch.
+      const res = inRowSavepoint(() => findCore({ ...ctx, ...checkFindRow(raw) }));
+      if (res.error === undefined) inserted.push({ index, ...res.value });
+      else
         rejected.push({
           index,
           doc_ids: raw?.cites?.map((c) => c?.doc_id),
-          error: String(e.message ?? e),
+          error: String(res.error.message ?? res.error),
         });
-      }
     });
     return { inserted, rejected };
   });
 }
 
-/** Worker-safe read-receipt: the only write surface sweep readers hold besides find.
- *  Takes one row or many — a worker stamps its whole shard at once instead of
- *  spending a model turn per document at the tail of the critical path. */
+/** Worker-safe read-receipt: the only write surface sweep readers hold besides
+ *  find. Takes one row or many — a worker stamps its whole shard at once
+ *  instead of spending a model turn per document at the tail of the critical
+ *  path. */
 export function coverage(m, rows) {
   if ((m === undefined) === (rows === undefined))
     die(`coverage: pass exactly one of row fields or rows`);
@@ -520,5 +537,5 @@ export function coverage(m, rows) {
  *  deleted doc id can be reused by a re-ingest, and a stale entry would then
  *  verify a citation against the wrong document. */
 export function forgetDocs() {
-  docCache.length = 0;
+  docCache.clear();
 }

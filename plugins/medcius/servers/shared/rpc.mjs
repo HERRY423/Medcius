@@ -1,33 +1,37 @@
-// Hand-rolled MCP stdio transport, shared by every server in this plugin.
-// The protocol surface we use is four methods of line-delimited JSON-RPC 2.0
-// (initialize, ping, tools/list, tools/call) — no SDK required. Tool schemas
-// arrive as frozen literals; validation is shared/validate.mjs's single walk.
+// Medcius MCP stdio transport.
 //
-// Spec edges handled deliberately:
-// - id:0 and string ids are requests; absent/null id is a notification.
-// - Notifications (including notification-form tools/call) get NO reply and
-//   NO execution — a side effect nobody can observe the outcome of is a trap.
-// - Batch arrays and non-object frames get -32600; 2025-03-26 is not
-//   advertised because that revision mandates batch support.
-// - Tool failures — including argument-validation failures — are in-band
-//   isError results, not protocol errors: the model reads them and corrects
-//   (the SDK sent -32602 instead; hosts treat protocol errors as plumbing).
+// Line-delimited JSON-RPC 2.0 over stdin/stdout implementing the four methods
+// the plugin servers expose (initialize, ping, tools/list, tools/call). No
+// SDK: the schemas arrive as frozen literals and shared/validate.mjs does the
+// argument checking.
+//
+// Wire rules, kept deliberately:
+//   - A frame carrying an id is a request and gets a reply; one without an id
+//     is a notification — ignored and never executed.
+//   - Batch arrays and non-object frames are rejected with -32600; the
+//     2025-03-26 revision is not advertised because it mandates batching.
+//   - Tool failures (including argument-validation failures) are in-band
+//     isError results, never protocol errors: the model reads the reason and
+//     corrects its call.
+//   - Requests run one at a time on a serialized chain — handlers may be
+//     async (document extraction spawns subprocesses) and a second frame must
+//     not interleave a side-effecting call over shared state.
+//   - If the host dies (EPIPE on stdout) we exit rather than keep executing
+//     calls whose results nobody can observe.
 
 import { createInterface } from "node:readline";
 
 import { checkAndStrip } from "./validate.mjs";
 
+/** @typedef {Record<string, unknown>} Args */
+
 /**
  * @typedef {object} ToolDef
  * @property {string} name
- * @property {string} [title]
  * @property {string} description
  * @property {Record<string, unknown>} inputSchema
  * @property {Record<string, unknown>} [annotations]
- * SDK-era captures carry extra fields like `execution`; keep them verbatim.
  */
-
-/** @typedef {Record<string, unknown>} Args */
 
 /**
  * @typedef {object} ServeConfig
@@ -36,16 +40,15 @@ import { checkAndStrip } from "./validate.mjs";
  * @property {ToolDef[]} tools
  * @property {Record<string, (a: Args) => unknown | Promise<unknown>>} handlers
  * @property {Record<string, (result: unknown, args: Args) => string>} [summarize]
- *   One-line human summaries that ride FIRST in result content; the JSON the
- *   model consumes is always the LAST block. A broken summary never breaks
- *   the call.
  */
 
 const PROTOCOL_VERSIONS = ["2024-11-05", "2025-06-18"];
 
-/** One tool call outside MCP: same schema validation, raw result, errors
- *  throw. Lets a skill drive the engine as a CLI where no MCP host exists —
- *  cloud containers sync plugin skills but do not start plugin servers.
+/**
+ * Invoke a single tool with no MCP host — schema validation + handler, raw
+ * result, thrown errors. Skills use this to drive a server as a CLI where no
+ * host is present (cloud containers sync plugin skills but do not start the
+ * servers).
  * @param {Pick<ServeConfig, "tools" | "handlers">} cfg
  * @param {string} name
  * @param {unknown} rawArgs
@@ -58,137 +61,131 @@ export async function runOnce(cfg, name, rawArgs) {
   return cfg.handlers[name](checkAndStrip(name, def.inputSchema, rawArgs));
 }
 
-/** @typedef {{ jsonrpc?: string, id?: number | string | null, method?: string, params?: Args }} Rpc */
-/** @typedef {{ type: "text", text: string }[]} Content */
+/** Wrap a plain handler result in the MCP content envelope. */
+function toContent(result, summary) {
+  const blocks = [];
+  if (summary) blocks.push({ type: "text", text: summary });
+  blocks.push({ type: "text", text: JSON.stringify(result ?? { ok: true }) });
+  return { content: blocks };
+}
+
+/** Build the in-band error result the model can read and react to. */
+function toError(err) {
+  return {
+    content: [{ type: "text", text: JSON.stringify({ error: String(err?.message ?? err) }) }],
+    isError: true,
+  };
+}
 
 /**
+ * Serve the transport until stdin closes or the host disconnects.
  * @param {ServeConfig} cfg
  * @returns {void}
  */
 export function serve(cfg) {
-  let queue = Promise.resolve();
-  const toolIndex = new Map(cfg.tools.map((t) => [t.name, t]));
+  const { serverInfo, tools, handlers, summarize, instructions } = cfg;
+  const byName = new Map(tools.map((t) => [t.name, t]));
 
-  const send = (msg) => void process.stdout.write(JSON.stringify(msg) + "\n");
-  const reply = (id, result) => send({ jsonrpc: "2.0", id, result });
-  const replyError = (id, code, message) => send({ jsonrpc: "2.0", id, error: { code, message } });
+  const send = (msg) => void process.stdout.write(`${JSON.stringify(msg)}\n`);
+  const respond = (id, result) => send({ jsonrpc: "2.0", id, result });
+  const respondError = (id, code, message) =>
+    send({ jsonrpc: "2.0", id, error: { code, message } });
 
+  /** Run one tools/call; returns the MCP result envelope (never throws). */
   async function callTool(name, rawArgs) {
-    const def = toolIndex.get(name);
+    const def = byName.get(name);
     if (!def) throw Object.assign(new Error(`unknown tool: ${name}`), { rpcCode: -32602 });
     try {
       const args = checkAndStrip(name, def.inputSchema, rawArgs);
-      const result = await cfg.handlers[name](args);
-      // Handlers may return ready-made MCP content (the fhir server's text()/
-      // json() helpers do); pass those through untouched.
-      if (
-        result &&
-        typeof result === "object" &&
-        Array.isArray(/** @type {{content?: unknown}} */ (result).content)
-      )
-        return /** @type {{content: Content, isError?: boolean}} */ (result);
-      let summary;
+      const result = await handlers[name](args);
+      // Handlers may already return a ready-made content envelope (the FHIR
+      // server's text()/json() helpers do) — pass those through untouched.
+      if (result && typeof result === "object" && Array.isArray(result.content)) return result;
+      let note;
       try {
-        summary = cfg.summarize?.[name]?.(result, args);
+        note = summarize?.[name]?.(result, args);
       } catch {
-        summary = undefined;
+        note = undefined;
       }
-      return {
-        content: [
-          ...(summary ? [{ type: "text", text: summary }] : []),
-          { type: "text", text: JSON.stringify(result ?? { ok: true }) },
-        ],
-      };
+      return toContent(result, note);
     } catch (e) {
-      return {
-        content: [{ type: "text", text: JSON.stringify({ error: String(e.message ?? e) }) }],
-        isError: true,
-      };
+      return toError(e);
     }
   }
 
+  /** Handle one parsed request/notification frame; self-contained error handling. */
   async function dispatch(msg) {
-    const { id, method, params } = msg;
-    const isRequest = id !== undefined && id !== null;
+    const isRequest = msg.id !== undefined && msg.id !== null;
     try {
-      switch (method) {
+      switch (msg.method) {
         case "initialize": {
           if (!isRequest) return;
-          const asked = params?.protocolVersion ?? PROTOCOL_VERSIONS[0];
-          reply(id, {
-            protocolVersion: PROTOCOL_VERSIONS.includes(asked) ? asked : PROTOCOL_VERSIONS.at(-1),
+          const wanted = msg.params?.protocolVersion ?? PROTOCOL_VERSIONS[0];
+          respond(msg.id, {
+            protocolVersion: PROTOCOL_VERSIONS.includes(wanted) ? wanted : PROTOCOL_VERSIONS.at(-1),
             capabilities: { tools: { listChanged: true } },
-            serverInfo: cfg.serverInfo,
-            ...(cfg.instructions ? { instructions: cfg.instructions } : {}),
+            serverInfo,
+            ...(instructions ? { instructions } : {}),
           });
           return;
         }
         case "ping":
-          if (isRequest) reply(id, {});
+          if (isRequest) respond(msg.id, {});
           return;
         case "tools/list":
-          if (isRequest) reply(id, { tools: cfg.tools });
+          if (isRequest) respond(msg.id, { tools });
           return;
         case "tools/call":
-          if (isRequest) reply(id, await callTool(params?.name, params?.arguments));
+          if (isRequest) respond(msg.id, await callTool(msg.params?.name, msg.params?.arguments));
           return;
         default:
-          if (isRequest) replyError(id, -32601, `method not found: ${method}`);
+          if (isRequest) respondError(msg.id, -32601, `method not found: ${msg.method}`);
           return;
       }
     } catch (e) {
-      const code = e.rpcCode ?? -32603;
-      if (isRequest) replyError(id, code, String(e.message ?? e));
+      if (isRequest) respondError(msg.id, e.rpcCode ?? -32603, String(e.message ?? e));
     }
   }
 
-  // EPIPE lands here as an async 'error' event, not as a throw the dispatch
-  // queue can catch. It means the host died: exit rather than keep executing
-  // side-effecting calls nobody can observe. Anything else stays fatal.
-  process.stdout.on("error", (/** @type {NodeJS.ErrnoException} */ e) => {
-    process.stderr.write(
-      `${cfg.serverInfo.name}: stdout write failed: ${String(e?.message ?? e)}\n`,
-    );
+  // Serialized chain: one request runs to completion before the next begins.
+  let tail = Promise.resolve();
+  const enqueue = (work) => {
+    tail = tail
+      .then(work)
+      .catch((e) => {
+        process.stderr.write(`${serverInfo.name}: dispatch failed: ${String(e?.message ?? e)}\n`);
+        if (e?.code === "EPIPE") process.exit(1);
+      });
+  };
+
+  process.stdout.on("error", (e) => {
+    process.stderr.write(`${serverInfo.name}: stdout write failed: ${String(e?.message ?? e)}\n`);
     if (e?.code === "EPIPE") process.exit(1);
     throw e;
   });
 
   const rl = createInterface({ input: process.stdin, terminal: false });
   rl.on("line", (line) => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
+    const text = line.trim();
+    if (!text) return;
     let msg;
     try {
-      msg = JSON.parse(trimmed);
+      msg = JSON.parse(text);
     } catch {
-      replyError(null, -32700, "parse error: invalid JSON");
+      respondError(null, -32700, "parse error: invalid JSON");
       return;
     }
     if (typeof msg !== "object" || msg === null || Array.isArray(msg)) {
-      replyError(
+      respondError(
         null,
         -32600,
         Array.isArray(msg) ? "batch requests are not supported" : "invalid request",
       );
       return;
     }
-    // Serialize: handlers used to be uniformly synchronous, so the event loop
-    // was the mutex. Extraction now awaits, and a second frame arriving mid-
-    // ingest would run two ingests over one corpus — same cache paths, racing
-    // upserts. One request at a time is what callers already observed.
-    // dispatch replies to its own errors; what lands here is a failed send —
-    // stdout is broken. EPIPE means the host died: keep-going would execute
-    // side-effecting calls nobody can observe, so exit instead.
-    queue = queue
-      .then(() => dispatch(msg))
-      .catch((e) => {
-        process.stderr.write(
-          `${cfg.serverInfo.name}: dispatch failed: ${String(e?.message ?? e)}\n`,
-        );
-        if (e?.code === "EPIPE") process.exit(1);
-      });
+    enqueue(() => dispatch(msg));
   });
   rl.on("close", () => process.exit(0));
 
-  process.stderr.write(`${cfg.serverInfo.name}: stdio ready\n`);
+  process.stderr.write(`${serverInfo.name}: stdio ready\n`);
 }

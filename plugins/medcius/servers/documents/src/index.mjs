@@ -13,18 +13,12 @@ import { TOOLS } from "./schemas.mjs";
 //   node src/index.mjs <tool> -           same, JSON read from stdin — use a
 //                                         quoted heredoc for payloads carrying
 //                                         document text (no shell escaping).
-//                                        First choice wherever the shell and
-//                                        the data dir share a machine (a
-//                                        terminal, a cloud container).
 //   node src/index.mjs                   MCP over stdio, for hosts that spawn
-//                                        servers themselves — the backup for
-//                                        surfaces where Bash is sandboxed away
-//                                        from the data dir (Cowork desktop) or
-//                                        absent entirely (chat).
+//                                         servers themselves.
 //
 // The MCP side is hand-rolled: the protocol we use is four methods of
 // line-delimited JSON-RPC 2.0, which does not need an SDK. The tool schemas
-// are frozen literals (src/schemas.ts) — the exact wire bytes, no emission
+// are frozen literals (src/schemas.mjs) — the exact wire bytes, no emission
 // layer to drift. The database is the durable artifact; answers are composed
 // in chat from verified findings.
 // ---------------------------------------------------------------------------
@@ -32,6 +26,98 @@ import { TOOLS } from "./schemas.mjs";
 const SERVER_INFO = { name: "mcp-server-documents", version: "0.0.1" };
 const INSTRUCTIONS =
   "Backs the /contracts skill. Do not surface tool or schema internals to end users — the skill translates.";
+
+// ---------------------------------------------------------------------------
+// Dispatch helpers
+// ---------------------------------------------------------------------------
+
+// Several tools take EITHER a batch (`rows` / `updates` / `docs`) OR their
+// single-form fields, never both. A stray single-form key next to a batch is a
+// finding that would otherwise be silently dropped, so it must fail loudly with
+// the offending key named. `allowed` is the set of keys the batch form accepts.
+function rejectBatchMixing(args, allowed, complain) {
+  const extras = Object.keys(args).filter((k) => !allowed.has(k));
+  if (extras.length) engine.die(complain(extras.join(", ")));
+}
+
+// find: batch (`rows`) shares the run identity keys with the single form; any
+// other declared key (kind, claim, cites) is a finding meant as one more row.
+function findFromArgs(a) {
+  const ctx = { run_id: a.run_id, brief_id: a.brief_id, round: a.round, worker: a.worker };
+  if (a.rows !== undefined) {
+    rejectBatchMixing(a, new Set([...Object.keys(ctx), "rows"]), (extras) =>
+      `find: rows and single-finding fields don't mix — drop ${extras} or make them a row`,
+    );
+    // Rows validate inside findMany's per-row savepoint, so a schema-invalid
+    // row rejects with its index instead of failing the batch.
+    return engine.findMany(ctx, a.rows);
+  }
+  return engine.find(engine.checkFind(a));
+}
+
+function coverageFromArgs(a) {
+  if (a.rows !== undefined) {
+    // Every non-rows key is a single-form stamp field; mixing them would
+    // silently drop the single stamp.
+    rejectBatchMixing(a, new Set(["rows"]), (extras) =>
+      `coverage: rows and single-stamp fields don't mix — drop ${extras} or make them a row`,
+    );
+    return engine.coverage(undefined, a.rows);
+  }
+  return engine.coverage(a, undefined);
+}
+
+function citeFromArgs(a) {
+  const rows = a.rows;
+  if (rows) {
+    if (a.quote !== undefined || a.doc_id !== undefined)
+      engine.die(`cite: pass exactly one of rows or the single-citation fields`);
+    return engine.citeMany(a.brief_id, a.by, rows);
+  }
+  if (a.quote === undefined || a.doc_id === undefined)
+    engine.die(`cite: single form needs doc_id and quote (or pass rows)`);
+  return engine.cite(a.doc_id, a.brief_id, a.by, a.quote, {
+    near: a.near,
+    span: engine.asSpan(a.span),
+    audit: a.audit,
+  });
+}
+
+function setFromArgs(a) {
+  const updates = a.updates;
+  if (updates) {
+    rejectBatchMixing(a, new Set(["updates"]), () =>
+      `set: pass exactly one of updates or the single-update fields`,
+    );
+    return engine.setMany(updates);
+  }
+  if (a.table === undefined || a.id === undefined || a.col === undefined || a.value === undefined)
+    engine.die(`set: single form needs table, id, col, and value (or pass updates)`);
+  return engine.set(a.table, a.id, a.col, a.value);
+}
+
+function docSearchFromArgs(a) {
+  const patterns = Array.isArray(a.pattern) ? a.pattern : [a.pattern];
+  const opts = {
+    ignore_case: a.ignore_case,
+    max_docs: a.max_docs,
+    max_per_doc: a.max_per_doc,
+  };
+  if (patterns.length === 1) return engine.docSearch(a.corpus, patterns[0], opts);
+  return Object.fromEntries(patterns.map((p) => [p, engine.docSearch(a.corpus, p, opts)]));
+}
+
+function docTextFromArgs(a) {
+  const docs = a.docs;
+  if (docs) {
+    rejectBatchMixing(a, new Set(["docs", "limit"]), () =>
+      `doc_text: pass exactly one of docs or doc_id/offset`,
+    );
+    return engine.docTextMany(docs, a.limit ?? 40_000);
+  }
+  if (a.doc_id === undefined) engine.die(`doc_text: pass doc_id (or docs for a batch)`);
+  return engine.docText(a.doc_id, a.offset ?? 0, a.limit ?? 40_000);
+}
 
 // ---------------------------------------------------------------------------
 // Handlers: tool name → implementation taking validated, stripped args.
@@ -45,97 +131,17 @@ const HANDLERS = {
   ingest: (a) => engine.ingest(a.corpus, a.force),
   corpus_sync: (a) => engine.sync(a.corpus),
 
-  find: (a) => {
-    // Dispatch on rows alone — the engine owns citation vocabulary and its
-    // single-form errors. The batch branch rejects stray single-form keys so a
-    // finding meant as one more row can't be silently dropped.
-    if (a.rows !== undefined) {
-      const ctx = { run_id: a.run_id, brief_id: a.brief_id, round: a.round, worker: a.worker };
-      const extras = Object.keys(a).filter((k) => !(k in ctx) && k !== "rows");
-      if (extras.length)
-        engine.die(
-          `find: rows and single-finding fields don't mix — drop ${extras.join(", ")} or make them a row`,
-        );
-      // Rows validate inside findMany's per-row savepoint, so a schema-invalid
-      // row rejects with its index instead of failing the batch.
-      return engine.findMany(ctx, a.rows);
-    }
-    return engine.find(engine.checkFind(a));
-  },
-
-  coverage: (a) => {
-    if (a.rows !== undefined) {
-      // Every non-rows key is a single-form stamp field; mixing them would
-      // silently drop the single stamp.
-      const extras = Object.keys(a).filter((k) => k !== "rows");
-      if (extras.length)
-        engine.die(
-          `coverage: rows and single-stamp fields don't mix — drop ${extras.join(", ")} or make them a row`,
-        );
-      return engine.coverage(undefined, a.rows);
-    }
-    return engine.coverage(a, undefined);
-  },
-
-  cite: (a) => {
-    const rows = a.rows;
-    if (rows) {
-      if (a.quote !== undefined || a.doc_id !== undefined)
-        engine.die(`cite: pass exactly one of rows or the single-citation fields`);
-      return engine.citeMany(a.brief_id, a.by, rows);
-    }
-    if (a.quote === undefined || a.doc_id === undefined)
-      engine.die(`cite: single form needs doc_id and quote (or pass rows)`);
-    return engine.cite(a.doc_id, a.brief_id, a.by, a.quote, {
-      near: a.near,
-      span: engine.asSpan(a.span),
-      audit: a.audit,
-    });
-  },
-
+  find: findFromArgs,
+  coverage: coverageFromArgs,
+  cite: citeFromArgs,
   write: (a) => engine.write(a.table, a.row, a.rows),
-
-  set: (a) => {
-    const updates = a.updates;
-    if (updates) {
-      if (
-        a.table !== undefined ||
-        a.id !== undefined ||
-        a.col !== undefined ||
-        a.value !== undefined
-      )
-        engine.die(`set: pass exactly one of updates or the single-update fields`);
-      return engine.setMany(updates);
-    }
-    if (a.table === undefined || a.id === undefined || a.col === undefined || a.value === undefined)
-      engine.die(`set: single form needs table, id, col, and value (or pass updates)`);
-    return engine.set(a.table, a.id, a.col, a.value);
-  },
+  set: setFromArgs,
 
   sql: (a) => (Array.isArray(a.query) ? engine.sqlMany(a.query) : engine.sql(a.query)),
   db_schema: () => engine.schema(),
 
-  doc_search: (a) => {
-    const patterns = Array.isArray(a.pattern) ? a.pattern : [a.pattern];
-    const opts = {
-      ignore_case: a.ignore_case,
-      max_docs: a.max_docs,
-      max_per_doc: a.max_per_doc,
-    };
-    if (patterns.length === 1) return engine.docSearch(a.corpus, patterns[0], opts);
-    return Object.fromEntries(patterns.map((p) => [p, engine.docSearch(a.corpus, p, opts)]));
-  },
-
-  doc_text: (a) => {
-    const docs = a.docs;
-    if (docs) {
-      if (a.doc_id !== undefined || a.offset !== undefined)
-        engine.die(`doc_text: pass exactly one of docs or doc_id/offset`);
-      return engine.docTextMany(docs, a.limit ?? 40_000);
-    }
-    if (a.doc_id === undefined) engine.die(`doc_text: pass doc_id (or docs for a batch)`);
-    return engine.docText(a.doc_id, a.offset ?? 0, a.limit ?? 40_000);
-  },
+  doc_search: docSearchFromArgs,
+  doc_text: docTextFromArgs,
 
   dump: (a) =>
     engine.dump(a.run_id, a.shards, {
@@ -208,10 +214,36 @@ const SUMMARIZE = {
   },
 };
 
-// Two transports, one engine: with argv this is a single CLI tool call —
-// for environments that sync plugin files but start no MCP host (cloud
-// containers); a skill shells out to this file instead. Bare invocation
-// serves MCP over stdio as before.
+// ---------------------------------------------------------------------------
+// CLI transport: one tool call, JSON in and out. A skill shells out to this
+// file when no MCP host is present (cloud containers sync plugin files but
+// start no servers); bare invocation serves MCP over stdio as before.
+// ---------------------------------------------------------------------------
+
+function parseArgs(raw) {
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    throw new Error(`args must be one JSON object: ${String(e.message)}`, { cause: e });
+  }
+}
+
+async function runCli(tool, jsonArg) {
+  // `-` reads the JSON from stdin: payloads carrying document text (quotes,
+  // has fragments) go through a quoted heredoc untouched instead of running
+  // the shell-escaping gauntlet of an inline single-quoted argument.
+  let raw = jsonArg;
+  if (jsonArg === "-") {
+    if (process.stdin.isTTY)
+      throw new Error(
+        `'-' expects the JSON on stdin — pipe it or use a quoted heredoc (<<'EOF' … EOF)`,
+      );
+    raw = readFileSync(0, "utf8");
+  }
+  const args = raw === undefined ? {} : parseArgs(raw);
+  return runOnce({ tools: TOOLS, handlers: HANDLERS }, tool, args);
+}
+
 const argv = process.argv.slice(2);
 if (argv.length > 2) {
   process.stderr.write(
@@ -219,37 +251,8 @@ if (argv.length > 2) {
   );
   process.exit(1);
 }
-const [tool, json] = argv;
-if (tool !== undefined) {
-  try {
-    let args = {};
-    // `-` reads the JSON from stdin: payloads carrying document text (quotes,
-    // has fragments) go through a quoted heredoc untouched instead of running
-    // the shell-escaping gauntlet of an inline single-quoted argument.
-    let raw = json;
-    if (json === "-") {
-      if (process.stdin.isTTY)
-        throw new Error(
-          `'-' expects the JSON on stdin — pipe it or use a quoted heredoc (<<'EOF' … EOF)`,
-        );
-      raw = readFileSync(0, "utf8");
-    }
-    if (raw !== undefined) {
-      try {
-        args = JSON.parse(raw);
-      } catch (e) {
-        throw new Error(`args must be one JSON object: ${String(e.message)}`, {
-          cause: e,
-        });
-      }
-    }
-    const result = await runOnce({ tools: TOOLS, handlers: HANDLERS }, tool, args);
-    process.stdout.write(JSON.stringify(result ?? { ok: true }) + "\n");
-  } catch (e) {
-    process.stderr.write(`mcp-server-documents: ${String(e.message ?? e)}\n`);
-    process.exit(1);
-  }
-} else {
+const [tool, jsonArg] = argv;
+if (tool === undefined) {
   serve({
     serverInfo: SERVER_INFO,
     instructions: INSTRUCTIONS,
@@ -257,4 +260,12 @@ if (tool !== undefined) {
     handlers: HANDLERS,
     summarize: SUMMARIZE,
   });
+} else {
+  try {
+    const result = await runCli(tool, jsonArg);
+    process.stdout.write(JSON.stringify(result ?? { ok: true }) + "\n");
+  } catch (e) {
+    process.stderr.write(`mcp-server-documents: ${String(e.message ?? e)}\n`);
+    process.exit(1);
+  }
 }

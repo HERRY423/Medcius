@@ -1,3 +1,12 @@
+// Medcius tool handlers for the FHIR server.
+//
+// One handler per tool in schemas.mjs. The wire contract (input schemas,
+// annotations) is frozen there; the shared transport validates arguments
+// before these run, so each handler receives exactly the declared properties.
+// Handlers return ready-made MCP content envelopes via text()/json(); failures
+// are thrown and the transport turns them into in-band {error} isError
+// results.
+
 import { clearSession, persistSession, restoreSession } from "./auth/session-file.mjs";
 import { isHeadless, smartBegin, smartLaunch } from "./auth/smart.mjs";
 import { pickTokenStore, tokenKey } from "./auth/token-store.mjs";
@@ -81,30 +90,43 @@ function requireSession() {
   return session;
 }
 
+/** @param {string} s */
+function text(s) {
+  return { content: [{ type: /** @type {const} */ ("text"), text: s }] };
+}
+/** @param {unknown} v */
+function json(v) {
+  return text(JSON.stringify(v, null, 2));
+}
+/** @param {fhir4.CodeableConcept} [c] */
+function coding(c) {
+  return c?.text ?? c?.coding?.[0]?.display ?? c?.coding?.[0]?.code;
+}
+
 /**
  * @param {URL} baseUrl
  * @param {string | undefined} cid
- * @param {SmartTokens | null} t
+ * @param {SmartTokens | null} tokens
  * @param {string | null} [staticToken]
  * @param {string} [authWarning] why a configured env credential was deliberately
  *   not attached — shown to the local caller so an auth downgrade is visible,
  *   never sent upstream
  */
-async function finishConnect(baseUrl, cid, t, staticToken, authWarning) {
+async function finishConnect(baseUrl, cid, tokens, staticToken, authWarning) {
   let token = staticToken ?? null;
   let authNote = token ? "bearer" : "none";
-  if (t) {
-    token = t.access_token;
+  if (tokens) {
+    token = tokens.access_token;
     const store = await pickTokenStore();
-    if (t.refresh_token && cid) {
-      await store.set(tokenKey(baseUrl.href, t.fhirUser), {
+    if (tokens.refresh_token && cid) {
+      await store.set(tokenKey(baseUrl.href, tokens.fhirUser), {
         iss: baseUrl.href,
         client_id: cid,
-        scope: t.scope ?? DEFAULT_SCOPE,
-        refresh_token: t.refresh_token,
+        scope: tokens.scope ?? DEFAULT_SCOPE,
+        refresh_token: tokens.refresh_token,
       });
     }
-    authNote = `smart (${store.kind}${t.patient ? `, patient ${t.patient}` : ""})`;
+    authNote = `smart (${store.kind}${tokens.patient ? `, patient ${tokens.patient}` : ""})`;
   }
   // validate before committing — a failed metadata fetch must not leave a
   // broken session live in memory or restored from disk next start
@@ -118,7 +140,7 @@ async function finishConnect(baseUrl, cid, t, staticToken, authWarning) {
   // memory-only and put the warning where the user will see it
   let persistNote = "";
   try {
-    persistSession(session, t?.expires_in);
+    persistSession(session, tokens?.expires_in);
   } catch (e) {
     persistNote = `\nWARNING: session not persisted (${e instanceof Error ? e.message : e}) — someone may be tampering with your temp directory; this session works but won't survive a restart.`;
   }
@@ -130,19 +152,6 @@ async function finishConnect(baseUrl, cid, t, staticToken, authWarning) {
       (authWarning ? `\nNOTE: ${authWarning}` : "") +
       persistNote,
   );
-}
-
-/** @param {string} s */
-function text(s) {
-  return { content: [{ type: /** @type {const} */ ("text"), text: s }] };
-}
-/** @param {unknown} v */
-function json(v) {
-  return text(JSON.stringify(v, null, 2));
-}
-/** @param {fhir4.CodeableConcept} [c] */
-function coding(c) {
-  return c?.text ?? c?.coding?.[0]?.display ?? c?.coding?.[0]?.code;
 }
 
 /**
@@ -173,80 +182,72 @@ const pickRange = (a) => ({
 });
 // param name differs per resource: Condition has no `date` (recorded-date),
 // MedicationRequest's `date` matches dosage timing, not order date (authoredon).
-/** @param {DateRange} p @param {string} [param] */
-function rangeParams(p, param = "date") {
-  const range = /** @type {string[]} */ (
-    [p.date_ge && `ge${p.date_ge}`, p.date_le && `le${p.date_le}`].filter(Boolean)
+/** @param {DateRange} range @param {string} [param] */
+function rangeParams(range, param = "date") {
+  const values = /** @type {string[]} */ (
+    [range.date_ge && `ge${range.date_ge}`, range.date_le && `le${range.date_le}`].filter(Boolean)
   );
-  return { _count: String(p.count ?? 50), ...(range.length ? { [param]: range } : {}) };
+  return { _count: String(range.count ?? 50), ...(values.length ? { [param]: values } : {}) };
 }
 
-// Handlers, keyed by tool name. Schemas live frozen in src/schemas.mjs (the
-// annotations — readOnlyHint on the read tools, destructiveHint on writes —
-// ride there too); validation happens in the shared transport before these
-// run, so each handler receives exactly the declared properties.
 /** @type {Record<string, (a: Args) => Promise<{ content: { type: "text", text: string }[] }>>} */
 export const HANDLERS = {
   connect: async (a) => {
     const { base_url, bearer_token, client_id, scope } = /** @type {{
       base_url?: string, bearer_token?: string, client_id?: string, scope?: string,
     }} */ (a);
-    {
-      const url = base_url ?? process.env.FHIR_BASE_URL;
-      if (!url) throw new Error("base_url not provided and FHIR_BASE_URL is not set");
-      const baseUrl = validateBaseUrl(url);
-      const cid = client_id ?? process.env.FHIR_CLIENT_ID;
-      // an explicit client_id arg means the caller wants SMART login — don't
-      // let a stale FHIR_BEARER_TOKEN env silently win over it. The env
-      // fallback itself is origin-bound to FHIR_BASE_URL (see
-      // resolveEnvBearerToken above).
-      /** @type {string | null} */
-      let token = bearer_token ?? null;
-      /** @type {string | undefined} */
-      let withheld;
-      if (!token && !client_id) ({ token, withheld } = resolveEnvBearerToken(baseUrl));
-      if (withheld) process.stderr.write(`mcp-server-fhir: ${withheld}\n`);
-      const sc = scope ?? DEFAULT_SCOPE;
+    const url = base_url ?? process.env.FHIR_BASE_URL;
+    if (!url) throw new Error("base_url not provided and FHIR_BASE_URL is not set");
+    const baseUrl = validateBaseUrl(url);
+    const cid = client_id ?? process.env.FHIR_CLIENT_ID;
+    // an explicit client_id arg means the caller wants SMART login — don't
+    // let a stale FHIR_BEARER_TOKEN env silently win over it. The env
+    // fallback itself is origin-bound to FHIR_BASE_URL (see
+    // resolveEnvBearerToken above).
+    /** @type {string | null} */
+    let token = bearer_token ?? null;
+    /** @type {string | undefined} */
+    let withheld;
+    if (!token && !client_id) ({ token, withheld } = resolveEnvBearerToken(baseUrl));
+    if (withheld) process.stderr.write(`mcp-server-fhir: ${withheld}\n`);
+    const requestedScope = scope ?? DEFAULT_SCOPE;
 
-      if (!token && cid) {
-        if (isHeadless()) {
-          pending = {
-            baseUrl,
-            cid,
-            auth: await smartBegin({
-              iss: baseUrl,
-              client_id: cid,
-              scope: sc,
-              redirect_uri: `http://localhost:${53682}/callback`,
-            }),
-          };
-          return text(
-            `SMART login required. Open this URL in your browser, sign in, then copy the FULL address-bar URL after redirect (it will start with http://localhost:53682/callback?...) and pass it to connect_complete:\n\n${pending.auth.authorize_url}` +
-              (withheld ? `\n\nNOTE: ${withheld}` : ""),
-          );
-        }
-        return finishConnect(
+    if (!token && cid) {
+      if (isHeadless()) {
+        pending = {
           baseUrl,
           cid,
-          await smartLaunch({ iss: baseUrl, client_id: cid, scope: sc }),
-          null,
-          withheld,
+          auth: await smartBegin({
+            iss: baseUrl,
+            client_id: cid,
+            scope: requestedScope,
+            redirect_uri: `http://localhost:${53682}/callback`,
+          }),
+        };
+        return text(
+          `SMART login required. Open this URL in your browser, sign in, then copy the FULL address-bar URL after redirect (it will start with http://localhost:53682/callback?...) and pass it to connect_complete:\n\n${pending.auth.authorize_url}` +
+            (withheld ? `\n\nNOTE: ${withheld}` : ""),
         );
       }
-
-      return finishConnect(baseUrl, cid, null, token, withheld);
+      return finishConnect(
+        baseUrl,
+        cid,
+        await smartLaunch({ iss: baseUrl, client_id: cid, scope: requestedScope }),
+        null,
+        withheld,
+      );
     }
+
+    return finishConnect(baseUrl, cid, null, token, withheld);
   },
 
   connect_complete: async (a) => {
     const callback_url = /** @type {string} */ (a.callback_url);
-    {
-      if (!pending) throw new Error("No pending login. Call connect() first.");
-      const t = await pending.auth.complete(callback_url);
-      const { baseUrl, cid } = pending;
-      pending = null;
-      return finishConnect(baseUrl, cid, t);
-    }
+    if (!pending) throw new Error("No pending login. Call connect() first.");
+    const tokens = await pending.auth.complete(callback_url);
+    const { baseUrl, cid } = pending;
+    pending = null;
+    return finishConnect(baseUrl, cid, tokens);
   },
 
   status: async () =>
@@ -280,19 +281,19 @@ export const HANDLERS = {
   },
 
   search_patients: async (a) => {
-    const p = /** @type {{
+    const { name, family, given, birthdate, identifier, count } = /** @type {{
       name?: string, family?: string, given?: string, birthdate?: string,
       identifier?: string, count?: number,
     }} */ (a);
     return searchBundle(
       "Patient",
       {
-        name: p.name,
-        family: p.family,
-        given: p.given,
-        birthdate: p.birthdate,
-        identifier: p.identifier,
-        _count: String(p.count ?? 20),
+        name,
+        family,
+        given,
+        birthdate,
+        identifier,
+        _count: String(count ?? 20),
       },
       /** @param {fhir4.Patient} r */
       (r) => ({
@@ -318,13 +319,13 @@ export const HANDLERS = {
   search_conditions: async (a) => {
     const patient_id = /** @type {string} */ (a.patient_id);
     const clinical_status = /** @type {string | undefined} */ (a.clinical_status);
-    const r = pickRange(a);
+    const range = pickRange(a);
     return searchBundle(
       "Condition",
       {
         patient: validateFhirId(patient_id, "Patient"),
         "clinical-status": clinical_status,
-        ...rangeParams(r, "recorded-date"),
+        ...rangeParams(range, "recorded-date"),
       },
       /** @param {fhir4.Condition} c */
       (c) => ({
@@ -343,10 +344,10 @@ export const HANDLERS = {
     const patient_id = /** @type {string} */ (a.patient_id);
     const code = /** @type {string | undefined} */ (a.code);
     const category = /** @type {string | undefined} */ (a.category);
-    const r = pickRange(a);
+    const range = pickRange(a);
     return searchBundle(
       "Observation",
-      { patient: validateFhirId(patient_id, "Patient"), code, category, ...rangeParams(r) },
+      { patient: validateFhirId(patient_id, "Patient"), code, category, ...rangeParams(range) },
       /** @param {fhir4.Observation} o */
       (o) => ({
         id: o.id,
@@ -363,73 +364,71 @@ export const HANDLERS = {
   search_medication_requests: async (a) => {
     const patient_id = /** @type {string} */ (a.patient_id);
     const status = /** @type {string | undefined} */ (a.status);
-    const r = pickRange(a);
-    {
-      const pid = validateFhirId(patient_id, "Patient");
-      const session = requireSession();
-      // both legs fetched; a failed leg is REPORTED, never silently empty —
-      // a med list missing its self-reported half reads as "no metformin on
-      // file" and downstream clinical reasoning trusts that absence
-      const [orders, statements] = await Promise.allSettled([
-        /** @type {Promise<fhir4.Bundle>} */ (
-          fhirGet(session, "MedicationRequest", {
-            patient: pid,
-            status,
-            ...rangeParams(r, "authoredon"),
-          })
-        ),
-        /** @type {Promise<fhir4.Bundle>} */ (
-          fhirGet(session, "MedicationStatement", {
-            patient: pid,
-            status,
-            ...rangeParams(r, "effective"),
-          })
-        ),
-      ]);
-      /** @type {object[]} */
-      const entries = [];
-      if (orders.status === "fulfilled")
-        for (const e of orders.value.entry ?? []) {
-          const m = /** @type {fhir4.MedicationRequest} */ (e.resource);
-          entries.push({
-            id: m.id,
-            source: "order",
-            medication: coding(m.medicationCodeableConcept) ?? m.medicationReference?.display,
-            status: m.status,
-            authoredOn: m.authoredOn,
-            dosage: m.dosageInstruction?.[0]?.text,
-          });
-        }
-      if (statements.status === "fulfilled")
-        for (const e of statements.value.entry ?? []) {
-          const m = /** @type {fhir4.MedicationStatement} */ (e.resource);
-          entries.push({
-            id: m.id,
-            source: "statement",
-            medication: coding(m.medicationCodeableConcept) ?? m.medicationReference?.display,
-            status: m.status,
-            effective: m.effectiveDateTime ?? m.effectivePeriod?.start,
-            dosage: m.dosage?.[0]?.text,
-          });
-        }
-      if (orders.status === "rejected" && statements.status === "rejected") throw orders.reason;
-      return json({
-        total: entries.length,
-        entries,
-        ...(orders.status === "rejected"
-          ? {
-              ordersError:
-                "MedicationRequest search failed — order list unavailable, do not treat as empty",
-            }
-          : {}),
-        ...(statements.status === "rejected"
-          ? {
-              statementsError:
-                "MedicationStatement search failed — self-reported/home meds unavailable, do not treat as empty",
-            }
-          : {}),
-      });
-    }
+    const range = pickRange(a);
+    const pid = validateFhirId(patient_id, "Patient");
+    const sess = requireSession();
+    // both legs fetched; a failed leg is REPORTED, never silently empty —
+    // a med list missing its self-reported half reads as "no metformin on
+    // file" and downstream clinical reasoning trusts that absence
+    const [orders, statements] = await Promise.allSettled([
+      /** @type {Promise<fhir4.Bundle>} */ (
+        fhirGet(sess, "MedicationRequest", {
+          patient: pid,
+          status,
+          ...rangeParams(range, "authoredon"),
+        })
+      ),
+      /** @type {Promise<fhir4.Bundle>} */ (
+        fhirGet(sess, "MedicationStatement", {
+          patient: pid,
+          status,
+          ...rangeParams(range, "effective"),
+        })
+      ),
+    ]);
+    /** @type {object[]} */
+    const entries = [];
+    if (orders.status === "fulfilled")
+      for (const e of orders.value.entry ?? []) {
+        const m = /** @type {fhir4.MedicationRequest} */ (e.resource);
+        entries.push({
+          id: m.id,
+          source: "order",
+          medication: coding(m.medicationCodeableConcept) ?? m.medicationReference?.display,
+          status: m.status,
+          authoredOn: m.authoredOn,
+          dosage: m.dosageInstruction?.[0]?.text,
+        });
+      }
+    if (statements.status === "fulfilled")
+      for (const e of statements.value.entry ?? []) {
+        const m = /** @type {fhir4.MedicationStatement} */ (e.resource);
+        entries.push({
+          id: m.id,
+          source: "statement",
+          medication: coding(m.medicationCodeableConcept) ?? m.medicationReference?.display,
+          status: m.status,
+          effective: m.effectiveDateTime ?? m.effectivePeriod?.start,
+          dosage: m.dosage?.[0]?.text,
+        });
+      }
+    if (orders.status === "rejected" && statements.status === "rejected") throw orders.reason;
+    return json({
+      total: entries.length,
+      entries,
+      ...(orders.status === "rejected"
+        ? {
+            ordersError:
+              "MedicationRequest search failed — order list unavailable, do not treat as empty",
+          }
+        : {}),
+      ...(statements.status === "rejected"
+        ? {
+            statementsError:
+              "MedicationStatement search failed — self-reported/home meds unavailable, do not treat as empty",
+          }
+        : {}),
+    });
   },
 
   search_allergies: async (a) => {
@@ -452,10 +451,10 @@ export const HANDLERS = {
   search_document_references: async (a) => {
     const patient_id = /** @type {string} */ (a.patient_id);
     const type = /** @type {string | undefined} */ (a.type);
-    const r = pickRange(a);
+    const range = pickRange(a);
     return searchBundle(
       "DocumentReference",
-      { patient: validateFhirId(patient_id, "Patient"), type, ...rangeParams(r) },
+      { patient: validateFhirId(patient_id, "Patient"), type, ...rangeParams(range) },
       /** @param {fhir4.DocumentReference} d */
       (d) => ({
         id: d.id,
@@ -471,17 +470,15 @@ export const HANDLERS = {
   search_resource: async (a) => {
     const resource_type = /** @type {string} */ (a.resource_type);
     const params = /** @type {Record<string, string> | undefined} */ (a.params);
-    {
-      // always POST _search: params here are caller-arbitrary, so any
-      // search can carry direct identifiers (Patient by name/telecom/
-      // address, RelatedPerson, ...) — same access-log rationale as
-      // search_patients, with no type dispatch to get wrong
-      const bundle = /** @type {fhir4.Bundle} */ (
-        await fhirSearch(requireSession(), validateResourceType(resource_type), params)
-      );
-      const entries = (bundle.entry ?? []).map((e) => e.resource);
-      return json({ total: bundle.total ?? entries.length, entries });
-    }
+    // always POST _search: params here are caller-arbitrary, so any
+    // search can carry direct identifiers (Patient by name/telecom/
+    // address, RelatedPerson, ...) — same access-log rationale as
+    // search_patients, with no type dispatch to get wrong
+    const bundle = /** @type {fhir4.Bundle} */ (
+      await fhirSearch(requireSession(), validateResourceType(resource_type), params)
+    );
+    const entries = (bundle.entry ?? []).map((e) => e.resource);
+    return json({ total: bundle.total ?? entries.length, entries });
   },
 
   lookup_code: async (a) => {

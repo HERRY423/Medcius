@@ -1,3 +1,11 @@
+// Medcius refresh-token store.
+//
+// Refresh tokens live only for the lifetime of this process — there is no OS
+// keyring and they are never written to disk (the access token's short-lived
+// cache is handled by session-file.mjs). A host-provided credential store
+// where the host runs OAuth and the server requests tokens per-call, and an OS
+// keyring, are follow-ups.
+
 import { createHash } from "node:crypto";
 
 /**
@@ -25,31 +33,30 @@ export function tokenKey(iss, fhirUser) {
 }
 
 /** @implements {TokenStore} */
-class MemoryTokenStore {
+class InMemoryTokens {
   kind = "memory";
   // #private: this map holds refresh tokens, and get/set/delete are the only
-  // way in — TS's `private` was compile-time only and did not survive the port
+  // way in — a plain `private` was compile-time only and did not survive the port
   /** @type {Map<string, StoredTokens>} */
-  #m = new Map();
-  /** @param {string} k */
-  async get(k) {
-    return this.#m.get(k) ?? null;
+  #entries = new Map();
+
+  /** @param {string} key */
+  async get(key) {
+    return this.#entries.get(key) ?? null;
   }
-  /** @param {string} k @param {StoredTokens} t */
-  async set(k, t) {
-    this.#m.set(k, t);
+  /** @param {string} key @param {StoredTokens} tokens */
+  async set(key, tokens) {
+    this.#entries.set(key, tokens);
   }
-  /** @param {string} k */
-  async delete(k) {
-    this.#m.delete(k);
+  /** @param {string} key */
+  async delete(key) {
+    this.#entries.delete(key);
   }
 }
 
-// v1: memory only — re-auth each session. A host-provided credential store
-// (where the host runs OAuth and the server requests tokens per-call) and OS
-// keyring are follow-ups; the access token survives subprocess restarts via
-// session-file.mjs in the meantime.
+// v1: memory only — re-auth each session. The access token survives subprocess
+// restarts via session-file.mjs in the meantime.
 /** @returns {Promise<TokenStore>} */
 export async function pickTokenStore() {
-  return new MemoryTokenStore();
+  return new InMemoryTokens();
 }

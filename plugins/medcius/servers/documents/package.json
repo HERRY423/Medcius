@@ -1,9 +1,9 @@
 {
-  "name": "@anthropic-ai/mcp-server-documents",
+  "name": "@medcius/mcp-server-documents",
   "version": "0.0.1",
   "description": "Corpus contract Q&A engine with span-verified citations. Local, no network egress.",
   "license": "MIT",
-  "author": "Anthropic",
+  "author": "Medcius Contributors",
   "type": "module",
   "private": true,
   "scripts": {

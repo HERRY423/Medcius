@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "@anthropic-ai/mcp-server-fhir",
+      "name": "@medcius/mcp-server-fhir",
       "devDependencies": {
         "@medplum/core": "5.1.23",
         "@medplum/definitions": "5.1.23",

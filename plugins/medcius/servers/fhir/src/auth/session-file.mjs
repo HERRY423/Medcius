@@ -1,3 +1,12 @@
+// Medcius session persistence.
+//
+// The connection (base URL + access token) is cached on disk so it survives a
+// host restarting this stdio subprocess between turns. The cache lives in a
+// per-uid temp directory and every path under it is ownership-asserted: an
+// entry that exists but is not a regular file/dir owned by us is treated as
+// tampering — an active-attack signal, never an ordinary I/O hiccup. Only the
+// access token is written (≤1h TTL); the refresh token never leaves memory.
+
 import { chmodSync, lstatSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -11,21 +20,19 @@ import { join } from "node:path";
  * @property {number | null} expiresAt
  */
 
-/** Thrown when a path under our tmpdir is not the regular, self-owned
- *  entry we created — an active-attack signal, never a persistence
- *  hiccup, so callers must not swallow it with ordinary I/O errors. */
+/** Thrown when a path under our tmpdir is not the regular, self-owned entry
+ *  we created. Callers must not swallow it with ordinary I/O errors. */
 export class OwnershipError extends Error {}
 
-// Refuse a path that exists but isn't a real file/dir owned by us (defeats a
-// pre-created symlink in shared tmpdir). uid checks are no-ops on Windows.
+// uid checks are a no-op on Windows (getuid is undefined there).
 const uid = process.getuid?.() ?? -1;
 
-/** @param {string} p @param {boolean} wantDir @returns {void} */
-export function assertOwned(p, wantDir) {
-  const st = lstatSync(p);
+/** @param {string} path @param {boolean} wantDir @returns {void} */
+export function assertOwned(path, wantDir) {
+  const st = lstatSync(path);
   if (wantDir ? !st.isDirectory() : !st.isFile())
-    throw new OwnershipError(`not a regular path: ${p}`);
-  if (uid >= 0 && st.uid !== uid) throw new OwnershipError(`owned by another user: ${p}`);
+    throw new OwnershipError(`not a regular path: ${path}`);
+  if (uid >= 0 && st.uid !== uid) throw new OwnershipError(`owned by another user: ${path}`);
 }
 
 // Per-uid so that on shared /tmp another user owning the fixed name is an
@@ -35,17 +42,15 @@ export function perUidTmpDir(prefix) {
   return join(tmpdir(), `${prefix}-${uid >= 0 ? uid : "u"}`);
 }
 
-// Create-or-adopt an owned 0700 dir; mkdir's mode only applies at creation,
+// Create-or-adopt an owned 0700 dir. mkdir's mode only applies at creation,
 // so a pre-existing dir is re-asserted and re-tightened.
-/** @param {string} p @returns {void} */
-export function ensureOwnedDir(p) {
-  mkdirSync(p, { recursive: true, mode: 0o700 });
-  assertOwned(p, true);
-  chmodSync(p, 0o700);
+/** @param {string} path @returns {void} */
+export function ensureOwnedDir(path) {
+  mkdirSync(path, { recursive: true, mode: 0o700 });
+  assertOwned(path, true);
+  chmodSync(path, 0o700);
 }
 
-// Survives a host restarting the stdio subprocess between turns. Access token
-// only (≤1h TTL); refresh_token never written here.
 const dir = perUidTmpDir("mcp-server-fhir");
 const file = join(dir, "session.json");
 
@@ -54,12 +59,12 @@ export function persistSession(s, expiresIn) {
   try {
     ensureOwnedDir(dir);
     /** @type {Persisted} */
-    const p = {
+    const record = {
       baseUrl: s.baseUrl.href,
       token: s.token,
       expiresAt: expiresIn ? Date.now() + (expiresIn - 60) * 1000 : null,
     };
-    writeFileSync(file, JSON.stringify(p), { mode: 0o600, flag: "w" });
+    writeFileSync(file, JSON.stringify(record), { mode: 0o600, flag: "w" });
     assertOwned(file, false);
     chmodSync(file, 0o600);
   } catch (e) {
@@ -73,18 +78,18 @@ export function persistSession(s, expiresIn) {
 export function restoreSession() {
   try {
     assertOwned(file, false);
-    const p = /** @type {Persisted} */ (JSON.parse(readFileSync(file, "utf-8")));
-    if (p.expiresAt && p.expiresAt < Date.now()) return null;
-    const baseUrl = new URL(p.baseUrl);
-    let token = p.token;
+    /** @type {Persisted} */
+    const record = /** @type {Persisted} */ (JSON.parse(readFileSync(file, "utf-8")));
+    if (record.expiresAt && record.expiresAt < Date.now()) return null;
+    const baseUrl = new URL(record.baseUrl);
+    let token = record.token;
     // A session persisted before the env token was origin-bound (see
     // resolveEnvBearerToken in tools.mjs) may carry the FHIR_BEARER_TOKEN
-    // credential against a non-configured origin — and static sessions
-    // persist without an expiry. Re-apply the binding on restore: if the
-    // persisted token IS the env credential and the persisted origin is not
-    // FHIR_BASE_URL's origin, drop the token. The session itself survives,
-    // unauthenticated; the file is left as-is and is overwritten by the next
-    // successful connect.
+    // credential against a non-configured origin. Re-apply the binding on
+    // restore: if the persisted token IS the env credential and the persisted
+    // origin is not FHIR_BASE_URL's origin, drop the token. The session itself
+    // survives, unauthenticated; the file is left as-is and is overwritten by
+    // the next successful connect.
     const envToken = process.env.FHIR_BEARER_TOKEN;
     if (token && envToken && token === envToken) {
       /** @type {string | null} */

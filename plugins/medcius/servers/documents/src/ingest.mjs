@@ -1,3 +1,9 @@
+// PLUMBING: bytes on disk → documents.content. Nothing here knows what a
+// contract is.
+//
+// The corpus root is the ONLY filesystem path that enters the system.
+// registerRoot's realpathSync + isDirectory are what make corpusRoot() safe
+// for every readFileSync below — keep both, and keep the throw.
 import { createHash } from "node:crypto";
 import {
   closeSync,
@@ -18,14 +24,10 @@ import { NAME_RE, PARSED, db, tx } from "./db.mjs";
 import { die } from "./die.mjs";
 import { extract, resolveLit } from "./extract.mjs";
 
-// PLUMBING: bytes on disk → documents.content. Nothing here knows what a
-// contract is.
-//
-// The ONLY place a filesystem path enters the system. registerRoot's
-// realpathSync + isDirectory are what make corpusRoot() safe for every
-// readFileSync below — keep both, and keep the throw.
+// ---------------------------------------------------------------------------
+// Corpus registration and root resolution
+// ---------------------------------------------------------------------------
 
-/** Validate a directory and upsert the corpus row; returns the resolved root. No scan. */
 function registerRoot(name, dir) {
   if (!NAME_RE.test(name)) die(`corpus_register: invalid corpus name '${name}'`);
   let root;
@@ -62,28 +64,67 @@ function corpusRoot(name) {
   return row.root;
 }
 
-// What an extraction has to clear to count as text at all. Measured, not
-// guessed: across 17 image-only scans, 14 extracted to 0 characters and the
-// worst to 15, while healthy contracts run 24,000+. Anything in between is a
-// real but short document — a one-line amendment, a notice — and the old
-// threshold of 200 threw those away AND told the user they "didn't scan
-// readably". 40 clears the worst observed scan with room to spare.
-const MIN_EXTRACTED_CHARS = 40;
-
-// Concurrent extraction subprocesses. NOT one per core: liteparse threads
-// internally (~2.7 cores per process), so lanes multiply against that. Measured
-// on 24 PDFs through liteparse on an 18-core machine: 1 lane 18.5s, 4 lanes
-// 6.3s, 8 lanes 5.0s, 16 lanes 5.0s — the curve is flat past 8, and past that
-// you only add memory (each lane buffers up to extract.mjs's MAX_BUFFER of
-// stdout, which scanned pages fill far more of than text ones).
-const EXTRACT_LANES = Math.max(1, Math.min(8, cpus().length - 1));
-
-/** Characters that carry content: page anchors and layout are not text. */
-const visibleChars = (text) => text.replace(/\s|\[page \d+\]|=/g, "").length;
+// ---------------------------------------------------------------------------
+// File classification
+// ---------------------------------------------------------------------------
 
 const PREPROCESS_EXTS = ["pdf", "docx", "xlsx", "pptx"];
 const PREPROCESS_EXT = new RegExp(`\\.(${PREPROCESS_EXTS.join("|")})$`, "i");
 const DIRECT_TEXT_EXT = /\.(txt|md|html?)$/i;
+
+// Walk a corpus dir once and classify every file. A user-supplied text file
+// (.txt/.md/.html) whose stem matches a source file's stem overrides that
+// source: the user's own extraction is preferred over ours.
+function scanCorpus(dir) {
+  const all = [];
+  const walk = (d) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const p = join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (e.name !== "MANIFEST.jsonl")
+        all.push({ path: p, rel: relative(dir, p), name: e.name });
+    }
+  };
+  walk(dir);
+  const textStems = new Set(
+    all.filter((f) => DIRECT_TEXT_EXT.test(f.name)).map((f) => f.rel.replace(DIRECT_TEXT_EXT, "")),
+  );
+  const out = [];
+  for (const f of all) {
+    if (PREPROCESS_EXT.test(f.name)) {
+      const override = textStems.has(f.rel.replace(PREPROCESS_EXT, ""));
+      out.push({
+        path: f.path,
+        rel: f.rel,
+        kind: "source",
+        srcSha: sha256(readFileSync(f.path)),
+        override,
+      });
+    } else if (DIRECT_TEXT_EXT.test(f.name)) {
+      out.push({ path: f.path, rel: f.rel, kind: "text", srcSha: null });
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Extraction cache and placeholder markers
+// ---------------------------------------------------------------------------
+
+// What an extraction has to clear to count as text at all. Measured, not
+// guessed: across 17 image-only scans, 14 extracted to 0 characters and the
+// worst to 15, while healthy contracts run 24,000+. Anything in between is a
+// real but short document — a one-line amendment, a notice. 40 clears the
+// worst observed scan with room to spare.
+const MIN_EXTRACTED_CHARS = 40;
+
+// Concurrent extraction subprocesses. NOT one per core: liteparse threads
+// internally (~2.7 cores per process), so lanes multiply against that. The
+// throughput curve is flat past 8, and past that you only add memory.
+const EXTRACT_LANES = Math.max(1, Math.min(8, cpus().length - 1));
+
+/** Characters that carry content: page anchors and layout are not text. */
+const visibleChars = (text) => text.replace(/\s|\[page \d+\]|=/g, "").length;
 
 function sha256(data) {
   return createHash("sha256").update(data).digest("hex");
@@ -103,8 +144,7 @@ function parsedPath(srcSha) {
 // Each status lists EVERY marker that has ever meant it, current first. Legacy
 // markers are not dead code: the cache never expires, and db.mjs renames the
 // pre-2.1.0 data dir into this one, so placeholders written by that version are
-// still on disk today. Drop one and its documents read back "ok" with the
-// placeholder as their text — cited, and silently wrong.
+// still on disk today.
 const CACHE_MARK = {
   failed: ["[extraction failed"],
   empty: ["[no text extracted", "[image-only"], // "[image-only …" — contracts <= 2.1.0
@@ -139,44 +179,14 @@ function cachedStatus(path) {
   return "ok";
 }
 
-// Walk a corpus dir once and classify every file. User-supplied text (.txt/.md/.html)
-// for a basename overrides any sibling source file of the same stem — the user's
-// extraction is preferred over ours.
-function scanCorpus(dir) {
-  const all = [];
-  const walk = (d) => {
-    for (const e of readdirSync(d, { withFileTypes: true })) {
-      const p = join(d, e.name);
-      if (e.isDirectory()) walk(p);
-      else if (e.name !== "MANIFEST.jsonl")
-        all.push({ path: p, rel: relative(dir, p), name: e.name });
-    }
-  };
-  walk(dir);
-  const textStems = new Set(
-    all.filter((f) => DIRECT_TEXT_EXT.test(f.name)).map((f) => f.rel.replace(DIRECT_TEXT_EXT, "")),
-  );
-  const out = [];
-  for (const f of all) {
-    if (PREPROCESS_EXT.test(f.name)) {
-      const override = textStems.has(f.rel.replace(PREPROCESS_EXT, ""));
-      out.push({
-        path: f.path,
-        rel: f.rel,
-        kind: "source",
-        srcSha: sha256(readFileSync(f.path)),
-        override,
-      });
-    } else if (DIRECT_TEXT_EXT.test(f.name)) {
-      out.push({ path: f.path, rel: f.rel, kind: "text", srcSha: null });
-    }
-  }
-  return out;
-}
+// ---------------------------------------------------------------------------
+// Preprocess: parallel extraction to the content-addressed cache
+// ---------------------------------------------------------------------------
 
-// The corpus root is read-only input. Parsed text lands in <DATA>/parsed/<sha[:2]>/<sha>.txt,
-// keyed by the SOURCE file's sha256 so identical files anywhere share one cache entry.
-// Returns extractor stats plus status: Map of srcSha → outcome (not in JSON output).
+// Runs one document per worker, EXTRACT_LANES at a time. Extraction is a
+// CPU-bound subprocess — sequential spawning used one core of however many the
+// machine has, which is invisible on text PDFs (milliseconds each) and dominant
+// on scanned ones, where OCR costs seconds per page.
 async function preprocessFiles(files, force) {
   // Facts, not a sentence: the caller decides how to tell a human. `ocr` is the
   // load-bearing one — without liteparse a scanned PDF extracts to nothing, and
@@ -208,10 +218,6 @@ async function preprocessFiles(files, force) {
   };
   if (total > 0) process.stderr.write(`preprocess: ${total} source files · ${extractor.tool}\n`);
 
-  // One document per worker, EXTRACT_LANES at a time. Extraction is a CPU-bound
-  // subprocess — sequential spawning used one core of however many the machine
-  // has, which is invisible on text PDFs (milliseconds each) and dominant on
-  // scanned ones, where OCR costs seconds per page.
   const queue = [...sources];
   // A corpus can hold the same bytes at two paths. Without this, both lanes
   // miss the cache, both OCR, and both write the same file — the work doubles
@@ -323,49 +329,9 @@ async function preprocessFiles(files, force) {
   };
 }
 
-/**
- * Register + sync + ingest in one call. Three tools meant three model turns to
- * say "get these documents ready", every run, before anything happened.
- * Idempotent: re-registering updates the root; ingest skips unchanged files.
- */
-export async function corpusPrepare(name, dir, force = false) {
-  // One scan (full read + sha256 of every source file) threaded through
-  // register/sync/ingest — scanning in each step tripled the cost on
-  // multi-GB corpora.
-  const root = registerRoot(name, dir);
-  const files = scanCorpus(root);
-  const before = sync(name, files);
-  // Empty/failed extractions are cached as placeholder files, so they are
-  // invisible to new/changed/unparsed — without this check, installing
-  // liteparse and re-running would report already_current forever instead of
-  // re-extracting the scans (extractOne's no-force retry path).
-  const retryable = () =>
-    db
-      .prepare(
-        `SELECT substr(d.content, 1, 60) AS head
-         FROM corpus_documents cd JOIN documents d ON d.id = cd.doc_id
-         WHERE cd.corpus = ?`,
-      )
-      .all(name)
-      .some((r) => isPlaceholder(r.head)) && !!resolveLit();
-  const needsWork =
-    force ||
-    before.new.length > 0 ||
-    before.changed.length > 0 ||
-    before.unparsed.length > 0 ||
-    retryable();
-  const done = needsWork ? await ingest(name, force, files) : null;
-  const docs = db
-    .prepare(`SELECT count(*) AS n FROM corpus_documents WHERE corpus = ?`)
-    .get(name).n;
-  return {
-    corpus: name,
-    documents: docs,
-    already_current: !needsWork,
-    ...(done ? { ingested: done.ingested } : {}),
-    ...(before.missing.length ? { missing: before.missing } : {}),
-  };
-}
+// ---------------------------------------------------------------------------
+// Sync: disk state vs the database
+// ---------------------------------------------------------------------------
 
 /** Compare disk state under the corpus root to the DB (read-only). */
 export function sync(corpus, files) {
@@ -400,6 +366,10 @@ export function sync(corpus, files) {
   const missing = [...dbDocs.keys()].filter((u) => !seen.has(u));
   return { corpus, root: dir, current, new: fresh, changed, missing, unparsed };
 }
+
+// ---------------------------------------------------------------------------
+// Ingest: preprocess + load into the documents tables
+// ---------------------------------------------------------------------------
 
 function loadManifest(dir) {
   const manifest = new Map();
@@ -456,7 +426,8 @@ export async function ingest(corpus, force = false, files) {
         continue;
       }
       const contentSha = sha256(content);
-      // Manifest keys: the file's own rel path, or (for user-supplied .txt) the source it stands in for.
+      // Manifest keys: the file's own rel path, or (for user-supplied .txt) the
+      // source it stands in for.
       const stem = f.rel.replace(extname(f.rel), "");
       const m =
         manifest.get(f.rel) ??
@@ -484,4 +455,48 @@ export async function ingest(corpus, force = false, files) {
     }
   });
   return { preprocess: pre, ingested: n, corpus, root: dir, warnings };
+}
+
+/**
+ * Register + sync + ingest in one call. Three tools meant three model turns to
+ * say "get these documents ready", every run, before anything happened.
+ * Idempotent: re-registering updates the root; ingest skips unchanged files.
+ */
+export async function corpusPrepare(name, dir, force = false) {
+  // One scan (full read + sha256 of every source file) threaded through
+  // register/sync/ingest — scanning in each step tripled the cost on
+  // multi-GB corpora.
+  const root = registerRoot(name, dir);
+  const files = scanCorpus(root);
+  const before = sync(name, files);
+  // Empty/failed extractions are cached as placeholder files, so they are
+  // invisible to new/changed/unparsed — without this check, installing
+  // liteparse and re-running would report already_current forever instead of
+  // re-extracting the scans (extractOne's no-force retry path).
+  const retryable = () =>
+    db
+      .prepare(
+        `SELECT substr(d.content, 1, 60) AS head
+         FROM corpus_documents cd JOIN documents d ON d.id = cd.doc_id
+         WHERE cd.corpus = ?`,
+      )
+      .all(name)
+      .some((r) => isPlaceholder(r.head)) && !!resolveLit();
+  const needsWork =
+    force ||
+    before.new.length > 0 ||
+    before.changed.length > 0 ||
+    before.unparsed.length > 0 ||
+    retryable();
+  const done = needsWork ? await ingest(name, force, files) : null;
+  const docs = db
+    .prepare(`SELECT count(*) AS n FROM corpus_documents WHERE corpus = ?`)
+    .get(name).n;
+  return {
+    corpus: name,
+    documents: docs,
+    already_current: !needsWork,
+    ...(done ? { ingested: done.ingested } : {}),
+    ...(before.missing.length ? { missing: before.missing } : {}),
+  };
 }

@@ -1,9 +1,9 @@
 {
-  "name": "@anthropic-ai/mcp-server-fhir",
+  "name": "@medcius/mcp-server-fhir",
   "version": "0.0.1",
   "description": "MCP server for reading clinical data from any FHIR R4 endpoint via SMART on FHIR.",
   "license": "MIT",
-  "author": "Anthropic",
+  "author": "Medcius Contributors",
   "type": "module",
   "private": true,
   "scripts": {

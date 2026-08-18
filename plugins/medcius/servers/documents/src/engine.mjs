@@ -32,6 +32,7 @@ export {
 } from "./citations.mjs";
 export { corpusPrepare, corpusRegister, ingest, sync } from "./ingest.mjs";
 
+// ---------------------------------------------------------------------------
 // Generic table access (conductor surface)
 // ---------------------------------------------------------------------------
 
@@ -42,22 +43,27 @@ export function schema() {
     .all();
 }
 
+// node:sqlite exposes the result columns of a prepared statement. We use that
+// to classify a query as a reader (columns present → .all()) or a writer
+// (no columns → .run(), else writes would execute but their changes count
+// would be swallowed). It also names the one column that must never leave the
+// server through this channel.
+const hasContentColumn = (stmt) =>
+  stmt.columns().find((c) => c.column === "content" || c.name === "content");
+const isReader = (stmt) => stmt.columns().length > 0;
+
 /** Run one SQL statement; readers return rows, writers return changes. */
 export function sql(query) {
   const stmt = db.prepare(query.trim());
   // The one sentence in the tool description was the only thing stopping
   // `SELECT * FROM v_corpus_documents` from dumping the whole corpus (2MB at
   // 40 docs) into the model's context. Make it structural.
-  const banned = stmt.columns().find((c) => c.column === "content" || c.name === "content");
-  if (banned)
+  if (hasContentColumn(stmt))
     die(
       `sql: this query returns the 'content' column — full document text through a tool result ` +
         `blows up the context. SELECT other columns, or use doc_search / doc_text / dump.`,
     );
-  // columns() is empty for non-reader statements (INSERT/UPDATE/PRAGMA …);
-  // branching on it beats sniffing driver error text, and node:sqlite's
-  // all() would otherwise execute writes but swallow their changes count.
-  if (stmt.columns().length === 0) {
+  if (!isReader(stmt)) {
     const r = stmt.run();
     return { changes: Number(r.changes), last_insert_rowid: Number(r.lastInsertRowid) };
   }
@@ -77,6 +83,10 @@ export function sqlMany(queries) {
     }
   });
 }
+
+// ---------------------------------------------------------------------------
+// write / set
+// ---------------------------------------------------------------------------
 
 // Audit spans arrive in the caller's unit — UTF-16 JS string indices — but
 // cite() and the citations_verify trigger compare them in code points
@@ -196,6 +206,10 @@ export function drop(runIds, prefix) {
   return { dropped: ids, ...(orphans.citations || orphans.documents ? { swept: orphans } : {}) };
 }
 
+// ---------------------------------------------------------------------------
+// Document reading: doc_search / doc_text
+// ---------------------------------------------------------------------------
+
 /**
  * Substring search across a corpus's documents, for workers that can't grep the
  * dumped shard files (no shared filesystem with this server). Returns matching
@@ -220,10 +234,6 @@ export function docSearch(corpus, pattern, opts = {}) {
   const escaped = pattern.replace(/[\\%_]/g, (c) => `\\${c}`);
   // One WHERE fragment and one params object for BOTH queries below — if the
   // match semantics and the count ever diverge, docs_matched lies again.
-  // Placeholder docs are excluded outright: an 'empty' extraction keeps its
-  // sub-threshold OCR fragments below the marker, so rubric terms can match
-  // inside them — and a bridged reader would then doc_text and cite a doc
-  // that has no real text.
   const matchWhere = `cd.corpus = $corpus
          AND (cd.parse_status IS NULL OR cd.parse_status = 'ok')
          AND ${fold ? `d.content LIKE '%' || $like || '%' ESCAPE '\\'` : `instr(d.content, $raw) > 0`}`;
@@ -250,7 +260,17 @@ export function docSearch(corpus, pattern, opts = {}) {
         )
         .get(matchParams).n
     : rows.length;
-  let snippetBudget = 20_000; // total context chars across the reply; callers page, not slurp
+
+  // Collect per-doc hit offsets plus a bounded context window around each.
+  // The 20k-char budget is shared across docs so a multi-hit call stays
+  // readable; `takeContext` is the single place the budget is spent.
+  let snippetBudget = 20_000;
+  const takeContext = (content, at, needleLen) => {
+    const from = Math.max(0, at - 120);
+    const ctx = content.slice(from, at + needleLen + 120);
+    snippetBudget -= ctx.length;
+    return ctx;
+  };
   const needle = fold ? pattern.toLowerCase() : pattern;
   const hits = rows.slice(0, maxDocs).map((r) => {
     const hay = fold ? r.content.toLowerCase() : r.content;
@@ -258,12 +278,8 @@ export function docSearch(corpus, pattern, opts = {}) {
     let total = 0;
     for (let at = hay.indexOf(needle); at !== -1; at = hay.indexOf(needle, at + needle.length)) {
       total++;
-      if (matches.length < maxPer && snippetBudget > 0) {
-        const from = Math.max(0, at - 120);
-        const ctx = r.content.slice(from, at + needle.length + 120);
-        snippetBudget -= ctx.length;
-        matches.push({ offset: at, context: ctx });
-      }
+      if (matches.length < maxPer && snippetBudget > 0)
+        matches.push({ offset: at, context: takeContext(r.content, at, needle.length) });
     }
     return { doc_id: r.id, uri: r.uri, matches, total };
   });
@@ -363,6 +379,10 @@ export function docTextMany(docs, limit = 40_000) {
   return { docs: out };
 }
 
+// ---------------------------------------------------------------------------
+// Shard dumping: materialize shard text to files + worker prompts
+// ---------------------------------------------------------------------------
+
 // Sweep workers materialize their shard's text to files here instead of SELECTing
 // full content through the tool-result channel, which overflows result limits.
 // The dir lives under DATA and is run-scoped, so shard labels can't collide.
@@ -418,10 +438,6 @@ function dumpShard(runId, label, ids) {
     ...(unreadable.length ? { unreadable } : {}),
   };
 }
-
-// ---------------------------------------------------------------------------
-// Ingest pipeline: scan → preprocess (extract to content-addressed cache) → load
-// ---------------------------------------------------------------------------
 
 /** Where a shard's ready-made worker prompt lives. Outside the shard dir on
  *  purpose: readers Grep their shard, and a rubric-shaped file sitting next to
