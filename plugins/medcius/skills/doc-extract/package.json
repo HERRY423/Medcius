@@ -1,5 +1,5 @@
 {
-  "name": "@anthropic-ai/healthcare-doc-extract-skill",
+  "name": "@medcius/healthcare-doc-extract-skill",
   "private": true,
   "type": "module",
   "dependencies": {

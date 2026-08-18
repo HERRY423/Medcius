@@ -19,7 +19,7 @@
 
 | Skill | 面向对象 | 功能 |
 |---|---|---|
-| `skills/nhsa-coding` | 医保、医院 | 国家医保编码：医保版ICD-10诊断编码、CCHI手术操作编码、医保药品编码 |
+| `skills/nhsa-coding` | 医保、医院 | 国家医保编码：医保版ICD-10诊断编码、医保版手术操作分类编码（查询+校验协议，编码附带版本与出处） |
 | `skills/nhsa-policy` | 医保、医院 | 国家及地方医保政策：药品目录、报销比例、DRG/DIP支付、异地就医 |
 | `skills/nmpa-drugs` | 药企、药师、医院 | NMPA药品注册查询：批准文号、说明书、处方药/OTC分类 |
 | `skills/china-clinical-trials` | 药企、CRO、研究者 | 中国药物临床试验登记查询（chinadrugtrials.org.cn） |

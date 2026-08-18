@@ -1,26 +1,23 @@
 ---
-description: 用户查询医保政策（报销、目录、DRG/DIP、慢特病、异地就医）时触发。触发词：医保报销、报销比例、DRG支付标准、门诊慢特病政策、异地就医怎么结算、"这个药医保报销吗"。
+description: 用户查询医保政策（目录准入、支付限制、报销比例、DRG/DIP、慢特病、异地就医）时触发。触发词：医保报销、报销比例、DRG支付标准、门诊慢特病政策、异地就医怎么结算、"这个药医保报销吗"。
 alwaysApply: false
 ---
 
-Use the **nhsa-policy** skill to query medical insurance policy information.
+Use the **nhsa-policy** skill — a four-layer governance model: national formulary → national payment restriction → provincial benefit/payment implementation → patient-specific eligibility.
+
+**在目录 ≠ 必然按固定比例报销**: 目录（准入）与"报销多少"必须拆开回答。
 
 ## Output Format
 
 ```
-【政策依据】
-文件名称：[policy_name]
-发布机构：[agency]
-发布时间：[date]
-
-【查询结果】
-项目：[item_name]
-目录分类：[category]
-医保支付标准：[standard]
-限定支付范围：[范围]
-
-【地方政策提示】
-参保地：[region]
-当地报销比例：[ratio]
-（地方政策请以当地医保局最新文件为准）
+L1 国家目录：类别 ✓/待核 （来源：[source]）
+L2 国家支付限制：限定支付范围 / 医保支付标准 / 谈判药协议期
+L3 省级待遇落地：报销比例（仅限可引用省级文件） 起付线/封顶线/慢特病/DRG-DIP
+L4 患者个体资格：需医保经办核实（不给数字）
 ```
+
+## Notes
+
+- 在目录 ≠ 按固定比例报销；目录与报销拆开回答
+- 药品目录国家统一，省不增补；省层面调整的是支付待遇
+- L3 数字必须可引用省级文件；L4 一律不给具体数字

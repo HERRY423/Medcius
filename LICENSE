@@ -2,6 +2,20 @@ MIT License
 
 Copyright (c) 2026 HERRY423
 
+---
+
+SCOPE NOTE — This MIT license covers the **Medcius-original files** in this
+repository (the China healthcare skills, portable manifests, build/validation
+scripts, the rewritten `servers/shared`, `servers/fhir` and `servers/documents`
+implementations, and other files not derived from upstream). Files **derived
+from the upstream `anthropics/healthcare` repository** (which ships no open
+source license and is provided under Anthropic's terms of service) are not
+covered by this license; their provenance and terms are documented in
+`THIRD_PARTY_NOTICES.md`. Redistributing upstream-derived files is subject to
+whatever Anthropic's terms permit.
+
+---
+
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights

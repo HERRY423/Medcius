@@ -21,7 +21,7 @@
 
 | Skill | 面向对象 | 功能 |
 |---|---|---|
-| `nhsa-coding` | 医保、医院 | 国家医保编码：医保版ICD-10诊断编码、CCHI手术操作编码、医保药品编码 |
+| `nhsa-coding` | 医保、医院 | 国家医保编码：医保版ICD-10诊断编码、医保版手术操作分类编码（查询+校验协议，编码附带版本与出处） |
 | `nhsa-policy` | 医保、医院 | 国家及地方医保政策：药品目录、报销比例、DRG/DIP支付、异地就医 |
 | `nmpa-drugs` | 药企、药师、医院 | NMPA药品注册查询：批准文号、说明书、处方药/OTC分类 |
 | `china-clinical-trials` | 药企、CRO、研究者 | 中国药物临床试验登记查询（chinadrugtrials.org.cn） |
@@ -92,4 +92,4 @@ v1 的按技能/按服务器插件（`prior-auth-review`、`fhir-developer`、`c
 
 ## 许可证 / License
 
-MIT License（详见仓库根目录 `LICENSE`，Copyright © 2026 HERRY423）。上游 `anthropics/healthcare` 代码保留其原有版权与署名。
+MIT License 覆盖 **Medcius 原创文件**（详见仓库根目录 `LICENSE`，Copyright © 2026 HERRY423）。上游 `anthropics/healthcare` 派生文件的再分发受 Anthropic 条款约束，逐文件的来源与许可姿态见 **`THIRD_PARTY_NOTICES.md`**。

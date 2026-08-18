@@ -1,5 +1,5 @@
 {
-  "name": "@anthropic-ai/healthcare-fraud-detection-skill",
+  "name": "@medcius/healthcare-fraud-detection-skill",
   "private": true,
   "type": "module",
   "optionalDependencies": {

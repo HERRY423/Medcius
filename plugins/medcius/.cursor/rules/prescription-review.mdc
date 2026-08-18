@@ -1,28 +1,23 @@
 ---
-description: 用户要求审核处方合理性时触发。触发词：审核处方、处方点评、"这个处方合理吗"、用药合理性审核、处方审核。
+description: 用户要求审核处方合理性（证据门控）时触发。触发词：审核处方、处方点评、"这个处方合理吗"、用药合理性审核、处方审核。
 alwaysApply: false
 ---
 
-Use the **prescription-review** skill to review prescription rationality.
+Use the **prescription-review** skill — an evidence-gated review protocol, not memory-based opinion.
 
-## Output Format
+## Verdict (exactly one)
 
 ```
-【处方审核意见】
-处方编号：[prescription_id]
-审核结果：[合理/不合理/需修改]
-
-【处方信息】
-患者：[patient_info]
-诊断：[diagnosis]
-药品：[drug_name] [specification]
-用法：[administration_method]
-
-【审核发现】
-1. [finding_1]
-2. [finding_2]
-3. [finding_3]
-
-【审核结论】
-[conclusion]
+PASS | FLAG | INSUFFICIENT_DATA | REQUIRES_PHARMACIST_REVIEW
 ```
+
+## Hard gates
+
+- 缺关键患者信息（年龄/体重/肝肾功能/妊娠哺乳/过敏史/诊断）→ 不得 PASS
+- 无实时版本化药品证据（说明书/来源/版本/日期）→ 不得"安全性确定"
+- 相互作用未实际查询 → 不得输出"未发现相互作用"
+
+## Notes
+
+- Verdict is exactly one of the four; no vague "可能合理"
+- Prescription review is the pharmacist's legal duty; this skill is an assistive gate protocol
