@@ -1,0 +1,26 @@
+---
+description: 用户查询医保政策（报销、目录、DRG/DIP、慢特病、异地就医）时触发。触发词：医保报销、报销比例、DRG支付标准、门诊慢特病政策、异地就医怎么结算、"这个药医保报销吗"。
+alwaysApply: false
+---
+
+Use the **nhsa-policy** skill to query medical insurance policy information.
+
+## Output Format
+
+```
+【政策依据】
+文件名称：[policy_name]
+发布机构：[agency]
+发布时间：[date]
+
+【查询结果】
+项目：[item_name]
+目录分类：[category]
+医保支付标准：[standard]
+限定支付范围：[范围]
+
+【地方政策提示】
+参保地：[region]
+当地报销比例：[ratio]
+（地方政策请以当地医保局最新文件为准）
+```

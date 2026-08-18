@@ -1,0 +1,18 @@
+---
+description: 用户查询 NMPA 药品注册信息（批文、说明书、处方药/OTC 分类）时触发。触发词：批文、药品注册、批准文号、处方药、OTC、药品批准文号查询、"查一下药品注册信息"。
+alwaysApply: false
+---
+
+Use the **nmpa-drugs** skill to query NMPA drug registration information.
+
+## Output Format
+
+```
+【药品注册信息】
+药品名称：[name]
+商品名：[brand_name]
+批准文号：[approval_number]
+注册分类：[classification]
+药品分类：[otc/prescription]
+生产企业：[manufacturer]
+```

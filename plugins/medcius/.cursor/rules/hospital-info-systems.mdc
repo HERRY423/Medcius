@@ -1,0 +1,30 @@
+---
+description: 用户咨询中国医院信息系统（HIS/EMR/LIS/PACS）对接时触发。触发词：对接医院信息系统、HIS接口、电子病历评级、互联互通测评、医保接口、医院信息系统对接。
+alwaysApply: false
+---
+
+Use the **hospital-info-systems** skill to query hospital information system integration guidelines.
+
+## Output Format
+
+```
+【医院信息系统对接方案】
+医院：[hospital_name]
+目标系统：[system_name]
+
+【对接方式】
+接口类型：[interface_type]
+接口文档：[document_source]
+测试环境：[test_env]
+
+【数据交换】
+患者信息：[patient_data_msg]
+医嘱信息：[order_msg]
+检验结果：[lab_msg]
+影像报告：[imaging_msg]
+
+【合规要求】
+数据安全：[security_law]
+隐私保护：[privacy_measure]
+授权：[authorization_require]
+```

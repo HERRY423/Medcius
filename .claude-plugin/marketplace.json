@@ -1,0 +1,143 @@
+{
+  "name": "medcius",
+  "owner": {
+    "name": "Medcius Contributors",
+    "email": "z1326434525@gmail.com"
+  },
+  "metadata": {
+    "version": "0.1.0",
+    "description": "中国医疗智能助手 / Medcius — 面向中国医生与医疗环境的医疗插件，兼容 Agent Plugins 1.0.0 标准（Codex 等）与 Claude Code 插件格式"
+  },
+  "plugins": [
+    {
+      "name": "medcius",
+      "displayName": "中国医疗智能助手 / Medcius",
+      "source": "./plugins/medcius",
+      "description": "国家医保编码、医保政策、NMPA药品注册、中国临床试验、医院信息系统、处方审核，以及原有 payer/provider/pharma 技能（prior auth、ICD-10-CM coding、clinical-note extraction、trial protocols、FHIR）",
+      "category": "healthcare",
+      "tags": [
+        "healthcare",
+        "china",
+        "cn",
+        "medical",
+        "insurance",
+        "nhsa",
+        "nmpa",
+        "prescription",
+        "hospital",
+        "prior-auth",
+        "medical-coding",
+        "fhir",
+        "clinical-trials"
+      ]
+    },
+    {
+      "name": "clinical-trial-protocol",
+      "source": "./",
+      "description": "Deprecated — install medcius@medcius instead. Generate FDA/NIH-compliant clinical trial protocols for medical devices or drugs",
+      "category": "healthcare",
+      "tags": [
+        "clinical-trials",
+        "fda",
+        "protocol",
+        "regulatory",
+        "deprecated"
+      ],
+      "strict": false,
+      "skills": [
+        "./plugins/medcius/skills/clinical-trial-protocol"
+      ]
+    },
+    {
+      "name": "prior-auth-review",
+      "source": "./",
+      "description": "Deprecated — install medcius@medcius instead. Automate payer review of prior authorization requests with clinical documentation synthesis",
+      "category": "healthcare",
+      "tags": [
+        "prior-auth",
+        "insurance",
+        "medical-necessity",
+        "cms",
+        "deprecated"
+      ],
+      "strict": false,
+      "skills": [
+        "./plugins/medcius/skills/prior-auth"
+      ]
+    },
+    {
+      "name": "fhir-developer",
+      "source": "./",
+      "description": "Deprecated — install medcius@medcius instead. FHIR API development guide for building healthcare endpoints with R4 resources and SMART authorization",
+      "category": "healthcare",
+      "tags": [
+        "fhir",
+        "hl7",
+        "api",
+        "interoperability",
+        "smart-on-fhir",
+        "deprecated"
+      ],
+      "strict": false,
+      "skills": [
+        "./plugins/medcius/skills/fhir-developer"
+      ]
+    },
+    {
+      "name": "cms-coverage",
+      "source": "./plugins/medcius",
+      "description": "Deprecated — install medcius@medcius instead. Access the CMS Coverage Database",
+      "category": "healthcare",
+      "tags": [
+        "medicare",
+        "coverage",
+        "cms",
+        "policy",
+        "ncd",
+        "lcd",
+        "deprecated"
+      ]
+    },
+    {
+      "name": "npi-registry",
+      "source": "./plugins/medcius",
+      "description": "Deprecated — install medcius@medcius instead. Access US National Provider Identifier (NPI) Registry",
+      "category": "healthcare",
+      "tags": [
+        "npi",
+        "provider",
+        "registry",
+        "hipaa",
+        "deprecated"
+      ]
+    },
+    {
+      "name": "pubmed",
+      "source": "./plugins/medcius",
+      "description": "Deprecated — install medcius@medcius instead. Search biomedical literature from PubMed",
+      "category": "healthcare",
+      "tags": [
+        "pubmed",
+        "literature",
+        "research",
+        "medical",
+        "pmc",
+        "deprecated"
+      ]
+    },
+    {
+      "name": "icd10-codes",
+      "source": "./plugins/medcius",
+      "description": "Deprecated — install medcius@medcius instead. Access ICD-10-CM and ICD-10-PCS code sets",
+      "category": "healthcare",
+      "tags": [
+        "icd-10",
+        "diagnosis",
+        "procedure",
+        "billing",
+        "medical-coding",
+        "deprecated"
+      ]
+    }
+  ]
+}

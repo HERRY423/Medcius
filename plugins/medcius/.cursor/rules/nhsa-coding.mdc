@@ -1,0 +1,19 @@
+---
+description: 用户要求生成国家医保编码（医保版 ICD-10 诊断编码、CCHI 手术操作编码、医保药品编码）时触发。触发词：编码、医保诊断编码、ICD-10、CCHI、医保编码、医保结算清单编码。
+alwaysApply: false
+---
+
+Use the **nhsa-coding** skill to generate medical insurance codes.
+
+## Output Format
+
+```
+主要诊断：[code]
+其他诊断：[codes]
+手术操作：[procedure_code]
+```
+
+## Notes
+
+- Always verify codes with the MCP connector
+- Never output codes from memory — errors are common

@@ -1,0 +1,28 @@
+---
+description: 用户要求审核处方合理性时触发。触发词：审核处方、处方点评、"这个处方合理吗"、用药合理性审核、处方审核。
+alwaysApply: false
+---
+
+Use the **prescription-review** skill to review prescription rationality.
+
+## Output Format
+
+```
+【处方审核意见】
+处方编号：[prescription_id]
+审核结果：[合理/不合理/需修改]
+
+【处方信息】
+患者：[patient_info]
+诊断：[diagnosis]
+药品：[drug_name] [specification]
+用法：[administration_method]
+
+【审核发现】
+1. [finding_1]
+2. [finding_2]
+3. [finding_3]
+
+【审核结论】
+[conclusion]
+```

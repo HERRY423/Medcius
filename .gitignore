@@ -1,0 +1,23 @@
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Node
+node_modules/
+*.log
+npm-debug.log*
+
+# Claude Code session artifacts — never commit
+**/.claude/logs/
+**/.claude/session-context-*.md
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.pyc
+.venv/

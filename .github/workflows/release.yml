@@ -1,0 +1,36 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create plugin zip
+        run: |
+          # Package the single plugin package (plugins/medcius) so the zip
+          # unzips to a medcius/ directory, ready to install as an Agent
+          # Plugins / Claude Code plugin.
+          cd plugins
+          zip -r "../medcius-${GITHUB_REF_NAME}.zip" medcius
+          cd ..
+          echo "Created package:"
+          ls -la "medcius-${GITHUB_REF_NAME}.zip"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            medcius-*.zip
+          generate_release_notes: true
+          draft: true
+          prerelease: false

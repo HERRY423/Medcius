@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "rootDir": "..",
+    "strict": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": [
+      "node"
+    ],
+    "declaration": false,
+    "sourceMap": false,
+    "lib": [
+      "ES2024"
+    ],
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": true
+  },
+  "include": [
+    "src/**/*.mjs",
+    "../shared/**/*.mjs"
+  ]
+}

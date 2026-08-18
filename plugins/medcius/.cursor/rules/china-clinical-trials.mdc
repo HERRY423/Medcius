@@ -1,0 +1,18 @@
+---
+description: 用户查询中国药物临床试验（chinadrugtrials.org.cn）时触发。触发词：临床试验、中国临床试验、CTR、药品临床试验、"查中国的临床试验"、"这个药的临床试验在哪里做"。
+alwaysApply: false
+---
+
+Use the **china-clinical-trials** skill to query Chinese clinical trial registration information.
+
+## Output Format
+
+```
+【临床试验信息】
+登记号：[trial_id]
+试验名称：[trial_name]
+药品名称：[drug_name]
+适应症：[indication]
+试验分期：[phase]
+试验状态：[status]
+```

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "medcius",
+  "version": "0.1.0",
+  "description": "面向临床医生的医疗智能插件，提供医疗编码、医保政策、NMPA药品注册、临床试验、医院信息系统对接等功能，符合 Agent Plugins 1.0.0 标准。",
+  "author": {
+    "name": "Medcius Contributors",
+    "url": "https://github.com/HERRY423/Medcius"
+  },
+  "homepage": "https://github.com/HERRY423/Medcius",
+  "repository": "https://github.com/HERRY423/Medcius",
+  "license": "MIT",
+  "keywords": [
+    "医疗",
+    "医保",
+    "ICD-10",
+    "NMPA",
+    "临床试验",
+    "医院信息",
+    "处方审核",
+    "healthcare",
+    "medical-insurance",
+    "medical-coding",
+    "chinese-medicine",
+    "china-healthcare",
+    "fhir",
+    "医院信息系统"
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "name": "medcius",
+  "version": "0.1.0",
+  "description": "中国医疗智能助手 / Medcius — 面向中国医生与医疗环境的医疗插件：国家医保编码、医保政策、NMPA药品注册、中国临床试验、医院信息系统、处方审核，以及原有 payer/provider/pharma 技能（prior auth、ICD-10-CM coding、clinical-note extraction、trial protocols、FHIR）。提供两种独立安装格式：Agent Plugins 1.0.0 便携清单（本目录 plugin.json + mcp.json，供 Codex/Cursor/ChatGPT 等支持 Agent Plugins 的客户端安装）与 Claude Code 原生插件格式（.claude-plugin/）。",
+  "author": {
+    "name": "Medcius Contributors (fork of anthropics/healthcare)",
+    "url": "https://github.com/HERRY423/Medcius"
+  }
+}

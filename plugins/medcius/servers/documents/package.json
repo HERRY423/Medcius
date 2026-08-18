@@ -1,0 +1,22 @@
+{
+  "name": "@anthropic-ai/mcp-server-documents",
+  "version": "0.0.1",
+  "description": "Corpus contract Q&A engine with span-verified citations. Local, no network egress.",
+  "license": "MIT",
+  "author": "Anthropic",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "check": "tsc"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "@llamaindex/liteparse": "2.0.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}

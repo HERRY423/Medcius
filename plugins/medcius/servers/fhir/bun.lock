@@ -1,0 +1,38 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "@anthropic-ai/mcp-server-fhir",
+      "devDependencies": {
+        "@medplum/core": "5.1.23",
+        "@medplum/definitions": "5.1.23",
+        "@medplum/fhir-router": "^5.1.23",
+        "@types/fhir": "0.0.44",
+        "@types/node": "^22.0.0",
+        "typescript": "^5.6.0",
+      },
+    },
+  },
+  "packages": {
+    "@medplum/core": ["@medplum/core@5.1.23", "", { "peerDependencies": { "pdfmake": "^0.2.5" }, "optionalPeers": ["pdfmake"] }, "sha512-SrLfCf4+lMXJaIDetK3+rPlAfyAkqbRzI2qIVOpL9FUtQ0XMXfl29QgTRKYob3e3Upl3uGe7tIW6TwYaEgSTrA=="],
+
+    "@medplum/definitions": ["@medplum/definitions@5.1.23", "", {}, "sha512-wolehuNbsB0jkng+Qo8OpoSP1Em8odcmXUR3QKbJfzgi4U1XcOUziDeAtrfw+LdhEOA5Px4CodmRRAswnFYvpA=="],
+
+    "@medplum/fhir-router": ["@medplum/fhir-router@5.1.23", "", { "dependencies": { "@medplum/core": "5.1.23", "@medplum/definitions": "5.1.23", "@medplum/fhirtypes": "5.1.23", "dataloader": "2.2.3", "graphql": "16.14.2" } }, "sha512-MVlD1DfwsMs3MG37uAXY5NN/LXnoKZFWmred/BUWg7CRbNlOQIrE/Ae6e03CgPJ3RQsMWnEt8+Qtq53Aw2gDOw=="],
+
+    "@medplum/fhirtypes": ["@medplum/fhirtypes@5.1.23", "", {}, "sha512-UUgTEc/vCpL2iHH53e2hQLo681VsmZE/DS0ZCH85i35Ynb8joerHZ4NzhsH9O1ASqcc+wdh5NlgqcTQm1gfqmw=="],
+
+    "@types/fhir": ["@types/fhir@0.0.44", "", {}, "sha512-RhqRUNcUFeQSbEK9cOEYQ98sfsUFFRCUKbgozHvryiUfEAPiXuhgk2wqYV3MoD1T1qHp0gztrHDywU68bN7KYQ=="],
+
+    "@types/node": ["@types/node@22.20.0", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-QWlFW2wf3nTjC13/DqRnBpR4ZO36VJH/JVBkA/vcnmbTBNQIlnObqyqZE1tUR7+Ni23Lda8R1BxMfbXRpCUx5g=="],
+
+    "dataloader": ["dataloader@2.2.3", "", {}, "sha512-y2krtASINtPFS1rSDjacrFgn1dcUuoREVabwlOGOe4SdxenREqwjwjElAdwvbGM7kgZz9a3KVicWR7vcz8rnzA=="],
+
+    "graphql": ["graphql@16.14.2", "", {}, "sha512-Chq1s4CY7jmh8gO2qvLIJyfCDIN+EHLFW/9iShnp1z8FjBQMoodWP1kDC36VAMXXIvAjj4ARa7ntfAV2BrjsbA=="],
+
+    "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
+
+    "undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
+  }
+}
