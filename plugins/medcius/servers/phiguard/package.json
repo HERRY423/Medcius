@@ -1,0 +1,16 @@
+{
+  "name": "@medcius/mcp-server-phiguard",
+  "version": "0.0.1",
+  "description": "PHI scan/redact/pseudonymize for CN clinical text (stateless). Privacy-by-design layer before logs/audit/LLM.",
+  "license": "MIT",
+  "author": "Medcius Contributors",
+  "type": "module",
+  "private": true,
+  "scripts": { "check": "tsc" },
+  "engines": { "node": ">=22.13" },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}

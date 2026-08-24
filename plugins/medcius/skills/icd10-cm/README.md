@@ -2,7 +2,7 @@
 
 Extract billable ICD-10-CM diagnosis codes from clinical notes the way a professional coder builds a claim.
 
-Part of the Medcius plugin, whose bundled ICD-10 Codes connector provides the skill's lookup tools out of the box. Further code-system skills (procedure coding, drug/supply coding) and a coding-audit workflow slot in alongside it as they're built.
+US ICD-10-CM only. Medcius does **not** bundle an ICD-10-CM connector or any Claude-hosted MCP. For China settlement codes use `nhsa-coding` + local `china-codes`. If no user-provided ICD-10-CM lookup is available, this skill stops.
 
 ## What it does
 
@@ -14,7 +14,7 @@ Given a clinical note (visit note, encounter summary, discharge note), the skill
 
 ## Lookup
 
-All code lookup goes through the bundled ICD-10 Codes connector (`search_codes`, `lookup_code`, `validate_code`) — no shell or network access is requested by the skill itself. If the connector is unavailable, the skill stops and asks for it rather than coding from memory: unverified recall is the main source of stale-code-set errors.
+All code lookup goes through a **user-provided** ICD-10-CM tool. If it is unavailable, the skill stops rather than coding from memory.
 
 ## Scope
 

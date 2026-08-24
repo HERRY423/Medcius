@@ -129,8 +129,9 @@ floor did not compute.
 ## Enrichment — local cached data (canonical), MCPs for interactive only
 The deterministic pipeline reads enrichment from **local cached files** (`scripts/fetch-enrichment.js`
 → `$CLAUDE_MEDCIUS_DATA/fraud-detection/data-cache/enrichment/`, loaded via `scripts/enrichment.js`) — no runtime auth, no drift, fully
-reproducible. The medcius plugin's bundled MCP servers (CMS Coverage / ICD-10 / NPI Registry) are
-for **interactive adjudicate/synthesize exploration** only; the pipeline does not depend on them.
+reproducible. Medcius does **not** bundle CMS / ICD-10 / NPI hosted MCP servers. Public CMS/NPPES
+fetch scripts under `scripts/fetch-*.js` remain optional. For China coding use `nhsa-coding`.
+Optional US indexes (user-provided or public APIs only — not Claude-hosted):
 - **ICD-10-CM** — code validity / description (NLM Clinical Tables)
 - **CMS Coverage (LCD/NCD)** — medical-necessity policy index; cached, feeds D4 adjudication
 - **NPI Registry** — provider taxonomy/status

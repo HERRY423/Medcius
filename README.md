@@ -1,6 +1,30 @@
-# 中国医疗智能助手 / Medcius for Agents
+# Medcius for Agents
 
-一个面向**中国医生与医疗环境**的医疗插件。提供两种**独立**安装格式：**Agent Plugins 1.0.0 便携格式**（`plugin.json` + `mcp.json`，可在 Codex、Cursor、ChatGPT、GitHub Copilot、VS Code、Qwen Code 等支持 Agent Plugins 的客户端安装使用）与 **Claude Code 原生插件格式**（`.claude-plugin/`）。技能按需加载，保持轻量——安装一次，按需使用。
+**产品边界：** Medcius 做三件事——**医保编码**、**处方审核辅助**、**病历结构化抽取**。不做诊断决策、不生成鉴别诊断、不替代医师/药师/编码员。
+
+提供两种**独立**安装格式：**Agent Plugins 1.0.0 便携格式**（`plugin.json` + `mcp.json`）与 **Claude Code 原生插件格式**（`.claude-plugin/`）。技能按需加载。MCP **仅本地 stdio**，不连接任何 Claude/Anthropic 托管服务。
+
+## 生产门闩 / Production gate
+
+真实编码/审方需要医院自有官方包（`official > 0`）。仓库只带 sample。
+
+```bash
+node scripts/doctor.mjs
+node scripts/import-official.mjs --kind codes --file codes.csv --source 医保办 --version 2024 --effective-date 2024-01-01
+node scripts/intake-discharge.mjs path/to/出院记录.md --code --out out/intake
+node scripts/settlement-from-note.mjs path/to/出院记录.md --out out/settle
+node scripts/serve.mjs --port 8080   # 启动 RESTful API 与 HL7 FHIR CDS Hooks 服务
+node scripts/run-evals.mjs --with-corpus
+```
+
+详见 `plugins/medcius/packs/README.md`。
+
+## 临床接口与多 Agent 服务 / Clinical API & Multi-Agent
+
+- **HL7 FHIR CDS Hooks**：`GET /cds-services` 发现端点，`POST /cds-services/medcius-prescription-review`（开药前审方）与 `POST /cds-services/medcius-order-sign`（签署前医保核对）。
+- **RESTful API**：`/api/v1/prescription/review`、`/api/v1/coding/resolve`、`/api/v1/note/extract`、`/api/v1/encounter/process`、`/health`。
+- **Supervisor-Worker 多 Agent 调度**：`plugins/medcius/orchestrator/supervisor.mjs` 统一调度 `ExtractWorker`、`CodingWorker`、`PharmaWorker` 与 `AuditWorker`。
+- **数据安全与加密**：增强型中文临床脱敏（`phiguard`）与 AES-256-GCM 密文存储（`servers/shared/secure-store.mjs`）。
 
 ## 快速开始 / Quick Start
 
@@ -23,16 +47,16 @@
 |---|---|---|
 | `nhsa-coding` | 医保、医院 | 国家医保编码：医保版ICD-10诊断编码、医保版手术操作分类编码（查询+校验协议，编码附带版本与出处） |
 | `nhsa-policy` | 医保、医院 | 国家及地方医保政策：药品目录、报销比例、DRG/DIP支付、异地就医 |
-| `nmpa-drugs` | 药企、药师、医院 | NMPA药品注册查询：批准文号、说明书、处方药/OTC分类 |
-| `china-clinical-trials` | 药企、CRO、研究者 | 中国药物临床试验登记查询（chinadrugtrials.org.cn） |
-| `hospital-info-systems` | 医院信息科、厂商 | 中国医院信息系统（HIS/EMR/LIS/PACS）对接指南 |
-| `prescription-review` | 医院药师 | 处方审核：适应症、用法用量、相互作用、配伍禁忌 |
+| `nmpa-drugs` | 药师 | 本地说明书库核对批文格式与摘录；无注册全库，未命中即停 |
+| `china-clinical-trials` | 研究 | 本地 CTR 摘录库 + 官网；未命中不得编造 |
+| `hospital-info-systems` | 医保办、信息科 | 结算清单字段对照 + 电子病历评级约束（不推荐厂商） |
+| `prescription-review` | 医院药师 | 处方审核辅助：适应症、用法用量、相互作用、配伍禁忌（G2/G3 接入本地药品标签库，`no_mention_in_corpus ≠ 无相互作用`） |
+| `clinical-note-extract` | 编码员、病案、研究 | 病历抽取（中国住院 schema：入院/出院诊断、手术、过敏史、体格检查）；不诊断、不编码 |
 
 ### 通用医疗技能 / Core Healthcare Skills（保留）
 
 | Skill | Audience | What it does |
 |---|---|---|
-| `clinical-note-extract` | provider, research | Extract structured data from clinical notes with span-level provenance |
 | `clinical-trial-protocol` | pharma | Generate FDA/NIH-compliant clinical trial protocols for medical devices or drugs |
 | `contracts` | payer, provider | Answer a question across a corpus of contract documents with verified citations |
 | `doc-extract` | general | Extract plain text from a document file - PDF, DOCX, XLSX, PPTX, RTF, or plain text/markdown/HTML |
@@ -45,21 +69,15 @@
 
 ## 连接的 MCP 服务器 / Connected MCP servers
 
-两个清单（Agent Plugins `mcp.json` 与 Claude Code `.mcp.json`）加载**同一组服务器**，仅在传输语法上不同（Agent Plugins 用 `streamable-http`/`stdio`，Claude Code 用 `http`）。
+两个清单（Agent Plugins `mcp.json` 与 Claude Code `.mcp.json`）只加载**本地 stdio** 服务器。没有 `hcls.mcp.claude.com` / `pubmed.mcp.claude.com`。
 
 | Server | URL |
 |--------|-----|
-| 国家医保编码 (NHSA Codes) | https://hcls.mcp.claude.com/nhsa_codes/mcp |
-| 国家医保药品目录 (NHSA Drug Catalog) | https://hcls.mcp.claude.com/nhsa_drug_catalog/mcp |
-| NMPA 药品注册 (NMPA Drug Registry) | https://hcls.mcp.claude.com/nmpa_drugs/mcp |
-| 中国临床试验 (China Clinical Trials) | https://hcls.mcp.claude.com/china_clinical_trials/mcp |
-| CMS Coverage | https://hcls.mcp.claude.com/cms_coverage/mcp |
-| ICD10 Codes | https://hcls.mcp.claude.com/icd10_codes/mcp |
-| NPI Registry | https://hcls.mcp.claude.com/npi_registry/mcp |
-| Clinical Trials | https://hcls.mcp.claude.com/clinical_trials/mcp |
-| PubMed | https://pubmed.mcp.claude.com/mcp |
-| Contracts Analyzer | bundled with the plugin (local stdio) |
-| FHIR | bundled with the plugin (local stdio) |
+| 本地编码与目录库 (Local China Codes) | bundled（stdio，`china-codes`）— 医保版 ICD-10 / 手术操作 / 药品目录 |
+| 本地药品标签库 (Local Drug Labels) | bundled（stdio，`drug-labels`）— 说明书摘录；非 NMPA 注册全库；CYP/分类信号；肌酐默认 μmol/L |
+| 本地临床试验登记库 (Local China Trials) | bundled（stdio，`china-trials`）— CTR 摘录，未命中不得编造 |
+| Contracts Analyzer | bundled（stdio，`documents`） |
+| FHIR | bundled（stdio，`fhir`）— 用户自配医院端点，只读默认 |
 
 ## 目录结构 / Layout
 
@@ -75,11 +93,12 @@ medcius/
 │   ├── CLAUDE.md             #   Claude Code 约定
 │   ├── skills/               #   技能（SKILL.md，Agent Skills 标准）
 │   ├── agents/               #   子代理（Claude Code）
-│   ├── servers/              #   本地 MCP 服务器源码（documents/fhir）
-│   └── workflows/            #   管道作业（Claude Code）
+│   ├── servers/              #   本地 MCP 服务器源码（documents/fhir/drug-labels）
+│   ├── evals/china-skills/   #   中国技能 golden case（编码/政策/审方/抽取 43 陷阱）+ 运行器
+│   └── workflows/            #   管道作业（settlement-check：编码→DRG/DIP 探针）
 ├── servers/                  # 客户自托管 MCP 服务器源码（占位）
 ├── managed-agents/           # Managed Agents API 模板（占位）
-└── scripts/                  # 构建/版本脚本
+└── scripts/                  # 构建/版本脚本（validate-*, smoke-mcp, run-evals）
 ```
 
 ## 从 v1 迁移 / Migrating from v1
@@ -88,7 +107,9 @@ v1 的按技能/按服务器插件（`prior-auth-review`、`fhir-developer`、`c
 
 ## 合规声明 / Compliance
 
-本插件提供的医保、药品、法规信息仅供参考，最终以国家医疗保障局、国家药品监督管理局、国家卫生健康委及各省官方发布为准。医保政策具有地区差异，请以参保地医保局最新文件为准。处方审核为药师法定职责，本插件仅作辅助。
+本插件提供的医保、药品、法规信息仅供参考，最终以国家医疗保障局、国家药品监督管理局、国家卫生健康委及各省官方发布为准。医保政策具有地区差异，请以参保地医保局最新文件为准。处方审核为药师法定职责；病历抽取不是诊断。本插件仅作辅助，**不替代临床决策**。
+
+SaMD 分类路径与法规依据：`docs/compliance/SAMD-PATHWAY.md`；监管动作跟踪：`docs/compliance/REG-ACTION-TRACKER.md`（分类界定答复到达前，本插件不得宣称可用于院内正式审方流程）。
 
 ## 许可证 / License
 

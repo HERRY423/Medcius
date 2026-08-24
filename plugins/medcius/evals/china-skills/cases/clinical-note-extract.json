@@ -1,0 +1,176 @@
+[
+  {
+    "id": "cne-01-allergy-negation",
+    "skill": "clinical-note-extract",
+    "trap": "allergy_negation_vs_family",
+    "title": "否认药物过敏 + 母亲青霉素过敏 ≠ 患者青霉素过敏",
+    "input": {
+      "schema": "china-inpatient",
+      "note": "assets/china-notes/01-allergy-negation.md"
+    },
+    "must": [
+      "allergy_history.presence=absent 或 value 为否认原句",
+      "admission_diagnosis 抽取急性胆囊炎原文",
+      "procedures 抽取腹腔镜胆囊切除术且为本次",
+      "每个非空字段带 verbatim span"
+    ],
+    "must_not": ["将患者标为青霉素过敏", "把母亲过敏写入患者过敏史且 experiencer=patient"]
+  },
+  {
+    "id": "cne-02-family-history",
+    "skill": "clinical-note-extract",
+    "trap": "family_history_not_patient_dx",
+    "title": "家族史糖尿病不得抽成患者出院诊断",
+    "input": {
+      "schema": "china-inpatient",
+      "note": "assets/china-notes/02-family-history.md"
+    },
+    "must": [
+      "discharge_diagnosis_primary 为高血压",
+      "allergy_history 为磺胺过敏 presence=present",
+      "母亲2型糖尿病若出现只能 experiencer=family_member，不得写入出院诊断"
+    ],
+    "must_not": ["出院主诊断或其他诊断写成2型糖尿病"]
+  },
+  {
+    "id": "cne-03-uncertain-admission",
+    "skill": "clinical-note-extract",
+    "trap": "uncertain_admission_dx",
+    "title": "入院「疑似肺栓塞待查」不得作为确定入院诊断",
+    "input": {
+      "schema": "china-inpatient",
+      "note": "assets/china-notes/03-uncertain-admission.md"
+    },
+    "must": [
+      "discharge_diagnosis_primary 为肺血栓栓塞症",
+      "入院诊断不得把「疑似肺栓塞待查」标为 presence=present 的确定诊断；可抽「胸痛」或对该拟诊标 possible/null"
+    ],
+    "must_not": ["入院诊断确定为肺栓塞且 presence=present"]
+  },
+  {
+    "id": "cne-04-admission-vs-discharge",
+    "skill": "clinical-note-extract",
+    "trap": "admission_discharge_mismatch",
+    "title": "入院急性阑尾炎 ≠ 出院急性阑尾炎伴穿孔",
+    "input": {
+      "schema": "china-inpatient",
+      "note": "assets/china-notes/04-admission-vs-discharge.md"
+    },
+    "must": [
+      "admission_diagnosis 为急性阑尾炎且不含穿孔",
+      "discharge_diagnosis_primary 含穿孔",
+      "discharge_diagnosis_other 含高血压",
+      "procedures 为腹腔镜阑尾切除术"
+    ],
+    "must_not": ["用出院主诊断覆盖入院诊断", "推断入院即穿孔"]
+  },
+  {
+    "id": "cne-05-prior-vs-current-procedure",
+    "skill": "clinical-note-extract",
+    "trap": "historical_procedure",
+    "title": "2018年阑尾切除不得写入本次手术",
+    "input": {
+      "schema": "china-inpatient",
+      "note": "assets/china-notes/05-prior-vs-current-procedure.md"
+    },
+    "must": [
+      "procedures 为腹腔镜胆囊切除术",
+      "既往阑尾切除若提及须 temporality=historical 且不在本次手术字段充当已实施手术"
+    ],
+    "must_not": ["procedures 把阑尾切除标为本次已实施"]
+  },
+  {
+    "id": "cne-06-planned-procedure",
+    "skill": "clinical-note-extract",
+    "trap": "hypothetical_procedure",
+    "title": "拟行全髋置换 ≠ 已实施置换",
+    "input": {
+      "schema": "china-inpatient",
+      "note": "assets/china-notes/06-planned-procedure.md"
+    },
+    "must": [
+      "procedures 为右髋关节腔穿刺术（或穿刺）",
+      "全髋关节置换若出现只能 temporality=hypothetical，不得作为已实施手术"
+    ],
+    "must_not": ["procedures 输出右全髋关节置换为本次已做"]
+  },
+  {
+    "id": "cne-07-negative-physical-exam",
+    "skill": "clinical-note-extract",
+    "trap": "negative_exam_not_positive",
+    "title": "未闻及干湿啰音不得抽成肺部啰音阳性",
+    "input": {
+      "schema": "china-inpatient",
+      "note": "assets/china-notes/07-negative-physical-exam.md"
+    },
+    "must": [
+      "physical_exam 保留阴性原文（未闻及干湿性啰音 / 无反跳痛）",
+      "procedures 为空或「无」"
+    ],
+    "must_not": ["把未闻及写成可闻及或阳性啰音", "把未查病理征写成病理征阴性以外的阳性发现"]
+  },
+  {
+    "id": "cne-08-prophylaxis-not-diagnosis",
+    "skill": "clinical-note-extract",
+    "trap": "indication_vs_finding",
+    "title": "低分子肝素预防DVT ≠ 出院诊断DVT",
+    "input": {
+      "schema": "china-inpatient",
+      "note": "assets/china-notes/08-prophylaxis-not-diagnosis.md"
+    },
+    "must": [
+      "discharge_diagnosis_primary 为左股骨颈骨折",
+      "procedures 为人工股骨头置换术"
+    ],
+    "must_not": ["出院诊断含深静脉血栓或肺栓塞", "把预防适应症写成当前疾病"]
+  },
+  {
+    "id": "cne-09-lab-not-complication",
+    "skill": "clinical-note-extract",
+    "trap": "parametric_leak_from_labs",
+    "title": "HbA1c 升高不得推断糖尿病并发症诊断",
+    "input": {
+      "schema": "china-inpatient",
+      "note": "assets/china-notes/09-lab-not-complication.md"
+    },
+    "must": [
+      "admission_diagnosis 与出院主诊断均为2型糖尿病原文",
+      "不添加病历未记载的肾病/视网膜病变/伴并发症"
+    ],
+    "must_not": ["出院诊断写成2型糖尿病伴并发症", "因化验推断糖尿病肾病"]
+  },
+  {
+    "id": "cne-10-rule-out-mi",
+    "skill": "clinical-note-extract",
+    "trap": "rule_out_not_discharge_dx",
+    "title": "排除急性心肌梗死不得当作出院主诊断",
+    "input": {
+      "schema": "china-inpatient",
+      "note": "assets/china-notes/10-rule-out-mi.md"
+    },
+    "must": [
+      "discharge_diagnosis_primary 为胃食管反流病",
+      "allergy_history 为碘对比剂过敏",
+      "入院「胸痛待查/排除心梗」不得当作确定入院诊断（presence=present）"
+    ],
+    "must_not": ["出院主诊断为急性心肌梗死", "输出任何 ICD 编码"]
+  },
+  {
+    "id": "cne-11-outpatient",
+    "skill": "clinical-note-extract",
+    "trap": "outpatient_note_type",
+    "title": "门诊病历识别门诊诊断，不把处理当手术",
+    "input": { "schema": "china-inpatient", "note": "assets/china-notes/11-outpatient.md" },
+    "must": ["note_type=outpatient", "诊断含慢性胃炎"],
+    "must_not": ["把奥美拉唑写成手术操作"]
+  },
+  {
+    "id": "cne-16-labs-umol",
+    "skill": "clinical-note-extract",
+    "trap": "lab_creatinine_umol",
+    "title": "血肌酐 188 μmol/L 须进 labs 并按 μmol 给审方",
+    "input": { "note": "assets/china-notes/16-labs-renal.md" },
+    "must": ["labs 含肌酐 188", "单位 umol_L"],
+    "must_not": ["把 188 当作 mg/dL"]
+  }
+]

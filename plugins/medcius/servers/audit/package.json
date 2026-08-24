@@ -1,0 +1,13 @@
+﻿{
+  "name": "@medcius/mcp-server-audit",
+  "version": "0.0.1",
+  "description": "Tamper-evident hash-chained audit log with pharmacist sign-off workflow (append-only).",
+  "license": "MIT",
+  "author": "Medcius Contributors",
+  "type": "module",
+  "private": true,
+  "scripts": { "check": "tsc" },
+  "engines": { "node": ">=22.13" },
+  "dependencies": {},
+  "devDependencies": { "@types/node": "^22.0.0", "typescript": "^5.6.0" }
+}

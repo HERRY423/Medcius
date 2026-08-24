@@ -40,9 +40,9 @@ Category II tracking codes are reported when the encounter is part of a quality-
 
 ## Step 2 — Find each code with the lookup tools
 
-For every item on your abstracted list, search before you commit.
+For every item on your abstracted list, search before you commit. **Medcius does not bundle CPT/HCPCS/ICD-10-CM hosted MCP.** If lookup tools are missing, stop or mark codes pending verification. Do not call Claude-hosted servers.
 
-**HCPCS Level II (letter + four digits):** use `search_codes` for the supply, device, drug, or service name, passing the encounter date as `as_of`. Confirm with `validate_code` and the same `as_of`.
+**HCPCS Level II (letter + four digits):** if a HCPCS lookup tool is available, use `search_codes` for the supply, device, drug, or service name, passing the encounter date as `as_of`. Confirm with `validate_code` and the same `as_of`. Otherwise omit or mark pending — do not invent codes.
 
 **CPT (five-digit and ####F):** if a CPT lookup connector is available (`cpt_search_codes`), use it with the service in plain words taken from the note and confirm with `cpt_lookup_code`. If no CPT connector is available, propose CPT codes from your knowledge of the current code set and state that they are pending verification against the user's licensed CPT reference — CPT descriptors are AMA-licensed and not bundled with this skill.
 

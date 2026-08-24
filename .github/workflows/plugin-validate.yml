@@ -25,6 +25,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Repo checks (skills manifest + compliance lint + DHF sync)
+        run: |
+          set -euo pipefail
+          node scripts/validate-skills.mjs
+          node plugins/medcius/scripts/compliance-lint.mjs
+
       - name: Cache Claude Code CLI
         id: cli-cache
         uses: actions/cache@v4

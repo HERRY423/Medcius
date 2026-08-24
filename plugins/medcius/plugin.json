@@ -2,7 +2,7 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "medcius",
   "version": "0.1.0",
-  "description": "面向临床医生的医疗智能插件，提供医疗编码、医保政策、NMPA药品注册、临床试验、医院信息系统对接等功能，符合 Agent Plugins 1.0.0 标准。",
+  "description": "中国医保编码、处方审核辅助与病历结构化抽取。不做诊断决策。数据与 MCP 均在本地，不依赖托管服务。Agent Plugins 1.0.0。",
   "author": {
     "name": "Medcius Contributors",
     "url": "https://github.com/HERRY423/Medcius"

@@ -1,0 +1,9 @@
+{
+  "name": "@medcius/mcp-server-china-trials",
+  "version": "0.0.1",
+  "description": "Local China clinical-trial registry excerpt store.",
+  "license": "MIT",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=22.13" }
+}

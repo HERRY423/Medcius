@@ -1,41 +1,26 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
   "mcpServers": {
-    "国家医保编码 (NHSA Codes)": {
-      "type": "streamable-http",
-      "url": "https://hcls.mcp.claude.com/nhsa_codes/mcp"
+    "本地编码与目录库 (Local China Codes)": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${PLUGIN_ROOT}/servers/china-codes/src/index.mjs"
+      ]
     },
-    "国家医保药品目录 (NHSA Drug Catalog)": {
-      "type": "streamable-http",
-      "url": "https://hcls.mcp.claude.com/nhsa_drug_catalog/mcp"
+    "本地审计链 (Local Audit Chain)": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${PLUGIN_ROOT}/servers/audit/src/index.mjs"
+      ]
     },
-    "NMPA 药品注册 (NMPA Drug Registry)": {
-      "type": "streamable-http",
-      "url": "https://hcls.mcp.claude.com/nmpa_drugs/mcp"
-    },
-    "中国临床试验 (China Clinical Trials)": {
-      "type": "streamable-http",
-      "url": "https://hcls.mcp.claude.com/china_clinical_trials/mcp"
-    },
-    "CMS Coverage": {
-      "type": "streamable-http",
-      "url": "https://hcls.mcp.claude.com/cms_coverage/mcp"
-    },
-    "ICD10 Codes": {
-      "type": "streamable-http",
-      "url": "https://hcls.mcp.claude.com/icd10_codes/mcp"
-    },
-    "NPI Registry": {
-      "type": "streamable-http",
-      "url": "https://hcls.mcp.claude.com/npi_registry/mcp"
-    },
-    "Clinical Trials": {
-      "type": "streamable-http",
-      "url": "https://hcls.mcp.claude.com/clinical_trials/mcp"
-    },
-    "PubMed": {
-      "type": "streamable-http",
-      "url": "https://pubmed.mcp.claude.com/mcp"
+    "PHI 卫士 (PHI Guard)": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${PLUGIN_ROOT}/servers/phiguard/src/index.mjs"
+      ]
     },
     "Contracts Analyzer": {
       "type": "stdio",
@@ -49,6 +34,20 @@
       "command": "node",
       "args": [
         "${PLUGIN_ROOT}/servers/fhir/src/index.mjs"
+      ]
+    },
+    "本地药品标签库 (Local Drug Labels)": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${PLUGIN_ROOT}/servers/drug-labels/src/index.mjs"
+      ]
+    },
+    "本地临床试验登记库 (Local China Trials)": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${PLUGIN_ROOT}/servers/china-trials/src/index.mjs"
       ]
     }
   }

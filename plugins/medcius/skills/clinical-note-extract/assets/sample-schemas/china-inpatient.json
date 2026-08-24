@@ -1,0 +1,27 @@
+{
+  "_comment": "中国住院病历抽取 schema。只抽取病历原文，不推断诊断、不输出编码。编码走 nhsa-coding。",
+  "admission_diagnosis": {
+    "desc": "入院诊断栏原文：医师写入「入院诊断」的已确定疾病或健康状况。不含「疑似」「待查」「排除」「拟诊」。不从症状、体征或化验推断诊断。多个诊断用分号连接原文。",
+    "finding": true
+  },
+  "discharge_diagnosis_primary": {
+    "desc": "出院主诊断原文：出院记录中列为主要诊断或第一诊断的已确定疾病。不含拟诊、疑似、待查。",
+    "finding": true
+  },
+  "discharge_diagnosis_other": {
+    "desc": "出院其他诊断原文：出院诊断中除主诊断外、本次住院诊治过的合并症或并发症。仅作为既往史、本次未处理的不抽取。多个用分号连接原文。",
+    "finding": true
+  },
+  "procedures": {
+    "desc": "本次住院已实施的手术及操作名称原文。不含「拟行」「建议手术」「择期」。既往手术不写入本字段。多个用分号连接原文。",
+    "finding": true
+  },
+  "allergy_history": {
+    "desc": "患者本人过敏史原文。明确否认过敏时 value 为否认原句且 presence=absent。记载具体过敏原则 value 为该过敏原且 presence=present。家族成员过敏不写入本字段（experiencer 不是 patient）。",
+    "finding": true
+  },
+  "physical_exam": {
+    "desc": "体格检查关键阳性与阴性体征原文，按病历记载摘录。阴性体征不得改写成阳性；「未查」不得写成正常。",
+    "finding": true
+  }
+}

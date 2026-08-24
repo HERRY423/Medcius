@@ -6,7 +6,7 @@ Structured extraction from clinical notes with span-level provenance and null-sa
 
 Given one or more clinical notes and a schema of variables to extract, returns one record per note: each field carries its value, the verbatim source span, and (for findings) assertion on three independent axes — `presence` (present/absent/possible), `temporality` (current/historical/hypothetical), `experiencer` (patient/family_member/other) — following the ConText/ShARe model. Absent values are explicit nulls with a reason — never guesses.
 
-This is the extraction primitive that care-gap detection, adverse-event surveillance, trial-eligibility screening, prior-auth evidence assembly, and registry abstraction sit on.
+Medcius uses this as the input to `nhsa-coding` (terms → 医保编码) and as a chart-abstraction primitive. It does **not** diagnose.
 
 ## Architecture
 
@@ -33,25 +33,29 @@ references/
   failure-modes.md                why each rule exists
   assertion-classes.md            present/absent/hypothetical/... taxonomy
 assets/
-  sample-note.md                  synthetic pulmonology note
+  sample-note.md                  synthetic English pulmonology note
+  sample-schemas/china-inpatient.json   入院/出院诊断、手术、过敏、体征
   sample-schemas/{pft,ade}.json
+  china-notes/                    10 份合成中文出院记录（对抗陷阱）
 ```
 
 The plugin also ships `agents/note-extract-worker.md` (no-tools subagent definition).
 
 ## Prerequisites
 
-Connectors for whatever code systems your schema names — ICD-10, HCPCS, NPI Registry, a terminology server for SNOMED/RxNorm/LOINC. Missing connectors don't block extraction; those fields stay `unvalidated` and the completion report names which systems lacked one.
+Default Chinese schema: `assets/sample-schemas/china-inpatient.json` (admission / discharge / procedures / allergy / exam). Ten synthetic adversarial notes: `assets/china-notes/`. This skill does **not** diagnose and does **not** emit codes.
+
+Connectors for `check.via` must be local (`china-codes` for `nhsa`). Missing connectors don't block extraction. Hosted Claude MCP is not used.
 
 ## Try it
 
 ```
-Use clinical-note-extract on the sample PFT case
+用 china-inpatient schema 抽取 assets/china-notes/01-allergy-negation.md
 ```
 
 ## Eval
 
-9 synthetic adversarial cases, 15 trap types, in `evals/note-extract/`. Each gold field is tagged with which trap it tests so per-rule accuracy is reportable. Run with `bun evals/note-extract/scripts/cli.ts run`.
+> China inpatient traps (10 notes) live in `assets/china-notes/` with cases in `plugins/medcius/evals/china-skills/cases/clinical-note-extract.json`. Run `node scripts/run-evals.mjs`. The upstream English 9-case set is not vendored.
 
 | trap | without rules | with rules | what the rules change |
 |---|---|---|---|
@@ -78,8 +82,8 @@ Single run, N=1 per trap for most rows — expect ±1 variance across runs. The 
 Note text rides inline in the workflow's `args`, so the workflow path tops out at a few dozen notes per call — bounded by how much text the orchestrator can emit. For larger corpora use the runner:
 
 ```
-bun <skill-dir>/scripts/batch.ts <notes-dir> <schema.json> [out.jsonl]
-NE_CONCURRENCY=12 NE_MODEL=sonnet bun .../batch.ts ./notes ./schema.json records.jsonl
+# Prefer the host workflow (extract-batch.js). Optional CLI:
+MEDCIUS_EXTRACT_CLI=<local-agent-cli> bun <skill-dir>/scripts/batch.ts <notes-dir> <schema.json> [out.jsonl]
 ```
 
 The runner reads files in trusted code (not model-steered) and spawns one tool-disabled process per note — same security posture as the no-tools worker, no orchestrator-context ceiling. Validation cost is one connector call per *distinct* code, not per occurrence.

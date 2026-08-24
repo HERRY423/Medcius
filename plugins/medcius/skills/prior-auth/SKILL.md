@@ -44,11 +44,13 @@ waypoints/
 
 ### Required MCP Servers
 
-This skill requires 3 healthcare MCP connectors:
+This skill requires **user-provided** connectors (not bundled, not Claude-hosted):
 
-1. **CMS Coverage MCP Connector** - Medicare coverage policies (NCDs, LCDs)
-2. **ICD-10 MCP Connector** - Diagnosis code validation and lookup
-3. **NPI MCP Connector** - Healthcare provider verification via NPPES
+1. **CMS Coverage** - Medicare coverage policies (NCDs, LCDs) — or public CMS APIs the user configures
+2. **ICD-10-CM lookup** - Diagnosis code validation
+3. **NPI / NPPES** - Provider verification
+
+If any of the three is missing, **exit**. Do not call `hcls.mcp.claude.com` or `pubmed.mcp.claude.com`. China workflows use `nhsa-coding` / `nhsa-policy` / `clinical-note-extract` instead.
 
 **For detailed tool usage, parameters, and CMS web resources, see [references/01-intake-assessment.md](references/01-intake-assessment.md#prerequisites).**
 

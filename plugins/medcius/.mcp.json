@@ -1,40 +1,22 @@
 {
   "mcpServers": {
-    "国家医保编码 (NHSA Codes)": {
-      "type": "http",
-      "url": "https://hcls.mcp.claude.com/nhsa_codes/mcp"
+    "本地编码与目录库 (Local China Codes)": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/servers/china-codes/src/index.mjs"
+      ]
     },
-    "国家医保药品目录 (NHSA Drug Catalog)": {
-      "type": "http",
-      "url": "https://hcls.mcp.claude.com/nhsa_drug_catalog/mcp"
+    "本地审计链 (Local Audit Chain)": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/servers/audit/src/index.mjs"
+      ]
     },
-    "NMPA 药品注册 (NMPA Drug Registry)": {
-      "type": "http",
-      "url": "https://hcls.mcp.claude.com/nmpa_drugs/mcp"
-    },
-    "中国临床试验 (China Clinical Trials)": {
-      "type": "http",
-      "url": "https://hcls.mcp.claude.com/china_clinical_trials/mcp"
-    },
-    "CMS Coverage": {
-      "type": "http",
-      "url": "https://hcls.mcp.claude.com/cms_coverage/mcp"
-    },
-    "ICD10 Codes": {
-      "type": "http",
-      "url": "https://hcls.mcp.claude.com/icd10_codes/mcp"
-    },
-    "NPI Registry": {
-      "type": "http",
-      "url": "https://hcls.mcp.claude.com/npi_registry/mcp"
-    },
-    "Clinical Trials": {
-      "type": "http",
-      "url": "https://hcls.mcp.claude.com/clinical_trials/mcp"
-    },
-    "PubMed": {
-      "type": "http",
-      "url": "https://pubmed.mcp.claude.com/mcp"
+    "PHI 卫士 (PHI Guard)": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/servers/phiguard/src/index.mjs"
+      ]
     },
     "Contracts Analyzer": {
       "command": "node",
@@ -46,6 +28,18 @@
       "command": "node",
       "args": [
         "${CLAUDE_PLUGIN_ROOT}/servers/fhir/src/index.mjs"
+      ]
+    },
+    "本地药品标签库 (Local Drug Labels)": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/servers/drug-labels/src/index.mjs"
+      ]
+    },
+    "本地临床试验登记库 (Local China Trials)": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/servers/china-trials/src/index.mjs"
       ]
     }
   }

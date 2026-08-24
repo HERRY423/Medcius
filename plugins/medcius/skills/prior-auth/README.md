@@ -22,7 +22,7 @@ This Claude Code skill helps automate the health insurance payer professional's 
 >
 > **AI DECISION BEHAVIOR:** In default mode, AI recommends APPROVE or PEND only - never recommends DENY. Decision logic is configurable in the skill's rubric.md file.
 >
-> **COVERAGE POLICY LIMITATIONS:** Coverage policies are sourced from Medicare LCDs/NCDs via CMS Coverage MCP Connector. If this review is for a commercial or Medicare Advantage plan, payer-specific policies may differ and were not applied.
+> **COVERAGE POLICY LIMITATIONS:** Requires a user-provided CMS/coverage lookup. Medcius does not bundle Claude-hosted CMS MCP. Commercial/MA policies may differ. China coverage uses `nhsa-policy`.
 
 ## Subskill 1: Intake & Assessment
 
@@ -34,7 +34,7 @@ This Claude Code skill helps automate the health insurance payer professional's 
 - Validates provider credentials via NPI MCP Connector
 - Validates ICD-10 codes via ICD-10 MCP Connector (batch validation)
 - Validates CPT/HCPCS codes via WebFetch to CMS Fee Schedule
-- Searches coverage policies via CMS Coverage MCP Connector
+- Searches coverage policies via a user-provided coverage source (not bundled)
 - Extracts structured clinical data from documentation
 - Maps clinical evidence to policy criteria
 - Performs medical necessity assessment

@@ -1,5 +1,7 @@
 # Subskill 1: Intake & Assessment
 
+**Medcius ships no CMS / ICD-10 / NPI hosted MCP.** If those tools are not on the host, exit this subskill. Do not call `hcls.mcp.claude.com`. China work uses `nhsa-coding` / `nhsa-policy` / `clinical-note-extract`.
+
 ## Purpose
 
 Collect prior authorization request information, validate credentials and codes, extract clinical data, identify applicable coverage policies, assess medical necessity, and generate approval recommendation - all in a single consolidated subskill.

@@ -1,0 +1,166 @@
+{
+  "_disclaimer": "合成样例数据（data_class=sample），仅用于验证导入与查询管线。禁止用于任何真实处方审核或临床决策。",
+  "source": {
+    "name": "Medcius 样例数据（SYNTHETIC）",
+    "url": "local://sample-labels",
+    "note": "管线自检用；任何真实审核必须导入官方说明书数据并核对 data_class=official",
+    "ingested_note": "sample-seed"
+  },
+  "records": [
+    {
+      "generic_name": "合成他汀片",
+      "brand_name": "样例他汀",
+      "approval_number": "国药准字H20000001",
+      "manufacturer": "示例制药有限公司",
+      "dosage_form": "片剂",
+      "spec": "20mg",
+      "classification": "rx",
+      "pharm_class": "statin",
+      "source_version": "样例说明书 v2024-01-15",
+      "effective_date": "2024-01-15",
+      "disclaimer": "合成样例：仅用于管线验证，禁止用于真实审核。",
+      "data_class": "sample",
+      "sections": {
+        "适应症": "用于合成场景的高胆固醇血症与混合型高脂血症（样例文本）。",
+        "用法用量": "口服，一次20mg，一日1次；肾功能不全（CrCl<30）建议减半并监测（样例探针）。",
+        "禁忌": "活动性肝病、妊娠期妇女禁用；对他汀类过敏者禁用（样例探针）。",
+        "注意事项": "用药期间监测肝功能；老年患者慎用，肝功能不全者禁用（样例探针）。",
+        "不良反应": "可见肌痛、肝酶升高（样例文本）。",
+        "特殊人群用药": "妊娠期禁用（胎儿风险）；哺乳期妇女慎用且建议暂停哺乳；儿童安全性尚未确立；老年患者建议监测肾功能；肝功能不全者禁用（样例探针）。",
+        "成分": "每片含合成他汀 20mg，辅料含乳糖（样例探针）。",
+        "药物相互作用": "与合成克拉霉素片合用可升高本品血药浓度，增加肌病风险；与华法林样例合用可能增强抗凝作用，需监测INR；与葡萄柚汁同服可能升高暴露量。本段用于验证相互作用命中管线。"
+      }
+    },
+    {
+      "generic_name": "合成克拉霉素片",
+      "brand_name": "样例克拉",
+      "approval_number": "国药准字H20000002",
+      "manufacturer": "示例制药有限公司",
+      "dosage_form": "片剂",
+      "spec": "500mg",
+      "classification": "rx",
+      "pharm_class": "macrolide",
+      "source_version": "样例说明书 v2024-01-15",
+      "effective_date": "2024-01-15",
+      "disclaimer": "合成样例：仅用于管线验证，禁止用于真实审核。",
+      "data_class": "sample",
+      "sections": {
+        "适应症": "敏感菌所致呼吸道感染（样例文本）。",
+        "用法用量": "口服，一次500mg，一日2次；肾功能不全（CrCl 30-50）减量 50%（样例探针）。",
+        "禁忌": "对大环内酯类过敏者、妊娠期妇女禁用；磺胺过敏者慎用（样例探针用于过敏命中）。",
+        "注意事项": "肝功能不全者慎用；老年患者需评估肾功能（样例探针）。",
+        "特殊人群用药": "妊娠期禁用；哺乳期不推荐；儿童酌减；老年及肾功能不全者需调整剂量（样例探针）。",
+        "成分": "每片含克拉霉素 500mg（样例探针）。",
+        "药物相互作用": "本品为CYP3A4强抑制剂，与合成他汀片等经CYP3A4代谢的他汀类合用可显著升高后者血药浓度。与华法林样例合用可能增强抗凝。本段用于验证反向命中管线。"
+      }
+    },
+    {
+      "generic_name": "华法林样例",
+      "brand_name": "样例华法林",
+      "approval_number": "国药准字H20000003",
+      "manufacturer": "示例制药有限公司",
+      "dosage_form": "片剂",
+      "spec": "3mg",
+      "classification": "rx",
+      "pharm_class": "anticoagulant",
+      "source_version": "样例说明书 v2024-01-15",
+      "effective_date": "2024-01-15",
+      "disclaimer": "合成样例：仅用于管线验证，禁止用于真实审核。",
+      "data_class": "sample",
+      "sections": {
+        "适应症": "预防和治疗血栓栓塞性疾病（样例文本）。",
+        "用法用量": "口服，个体化给药，监测INR调整剂量；肾功能不全者无需调整但需监测出血（样例探针）。",
+        "禁忌": "出血性疾病、严重肝肾功能不全、妊娠期禁用；对香豆素类过敏者禁用（样例探针）。",
+        "注意事项": "定期监测INR；老年患者出血风险高，需加强监测（样例探针）。",
+        "特殊人群用药": "妊娠期禁用（致畸）；哺乳期慎用；老年患者慎用；肝肾功能不全者慎用（样例探针）。",
+        "成分": "每片含华法林钠 3mg（样例探针）。",
+        "药物相互作用": "多种药物可影响本品抗凝效果；与合成他汀片、合成克拉霉素片合用均可能增强抗凝，需密切监测INR。本段用于验证多对命中。"
+      }
+    },
+    {
+      "generic_name": "合成阿莫西林胶囊",
+      "brand_name": "样例阿莫西林",
+      "approval_number": "国药准字H20000004",
+      "manufacturer": "示例制药有限公司",
+      "dosage_form": "胶囊",
+      "spec": "500mg",
+      "classification": "rx",
+      "pharm_class": "penicillin",
+      "source_version": "样例说明书 v2024-01-15",
+      "effective_date": "2024-01-15",
+      "disclaimer": "合成样例：仅用于管线验证，禁止用于真实审核。",
+      "data_class": "sample",
+      "sections": {
+        "适应症": "敏感菌所致感染（样例文本）。",
+        "用法用量": "口服，一次500mg，一日3次；肾功能不全（CrCl<30）需延长给药间隔（样例探针）。",
+        "禁忌": "青霉素过敏者禁用；对头孢类过敏者慎用（样例探针）。",
+        "注意事项": "用药前询问过敏史；肝肾功能不全者慎用（样例探针）。",
+        "特殊人群用药": "妊娠期 B 类可用但需权衡；哺乳期乳汁中可分泌慎用；儿童按体重给药；老年患者注意肾功能（样例探针）。",
+        "成分": "每粒含阿莫西林 500mg（青霉素类，样例探针）。",
+        "药物相互作用": "与丙磺舒合用可延缓本品排泄；与口服避孕药合用可能降低避孕效果。本段不列出降脂药或抗凝药通用名，用于验证 no_mention_in_corpus 分支。"
+      }
+    },
+    {
+      "generic_name": "合成辛伐他汀片",
+      "brand_name": "样例辛伐他汀",
+      "approval_number": "国药准字H20000005",
+      "manufacturer": "示例制药有限公司",
+      "dosage_form": "片剂",
+      "spec": "20mg",
+      "classification": "rx",
+      "pharm_class": "statin",
+      "source_version": "样例说明书 v2024-01-15",
+      "effective_date": "2024-01-15",
+      "disclaimer": "合成样例：仅用于管线验证，禁止用于真实审核。",
+      "data_class": "sample",
+      "sections": {
+        "适应症": "高胆固醇血症（样例文本）。",
+        "用法用量": "口服，一次20mg，一日1次。",
+        "禁忌": "活动性肝病、妊娠期禁用（样例探针）。",
+        "注意事项": "监测肝酶与肌病症状（样例探针）。",
+        "特殊人群用药": "妊娠期禁用（样例探针）。",
+        "成分": "每片含辛伐他汀 20mg（样例探针）。",
+        "药物相互作用": "本品为 CYP3A4 底物，与 CYP3A4 强抑制剂合用可显著升高血药浓度、增加肌病风险。本段故意不出现克拉霉素或任何大环内酯药名，用于验证 class_signal_found（CYP 互补）而非药名命中。"
+      }
+    },
+    {
+      "generic_name": "合成头孢呋辛钠",
+      "brand_name": "样例头孢",
+      "approval_number": "国药准字H20000006",
+      "classification": "rx",
+      "pharm_class": "cephalosporin",
+      "source_version": "样例说明书 v2024-01-15",
+      "effective_date": "2024-01-15",
+      "disclaimer": "合成样例",
+      "data_class": "sample",
+      "sections": {
+        "适应症": "敏感菌感染（样例）。",
+        "禁忌": "对头孢菌素类过敏者禁用；青霉素过敏者慎用（交叉过敏探针）。",
+        "成分": "头孢呋辛钠（样例）。",
+        "药物相互作用": "与氨基糖苷类同瓶可能灭活（配伍探针）。"
+      }
+    },
+    {
+      "generic_name": "合成甘草片",
+      "approval_number": "国药准字Z20000007",
+      "classification": "otc",
+      "pharm_class": "tcm",
+      "source_version": "样例说明书 v2024-01-15",
+      "effective_date": "2024-01-15",
+      "data_class": "sample",
+      "disclaimer": "合成样例",
+      "sections": { "适应症": "样例中成药。", "药物相互作用": "十八反：甘草反海藻（歌诀表探针）。" }
+    },
+    {
+      "generic_name": "合成吗啡片",
+      "approval_number": "国药准字H20000008",
+      "classification": "rx",
+      "pharm_class": "opioid",
+      "source_version": "样例说明书 v2024-01-15",
+      "effective_date": "2024-01-15",
+      "data_class": "sample",
+      "disclaimer": "合成样例",
+      "sections": { "适应症": "疼痛（样例）。", "注意事项": "麻醉药品，专用处方，限量。" }
+    }
+  ]
+}

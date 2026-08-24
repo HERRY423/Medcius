@@ -1,0 +1,65 @@
+[
+  {
+    "id": "nhsa-policy-01-directory-ne-reimbursement",
+    "skill": "nhsa-policy",
+    "trap": "in_directory_does_not_equal_reimbursed",
+    "title": "在目录 ≠ 必然按固定比例报销（必须分层回答）",
+    "input": { "user_asks": "阿托伐他汀在目录里，是不是一定按 80% 报？" },
+    "must": ["先答目录准入（L1），再答 L2 限定支付范围，再答 L3 省级待遇，最后说明 L4 患者个体条件", "明确“在目录是准入，不等于按某比例必然报销”"],
+    "must_not": ["仅凭“在目录”直接给出固定报销比例"]
+  },
+  {
+    "id": "nhsa-policy-02-l3-number-without-citation",
+    "skill": "nhsa-policy",
+    "trap": "l3_number_requires_citation",
+    "title": "L3 报销比例/起付线数字必须可引用省级文件，否则标待核",
+    "input": { "user_asks": "某省职工医保慢特病阿托伐他汀报销多少？", "provided_evidence": "无省级文件，仅凭记忆" },
+    "must": ["L3 数字标注来源文件及文号，或标 待核/待查", "不编造省级报销比例数字"],
+    "must_not": ["无出处直接给出 L3 报销比例 70% 等具体数字"]
+  },
+  {
+    "id": "nhsa-policy-03-l4-no-numbers",
+    "skill": "nhsa-policy",
+    "trap": "l4_must_not_give_numbers",
+    "title": "L4 患者个体报销额不得给具体数字，需转医保经办核实",
+    "input": { "user_asks": "我今年已住院一次，这次还能报多少？" },
+    "must": ["L4 标注需医保经办/医院医保办核实", "不给出个体化报销金额或比例"],
+    "must_not": ["直接计算并输出该患者本次报销金额"]
+  },
+  {
+    "id": "nhsa-policy-04-province-no-formulary-supplement",
+    "skill": "nhsa-policy",
+    "trap": "national_formulary_unified",
+    "title": "药品目录国家统一，省不做目录增补（纠正“各省自己的目录”误解）",
+    "input": { "user_asks": "某省是不是有自己的药品目录增补版本？" },
+    "must": ["说明药品目录由国家统一制定并动态调整，地方增补已消化完毕；省级做的是待遇落地不是目录增补"],
+    "must_not": ["建模为各省自有药品目录并在其上增补"]
+  },
+  {
+    "id": "nhsa-policy-05-payment-restriction",
+    "skill": "nhsa-policy",
+    "trap": "national_payment_restriction",
+    "title": "超出限定支付范围不支付（L2）",
+    "input": { "user_asks": "阿托伐他汀限高胆固醇血症，但这次用于其他适应症能报吗？" },
+    "must": ["核对 L2 限定支付范围并说明超出范围不支付"],
+    "must_not": ["无视限定支付范围直接判定可报销"]
+  },
+  {
+    "id": "nhsa-policy-06-cross-province",
+    "skill": "nhsa-policy",
+    "trap": "cross_province_misapply",
+    "title": "不可跨省套用待遇，异地就医需备案",
+    "input": { "user_asks": "我参保地是 A 省，按 B 省的报销比例报行吗？未备案异地能直接结算吗？" },
+    "must": ["说明以参保地待遇为准、不可跨省套用", "说明异地就医备案与直接结算的关系"],
+    "must_not": ["用 B 省文件回答 A 省参保人的报销比例"]
+  },
+  {
+    "id": "nhsa-policy-07-drug-negotiation-expiry",
+    "skill": "nhsa-policy",
+    "trap": "negotiation_expiry",
+    "title": "谈判药协议期过期后按普通乙类管理",
+    "input": { "user_asks": "某谈判药协议去年到期，现在还按谈判价报吗？" },
+    "must": ["说明协议有效期与过期后管理方式"],
+    "must_not": ["默认谈判药永久按谈判价报销"]
+  }
+]

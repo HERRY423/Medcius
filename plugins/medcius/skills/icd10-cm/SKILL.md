@@ -5,6 +5,8 @@ description: Extract billable ICD-10-CM diagnosis codes from a clinical note the
 
 # ICD-10-CM Coding from Clinical Notes
 
+**Medcius does not bundle an ICD-10-CM connector.** Hosted Claude/Anthropic MCP servers are not configured. For **China settlement coding** use `nhsa-coding` with local `china-codes`. This skill is US ICD-10-CM only: if the user has not provided their own ICD-10-CM lookup tools, **stop** — do not code from memory.
+
 Turn a clinical note into the diagnosis codes a professional coder would submit on the claim for that encounter. This happens in two distinct steps: first decide *which* conditions belong on the claim, then find the *exact* code for each. Both steps cause errors: coders miss claims by listing the wrong conditions, and by coding the right condition at the wrong specificity.
 
 ## Step 1: Decide what belongs on the claim
@@ -44,14 +46,14 @@ This is where most miscoding happens. Two rules:
 
 ## Step 3: Find the exact code via the ICD-10 connector
 
-Look up every diagnosis with the ICD-10 Codes connector's tools — **including diagnoses you're sure you know.** Code sets change every October and your memory of common codes can be stale; for example, "depression, unspecified" has been F32.A (not F32.9) since 2022. The connector has the current set; trust it over recall.
+Look up every diagnosis with a **user-provided** ICD-10-CM connector — **including diagnoses you're sure you know.** Medcius does not ship this connector. Code sets change every October; do not use recall.
 
 - Use `search_codes` with `code_type="diagnosis"`, building the query from the note's own wording plus the specificity decision from Step 2 — if you decided "unspecified," put "unspecified" in the search terms.
 - Take the first result whose description matches the note's wording. If the first result's type, laterality, or complication status contradicts the note (e.g. "Type 1" when the note says "type 2"), it is not a match — move to the next result or refine the query once. Don't page through more than the top few results.
 - Confirm the chosen code with `lookup_code` or `validate_code` — every code on the claim must be valid and billable.
 - The connector returns complete codes, including 7th characters (A/D/S) and X placeholders for injury codes. Copy the code exactly as the connector returns it — if it includes a dot, keep the dot; if not, don't add one. Do not reformat, strip, or extend what the connector gave you.
 
-**If the connector's tools are not available, stop.** Tell the user the ICD-10 Codes connector needs to be installed or enabled, and do not produce codes from memory — codes recalled without verification are exactly where stale-code-set errors come from.
+**If no ICD-10-CM lookup tool is available, stop.** Tell the user to supply a local/code-set connector, or to use `nhsa-coding` for 医保版 ICD-10. Do not produce codes from memory and do not call `hcls.mcp.claude.com`.
 
 ## Working style
 

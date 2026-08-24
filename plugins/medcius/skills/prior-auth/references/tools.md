@@ -1,6 +1,6 @@
-# Healthcare MCP Tool Reference
+# Healthcare lookup tool reference (user-provided)
 
-A quick reference guide for the Clinical Trials, CMS Coverage, ICD-10, and NPI MCP connectors.
+Medcius **does not bundle** Clinical Trials / CMS Coverage / ICD-10 / NPI MCP servers and **must not** call `hcls.mcp.claude.com` or `pubmed.mcp.claude.com`. If the host has no equivalent user-provided tools, **stop**. Names below are the original US tool contract for a connector the user supplies themselves.
 
 ---
 

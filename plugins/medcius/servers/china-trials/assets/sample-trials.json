@@ -1,0 +1,42 @@
+{
+  "_disclaimer": "合成样例登记，CTR 与方案均为占位。禁止当作 chinadrugtrials.org.cn 真实记录。",
+  "source": { "name": "Medcius 样例试验（SYNTHETIC）", "url": "local://sample-trials", "note": "管线自检" },
+  "records": [
+    {
+      "ctr": "CTR20240001",
+      "title": "合成他汀片治疗高胆固醇血症的多中心随机对照III期试验（样例）",
+      "drug_generic": "合成他汀片",
+      "indication": "高胆固醇血症",
+      "phase": "III期",
+      "status": "进行中",
+      "sponsor": "示例制药有限公司",
+      "pi": "示例研究者（示例医院）",
+      "sites": ["示例医院（示例市）"],
+      "design": "随机、双盲、安慰剂对照（样例）",
+      "sample_size": 120,
+      "primary_endpoint": "LDL-C 较基线变化（样例）",
+      "source_version": "样例 v2024",
+      "effective_date": "2024-01-01",
+      "data_class": "sample",
+      "disclaimer": "合成样例"
+    },
+    {
+      "ctr": "CTR20240002",
+      "title": "合成阿莫西林胶囊成人呼吸道感染II期试验（样例）",
+      "drug_generic": "合成阿莫西林胶囊",
+      "indication": "呼吸道感染",
+      "phase": "II期",
+      "status": "已完成",
+      "sponsor": "示例制药有限公司",
+      "pi": "示例研究者乙（示例大学附属医院）",
+      "sites": ["示例大学附属医院（示例市）"],
+      "design": "随机对照（样例）",
+      "sample_size": 80,
+      "primary_endpoint": "临床治愈率（样例）",
+      "source_version": "样例 v2024",
+      "effective_date": "2024-01-01",
+      "data_class": "sample",
+      "disclaimer": "合成样例"
+    }
+  ]
+}

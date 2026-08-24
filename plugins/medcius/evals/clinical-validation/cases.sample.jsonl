@@ -1,0 +1,8 @@
+{"case_id":"rx-001","dimension":"interaction","predicted":"flag","gold":"flag"}
+{"case_id":"rx-002","dimension":"interaction","predicted":"clear","gold":"clear"}
+{"case_id":"rx-003","dimension":"allergy","predicted":"flag","gold":"flag"}
+{"case_id":"rx-004","dimension":"dose_renal","predicted":"clear","gold":"flag"}
+{"case_id":"rx-005","dimension":"contraindication","predicted":"flag","gold":"flag"}
+{"case_id":"rx-006","dimension":"contraindication","predicted":"clear","gold":"clear"}
+{"case_id":"rx-007","dimension":"special_population","predicted":"flag","gold":"clear"}
+{"case_id":"rx-008","dimension":"duplicate_therapy","predicted":"clear","gold":"clear"}

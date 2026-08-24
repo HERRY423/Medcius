@@ -1,0 +1,21 @@
+{
+  "name": "@medcius/mcp-server-drug-labels",
+  "version": "0.0.1",
+  "description": "Local drug-label store with versioned snapshots and pair-wise interaction lookup (Medcius-original).",
+  "license": "MIT",
+  "author": "Medcius Contributors",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "check": "tsc",
+    "dev": "node src/index.mjs"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}

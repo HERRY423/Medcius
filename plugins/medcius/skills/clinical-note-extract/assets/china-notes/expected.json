@@ -1,0 +1,56 @@
+{
+  "_comment": "Gold for china-inpatient schema. value is note wording; assertion axes must match. Codes are never expected.",
+  "01-allergy-negation": {
+    "admission_diagnosis": { "value_contains": ["急性胆囊炎"], "presence": "present" },
+    "discharge_diagnosis_primary": { "value_contains": ["急性胆囊炎"], "presence": "present" },
+    "procedures": { "value_contains": ["腹腔镜胆囊切除"], "presence": "present", "temporality": "current" },
+    "allergy_history": { "presence": "absent", "span_contains": ["否认药物过敏"] },
+    "must_not": ["患者青霉素过敏", "allergy_history.experiencer=patient 且 value 含青霉素"]
+  },
+  "02-family-history": {
+    "discharge_diagnosis_primary": { "value_contains": ["高血压"] },
+    "discharge_diagnosis_other": { "null_or_not_diabetes": true },
+    "allergy_history": { "presence": "present", "value_contains": ["磺胺"] },
+    "must_not": ["出院诊断含糖尿病", "将母亲2型糖尿病写成患者诊断"]
+  },
+  "03-uncertain-admission": {
+    "admission_diagnosis": { "must_not_be_confirmed_pe": true, "allowed_contains": ["胸痛"] },
+    "discharge_diagnosis_primary": { "value_contains": ["肺血栓栓塞"], "presence": "present" },
+    "allergy_history": { "presence": "present", "value_contains": ["青霉素"] },
+    "must_not": ["入院诊断确定为肺栓塞", "把疑似肺栓塞待查当作 presence=present 的入院诊断"]
+  },
+  "04-admission-vs-discharge": {
+    "admission_diagnosis": { "value_contains": ["急性阑尾炎"], "must_not_contain": ["穿孔"] },
+    "discharge_diagnosis_primary": { "value_contains": ["穿孔"] },
+    "discharge_diagnosis_other": { "value_contains": ["高血压"] },
+    "procedures": { "value_contains": ["腹腔镜阑尾切除"] }
+  },
+  "05-prior-vs-current-procedure": {
+    "procedures": { "value_contains": ["腹腔镜胆囊切除"], "temporality": "current" },
+    "must_not": ["procedures 含阑尾切除且 temporality=current", "把2018年阑尾切除写入本次手术"]
+  },
+  "06-planned-procedure": {
+    "procedures": { "value_contains": ["穿刺"], "must_not_contain": ["置换"] },
+    "must_not": ["procedures 为右全髋关节置换", "把拟行写成已实施"]
+  },
+  "07-negative-physical-exam": {
+    "physical_exam": { "span_contains": ["未闻及干湿性啰音"] },
+    "procedures": { "null_or_none": true },
+    "must_not": ["肺内啰音阳性", "把未闻及写成可闻及"]
+  },
+  "08-prophylaxis-not-diagnosis": {
+    "discharge_diagnosis_primary": { "value_contains": ["股骨颈骨折"] },
+    "procedures": { "value_contains": ["人工股骨头置换"] },
+    "must_not": ["出院诊断为下肢深静脉血栓", "把预防DVT写成DVT诊断"]
+  },
+  "09-lab-not-complication": {
+    "admission_diagnosis": { "value_contains": ["2 型糖尿病"] },
+    "discharge_diagnosis_primary": { "value_contains": ["2 型糖尿病"], "must_not_contain": ["肾病", "视网膜", "并发症"] },
+    "must_not": ["因HbA1c推断糖尿病伴并发症", "出院其他诊断写成糖尿病肾病"]
+  },
+  "10-rule-out-mi": {
+    "discharge_diagnosis_primary": { "value_contains": ["胃食管反流"] },
+    "allergy_history": { "presence": "present", "value_contains": ["碘"] },
+    "must_not": ["出院主诊断为急性心肌梗死", "把排除心肌梗死当作出院确定诊断"]
+  }
+}

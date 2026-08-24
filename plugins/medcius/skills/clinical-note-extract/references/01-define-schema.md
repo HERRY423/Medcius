@@ -36,18 +36,10 @@ Adding a kind means adding a branch to the validation pass — nothing in `rules
 - Numbers: the worker captures the unit as written. Put expected unit in `check.unit` if you want mismatches flagged.
 - Don't put the answer in `check`. The worker reads the whole schema; an enum of candidate codes in `check.values` is a leak.
 
-## Example
+## Example — Chinese inpatient (default)
 
-```json
-{
-  "fev1_pct":    { "desc": "FEV1 as percent of predicted, post-bronchodilator if both reported",
-                   "check": {"kind": "range", "min": 5, "max": 150, "unit": "%"} },
-  "primary_dx":  { "desc": "primary diagnosis as the clinician stated it",
-                   "finding": true,
-                   "check": {"kind": "terminology", "via": "icd10cm"} },
-  "home_oxygen": { "desc": "is the patient on home O2", "finding": true },
-  "test_date":   { "desc": "date the PFTs were performed", "check": {"kind": "date"} }
-}
-```
+Ship-ready schema: `assets/sample-schemas/china-inpatient.json` (admission / discharge / procedures / allergy / physical exam). It does **not** request codes. After extraction, hand terms to `nhsa-coding` if the user wants settlement codes.
 
-Echo the schema back as a table and confirm before proceeding to Step 2.
+English PFT/ADE examples remain under `assets/sample-schemas/{pft,ade}.json`.
+
+Echo the schema back as a table and confirm before proceeding to Step 2. Do not add fields that infer a diagnosis from labs or imaging.

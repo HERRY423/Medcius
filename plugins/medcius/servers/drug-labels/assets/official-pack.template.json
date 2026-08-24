@@ -1,0 +1,9 @@
+{
+  "_comment": "医院自有说明书包模板。records 留空；填入本院品种后 data_class 必须为 official，且每条带 source_version 与 effective_date。禁止把真实 NMPA 说明书提交进本仓库。",
+  "source": {
+    "name": "示例医院药学部说明书摘录（请改成本院来源名）",
+    "url": "https://www.nmpa.gov.cn/",
+    "note": "院内使用；非 Medcius 再分发语料"
+  },
+  "records": []
+}

@@ -1,0 +1,36 @@
+{
+  "_disclaimer": "合成样例编码，仅用于管线验证。code/code_system 均为示例占位，禁止用于真实结算。",
+  "source": { "name": "Medcius 样例编码（SYNTHETIC）", "url": "local://sample-codes", "note": "管线自检用" },
+  "codes": [
+    { "code": "J45.900", "code_system": "医保版ICD-10", "name": "哮喘，未特指", "category": "呼吸系统", "code_type": "diagnosis", "full_length": 1, "is_main_diag_allowed": 1, "code_version": "样例版 v2024", "effective_date": "2024-01-01", "data_class": "sample", "disclaimer": "样例：仅验证" },
+    { "code": "J45", "code_system": "医保版ICD-10", "name": "哮喘（裸类目，不可结算）", "category": "呼吸系统", "code_type": "diagnosis", "full_length": 0, "is_main_diag_allowed": 1, "code_version": "样例版 v2024", "effective_date": "2024-01-01", "data_class": "sample", "disclaimer": "样例裸类目：full_length=0 探针" },
+    { "code": "E11.900", "code_system": "医保版ICD-10", "name": "2型糖尿病，未特指", "category": "内分泌", "code_type": "diagnosis", "full_length": 1, "is_main_diag_allowed": 1, "code_version": "样例版 v2024", "effective_date": "2024-01-01", "data_class": "sample" },
+    { "code": "E11.800", "code_system": "医保版ICD-10", "name": "2型糖尿病伴特指并发症", "category": "内分泌", "code_type": "diagnosis", "full_length": 1, "is_main_diag_allowed": 1, "code_version": "样例版 v2024", "effective_date": "2024-01-01", "data_class": "sample" },
+    { "code": "I10.x00", "code_system": "医保版ICD-10", "name": "高血压", "category": "循环系统", "code_type": "diagnosis", "full_length": 1, "is_main_diag_allowed": 1, "code_version": "样例版 v2024", "effective_date": "2024-01-01", "data_class": "sample" },
+    { "code": "Z00.800", "code_system": "医保版ICD-10", "name": "其他特指的一般检查（不可作主诊断示例）", "category": "影响健康状态因素", "code_type": "diagnosis", "full_length": 1, "is_main_diag_allowed": 0, "code_version": "样例版 v2024", "effective_date": "2024-01-01", "data_class": "sample" },
+    { "code": "47.0100", "code_system": "医保版手术操作分类", "name": "腹腔镜阑尾切除术", "category": "消化系统手术", "code_type": "procedure", "full_length": 1, "is_main_diag_allowed": 1, "code_version": "样例版 v2024", "effective_date": "2024-01-01", "data_class": "sample" },
+    { "code": "51.2300", "code_system": "医保版手术操作分类", "name": "腹腔镜胆囊切除术", "category": "消化系统手术", "code_type": "procedure", "full_length": 1, "is_main_diag_allowed": 1, "code_version": "样例版 v2024", "effective_date": "2024-01-01", "data_class": "sample" },
+    { "code": "99.2500x001", "code_system": "医保版手术操作分类", "name": "示例扩展位手术（版本缺失探针）", "category": "其他操作", "code_type": "procedure", "full_length": 1, "is_main_diag_allowed": 1, "code_version": null, "effective_date": null, "data_class": "sample", "disclaimer": "版本缺失探针：code_version/effective_date=null → validate_code 必为 unverifiable" },
+    { "code": "K80.100", "code_system": "医保版ICD-10", "name": "胆囊结石伴慢性胆囊炎", "category": "消化系统", "code_type": "diagnosis", "full_length": 1, "is_main_diag_allowed": 1, "code_version": "样例版 v2024", "effective_date": "2024-01-01", "data_class": "sample" },
+    { "code": "K81.000", "code_system": "医保版ICD-10", "name": "急性胆囊炎", "category": "消化系统", "code_type": "diagnosis", "full_length": 1, "is_main_diag_allowed": 1, "code_version": "样例版 v2024", "effective_date": "2024-01-01", "data_class": "sample" },
+    { "code": "C61.900", "code_system": "医保版ICD-10", "name": "前列腺恶性肿瘤（性别限制探针）", "category": "肿瘤", "code_type": "diagnosis", "full_length": 1, "is_main_diag_allowed": 1, "code_version": "样例版 v2024", "effective_date": "2024-01-01", "data_class": "sample" },
+    { "code": "N80.900", "code_system": "医保版ICD-10", "name": "子宫内膜异位症（性别限制探针）", "category": "泌尿生殖", "code_type": "diagnosis", "full_length": 1, "is_main_diag_allowed": 1, "code_version": "样例版 v2024", "effective_date": "2024-01-01", "data_class": "sample" }
+  ],
+  "gender_rules": [
+    { "code": "C61.900", "sex_required": "male", "note": "前列腺相关，男性" },
+    { "code": "N80.900", "sex_required": "female", "note": "子宫内膜异位，女性" }
+  ],
+  "procedure_dx_hints": [
+    { "procedure_substr": "胆囊切除", "dx_substr": "胆囊" },
+    { "procedure_substr": "阑尾切除", "dx_substr": "阑尾" }
+  ],
+  "benefits": [
+    { "province": "示例省", "insurance_type": "职工", "encounter": "住院", "deductible": 800, "reimburse_pct": 80, "chronic_outpatient": "糖尿病、高血压（样例病种）", "data_class": "sample", "source_version": "样例待遇 v2024", "effective_date": "2024-01-01", "disclaimer": "合成省级待遇，禁止用于真实报销" }
+  ],
+  "catalog": [
+    { "generic_name": "阿托伐他汀钙片", "category": "乙类", "payment_restriction": "限高胆固醇血症、混合型高脂血症", "spec": "20mg", "dosage_form": "片剂", "source_version": "样例目录 v2024", "effective_date": "2024-01-01", "data_class": "sample" },
+    { "generic_name": "合成他汀片", "category": "乙类", "payment_restriction": "限高胆固醇血症", "spec": "20mg", "dosage_form": "片剂", "source_version": "样例目录 v2024", "effective_date": "2024-01-01", "data_class": "sample" },
+    { "generic_name": "合成克拉霉素片", "category": "乙类", "payment_restriction": null, "spec": "500mg", "dosage_form": "片剂", "source_version": "样例目录 v2024", "effective_date": "2024-01-01", "data_class": "sample" },
+    { "generic_name": "示例谈判药片", "category": "谈判", "payment_restriction": "限二线治疗且协议期内", "spec": "10mg", "dosage_form": "片剂", "source_version": "样例目录 v2024", "effective_date": "2024-01-01", "data_class": "sample" }
+  ]
+}

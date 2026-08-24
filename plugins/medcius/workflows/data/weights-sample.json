@@ -1,0 +1,37 @@
+{
+  "_disclaimer": "合成示例权重，仅用于 settlement-check 工作流的分组探针演示。禁止用于任何真实 DRG/DIP 结算；实际权重与费率以就医地医保局当期分组器与费率表为准。",
+  "province": "示例省（SYNTHETIC）",
+  "effective_date": "2024-01-01",
+  "rate": 10000,
+  "currency": "CNY",
+  "adrg_groups": [
+    {
+      "adrg": "示例-ADRG-01",
+      "name": "示例：呼吸系统疾病相关分组（演示）",
+      "mdc": "MDC04",
+      "drgs": [
+        { "drg": "示例-DRG-0101", "name": "示例：哮喘伴并发症", "weight": 0.85, "example": true },
+        { "drg": "示例-DRG-0102", "name": "示例：哮喘不伴并发症", "weight": 0.55, "example": true }
+      ]
+    },
+    {
+      "adrg": "示例-ADRG-02",
+      "name": "示例：循环系统疾病相关分组（演示）",
+      "mdc": "MDC05",
+      "drgs": [
+        { "drg": "示例-DRG-0201", "name": "示例：高血压伴并发症", "weight": 0.72, "example": true },
+        { "drg": "示例-DRG-0202", "name": "示例：冠心病介入相关分组（演示）", "weight": 1.45, "example": true }
+      ]
+    },
+    {
+      "adrg": "示例-ADRG-03",
+      "name": "示例：内分泌/代谢疾病相关分组（演示）",
+      "mdc": "MDC10",
+      "drgs": [
+        { "drg": "示例-DRG-0301", "name": "示例：2型糖尿病伴并发症", "weight": 0.92, "example": true },
+        { "drg": "示例-DRG-0302", "name": "示例：2型糖尿病不伴并发症", "weight": 0.48, "example": true }
+      ]
+    }
+  ],
+  "notes": "分组逻辑在真实环境中由医院分组器（grouper）按诊断、手术操作、年龄、性别、并发症等特征判定；本文件仅提供 3 个 ADRG、6 个 DRG 的示例权重用于端到端链路演示。"
+}

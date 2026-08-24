@@ -1,13 +1,15 @@
 ---
 name: clinical-note-extract-skill
-description: Extract structured data from clinical notes with span-level provenance and null-safety. Use when users say "extract [variables] from this note", "abstract this chart", "pull structured data from these notes", "what does this note say about [field]", or when building a chart-abstraction, registry, or cohort dataset from unstructured clinical text.
+description: 从病历抽取结构化字段（原文 + span），中国住院默认用 china-inpatient schema（入院诊断、出院诊断、手术、过敏史、体格检查）。不做诊断决策、不输出编码。当用户说"抽取这份病历"、"入院诊断是什么"、"出院诊断/手术/过敏史/体格检查"、"extract from this note"时使用。
 ---
 
 # Clinical Note Extraction
 
-Structured extraction from clinical notes against a user-defined schema, with span citations for every value and explicit nulls for every absence. One note or many — the path is the same: an isolated no-tools worker extracts each note, then a deterministic validation pass verifies spans and codes.
+Structured extraction from clinical notes against a schema, with span citations for every value and explicit nulls for every absence. One note or many — the path is the same: an isolated no-tools worker extracts each note, then a deterministic validation pass verifies spans.
 
-This is the extraction primitive that care-gap reasoning, adverse-event detection, trial-eligibility screening, prior-auth evidence assembly, and registry abstraction sit on.
+**Product boundary:** this skill extracts what the note says. It does not diagnose, does not upgrade 疑似/待查 to a confirmed disease, does not emit ICD/医保 codes (that is `nhsa-coding`), and does not judge prescription safety (that is `prescription-review`).
+
+Chinese inpatient notes: unless the user supplies another schema, use `assets/sample-schemas/china-inpatient.json`. Templated 出院记录（带「入院诊断：」等标题）优先跑确定性解析：`node scripts/intake-discharge.mjs <file> [--code --out dir]`（`lib/parse-cn-note.mjs`）。无标题的自由文本再用 worker。Adversarial samples: `assets/china-notes/` (10 synthetic notes).
 
 ## Steps
 
@@ -20,7 +22,7 @@ This is the extraction primitive that care-gap reasoning, adverse-event detectio
 
 ### Step 1 — Define schema
 
-Read `references/01-define-schema.md`. Turn the user's request into a schema: each field is `{desc, finding?, check?}`. `desc` says what to look for in the note's own terms; `finding: true` means classify assertion; `check` is how step 3 validates (open-ended — `{kind: "terminology"|"range"|"date"|"pattern"|"enum"|..., ...params}`). Confirm with the user before extracting.
+Read `references/01-define-schema.md`. If the note is a Chinese admission/discharge/progress record and the user did not give a schema, load `assets/sample-schemas/china-inpatient.json` and confirm it. Otherwise turn the request into a schema: each field is `{desc, finding?, check?}`. `desc` says what to look for in the note's own terms; `finding: true` means classify assertion; `check` is how step 3 validates. Confirm with the user before extracting. Do not add diagnosis-inference fields.
 
 ### Step 2 — Extract
 
@@ -37,7 +39,7 @@ Workflow({
 })
 ```
 
-Workers have no tools — they return only what they read (`value`, `span`, `presence`/`temporality`/`experiencer`, `null_reason`, `unit`). All checks happen in step 3. Because note text rides inline in `args`, the workflow path tops out at a few dozen notes per call. For larger corpora, run `bun <this skill dir>/scripts/batch.ts <notes-dir> <schema.json> records.jsonl` instead — it reads files in trusted code and spawns one tool-disabled extraction per note with the same rules, then resume at step 3 over the resulting `records.jsonl`.
+Workers have no tools — they return only what they read (`value`, `span`, `presence`/`temporality`/`experiencer`, `null_reason`, `unit`). All checks happen in step 3. Because note text rides inline in `args`, the workflow path tops out at a few dozen notes per call. For larger corpora, prefer the same workflow in chunks; `scripts/batch.ts` only runs if `MEDCIUS_EXTRACT_CLI` points at a local agent CLI (does not call hosted APIs).
 
 ### Step 3 — Validate
 
@@ -45,7 +47,7 @@ Runs here in the calling session. Deterministic — no model judgment. For every
 
 1. **Span check.** For every non-null field, confirm `span` appears verbatim in that note's source text. Attach `span_verified`.
 2. **Run each field's `check`.** Dispatch on `check.kind`:
-   - `terminology` — dedupe `(check.via, value)` across all records, look each up via whatever connector answers to `via`, attach `{code, code_status, display}`. No connector for that `via` → `code_status: "unvalidated"`, name it in the report.
+   - `terminology` — dedupe `(check.via, value)` across all records, look each up via a **local** connector (`via: "nhsa"` → 本地编码与目录库). No connector → `code_status: "unvalidated"`. Never call hosted Claude/Anthropic MCP. China default schema does not include terminology checks; coding is a separate skill.
    - `range` — `value` vs `[min, max]` and `unit` vs `check.unit`; attach `range_flag`.
    - `date` — confirm `value` parses as a date; attach `date_ok`.
    - `pattern` / `enum` — match; attach `check_ok`.
@@ -57,7 +59,7 @@ A field is trustworthy when `span_verified` and its check (if any) passed. Addin
 
 Read `references/03-review.md`. Produce one row per (note, field): `note_id | field | value | presence/temporality/experiencer | span | check`. Below it, the completion summary: fields requested / populated / null, and per `check.kind` what passed vs flagged (name any terminology `via` that lacked a connector). Never let a failed check or unverified span pass silently.
 
-Offer to write records + report to `~/.claude/data/medcius/clinical-note-extract/<run-id>/`. That directory is local working state, not an archive: do not copy it to shared drives or external systems without the user's explicit instruction, and tell the user it can be deleted once they have what they need — extracted records carry whatever PHI was in the source notes.
+Offer to write records + report to `$CLAUDE_MEDCIUS_DATA/clinical-note-extract/<run-id>/` (default `~/.claude/data/medcius/clinical-note-extract/`). Local working state only — extracted records carry PHI from the source notes; do not upload them to hosted services.
 
 ## Output contract
 
@@ -80,4 +82,4 @@ This is a deterministic transform over the validated records — no model call. 
 
 ## Prerequisites
 
-Connectors for whatever `check.via` values the schema names. Missing ones don't block extraction — those fields stay unvalidated and the report names them.
+Connectors for whatever `check.via` values the schema names must be local (bundled `china-codes` or user-provided). Missing ones don't block extraction — those fields stay unvalidated. Hosted Claude MCP is not a connector.

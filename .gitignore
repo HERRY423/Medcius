@@ -10,11 +10,13 @@ npm-debug.log*
 
 # Claude Code session artifacts — never commit
 **/.claude/logs/
+**/.claude/data/
 **/.claude/session-context-*.md
 
 # Build outputs
 dist/
 build/
+out/
 *.tsbuildinfo
 
 # Python

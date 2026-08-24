@@ -1,0 +1,17 @@
+{
+  "name": "@medcius/mcp-server-china-codes",
+  "version": "0.0.1",
+  "description": "Local NHSA codes registry (diagnosis/procedure/drug catalog) with versioned snapshots. Local SQLite only.",
+  "license": "MIT",
+  "author": "Medcius Contributors",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}

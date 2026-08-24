@@ -1,0 +1,59 @@
+# Medcius Clinical Multi-Agent Architecture Specification
+# Target: Managed Agents API & Local Microservices
+
+version: "1.0.0"
+metadata:
+  name: "medcius-clinical-agent-mesh"
+  description: "Evidence-gated China clinical intelligence mesh for structured extraction, NHSA coding, and prescription review."
+  license: "MIT"
+
+supervisor:
+  name: "clinical-supervisor"
+  role: "Clinical Supervisor & Workflow Orchestrator"
+  description: "Coordinates specialized workers into DAG pipelines, manages patient context, handles timeouts, and enforces audit signatures."
+  entrypoint: "plugins/medcius/orchestrator/supervisor.mjs"
+  subagents:
+    - "extract-worker"
+    - "coding-worker"
+    - "pharma-worker"
+    - "audit-worker"
+
+workers:
+  - name: "extract-worker"
+    role: "Clinical Note Extraction Worker"
+    description: "Isolated extraction worker with no external tools to mitigate prompt injection. Extracts structured entities with verbatim span citations."
+    entrypoint: "plugins/medcius/orchestrator/workers/extract-worker.mjs"
+    tools: []
+    schema: "plugins/medcius/skills/clinical-note-extract/assets/sample-schemas/china-inpatient.json"
+
+  - name: "coding-worker"
+    role: "NHSA Coding Specialist Worker"
+    description: "Assigns and verifies NHSA ICD-10 diagnosis codes and surgery classification codes with complete 6-field provenance."
+    entrypoint: "plugins/medcius/orchestrator/workers/coding-worker.mjs"
+    tools:
+      - "china-codes:search_codes"
+      - "china-codes:validate_code"
+      - "china-codes:check_settlement_list"
+
+  - name: "pharma-worker"
+    role: "Evidence-Gated Pharmacology Worker"
+    description: "Enforces G1-G3 safety gates, calculates renal clearance (μmol/L), detects DDI, contraindications, and duplication."
+    entrypoint: "plugins/medcius/orchestrator/workers/pharma-worker.mjs"
+    tools:
+      - "drug-labels:safety_screen"
+      - "drug-labels:check_interactions"
+      - "drug-labels:check_duplicate_therapy"
+      - "drug-labels:check_allergy"
+      - "drug-labels:check_contraindication"
+      - "drug-labels:calc_renal"
+
+  - name: "audit-worker"
+    role: "Compliance & Audit Gatekeeper Worker"
+    description: "Verifies PHI redaction, appends cryptographic events to local tamper-evident audit chain, and manages pharmacist signoffs."
+    entrypoint: "plugins/medcius/orchestrator/workers/audit-worker.mjs"
+    tools:
+      - "audit:record_event"
+      - "audit:signoff"
+      - "audit:verify_chain"
+      - "phiguard:scan"
+      - "phiguard:pseudonymize"

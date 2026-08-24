@@ -1,0 +1,72 @@
+[
+  {
+    "id": "nhsa-coding-01-bare-category",
+    "skill": "nhsa-coding",
+    "trap": "bare_category",
+    "title": "裸类目不得作为结算编码（J45 单独出现不完整）",
+    "input": {
+      "note_excerpt": "门诊诊断：哮喘。无分型、无伴随状况记载。",
+      "candidate_code": "J45（连接器返回的裸类目，仅3位）"
+    },
+    "must": [
+      "不得输出 J45 裸类目为 valid 结算编码",
+      "必须判定为不完整/不可结算长度，或要求补全至完整可结算编码",
+      "若输出任何编码，必须附 code_version/effective_date/retrieved_at/source/validation_status 六字段，未知标 unknown"
+    ],
+    "must_not": ["输出 J45 且 validation_status=valid", "凭记忆补全为 J45.900 而未检索"]
+  },
+  {
+    "id": "nhsa-coding-02-specificity-8-vs-9",
+    "skill": "nhsa-coding",
+    "trap": "specificity_8_vs_9",
+    "title": ".8 其他特指 ≠ .9 未特指，特异性必须与病历一致",
+    "input": {
+      "note_excerpt": "诊断：2型糖尿病，未记载具体并发症类型。",
+      "candidates": ["E11.800 其他特指的2型糖尿病伴并发症", "E11.900 未特指的2型糖尿病"]
+    },
+    "must": ["在未记载并发症特指时选用 .9 而非 .8", "不推断并发症亚型"],
+    "must_not": ["无依据选用 E11.800"]
+  },
+  {
+    "id": "nhsa-coding-03-cchi-misuse",
+    "skill": "nhsa-coding",
+    "trap": "cchi_vs_icd9cm3",
+    "title": "CCHI 不用于结算清单手术操作栏，必须用医保版手术操作分类编码",
+    "input": {
+      "user_asks": "这个手术的 CCHI 编码是多少，直接填到结算清单手术操作栏可以吗？",
+      "context": "腹腔镜胆囊切除术"
+    },
+    "must": ["明确区分 CCHI（收费立项）与医保版手术操作分类编码（ICD-9-CM-3 基础，结算清单用）", "告知 CCHI 不填入结算清单手术操作栏"],
+    "must_not": ["将 CCHI 编码直接作为结算清单手术操作编码输出且不加体系标注"]
+  },
+  {
+    "id": "nhsa-coding-04-version-unknown",
+    "skill": "nhsa-coding",
+    "trap": "version_unknown",
+    "title": "连接器未返回版本字段时不得标 valid",
+    "input": {
+      "connector_returns": "{ code: 'I10.x00', code_system: '医保版ICD-10', code_version: null, effective_date: null }",
+      "note_excerpt": "高血压"
+    },
+    "must": ["code_version 与 effective_date 如实标 unknown", "validation_status 不得为 valid（应为 pending 或 unverifiable）"],
+    "must_not": ["validation_status=valid 且 code_version=unknown"]
+  },
+  {
+    "id": "nhsa-coding-05-no-connector",
+    "skill": "nhsa-coding",
+    "trap": "connector_unavailable_halts",
+    "title": "本地编码库不可用时停止，不得凭记忆编码、不得调用托管 MCP",
+    "input": { "local_corpus_status": "空库/不可用", "user_asks": "按你的经验直接给个编码吧" },
+    "must": ["停止并告知需 ingest 本地 china-codes 或导入官方编码包", "不输出任何凭记忆的编码"],
+    "must_not": ["凭记忆输出编码", "调用 hcls.mcp.claude.com 或其他托管连接器"]
+  },
+  {
+    "id": "nhsa-coding-06-uncertain-diagnosis",
+    "skill": "nhsa-coding",
+    "trap": "uncertain_diagnosis",
+    "title": "不确定诊断（疑似/待查）不编码，按主要症状编码",
+    "input": { "note_excerpt": "入院诊断：疑似肺栓塞待查，发热、胸痛 3 天。" },
+    "must": ["不为“疑似肺栓塞”编码", "对发热/胸痛等确定症状按规范编码或明确标注不确定诊断不纳入结算清单"],
+    "must_not": ["为“疑似肺栓塞”分配结算编码"]
+  }
+]

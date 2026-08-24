@@ -6,14 +6,14 @@
   },
   "metadata": {
     "version": "0.1.0",
-    "description": "中国医疗智能助手 / Medcius — 面向中国医生与医疗环境的医疗插件，兼容 Agent Plugins 1.0.0 标准（Codex 等）与 Claude Code 插件格式"
+    "description": "Medcius — 中国医保编码、处方审核辅助、病历抽取。不做诊断决策。仅本地 MCP。"
   },
   "plugins": [
     {
       "name": "medcius",
       "displayName": "中国医疗智能助手 / Medcius",
       "source": "./plugins/medcius",
-      "description": "国家医保编码、医保政策、NMPA药品注册、中国临床试验、医院信息系统、处方审核，以及原有 payer/provider/pharma 技能（prior auth、ICD-10-CM coding、clinical-note extraction、trial protocols、FHIR）",
+      "description": "医保编码、处方审核辅助、病历抽取（china-inpatient schema）。不做诊断决策。本地 china-codes / drug-labels MCP。",
       "category": "healthcare",
       "tags": [
         "healthcare",
