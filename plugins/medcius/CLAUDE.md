@@ -1,18 +1,11 @@
-# medcius plugin — conventions
+# medcius plugin — conventions (v0.2.0-pilot)
 
-- **Product boundary**: Medcius does **coding** (`nhsa-coding`), **evidence-gated prescription review** (`prescription-review`), and **note extraction** (`clinical-note-extract`). It does **not** make diagnostic decisions, differentials, or treatment plans. Do not describe it as a clinician CDS.
+- **Product boundary**: Medcius is exclusively an **Inpatient Pre-Round "Patient Evolution Summary" Sidebar Plugin** (`patient-evolution-engine.mjs` + `fhir` + `clinical-note-extract`). It extracts 24/72h clinical changes, dynamic LIS lab trends, medication regimen diffs, pending reports, and critical data gaps. It does **not** make diagnostic decisions, does **not** formulate treatment plans, and does **not** autonomously write back to the EHR.
 
-- **No hosted Claude MCP**: `mcp.json` / `.mcp.json` ship only local stdio servers (`china-codes`, `drug-labels`, `china-trials`, `documents`, `fhir`). Do not call `hcls.mcp.claude.com`, `pubmed.mcp.claude.com`, or any Anthropic-hosted healthcare MCP. If a US skill (prior-auth, ICD-10-CM, CPT) lacks a user-provided connector, stop. `nmpa-drugs` has no registry connector — local labels only.
+- **No hosted Claude MCP**: `mcp.json` / `.mcp.json` ship only 4 core local stdio servers (`FHIR`, `Contracts Analyzer`, `PHI 卫士`, `本地审计链`). Do not call `hcls.mcp.claude.com`, `pubmed.mcp.claude.com`, or any hosted cloud healthcare MCP. All computation and PHI filtering are strictly local.
 
-- **Local data**: skills and bundled MCP servers write to `~/.claude/data/medcius/<component-name>/`, where the component is the *server's* name, not the skill's (the contracts skill's server writes to `documents/`). Override the parent dir with `$CLAUDE_MEDCIUS_DATA`; each component appends its own name (`documents/`, `drug-labels/`, `china-codes/`, `china-trials/`, `audit/`, `memory/`). `audit/` is **append-only** — never delete or "reset" it; `phiguard` is stateless; `memory/` persists cross-session clinical experience and learning logs. Never write under the plugin install path (versioned cache, wiped on upgrade).
+- **Local data**: Bundled MCP servers store state in local app data directories. `audit/` is **append-only** and hash-chained with SHA-256 — never delete or reset it; `phiguard` is stateless.
 
-- **Agentic Workflow Recipes**: Complex multi-step tasks should follow the declarative workflow recipes in `plugins/medcius/workflows/` (`prescription-review.workflow.md`, `admission-coding.workflow.md`, `quality-improvement.workflow.md`, `phi-compliance-audit.workflow.md`).
-- **Agent Memory & Observability**: Long-term clinical experience, doctor preferences, and pharmacist overrides should be recorded via `Agent 记忆库` (`remember`/`recall`/`learn_from_override`). Multi-step reasoning chains should export structured spans via `AgentTracer` for audit and observability.
+- **Privacy & Audit (P0 defaults)**: Free text containing patient info must pass PHI Guard (`scan` → `redact`/`pseudonymize`) before logs, audit records, or external display. Audit events record structured evidence references and physician digital signatures.
 
-- **Privacy & audit (P0 defaults, not optional)**: free text containing patient info must pass PHI Guard (`scan` → `redact`/`pseudonymize`) BEFORE logs, audit records, exports, or model context — `subject_ref` uses pseudonyms, never raw MRN/name/ID. Review verdicts are recorded via Local Audit Chain `record_event` (payload carries each evidence item's `snapshot_hash`/`source_version`/`data_class`); FLAG / REQUIRES_PHARMACIST_REVIEW batches are complete only after pharmacist `signoff`. The audit server rejects raw CN ID/phone patterns by design; run `verify_chain` before trusting any export.
-
-- **Cross-agent notes (portable `mcp.json`)**:
-  - Local stdio servers (`Contracts Analyzer`, `FHIR`, `Local Drug Labels`, `Local China Codes`, `Agent 记忆库`) reference entrypoints via `${PLUGIN_ROOT}` (Agent Plugins) or `${CLAUDE_PLUGIN_ROOT}` (Claude Code path substitution — filesystem only, not a hosted API). A client that does not substitute the variable skips those servers.
-  - `Local China Codes` and `Local Drug Labels` run fully offline after `ingest --sample` (probe) or official pack import. When a local corpus reports `not_in_corpus` / `no_mention_in_corpus`, that is not "not found nationally" — skills must surface the coverage disclaimer and never assert absence.
-  - Official government websites (NMPA, NHSA, chinadrugtrials.org.cn, provincial 医保局) are allowed as **cited** sources; they are not MCP servers.
-
+- **Experimental Modules**: Multi-agent supervisors, management cockpits, CME simulators, and legacy tools are isolated in `experimental/` and excluded from production default startup.

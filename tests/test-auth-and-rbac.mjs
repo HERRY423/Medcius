@@ -35,21 +35,21 @@ const pharmacistContext = { isAuthenticated: true, user: "PHARM-202", roles: [RO
 const auditorContext = { isAuthenticated: true, user: "AUDIT-303", roles: [ROLES.AUDITOR], tenantId: "h1" };
 
 // Anonymous caller is strictly denied (401)
-const unauthCheck = authorizeRequest(unauthContext, "prescription:review");
+const unauthCheck = authorizeRequest(unauthContext, "round:summary");
 assert.equal(unauthCheck.allowed, false);
 assert.equal(unauthCheck.status, 401);
 
-// Physician can review prescription but cannot signoff
-assert.equal(authorizeRequest(physicianContext, "prescription:review").allowed, true);
+// Physician can view round summary but cannot signoff
+assert.equal(authorizeRequest(physicianContext, "round:summary").allowed, true);
 assert.equal(authorizeRequest(physicianContext, "audit:signoff").allowed, false);
 
-// Pharmacist can review and signoff
-assert.equal(authorizeRequest(pharmacistContext, "prescription:review").allowed, true);
+// Pharmacist can view round summary and signoff
+assert.equal(authorizeRequest(pharmacistContext, "round:summary").allowed, true);
 assert.equal(authorizeRequest(pharmacistContext, "audit:signoff").allowed, true);
 
-// Auditor can query audit & verify chain but cannot review prescriptions directly
+// Auditor can query audit & verify chain but cannot view clinical notes/summary directly
 assert.equal(authorizeRequest(auditorContext, "audit:query").allowed, true);
-assert.equal(authorizeRequest(auditorContext, "prescription:review").allowed, false);
+assert.equal(authorizeRequest(auditorContext, "round:summary").allowed, false);
 console.log("✓ RBAC permissions and default-closed model correctly enforce role boundaries");
 
 // Test 3: Tenant Binding Mismatch Check
@@ -63,7 +63,7 @@ const reqMismatch = {
 const ctxMismatch = extractAuthContext(reqMismatch);
 assert.equal(ctxMismatch.isAuthenticated, false);
 assert.equal(ctxMismatch.tenantMismatch, true);
-const authMismatch = authorizeRequest(ctxMismatch, "prescription:review");
+const authMismatch = authorizeRequest(ctxMismatch, "round:summary");
 assert.equal(authMismatch.allowed, false);
 assert.equal(authMismatch.status, 403);
 console.log("✓ Tenant mismatch between token claim and X-Tenant-ID header strictly blocked (403 Forbidden)");
@@ -76,7 +76,7 @@ const baseUrl = `http://${host}:${port}`;
 try {
   // Test 4a: Unauthenticated call to evolution-summary -> Must return 401
   console.log("\n  [4a] Unauthenticated request rejection (401)...");
-  const unauthRes = await fetch(`${baseUrl}/api/v1/patient/evolution-summary`, {
+  const unauthRes = await fetch(`${baseUrl}/api/v1/patient/evolution-summary?patient_id=IP-001`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
   });
@@ -85,7 +85,7 @@ try {
 
   // Test 4b: Authenticated call with Bearer token & tenant header
   console.log("\n  [4b] Authenticated call with valid token & tenant header...");
-  const authRes = await fetch(`${baseUrl}/api/v1/patient/evolution-summary?time_window=24h`, {
+  const authRes = await fetch(`${baseUrl}/api/v1/patient/evolution-summary?time_window=24h&patient_id=IP-001`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",

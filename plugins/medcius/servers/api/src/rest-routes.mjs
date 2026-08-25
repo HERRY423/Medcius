@@ -121,79 +121,40 @@ export async function routeRequest(req, res, body) {
   }
 
   // ----------------------------------------------------
-  // FLAGSHIP: Inpatient Pre-Round Patient Evolution Summary
+  // FLAGSHIP: Inpatient Pre-Round Patient Evolution Summary (No Demo Fallback)
   // ----------------------------------------------------
   if ((method === "GET" || method === "POST") && pathname === "/api/v1/patient/evolution-summary") {
-    const authCheck = authorizeRequest(auth, "prescription:review");
+    const authCheck = authorizeRequest(auth, "round:summary");
     if (!authCheck.allowed) return sendJson(authCheck.status, { error: authCheck.error });
 
     const timeWindow = url.searchParams.get("time_window") || body?.time_window || "24h";
-    const patientId = url.searchParams.get("patient_id") || body?.patient_id || "IP-2026-90812";
+    const patientId = url.searchParams.get("patient_id") || body?.patient_id || body?.patient?.id;
+
+    // Strict Fail-Closed: patient context or patient_id is mandatory
+    if (!patientId && !body?.patient) {
+      return sendJson(400, {
+        error: "INVALID_PATIENT_CONTEXT: Missing required patient context or patient_id parameter.",
+      });
+    }
+
+    const patientObj = body?.patient || {
+      id: patientId,
+      name: `患者 (ID: ${patientId})`,
+      gender: "未知",
+      age: null,
+      bed_number: "未分配床位",
+      primary_diagnosis: "待录入主诊断",
+    };
 
     try {
       const summary = PatientEvolutionEngine.analyzePatientEvolution({
-        patient: body?.patient || {
-          id: patientId,
-          name: "张** (脱敏)",
-          gender: "男",
-          age: 65,
-          bed_number: "床位 12",
-          admission_date: "2026-08-21",
-          primary_diagnosis: "冠心病，急性冠脉综合征，2型糖尿病",
-        },
+        patient: patientObj,
         timeWindow,
-        notes: body?.notes || [
-          {
-            id: "note-01",
-            title: "病程记录",
-            timestamp: new Date().toISOString(),
-            text: "病程记录：今日晨起诉胸闷好转，无心悸，体温最高 37.8℃。急诊生化：血肌酐 142 μmol/L，血钾 4.1 mmol/L。",
-          },
-        ],
-        observations: body?.observations || [
-          {
-            name: "Scr",
-            code: "scr",
-            value: 142,
-            unit: "μmol/L",
-            effective_time: new Date().toISOString(),
-            report_name: "急诊生化八项",
-            referenceRange: [{ low: { value: 59, unit: "μmol/L" }, high: { value: 104, unit: "μmol/L" } }],
-            span: "血肌酐 142 μmol/L",
-          },
-          {
-            name: "Scr",
-            code: "scr",
-            value: 88,
-            unit: "μmol/L",
-            effective_time: new Date(Date.now() - 48 * 3600000).toISOString(),
-            report_name: "入院生化",
-            referenceRange: [{ low: { value: 59, unit: "μmol/L" }, high: { value: 104, unit: "μmol/L" } }],
-          },
-          {
-            name: "K",
-            code: "k",
-            value: 4.1,
-            unit: "mmol/L",
-            effective_time: new Date().toISOString(),
-            report_name: "急诊生化八项",
-            referenceRange: [{ low: { value: 3.5, unit: "mmol/L" }, high: { value: 5.3, unit: "mmol/L" } }],
-            span: "血钾 4.1 mmol/L",
-          },
-        ],
-        medications: body?.medications || [
-          { drug_name: "注射用头孢曲松钠", dosage: "2.0g", route: "ivgtt", frequency: "qd", change_type: "added", authored_on: new Date().toISOString() },
-          { drug_name: "呋塞米片", dosage: "20mg", route: "po", frequency: "bid", change_type: "discontinued", end_date: new Date().toISOString(), stop_reason: "水肿消退，停用利尿剂" },
-          { drug_name: "硝苯地平控释片", dosage: "60mg", route: "po", frequency: "qd", previous_dosage: "30mg qd", change_type: "adjusted", authored_on: new Date().toISOString() },
-        ],
-        diagnosticReports: body?.diagnosticReports || [
-          { name: "胸部 CT 平扫", status: "preliminary", ordered_at: new Date(Date.now() - 12 * 3600000).toISOString() },
-          { name: "血液细菌培养及药敏", status: "registered", ordered_at: new Date(Date.now() - 36 * 3600000).toISOString() },
-        ],
-        orders: body?.orders || [
-          { title: "24小时动态心电图 (Holter)", status: "draft", scheduled_time: "今日 09:30" },
-          { title: "肾内科床旁会诊", order_type: "consult", department: "肾内科", purpose: "评估急性肾功能恶化原因", status: "active" },
-        ],
+        notes: body?.notes || [],
+        observations: body?.observations || [],
+        medications: body?.medications || [],
+        diagnosticReports: body?.diagnosticReports || [],
+        orders: body?.orders || [],
         allergies: body?.allergies || null,
       });
 
@@ -207,15 +168,21 @@ export async function routeRequest(req, res, body) {
   // FLAGSHIP: Insert Selected Summary into Progress Note Draft
   // ----------------------------------------------------
   if (method === "POST" && pathname === "/api/v1/patient/progress-note-draft") {
-    const authCheck = authorizeRequest(auth, "prescription:review");
+    const authCheck = authorizeRequest(auth, "round:draft_generate");
     if (!authCheck.allowed) return sendJson(authCheck.status, { error: authCheck.error });
+
+    if (!body?.summaryData || !Array.isArray(body?.selectedItemIds)) {
+      return sendJson(400, {
+        error: "INVALID_DRAFT_REQUEST: Missing required summaryData object or selectedItemIds array.",
+      });
+    }
 
     try {
       const draft = PatientEvolutionEngine.generateProgressNoteDraft({
-        summaryData: body?.summaryData || {},
-        selectedItemIds: body?.selectedItemIds || [],
+        summaryData: body.summaryData,
+        selectedItemIds: body.selectedItemIds,
         doctorId: auth.user || body?.doctorId || "DOC-8021",
-        doctorName: body?.doctorName || "林德明 (主任医师)",
+        doctorName: body?.doctorName || "查房医师",
         customAdditions: body?.customAdditions || "",
       });
       return sendJson(200, draft);

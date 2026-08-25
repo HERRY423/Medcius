@@ -12,7 +12,7 @@
 //   4  Cross-refs — every ARCH-nn cited in dhf/RISK-MANAGEMENT.md exists in dhf/SRS-CN-SKILLS.md;
 //      every REQ-* id cited anywhere under dhf/ exists in TRACEABILITY.md.
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, statSync, existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -69,10 +69,11 @@ if (hits.length === 0) ok("boundary wording clean across product-facing docs");
 else hits.forEach((h) => bad(`boundary phrase: ${h}`));
 
 // ---- Check 2: structural anchors ----------------------------------------
-const rxSkill = readFileSync(
-  join(pluginScripts, "..", "skills", "prescription-review", "SKILL.md"),
-  "utf8",
-);
+const rxSkillPath = existsSync(join(pluginScripts, "..", "skills", "prescription-review", "SKILL.md"))
+  ? join(pluginScripts, "..", "skills", "prescription-review", "SKILL.md")
+  : join(repoRoot, "experimental", "skills", "prescription-review", "SKILL.md");
+
+const rxSkill = existsSync(rxSkillPath) ? readFileSync(rxSkillPath, "utf8") : "";
 const anchors = [
   ["监管定位 section", "## 监管定位"],
   ["LLM-no-verdict statement", "LLM 无判定权"],

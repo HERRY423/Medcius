@@ -20,13 +20,13 @@ const PLUGIN_ALLOWED_KEYS = new Set([
 
 let ok = true;
 
-// 1. Check all skills have valid Agent Skills frontmatter
-const all = readdirSync(skillsDir, { withFileTypes: true })
+// 1. Check production and experimental skills have valid Agent Skills frontmatter
+const prodSkills = readdirSync(skillsDir, { withFileTypes: true })
   .filter((d) => d.isDirectory())
   .map((d) => d.name);
 
-console.log(`=== All ${all.length} skills ===`);
-for (const d of all.sort()) {
+console.log(`=== Production Core Skills (${prodSkills.length}) ===`);
+for (const d of prodSkills.sort()) {
   const p = join(skillsDir, d, "SKILL.md");
   if (!existsSync(p)) {
     console.log(`MISSING-SKILL.md ${d}`);
@@ -40,8 +40,21 @@ for (const d of all.sort()) {
   const hasDesc = lines.some((l) => l.startsWith("description:"));
   const status = hasFrontmatter && hasName && hasDesc ? "OK " : "BAD ";
   if (status === "BAD ") ok = false;
-  const tag = newSkills.includes(d) ? " [NEW-CN]" : "";
-  console.log(`${status}${d}${tag}`);
+  console.log(`${status}${d} [FLAGSHIP]`);
+}
+
+const expDir = "experimental/skills";
+if (existsSync(expDir)) {
+  const expSkills = readdirSync(expDir, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name);
+  console.log(`\n=== Experimental Sequestered Skills (${expSkills.length}) ===`);
+  for (const d of expSkills.sort()) {
+    const p = join(expDir, d, "SKILL.md");
+    if (existsSync(p)) {
+      console.log(`OK ${d} [EXPERIMENTAL]`);
+    }
+  }
 }
 
 // 2. Check Agent Plugins portable layout (inside the plugin package)

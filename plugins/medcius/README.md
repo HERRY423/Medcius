@@ -1,29 +1,62 @@
-# Medcius（住院医生查房前“患者变化摘要”插件）
+# Medcius 插件包
 
-**边界定位：** 本插件专为住院医生查房前/晨交班设计。在医生打开患者病历或查房列表时，自动通过 SMART on FHIR 2.2 / EHR 侧边栏读取上下文，一屏式呈现过去 24/72 小时病情变化、异常检验趋势、用药方案变动、待办检查与关键资料缺口。不做诊断决策、不制定治疗方案、不自主写回病历。数据与 MCP 均在本地。
+Medcius 是面向住院医生查房前预阅的“患者变化摘要”插件。当前版本为 **`0.2.0-pilot` 工程试点版**，不具备真实临床有效性或生产医院部署证明。
 
+## 唯一旗舰工作流
+
+医生在 EHR 中打开患者病历或查房列表后，插件读取当前患者在过去 24/72 小时内的病历、检验、用药医嘱、检查报告和待办事项，呈现：
+
+- 发生了什么变化；
+- 今天仍待处理什么；
+- 哪些关键资料不足；
+- 每条信息来自哪个原始记录。
+
+插件不诊断、不推荐治疗、不自主写回病历。病程草稿只包含医生明确选择的条目。
+
+完整的产品边界、安全说明、当前证据状态和实用化路线见仓库根目录 [README](../../README.md)。
+
+## 生产插件面
+
+| 组件 | 用途 |
+|---|---|
+| `lib/patient-evolution-engine.mjs` | 24/72 小时变化、检验趋势、用药变化、待办和资料缺口 |
+| `servers/api` | EHR 侧边栏、REST API、CDS Hooks `patient-view` |
+| `servers/fhir` | SMART on FHIR R4 只读连接 |
+| `servers/documents` | 病历附件与文档提取 |
+| `servers/phiguard` | 本地 PHI 扫描与处理 |
+| `servers/audit` | 本地哈希链审计 |
+| `skills/clinical-note-extract` | 带原文 span 的受约束事实抽取 |
+
+`mcp.json` 与 `.mcp.json` 只启动 FHIR、documents、PHI Guard 和 Audit Chain 四个本地服务。医保编码、审方、临床试验、多 Agent、记忆和管理工作台不属于旗舰生产路径。部分模块已进入根目录 [`experimental/`](../../experimental/README.md)，但插件目录仍保留若干上游遗留技能；正式发布前必须将它们拆分或排除出生产包。
+
+## 开发评估
+
+Claude Code：
+
+```text
+/plugin marketplace add HERRY423/Medcius
+/plugin install medcius@medcius
 ```
-安装到 Codex / 其他支持 Agent Plugins 的 Agent：
-  将本目录作为插件包，读取 plugin.json + mcp.json + skills/
 
-安装到 Claude Code：
-  /plugin marketplace add <repo>
-  /plugin install medcius@medcius
+本机沙箱服务：
+
+```powershell
+$env:MEDCIUS_ALLOW_ANONYMOUS = "true"
+$env:MEDCIUS_PROFILE = "demo"
+node servers/api/src/server.mjs
 ```
 
-## 核心旗舰生产技能
+上述命令只适用于演示数据和开发环境。当前 REST 摘要路由仍包含演示回退，且代码尚未强制仅限 `demo` 配置，尚未允许接入真实患者。
 
-| 技能 (Skill) | 适用对象 | 功能边界 |
-|---|---|---|
-| `fhir` | 住院医生、临床信息科 | SMART on FHIR 2.2 连接器；自动预取当前患者就诊、检验、医嘱与病历上下文 |
-| `clinical-note-extract` | 住院医生 | 从病程记录与出院记录中提取客观症状与体征（带原文精确 span，识别否定与时间性） |
+## 当前证据边界
 
-> **注**：医保编码校验、临床试验检索、Agent 记忆库、管理驾驶舱及多 Agent 编排器等非旗舰实验性模块已移至 [`experimental/`](../../experimental/README.md)，不随生产插件默认启动。
+- 自动化测试证明代码路径和契约可运行，不证明临床准确性；
+- 合成病例证明评测管线，不证明真实病区表现；
+- 尚无独立真实 EHR 验收、连续病例标注、医生 time-motion 或多中心证据；
+- 真实部署必须重新评估模型会话的数据路径、医院身份体系、TLS、日志、CORS、租户隔离和写回权限。
 
-## 生产 MCP 服务清单（仅本地 stdio）
+生产准入前至少要删除 REST 演示回退、接入医院身份与 FHIR 上下文，并完成一个病区的静默验证。
 
-`mcp.json` 与 `.mcp.json` 仅包含 4 个核心本地生产服务：
-1. `FHIR`: SMART on FHIR 2.2 EHR 资源读取与连接
-2. `Contracts Analyzer` (documents): 临床病历文档结构化提取
-3. `PHI 卫士 (PHI Guard)`: 患者隐私敏感信息本地脱敏与扫描
-4. `本地审计链 (Local Audit Chain)`: 本地 SHA-256 审计链记录与验签
+## 许可
+
+根目录 MIT 许可证只覆盖 Medcius 原创文件；上游派生内容的来源和许可边界见 [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md)。

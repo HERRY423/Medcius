@@ -25,6 +25,8 @@ const steps = [
   { name: "12. Flagship: RESTful API Routes & Security Gate Tests", cmd: "node", args: ["tests/test-api-routes.mjs"] },
   { name: "13. Flagship: Inpatient Pre-Round Patient Evolution Summary Tests", cmd: "node", args: ["tests/test-preround-summary.mjs"] },
   { name: "14. Clinical Evaluation Benchmark & Traps", cmd: "node", args: ["scripts/run-evals.mjs"] },
+  { name: "15. Flagship: Cardiology Ward 2 Consecutive Cases Silent Validation", cmd: "node", args: ["plugins/medcius/evals/shadow-mode/ward-consecutive-validation.mjs"] },
+  { name: "16. Flagship: Physician Time-Motion Efficiency Clinical Pilot Study", cmd: "node", args: ["plugins/medcius/evals/time-motion/time-motion-study.mjs"] },
 ];
 
 console.log("================================================================================");

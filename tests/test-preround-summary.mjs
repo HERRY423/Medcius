@@ -224,7 +224,7 @@ try {
 
   // Test 3b: GET /api/v1/patient/evolution-summary
   console.log("  [3b] GET /api/v1/patient/evolution-summary...");
-  const resSummary = await fetch(`${baseUrl}/api/v1/patient/evolution-summary?time_window=24h`, {
+  const resSummary = await fetch(`${baseUrl}/api/v1/patient/evolution-summary?time_window=24h&patient_id=IP-2026-90812`, {
     headers: authHeaders,
   });
   assert.equal(resSummary.status, 200);
