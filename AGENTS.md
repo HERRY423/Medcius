@@ -1,9 +1,17 @@
 # Medcius Codex collaboration rules
 
-Medcius is an inpatient pre-round patient-evolution summary project. In Codex,
-use it for engineering, synthetic-data replay, integration testing, and
-evidence-governed review. Do not treat Codex output as a diagnosis, treatment
-recommendation, clinical decision, or completed EHR write-back.
+Medcius is an Agent plugin for frontline clinicians. It extends a host Agent
+with bounded clinical workflow skills, read-only data tools, provenance, PHI
+protection, and audit contracts. It is not a standalone clinical platform and
+not an autonomous clinical Agent. The inpatient pre-round patient-evolution
+summary is the first reference workflow, not the whole product boundary.
+
+In Codex, use Medcius for plugin engineering, synthetic-data replay,
+integration testing, and evidence-governed review. The host Agent handles
+conversation and orchestration; Medcius supplies constrained skills and tools;
+the clinician reviews evidence and remains the final decision-maker. Do not
+treat Agent output as a diagnosis, treatment recommendation, clinical
+decision, or completed EHR write-back.
 
 ## Safety and evidence boundary
 
@@ -36,7 +44,15 @@ separate statuses. A green test run is not clinical evidence.
 
 ## Scope discipline
 
-The flagship workflow is pre-round patient evolution only. Keep prescribing,
-coding, prior authorization, clinical-trial search, autonomous multi-agent
-behavior, and online learning outside the production Codex package unless a
-separate intended use and evidence plan is approved.
+- Keep the production core host-neutral: skills, MCP tools, safety contracts,
+  evidence schemas, and evals. A sidebar or API is a reference adapter, not the
+  product center.
+- Treat each clinical workflow as a separately bounded skill pack with an
+  explicit user, trigger, permissions, output contract, failure behavior,
+  prohibited actions, evidence plan, and rollback path.
+- Use pre-round patient evolution as the first reference workflow. Do not infer
+  that Medcius is limited to that workflow or that one validated workflow
+  validates another.
+- Keep prescribing, coding, prior authorization, clinical-trial search,
+  autonomous multi-agent behavior, and online learning outside the production
+  core unless each is approved as a separate intended use and evidence plan.

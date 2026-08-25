@@ -12,7 +12,7 @@ export const ROLES = {
   SYSTEM: "system",
 };
 
-// Hierarchy and permissions map for Flagship Inpatient Pre-Round Evolution Summary Plugin
+// Hierarchy and permissions map for the inpatient pre-round reference workflow
 const ROLE_PERMISSIONS = {
   [ROLES.PHYSICIAN]: new Set([
     "round:summary",

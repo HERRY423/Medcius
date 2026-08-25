@@ -2,7 +2,7 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "medcius",
   "version": "0.2.0-pilot",
-  "description": "住院医生查房前“患者变化摘要”插件。医生打开患者病历时自动通过 SMART on FHIR 2.2 / EHR 侧边栏读取上下文，一屏式呈现过去 24/72 小时变化、异常检验趋势、用药方案变动、待办检查与关键资料缺口。每条内容对应原文精确证据，不诊断、不制定治疗方案、不自主写回病历。",
+  "description": "面向一线临床医生的 Agent 插件，为宿主 Agent 提供受约束的临床工作流技能、只读临床数据工具、PHI 防护、证据追溯和审计能力。不是独立临床平台，也不是自主诊疗 Agent。",
   "author": {
     "name": "Medcius Clinical Intelligence Team",
     "url": "https://github.com/HERRY423/Medcius"
@@ -11,16 +11,13 @@
   "repository": "https://github.com/HERRY423/Medcius",
   "license": "MIT",
   "keywords": [
-    "住院医生查房",
-    "患者变化摘要",
+    "临床医生 Agent 插件",
+    "临床工作流技能",
     "SMART-on-FHIR",
-    "EHR-Sidebar",
-    "CDS-Hooks",
-    "检验趋势分析",
-    "用药调整比对",
-    "查房记录生成",
-    "临床资料缺口",
-    "patient-evolution-summary",
-    "inpatient-rounds"
+    "clinical-agent-plugin",
+    "evidence-provenance",
+    "PHI-Guard",
+    "FHIR-read-only",
+    "patient-evolution-summary"
   ]
 }

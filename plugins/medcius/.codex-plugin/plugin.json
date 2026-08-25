@@ -1,7 +1,7 @@
 {
   "name": "medcius",
   "version": "0.2.0-pilot",
-  "description": "Medcius engineering and validation support for an inpatient pre-round patient-evolution summary. It is read-only by default for Codex, preserves evidence links, and does not make diagnoses, treatment recommendations, or autonomous EHR write-backs.",
+  "description": "A bounded Agent plugin for frontline clinicians, providing read-only clinical data tools, evidence-bound workflow skills, PHI protection, and audit support. It is not a standalone clinical platform or an autonomous clinical Agent.",
   "author": {
     "name": "Medcius Clinical Intelligence Team",
     "url": "https://github.com/HERRY423/Medcius"
@@ -88,8 +88,8 @@
   },
   "interface": {
     "displayName": "Medcius",
-    "shortDescription": "Evidence-bound inpatient pre-round engineering support",
-    "longDescription": "Use Medcius in Codex to review, test, and validate the inpatient patient-evolution workflow against explicit provenance, privacy, and fail-closed rules. This Codex package is for engineering and sandbox validation, not autonomous clinical decisions or production EHR write-back.",
+    "shortDescription": "Evidence-bound clinical workflow plugin",
+    "longDescription": "Use Medcius to extend Codex with bounded clinical workflow skills, read-only FHIR and document tools, PHI protection, provenance, and audit contracts. The host Agent handles interaction, Medcius supplies constrained capabilities, and the clinician remains the final decision-maker. This package is for engineering and approved sandbox validation, not autonomous clinical decisions or production EHR write-back.",
     "developerName": "Medcius Clinical Intelligence Team",
     "category": "Healthcare",
     "capabilities": [
@@ -99,7 +99,7 @@
     "websiteURL": "https://github.com/HERRY423/Medcius",
     "defaultPrompt": [
       "Review this change against Medcius safety boundaries",
-      "Replay the synthetic patient-evolution cases",
+      "Replay a synthetic clinical workflow case",
       "Trace each output to its FHIR or note evidence"
     ]
   }

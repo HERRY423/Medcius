@@ -8,7 +8,7 @@
         "${PLUGIN_ROOT}/servers/fhir/src/index.mjs"
       ]
     },
-    "Contracts Analyzer": {
+    "Clinical Documents": {
       "type": "stdio",
       "command": "node",
       "args": [

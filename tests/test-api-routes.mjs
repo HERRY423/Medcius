@@ -1,10 +1,10 @@
-// Integration test for Medcius HTTP / REST & CDS Hooks Flagship API
+// Integration test for the Medcius HTTP / REST & CDS Hooks reference workflow API
 
 import assert from "node:assert/strict";
 import { startServer } from "../plugins/medcius/servers/api/src/server.mjs";
 import { generateToken, ROLES } from "../plugins/medcius/servers/api/src/auth-middleware.mjs";
 
-console.log("== Testing RESTful & CDS Hooks Flagship Server Endpoints ==");
+console.log("== Testing RESTful & CDS Hooks Reference Workflow Endpoints ==");
 
 // Generate valid client bearer token for authenticated requests
 const token = generateToken({
@@ -34,7 +34,7 @@ try {
   assert.ok(healthJson.production_gate);
   console.log(`✓ /health responded 200 OK (version: ${healthJson.version})`);
 
-  // Test 2: GET /sidebar (Flagship UI HTML)
+  // Test 2: GET /sidebar (reference adapter UI HTML)
   console.log("\n[Test 2] GET /sidebar...");
   const sidebarRes = await fetch(`${baseUrl}/sidebar`);
   assert.equal(sidebarRes.status, 200);
@@ -53,7 +53,7 @@ try {
   assert.ok(Array.isArray(cdsJson.services));
   assert.equal(cdsJson.services.length, 1);
   assert.equal(cdsJson.services[0].id, "medcius-patient-evolution");
-  console.log(`✓ /cds-services returned ${cdsJson.services.length} flagship service: ${cdsJson.services[0].title}`);
+  console.log(`✓ /cds-services returned ${cdsJson.services.length} reference workflow service: ${cdsJson.services[0].title}`);
 
   // Test 4: POST /cds-services/medcius-patient-evolution
   console.log("\n[Test 4] POST /cds-services/medcius-patient-evolution...");

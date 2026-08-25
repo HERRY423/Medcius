@@ -40,7 +40,7 @@ for (const d of prodSkills.sort()) {
   const hasDesc = lines.some((l) => l.startsWith("description:"));
   const status = hasFrontmatter && hasName && hasDesc ? "OK " : "BAD ";
   if (status === "BAD ") ok = false;
-  console.log(`${status}${d} [FLAGSHIP]`);
+  console.log(`${status}${d} [CORE]`);
 }
 
 const expDir = "experimental/skills";

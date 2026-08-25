@@ -1,4 +1,4 @@
-// Test Suite for Inpatient Pre-Round Patient Evolution Summary Flagship Plugin
+// Test suite for the inpatient pre-round patient-evolution reference workflow
 // Validates: 24h/72h evolution diff, dynamic LIS lab ranges, med diff, pending reports,
 // safety gaps, verbatim span citations, progress note draft generation, and CDS Hooks.
 
@@ -7,7 +7,7 @@ import { PatientEvolutionEngine, ITEM_CATEGORIES } from "../plugins/medcius/lib/
 import { startServer } from "../plugins/medcius/servers/api/src/server.mjs";
 import { generateToken, ROLES } from "../plugins/medcius/servers/api/src/auth-middleware.mjs";
 
-console.log("== Testing Inpatient Pre-Round Patient Evolution Summary Flagship Plugin ==");
+console.log("== Testing Inpatient Pre-Round Patient Evolution Reference Workflow ==");
 
 // ----------------------------------------------------
 // Test 1: Unit Test - Deterministic Evolution Engine with Dynamic Reference Ranges & Verbatim Spans

@@ -1,16 +1,16 @@
 // Test suite for HL7 FHIR CDS Hooks Server endpoints & logic
-// Tests: patient-view (Flagship Inpatient Pre-Round Evolution Summary) & Fail-Closed validation
+// Tests: patient-view (reference inpatient pre-round evolution workflow) & Fail-Closed validation
 
 import assert from "node:assert/strict";
 import { CDS_SERVICES, handleCdsHookRequest } from "../plugins/medcius/servers/api/src/cds-hooks.mjs";
 
-console.log("== Testing CDS Hooks 1.0/2.0 Flagship Integration ==");
+console.log("== Testing CDS Hooks 1.0/2.0 Reference Workflow Integration ==");
 
 // Test 1: Discovery Catalog
 console.log("\n[Test 1] Discovery catalog schema...");
 assert.ok(Array.isArray(CDS_SERVICES));
 const evoService = CDS_SERVICES.find((s) => s.id === "medcius-patient-evolution");
-assert.ok(evoService, "Must publish flagship medcius-patient-evolution service");
+assert.ok(evoService, "Must publish reference medcius-patient-evolution workflow service");
 assert.equal(evoService.hook, "patient-view");
 assert.ok(evoService.prefetch.patient);
 console.log(`✓ Discovery catalog valid: ${evoService.title}`);

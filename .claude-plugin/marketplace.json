@@ -6,29 +6,25 @@
   },
   "metadata": {
     "version": "0.2.0-pilot",
-    "description": "Medcius — 住院医生查房前“患者变化摘要”插件。不做诊断决策、不自主写回病历。仅本地 MCP。"
+    "description": "Medcius — 面向一线临床医生的 Agent 插件，为宿主 Agent 提供受约束的临床技能、只读工具、PHI 防护、证据追溯与审计。"
   },
   "plugins": [
     {
       "name": "medcius",
-      "displayName": "住院医生查房前患者变化摘要 / Medcius",
+      "displayName": "临床医生 Agent 插件 / Medcius",
       "source": "./plugins/medcius",
-      "description": "住院医生查房前“患者变化摘要”插件。呈现过去24/72小时变化、异常检验趋势、药物方案变动、待办检查与资料缺口。",
+      "description": "面向一线临床医生的 Agent 插件；查房前患者变化摘要是首个参考工作流，不是独立平台或自主诊疗 Agent。",
       "category": "healthcare",
       "tags": [
         "healthcare",
-        "china",
-        "cn",
-        "medical",
-        "insurance",
-        "nhsa",
-        "nmpa",
-        "prescription",
-        "hospital",
-        "prior-auth",
-        "medical-coding",
+        "clinical-agent-plugin",
+        "frontline-clinicians",
+        "clinical-workflow",
+        "provenance",
+        "phi",
+        "audit",
         "fhir",
-        "clinical-trials"
+        "read-only"
       ]
     },
     {

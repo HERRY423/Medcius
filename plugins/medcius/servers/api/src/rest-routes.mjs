@@ -54,7 +54,7 @@ export async function routeRequest(req, res, body) {
   }
 
   // ----------------------------------------------------
-  // FLAGSHIP UI: Inpatient Pre-Round EHR Sidebar (HTML)
+  // REFERENCE WORKFLOW UI: Inpatient Pre-Round EHR Sidebar (HTML)
   // ----------------------------------------------------
   if (method === "GET" && (pathname === "/" || pathname === "/sidebar" || pathname === "/preround" || pathname === "/index.html")) {
     const sidebarPath = join(__dirname, "ui", "preround-sidebar.html");
@@ -121,7 +121,7 @@ export async function routeRequest(req, res, body) {
   }
 
   // ----------------------------------------------------
-  // FLAGSHIP: Inpatient Pre-Round Patient Evolution Summary (No Demo Fallback)
+  // REFERENCE WORKFLOW: Inpatient Pre-Round Patient Evolution Summary (No Demo Fallback)
   // ----------------------------------------------------
   if ((method === "GET" || method === "POST") && pathname === "/api/v1/patient/evolution-summary") {
     const authCheck = authorizeRequest(auth, "round:summary");
@@ -168,7 +168,7 @@ export async function routeRequest(req, res, body) {
   }
 
   // ----------------------------------------------------
-  // FLAGSHIP: Insert Selected Summary into Progress Note Draft
+  // REFERENCE WORKFLOW: Insert Selected Summary into Progress Note Draft
   // ----------------------------------------------------
   if (method === "POST" && pathname === "/api/v1/patient/progress-note-draft") {
     const authCheck = authorizeRequest(auth, "round:draft_generate");
@@ -210,18 +210,21 @@ export async function routeRequest(req, res, body) {
   }
 
   // 404 Fallback
+  const referenceWorkflowRoutes = [
+    "GET  /",
+    "GET  /sidebar",
+    "GET  /health",
+    "GET  /cds-services",
+    "POST /cds-services/medcius-patient-evolution",
+    "GET  /api/v1/patient/evolution-summary",
+    "POST /api/v1/patient/progress-note-draft",
+    "GET  /api/v1/audit/verify",
+    "POST /api/v1/auth/token",
+  ];
   return sendJson(404, {
     error: `Route not found: ${method} ${pathname}`,
-    flagship_available_routes: [
-      "GET  /",
-      "GET  /sidebar",
-      "GET  /health",
-      "GET  /cds-services",
-      "POST /cds-services/medcius-patient-evolution",
-      "GET  /api/v1/patient/evolution-summary",
-      "POST /api/v1/patient/progress-note-draft",
-      "GET  /api/v1/audit/verify",
-      "POST /api/v1/auth/token",
-    ],
+    reference_workflow_routes: referenceWorkflowRoutes,
+    // Backward-compatible response key for existing API consumers.
+    flagship_available_routes: referenceWorkflowRoutes,
   });
 }
