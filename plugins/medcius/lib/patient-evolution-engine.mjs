@@ -36,6 +36,10 @@ export class PatientEvolutionEngine {
     pacsFeed = [],
     lisFeed = [],
   }) {
+    if (!patient || !patient.id || patient.id === "UNKNOWN-PATIENT" || String(patient.id).trim() === "") {
+      throw new Error("INVALID_PATIENT_CONTEXT: Missing or invalid Patient ID. System fails closed to prevent ungrounded synthesis.");
+    }
+
     const windowHours = timeWindow === "72h" ? 72 : 24;
     const now = Date.now();
     const cutoffTime = now - windowHours * 60 * 60 * 1000;
@@ -108,7 +112,7 @@ export class PatientEvolutionEngine {
         source_type: "NursingRecord",
         source_id: "nis-summary",
         source_title: "护理体温单与出入量平衡表",
-        timestamp: new Date().toISOString(),
+        timestamp: null,
       };
     }
 
@@ -135,9 +139,9 @@ export class PatientEvolutionEngine {
                 summary: s,
                 span: spanVerified,
                 source_type: "ClinicalNote",
-                source_id: note.id || "note-recent",
+                source_id: note.id || null,
                 source_title: docName,
-                timestamp: note.timestamp || new Date().toISOString(),
+                timestamp: note.timestamp || null,
               });
             }
           }
@@ -187,9 +191,13 @@ export class PatientEvolutionEngine {
         statusLabel = isCritical ? "🚨 危急值" : (isHigh ? "⚠️ 偏高" : (isLow ? "⚠️ 偏低" : "正常"));
       }
 
-      // Check eGFR if test is serum creatinine
+      // Check eGFR if test is serum creatinine (Strict: require age & gender from patient context)
       if (/(?:scr|肌酐|creatinine)/i.test(code) && !isNaN(latestVal)) {
-        patientEgfr = calculateEgfrCkdEpi(latestVal, patient.age || 65, patient.gender || "男");
+        if (patient.age != null && patient.gender != null) {
+          patientEgfr = calculateEgfrCkdEpi(latestVal, patient.age, patient.gender);
+        } else {
+          patientEgfr = null; // Do NOT calculate with fake 65yo male
+        }
       }
 
       if (inWindow && (isHigh || isLow || isCritical || baseline != null || hasReferenceRange)) {
@@ -235,21 +243,21 @@ export class PatientEvolutionEngine {
           summary: `${testName}: ${latestVal} ${unit} [${statusLabel}] (${deltaStr})`,
           span: verbatimSpan,
           source_type: "Observation",
-          source_id: latest.id || "obs-latest",
+          source_id: latest.id || null,
           source_title: latest.report_name || "检验报告",
-          timestamp: latest.effective_time || latest.timestamp || new Date().toISOString(),
+          timestamp: latest.effective_time || latest.timestamp || null,
         };
 
         changes.abnormal_labs.push(labItem);
 
         if (isCritical && !topCriticalValues.some((c) => c.name === testName)) {
           topCriticalValues.push({
-            observation_id: latest.id,
+            observation_id: latest.id || null,
             name: testName,
             value: latestVal,
             unit,
             report_name: latest.report_name || "检验报告",
-            sample_time: latest.effective_time || new Date().toISOString(),
+            sample_time: latest.effective_time || latest.timestamp || null,
             reason: latest.critical_reason || `数值触发检验危急值边界 (${latestVal} ${unit})`,
             urgency_action: "需在 30 分钟内完成临床医师处置与闭环记录",
           });
@@ -266,9 +274,9 @@ export class PatientEvolutionEngine {
         title: "影像诊断与演变印象",
         summary: `【${imp.report_name}】${imp.impression_summary}`,
         source_type: "DiagnosticReport",
-        source_id: `pacs-rep-${imp.report_name}`,
+        source_id: imp.id || null,
         source_title: "PACS 影像系统",
-        timestamp: imp.ordered_at,
+        timestamp: imp.ordered_at || null,
       });
     }
 
@@ -294,9 +302,9 @@ export class PatientEvolutionEngine {
           summary: `新增: ${medName} ${fullDose}`,
           span: verbatimSpan,
           source_type: "MedicationRequest",
-          source_id: med.id || "med-add",
+          source_id: med.id || null,
           source_title: "医嘱单",
-          timestamp: med.authored_on || new Date().toISOString(),
+          timestamp: med.authored_on || null,
         });
       } else if (med.change_type === "discontinued" || (endTime >= cutoffTime && (med.status === "stopped" || med.status === "cancelled"))) {
         changes.medication_diff.discontinued.push({
@@ -310,9 +318,9 @@ export class PatientEvolutionEngine {
           summary: `停用: ${medName} ${fullDose} (${med.stop_reason || "按期停止"})`,
           span: verbatimSpan,
           source_type: "MedicationRequest",
-          source_id: med.id || "med-stop",
+          source_id: med.id || null,
           source_title: "医嘱单",
-          timestamp: med.end_date || new Date().toISOString(),
+          timestamp: med.end_date || null,
         });
       } else if (med.change_type === "adjusted" || med.previous_dosage) {
         changes.medication_diff.adjusted.push({
@@ -324,9 +332,9 @@ export class PatientEvolutionEngine {
           summary: `调量: ${medName} ${med.previous_dosage} → ${fullDose}`,
           span: verbatimSpan,
           source_type: "MedicationRequest",
-          source_id: med.id || "med-adj",
+          source_id: med.id || null,
           source_title: "医嘱单",
-          timestamp: med.authored_on || new Date().toISOString(),
+          timestamp: med.authored_on || null,
         });
       }
     }
@@ -348,12 +356,12 @@ export class PatientEvolutionEngine {
           tag: CATEGORY_LABELS[ITEM_CATEGORIES.FACT],
           report_name: rep.name || rep.title || "待回报检查",
           category_type: rep.category || "PACS/LIS",
-          requested_time: rep.ordered_at || rep.timestamp || new Date().toISOString(),
+          requested_time: rep.ordered_at || rep.timestamp || null,
           status_desc: rep.status === "registered" ? "已送检/已采标本，等待检验报告" : "检查已完成，待出正式报告",
           summary: `待出报告: ${rep.name || rep.title} (${rep.status === "registered" ? "标本检验中" : "待出报告"})`,
           span: rep.span || null,
           source_type: "DiagnosticReport",
-          source_id: rep.id || "rep-pend",
+          source_id: rep.id || null,
           source_title: "检查预约系统",
         });
       }
@@ -371,7 +379,7 @@ export class PatientEvolutionEngine {
             summary: `待办会诊: ${ord.department || "专科"}会诊 (${ord.purpose || ord.title || "专科评估"})`,
             span: ord.span || null,
             source_type: "ServiceRequest",
-            source_id: ord.id || "ord-con",
+            source_id: ord.id || null,
             source_title: "会诊申请单",
           });
         } else {
@@ -523,13 +531,13 @@ export class PatientEvolutionEngine {
 
     return {
       patient: {
-        id: patient.id || "UNKNOWN-PATIENT",
-        name: patient.name || "未命名患者",
-        gender: patient.gender || patient.sex_cn || "未知",
-        age: patient.age || null,
-        bed_number: patient.bed_number || "未分配床位",
+        id: patient.id,
+        name: patient.name || null,
+        gender: patient.gender || patient.sex_cn || null,
+        age: patient.age ?? null,
+        bed_number: patient.bed_number || null,
         admission_date: patient.admission_date || null,
-        primary_diagnosis: patient.primary_diagnosis || patient.diagnosis || "待录入主诊断",
+        primary_diagnosis: patient.primary_diagnosis || patient.diagnosis || null,
         egfr: patientEgfr,
       },
       time_window: timeWindow,

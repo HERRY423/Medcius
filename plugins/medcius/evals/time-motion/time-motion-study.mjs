@@ -1,6 +1,6 @@
-// Physician Time-Motion Efficiency Pilot Study Runner (住院医师查房 Time-Motion 效率试点评测)
-// Setting: 心血管内科住院病区 (Cardiology Inpatient Ward, 16 Beds)
-// Evaluates: Pre-round preparation duration, chart clicks, lab omission rate, pending report oversight, and draft generation speed.
+// In-Silico Protocol Simulation & Time-Motion Benchmark Runner
+// Setting: 心血管内科住院病区 (Cardiology Inpatient Ward, 16 Beds Protocol Model)
+// Evaluates: Protocol design, metrics computation, pre-round workflow simulation, and draft timing model.
 
 import { writeFileSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -10,107 +10,114 @@ import assert from "node:assert/strict";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 console.log("================================================================================");
-console.log(" Medcius Inpatient Physician Time-Motion Clinical Efficiency Pilot Study");
-console.log(" Setting: 国家心血管临床医学中心心内二病区 (16 Inpatient Beds)");
+console.log(" Medcius In-Silico Protocol Simulation & Time-Motion Benchmark Engine");
+console.log(" Setting: 心血管内科病区协议模型 (16 Inpatient Beds Simulation Protocol)");
+console.log(" Notice: [SYNTHETIC PROTOCOL BENCHMARK - NOT REAL-WORLD CLINICAL EVIDENCE]");
 console.log("================================================================================\n");
 
-const pilotData = {
-  ward: "心血管内科二病区",
+const protocolBenchmarkData = {
+  protocol_name: "Medcius Inpatient Pre-Round Time-Motion Evaluation Protocol",
+  status: "PROTOCOL_SIMULATION_BENCHMARK",
+  ward: "心血管内科病区模拟环境 (16 Beds)",
   beds: 16,
-  participating_physicians: [
-    { id: "DOC-801", name: "张医师 (主治医师)", exp_years: 8 },
-    { id: "DOC-802", name: "李医师 (住院医师)", exp_years: 3 },
-    { id: "DOC-803", name: "王医师 (规范化培训住院医)", exp_years: 1 },
+  target_physicians: [
+    { role: "主治医师", target_sample: 5 },
+    { role: "住院医师", target_sample: 10 },
+    { role: "规培医师", target_sample: 10 },
   ],
   baseline_control: {
     method: "传统手工翻阅 EHR (EMR + LIS + PACS + 医嘱系统)",
-    avg_chart_navigation_seconds: 210, // 3.5 min
-    avg_trend_calculation_seconds: 132, // 2.2 min
-    avg_note_typing_seconds: 168, // 2.8 min
-    total_avg_seconds_per_patient: 510, // 8.5 min
-    total_ward_time_minutes: 136.0,
-    metrics: {
+    simulated_chart_nav_seconds: 210, // 3.5 min
+    simulated_trend_calc_seconds: 132, // 2.2 min
+    simulated_typing_seconds: 168, // 2.8 min
+    simulated_total_seconds: 510, // 8.5 min
+    simulated_ward_total_minutes: 136.0,
+    historical_benchmark_metrics: {
       abnormal_lab_omission_rate: 0.062, // 6.2%
       pending_report_oversight_rate: 0.094, // 9.4%
       unnoticed_safety_gap_rate: 0.125, // 12.5%
     },
   },
   medcius_intervention: {
-    method: "Medcius 住院医生查房前“患者变化摘要”插件 (一屏式 4 块 + 结构化草稿)",
-    avg_smart_prefetch_seconds: 48, // 0.8 min
-    avg_trend_review_seconds: 24, // 0.4 min
-    avg_draft_generation_seconds: 36, // 0.6 min
-    total_avg_seconds_per_patient: 108, // 1.8 min
-    total_ward_time_minutes: 28.8,
-    metrics: {
-      abnormal_lab_omission_rate: 0.0, // 0.0%
-      pending_report_oversight_rate: 0.0, // 0.0%
-      unnoticed_safety_gap_rate: 0.0, // 0.0%
+    method: "Medcius 查房前“患者变化摘要”插件 (一屏式 4 块 + 结构化草稿)",
+    simulated_prefetch_seconds: 48, // 0.8 min
+    simulated_trend_review_seconds: 24, // 0.4 min
+    simulated_draft_seconds: 36, // 0.6 min
+    simulated_total_seconds: 108, // 1.8 min
+    simulated_ward_total_minutes: 28.8,
+    simulated_target_metrics: {
+      abnormal_lab_omission_rate: 0.0,
+      pending_report_oversight_rate: 0.0,
+      unnoticed_safety_gap_rate: 0.0,
     },
   },
-  usability_evaluation: {
-    system_usability_scale_score: 88.5, // SUS Score (Grade A)
-    physician_cognitive_load_reduction: "81.4%",
-    physician_satisfaction_rate: "96.7%",
+  usability_target_benchmark: {
+    target_sus_score: 88.5, // Target SUS Benchmark (Grade A)
+    cognitive_load_target_reduction: "80%+",
   },
 };
 
-const timeSavedSeconds = pilotData.baseline_control.total_avg_seconds_per_patient - pilotData.medcius_intervention.total_avg_seconds_per_patient;
-const timeSavedPct = ((timeSavedSeconds / pilotData.baseline_control.total_avg_seconds_per_patient) * 100).toFixed(1);
-const wardTimeSavedMinutes = (pilotData.baseline_control.total_ward_time_minutes - pilotData.medcius_intervention.total_ward_time_minutes).toFixed(1);
+const simulatedSavedSeconds = protocolBenchmarkData.baseline_control.simulated_total_seconds - protocolBenchmarkData.medcius_intervention.simulated_total_seconds;
+const simulatedSavedPct = ((simulatedSavedSeconds / protocolBenchmarkData.baseline_control.simulated_total_seconds) * 100).toFixed(1);
+const simulatedWardSavedMinutes = (protocolBenchmarkData.baseline_control.simulated_ward_total_minutes - protocolBenchmarkData.medcius_intervention.simulated_ward_total_minutes).toFixed(1);
 
-console.log(`[Time-Motion Findings Summary]`);
-console.log(`  • 单患者查房准备时间: 传统 ${pilotData.baseline_control.total_avg_seconds_per_patient / 60} min  →  Medcius ${pilotData.medcius_intervention.total_avg_seconds_per_patient / 60} min (缩短 ${timeSavedPct}%)`);
-console.log(`  • 16张床位病区总耗时: 传统 ${pilotData.baseline_control.total_ward_time_minutes} min  →  Medcius ${pilotData.medcius_intervention.total_ward_time_minutes} min (净节省 ${wardTimeSavedMinutes} 分钟/晨查房)`);
-console.log(`  • 关键检验异常遗漏率: 传统 6.2%  →  Medcius 0.0%`);
-console.log(`  • 待回报检查遗漏率:   传统 9.4%  →  Medcius 0.0%`);
-console.log(`  • 系统可用性 (SUS):   ${pilotData.usability_evaluation.system_usability_scale_score} / 100 (Grade A)`);
+console.log(`[Protocol Simulation Benchmark Metrics]`);
+console.log(`  • 单患者查房准备模型耗时: 传统 ${protocolBenchmarkData.baseline_control.simulated_total_seconds / 60} min  →  Medcius 模拟 ${protocolBenchmarkData.medcius_intervention.simulated_total_seconds / 60} min (理论缩短 ${simulatedSavedPct}%)`);
+console.log(`  • 16张床位病区模型总耗时: 传统 ${protocolBenchmarkData.baseline_control.simulated_ward_total_minutes} min  →  Medcius 模拟 ${protocolBenchmarkData.medcius_intervention.simulated_ward_total_minutes} min (理论节省 ${simulatedWardSavedMinutes} 分钟)`);
+console.log(`  • 目标易用性基准 (SUS):   ${protocolBenchmarkData.usability_target_benchmark.target_sus_score} / 100 (Grade A Benchmark)`);
+console.log(`  • 合规状态:              clinical_evidence_pass = BLOCKED (待伦理审批与真实世界盲法采集)`);
 
-// Generate Markdown Report
-const reportContent = `# 心血管内科住院病区 Medcius 查房摘要插件 Time-Motion 临床效率试点报告
+// Generate Markdown Protocol & Simulation Report
+const reportContent = `# 心血管内科住院病区 Medcius 查房摘要插件 Time-Motion 效率评测协议与模拟基准报告
 
-- **试点单位**：国家心血管临床医学中心心内二病区
-- **床位规模**：16 张住院床位（心梗/心衰/房颤连续病例）
-- **参试医师**：3 名临床医师（主治、住院医师、规培医师）
-- **对比设计**：自身前后对照 Time-Motion 观察法
+> [!IMPORTANT]
+> **证据级别与合规边界声明**：
+> 本报告数据属于**工程在体模拟与协议基准模型（In-Silico Benchmark & Study Protocol）**，用于验证评测流水线逻辑与时间-动作分析框架。依据法规与项目安全边界：
+> 1. **合成基准与流水线通过（Green CI）绝不等于真实世界临床证据**；
+> 2. 当前阶段项目临床证据门禁状态明确为 **\`clinical_evidence_pass: 🔒 BLOCKED\`**；
+> 3. 真实世界的有效性与易用性数据，需在获得医院伦理委员会 (IRB) 审批后，由独立第三方临床药师及质控医师开展前瞻性多中心双盲观察与人工计时采集。
 
 ---
 
-## 1. 核心效率指标对比 (Time-Motion Metrics)
+## 1. 协议设计与模拟基准参数 (Protocol Simulation Benchmark)
 
-| 观察维度 | 传统手工翻阅 EHR | Medcius 查房摘要插件 | 改善幅度 / 效益 |
+- **设计类型**：自身前后对照 Time-Motion（时间-动作）观察法协议
+- **目标病区环境**：心血管内科病区（16 张标准床位模型）
+- **观察步骤定义**：
+  1. **病历与多系统翻阅耗时**（EMR、LIS、PACS、NIS 页面跳转与信息定位）；
+  2. **关键指标演变与基线计算耗时**（肌酐 $\Delta$、电解质波动、24h 出入量统计）；
+  3. **查房病程草稿整理耗时**（结构化事实提取、待办核对、文本录入）。
+
+---
+
+## 2. 模拟基准对比数据 (In-Silico Benchmark Model)
+
+| 观察维度 | 传统手工翻阅模型 (Control) | Medcius 辅助模拟模型 (Intervention) | 理论改善模型幅度 |
 |---|---|---|---|
-| **单患者查房准备时间** | **8.5 分钟** (510 秒) | **1.8 分钟** (108 秒) | **缩短 78.8%** (节省 6.7 分钟/人) |
-| **16床病区晨查房准备总耗时** | **136.0 分钟** (2.27 小时) | **28.8 分钟** (0.48 小时) | **净节省 107.2 分钟 (~1.8 小时)** |
-| **病历/LIS/PACS 界面切换点击** | 平均 14.2 次点击/人 | **0 次** (EHR 侧边栏自动预取) | **减少 100.0%** 页面切换疲劳 |
-| **指标波动与基线计算时间** | 2.2 分钟/人 (心算/翻旧单) | **0.4 分钟** (自动算 $\Delta$ 与箭头) | **缩短 81.8%** |
-| **查房病程草稿录入时间** | 2.8 分钟/人 (键盘打字) | **0.6 分钟** (勾选后结构化生成) | **缩短 78.6%** |
+| **单患者查房准备时间** | **8.5 分钟** (510 秒) | **1.8 分钟** (108 秒) | **理论缩短 78.8%** (模型节省 6.7 分钟/人) |
+| **16床病区晨查房准备总耗时** | **136.0 分钟** (2.27 小时) | **28.8 分钟** (0.48 小时) | **模型理论节省 107.2 分钟** |
+| **多系统界面切换点击** | 模拟 14.2 次/人 | **0 次** (EHR 侧边栏自动融合预取) | **理论减少 100.0%** 页面跳转 |
+| **指标波动与基线计算时间** | 2.2 分钟/人 | **0.4 分钟** (引擎确定性计算) | **理论缩短 81.8%** |
+| **查房病程草稿生成时间** | 2.8 分钟/人 | **0.6 分钟** (一键勾选结构化生成) | **理论缩短 78.6%** |
 
 ---
 
-## 2. 医疗质量与安全指标 (Quality & Safety)
+## 3. 医疗质控与安全监控目标 (Quality & Safety Target Criteria)
 
-| 质控监测项 | 传统手工翻阅组 | Medcius 辅助组 | 临床意义 |
+| 质控监测项 | 传统手工翻阅基准 | Medcius 目标设定 | 质控设计目标 |
 |---|---|---|---|
-| **关键化验指标异常遗漏率** | 6.2% (1/16) | **0.0% (0/16)** | 彻底杜绝漏看肌酐突升与低钾血症 |
-| **待回报重要检查遗漏率** | 9.4% (1.5/16) | **0.0% (0/16)** | 避免忘记追踪急查 CT / 细菌药敏 |
-| **关键资料缺口未识别率** | 12.5% (2/16) | **0.0% (0/16)** | 强制显式黄色提示缺失过敏史/体重 |
+| **关键化验指标异常遗漏率** | 6.2% 模拟基线 | **0.0%** | 自动高亮危急值与波动指标 |
+| **待回报重要检查遗漏率** | 9.4% 模拟基线 | **0.0%** | 自动提取 ServiceRequest/DiagnosticReport preliminary |
+| **关键资料缺口未识别率** | 12.5% 模拟基线 | **0.0%** | 显式黄色提示缺失过敏史/肾功能 |
 
 ---
 
-## 3. 医师满意度与可用性评价 (SUS Evaluation)
+## 4. 下一步真实世界临床验证路径
 
-- **System Usability Scale (SUS) 评分**：**88.5 分** (Grade A，处于顶尖易用梯队)
-- **主观认知负荷减轻度**：**81.4%**
-- **临床推荐意愿 (NPS)**：**96.7%**
-- **主观医生反馈摘录**：
-  > “以前查房前要把检验、医嘱、病程翻来覆去点开七八个标签页，心衰患者还要算前后肌酐和尿量变化。现在侧边栏一开，4 块内容清清楚楚，勾选后直接插入草稿，大幅减轻了早交班前的焦虑感。” —— 李医师 (心内科住院医)
-
----
-
-## 4. 结论与准入建议
-
-试点表明，Medcius 住院医生查房前“患者变化摘要”插件显著缩短了医生晨查房准备时间（78.8%），杜绝了关键指标遗漏，且因严格恪守“不诊断、不处方、不自主写回”边界，临床采纳阻力极低，具备在全院内科推广的可行性。
+1. 提交医院伦理审查（IRB Protocol Submission）；
+2. 接入三甲医院心内科与呼吸内科单病区沙箱环境；
+3. 由独立观察员使用标准秒表与屏幕录屏软件进行无干扰静默观察；
+4. 完成真实世界前瞻性数据采集后，生成由临床 PI 签名的正式临床试验报告。
 `;
 
 const reportDir = join(__dirname, "reports");
@@ -118,6 +125,6 @@ mkdirSync(reportDir, { recursive: true });
 const reportPath = join(reportDir, "pilot-ward-time-motion.md");
 writeFileSync(reportPath, reportContent, "utf8");
 
-console.log(`\n✓ Time-Motion Clinical Efficiency Report written to: ${reportPath}`);
-assert.ok(Number(timeSavedPct) > 70.0);
-console.log("🎉 PHYSICIAN TIME-MOTION EFFICIENCY PILOT COMPLETED SUCCESSFULLY!\n");
+console.log(`\n✓ Time-Motion Protocol Benchmark written to: ${reportPath}`);
+assert.ok(Number(simulatedSavedPct) > 70.0);
+console.log("🎉 IN-SILICO TIME-MOTION BENCHMARK RUNNER COMPLETED SUCCESSFULLY!\n");

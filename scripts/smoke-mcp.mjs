@@ -1,16 +1,16 @@
 // MCP transport smoke: spawn a plugin server over stdio, complete the
 // initialize handshake, list its tools, and assert the expected tool count.
-// Usage: node scripts/smoke-mcp.mjs <path-to-src/index.mjs> <expected-tools>
+// Usage: node scripts/smoke-mcp.mjs <server> <expected-tools> [server-args...]
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 
-const [server, expected] = [process.argv[2], Number(process.argv[3])];
+const [server, expected, ...serverArgs] = [process.argv[2], Number(process.argv[3]), ...process.argv.slice(4)];
 if (!server || !Number.isInteger(expected)) {
-  console.error("usage: node scripts/smoke-mcp.mjs <index.mjs> <expected-tools>");
+  console.error("usage: node scripts/smoke-mcp.mjs <server> <expected-tools> [server-args...]");
   process.exit(2);
 }
 
-const child = spawn("node", [server], { stdio: ["pipe", "pipe", "inherit"] });
+const child = spawn("node", [server, ...serverArgs], { stdio: ["pipe", "pipe", "inherit"] });
 const rl = createInterface({ input: child.stdout });
 const send = (obj) => child.stdin.write(`${JSON.stringify(obj)}\n`);
 

@@ -157,7 +157,28 @@ Claude Code 开发评估：
 /plugin install medcius@medcius
 ```
 
+Codex 本地开发评估：
+
+```powershell
+codex plugin marketplace add "$PWD\.agents\plugins"
+codex plugin add medcius@medcius-local
+```
+
+Codex 入口用于工程审查、合成数据回放和获批沙箱验证；它通过 Codex 专用
+manifest 启动只读 FHIR MCP 适配器、documents、PHI Guard 和 Audit Chain，
+不构成医院临床部署或合规批准。
+
 仓库同时包含 Agent Plugins 便携清单。此安装方式用于开发者验证，并不构成医院临床部署或合规批准。
+
+### Trae / WorkBuddy 项目协作
+
+仓库同时提供不依赖 Codex manifest 的项目级适配：
+
+- Trae：启用项目级 MCP 后读取 [`.trae/mcp.json`](.trae/mcp.json)，规则位于 [`.trae/rules/project_rules.md`](.trae/rules/project_rules.md)，技能入口位于 [`.trae/skills/`](.trae/skills/)；
+- WorkBuddy / CodeBuddy：读取根目录 [`.mcp.json`](.mcp.json)、[`.rules/`](.rules/) 和 [`.codebuddy/skills/`](.codebuddy/skills/)；
+- 两类入口都复用 `plugins/medcius/scripts/codex-mcp-server.mjs`，FHIR 工具由启动器强制保持只读。
+
+WorkBuddy Enterprise 仍需在企业后台分别挂载规则、技能与 MCP，并在 Test Run 中验证；本仓库不把 Codex manifest 冒充为企业可安装包。
 
 ### 运行检查
 

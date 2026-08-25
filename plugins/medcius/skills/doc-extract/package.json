@@ -1,0 +1,8 @@
+{
+  "name": "@medcius/healthcare-doc-extract-skill",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@llamaindex/liteparse": "2.0.8"
+  }
+}

@@ -38,6 +38,24 @@ Claude Code：
 /plugin install medcius@medcius
 ```
 
+Codex 本地开发评估：
+
+```powershell
+codex plugin marketplace add "$PWD\.agents\plugins"
+codex plugin add medcius@medcius-local
+```
+
+该仓库现在同时包含 Codex manifest。Codex 入口使用只读 FHIR MCP 适配器、
+本地 documents、PHI Guard 和 Audit Chain；数据目录可通过 `MEDCIUS_DATA`
+指定，稳定假名化可通过 `MEDCIUS_PHI_SALT` 指定。安装后建议新建 Codex
+任务测试技能和工具加载。此入口仍只用于工程和获批沙箱验证，不构成医院
+临床部署或合规批准。
+
+Trae / WorkBuddy / CodeBuddy 的项目级适配位于仓库根目录：`.trae/mcp.json`
+与 `.trae/skills/` 面向 Trae；`.mcp.json`、`.rules/` 与 `.codebuddy/skills/`
+面向 WorkBuddy/CodeBuddy。它们复用同一个 host wrapper，并保持 FHIR 只读，
+不要求这些宿主识别 `.codex-plugin/plugin.json`。
+
 本机沙箱服务：
 
 ```powershell

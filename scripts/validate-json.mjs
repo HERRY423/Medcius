@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 
 const files = [
+  ".mcp.json",
+  ".trae/mcp.json",
   "plugins/medcius/plugin.json",
   "plugins/medcius/mcp.json",
   "plugins/medcius/.claude-plugin/plugin.json",

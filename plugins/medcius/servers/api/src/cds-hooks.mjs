@@ -39,18 +39,19 @@ function parseFhirPatient(context, prefetch) {
     age = pat.age;
   }
 
-  const gender = pat?.gender || "unknown";
-  const sex_cn = gender === "male" ? "男" : gender === "female" ? "女" : "未知";
+  const gender = pat?.gender || null;
+  const sex_cn = gender === "male" ? "男" : gender === "female" ? "女" : null;
 
   return {
-    id: patId || "UNKNOWN-PATIENT",
-    name: pat?.name?.[0]?.text || pat?.name || `患者 (ID: ${patId})`,
+    id: patId || null,
+    name: pat?.name?.[0]?.text || pat?.name || (patId ? `患者 (ID: ${patId})` : null),
     age: age || null,
     gender,
     sex_cn,
-    bed_number: pat?.bed_number || pat?.bed || "未分配床位",
-    primary_diagnosis: pat?.primary_diagnosis || pat?.diagnosis || "待录入主诊断",
+    bed_number: pat?.bed_number || pat?.bed || null,
+    primary_diagnosis: pat?.primary_diagnosis || pat?.diagnosis || null,
     weight_kg: pat?.weight_kg || pat?.weightKg || null,
+    encounter_id: context?.encounterId || pat?.encounter_id || prefetch?.encounter?.id || null,
   };
 }
 
@@ -64,7 +65,7 @@ function parseFhirObservations(context, prefetch) {
   return rawList.map((item) => {
     const res = item.resource ?? item;
     return {
-      id: res.id || "obs-unknown",
+      id: res.id || null,
       name: res.code?.text || res.code?.coding?.[0]?.display || res.name || "检验项目",
       code: res.code?.coding?.[0]?.code || res.code || res.name || "unknown",
       value: res.valueQuantity?.value ?? res.value ?? null,
@@ -100,7 +101,7 @@ function parseFhirMedications(context, prefetch) {
 
     const dose = res.dosageInstruction?.[0]?.text || res.dosage || "";
     return {
-      id: res.id || "med-unknown",
+      id: res.id || null,
       drug_name: drugName,
       dosage: dose,
       route: res.route || "",
@@ -124,7 +125,7 @@ function parseFhirReports(context, prefetch) {
   return rawList.map((item) => {
     const res = item.resource ?? item;
     return {
-      id: res.id || "rep-unknown",
+      id: res.id || null,
       name: res.code?.text || res.code?.coding?.[0]?.display || res.name || res.title || "检查报告",
       status: res.status || "registered",
       ordered_at: res.effectiveDateTime || res.ordered_at || res.timestamp || null,
@@ -143,7 +144,7 @@ function parseFhirOrders(context, prefetch) {
   return rawList.map((item) => {
     const res = item.resource ?? item;
     return {
-      id: res.id || "ord-unknown",
+      id: res.id || null,
       title: res.code?.text || res.code?.coding?.[0]?.display || res.title || res.name || "医嘱项目",
       status: res.status || "active",
       order_type: res.order_type || (/会诊/.test(res.title || "") ? "consult" : "order"),
@@ -157,17 +158,36 @@ function parseFhirOrders(context, prefetch) {
 
 /** Handle incoming CDS Hook request */
 export async function handleCdsHookRequest(serviceId, requestBody) {
-  const { hook, context, prefetch } = requestBody || {};
+  const { hook, user, context, prefetch } = requestBody || {};
 
-  // Fail-Closed: Validate patient context presence
-  const patient = parseFhirPatient(context, prefetch);
-  if (!patient || !patient.id || patient.id === "UNKNOWN-PATIENT") {
+  // 1. Fail-Closed: Validate user / practitioner context (HL7 CDS Hooks required context.userId)
+  const userId = context?.userId || user || requestBody?.userId;
+  if (!userId || String(userId).trim() === "") {
     return {
       cards: [
         {
-          uuid: `card-err-${Date.now()}`,
-          summary: "Medcius: 未检出有效患者上下文",
-          detail: "未提供有效的 Patient ID 或就诊记录。请在 EHR 患者病历界面中打开查房插件。",
+          uuid: `card-err-user-${Date.now()}`,
+          summary: "Medcius: 未检出操作医师身份上下文 (Missing userId)",
+          detail: "HL7 CDS Hooks patient-view 标准要求传入当前登录医师标识 (context.userId)。系统已按合规要求安全关闭。",
+          indicator: "warning",
+          source: {
+            label: "Medcius 患者变化摘要插件",
+            url: "https://github.com/HERRY423/Medcius",
+          },
+        },
+      ],
+    };
+  }
+
+  // 2. Fail-Closed: Validate patient context presence
+  const patient = parseFhirPatient(context, prefetch);
+  if (!patient || !patient.id || patient.id === "UNKNOWN-PATIENT" || String(patient.id).trim() === "") {
+    return {
+      cards: [
+        {
+          uuid: `card-err-pat-${Date.now()}`,
+          summary: "Medcius: 未检出有效患者上下文 (Missing patientId)",
+          detail: "未提供有效的 Patient ID 或 FHIR Patient 资源。请在 EHR 患者病历界面中打开查房插件。",
           indicator: "info",
           source: {
             label: "Medcius 患者变化摘要插件",
@@ -227,7 +247,7 @@ export async function handleCdsHookRequest(serviceId, requestBody) {
   const cards = [
     {
       uuid: `card-evo-${Date.now()}`,
-      summary: `Medcius 查房摘要: ${patient.bed_number} ${patient.name} (近 24 小时 ${totalChanges} 项变化，${b2.pending_reports.length + b2.pending_orders.length} 项待办)`,
+      summary: `Medcius 查房摘要: ${patient.bed_number || "床位"} ${patient.name || "患者"} (近 24 小时 ${totalChanges} 项变化，${b2.pending_reports.length + b2.pending_orders.length} 项待办)`,
       detail: detailLines.join("\n"),
       indicator: hasCritical ? "critical" : (hasGaps ? "warning" : "info"),
       source: {

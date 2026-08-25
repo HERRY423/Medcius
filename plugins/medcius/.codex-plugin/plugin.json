@@ -1,0 +1,106 @@
+{
+  "name": "medcius",
+  "version": "0.2.0-pilot",
+  "description": "Medcius engineering and validation support for an inpatient pre-round patient-evolution summary. It is read-only by default for Codex, preserves evidence links, and does not make diagnoses, treatment recommendations, or autonomous EHR write-backs.",
+  "author": {
+    "name": "Medcius Clinical Intelligence Team",
+    "url": "https://github.com/HERRY423/Medcius"
+  },
+  "homepage": "https://github.com/HERRY423/Medcius",
+  "repository": "https://github.com/HERRY423/Medcius",
+  "license": "MIT",
+  "keywords": [
+    "healthcare",
+    "clinical-notes",
+    "FHIR",
+    "SMART-on-FHIR",
+    "provenance",
+    "PHI",
+    "clinical-validation"
+  ],
+  "skills": "./skills/",
+  "mcpServers": {
+    "FHIR (read-only)": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${PLUGIN_ROOT}/scripts/codex-mcp-server.mjs",
+        "fhir"
+      ],
+      "cwd": "${PLUGIN_ROOT}",
+      "env_vars": [
+        "FHIR_BASE_URL",
+        "FHIR_CLIENT_ID",
+        "FHIR_BEARER_TOKEN",
+        "MEDCIUS_DATA",
+        "MEDCIUS_PHI_SALT",
+        "HOME",
+        "USERPROFILE",
+        "LOCALAPPDATA",
+        "PATH"
+      ]
+    },
+    "Documents (local)": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${PLUGIN_ROOT}/scripts/codex-mcp-server.mjs",
+        "documents"
+      ],
+      "cwd": "${PLUGIN_ROOT}",
+      "env_vars": [
+        "MEDCIUS_DATA",
+        "HOME",
+        "USERPROFILE",
+        "LOCALAPPDATA",
+        "PATH"
+      ]
+    },
+    "PHI Guard (local)": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${PLUGIN_ROOT}/scripts/codex-mcp-server.mjs",
+        "phiguard"
+      ],
+      "cwd": "${PLUGIN_ROOT}",
+      "env_vars": [
+        "MEDCIUS_PHI_SALT",
+        "PATH"
+      ]
+    },
+    "Audit Chain (local)": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${PLUGIN_ROOT}/scripts/codex-mcp-server.mjs",
+        "audit"
+      ],
+      "cwd": "${PLUGIN_ROOT}",
+      "env_vars": [
+        "MEDCIUS_DATA",
+        "HOME",
+        "USERPROFILE",
+        "LOCALAPPDATA",
+        "PATH"
+      ]
+    }
+  },
+  "interface": {
+    "displayName": "Medcius",
+    "shortDescription": "Evidence-bound inpatient pre-round engineering support",
+    "longDescription": "Use Medcius in Codex to review, test, and validate the inpatient patient-evolution workflow against explicit provenance, privacy, and fail-closed rules. This Codex package is for engineering and sandbox validation, not autonomous clinical decisions or production EHR write-back.",
+    "developerName": "Medcius Clinical Intelligence Team",
+    "category": "Healthcare",
+    "capabilities": [
+      "Interactive",
+      "Read"
+    ],
+    "websiteURL": "https://github.com/HERRY423/Medcius",
+    "defaultPrompt": [
+      "Review this change against Medcius safety boundaries",
+      "Replay the synthetic patient-evolution cases",
+      "Trace each output to its FHIR or note evidence"
+    ]
+  }
+}

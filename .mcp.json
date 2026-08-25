@@ -1,0 +1,39 @@
+{
+  "mcpServers": {
+    "Medcius FHIR (read-only)": {
+      "command": "node",
+      "args": [
+        "${workspaceFolder}/plugins/medcius/scripts/codex-mcp-server.mjs",
+        "fhir"
+      ],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "MEDCIUS_FHIR_READ_ONLY": "true"
+      }
+    },
+    "Medcius Documents (local)": {
+      "command": "node",
+      "args": [
+        "${workspaceFolder}/plugins/medcius/scripts/codex-mcp-server.mjs",
+        "documents"
+      ],
+      "cwd": "${workspaceFolder}"
+    },
+    "Medcius PHI Guard (local)": {
+      "command": "node",
+      "args": [
+        "${workspaceFolder}/plugins/medcius/scripts/codex-mcp-server.mjs",
+        "phiguard"
+      ],
+      "cwd": "${workspaceFolder}"
+    },
+    "Medcius Audit Chain (local)": {
+      "command": "node",
+      "args": [
+        "${workspaceFolder}/plugins/medcius/scripts/codex-mcp-server.mjs",
+        "audit"
+      ],
+      "cwd": "${workspaceFolder}"
+    }
+  }
+}

@@ -15,18 +15,31 @@ assert.equal(evoService.hook, "patient-view");
 assert.ok(evoService.prefetch.patient);
 console.log(`✓ Discovery catalog valid: ${evoService.title}`);
 
-// Test 2: Fail-Closed on Missing Patient Context
-console.log("\n[Test 2] Testing Fail-Closed on missing patient context...");
+// Test 2: Fail-Closed on Missing User and Patient Context
+console.log("\n[Test 2] Testing Fail-Closed on missing user and patient context...");
+
+// 2a. Missing userId
+const noUserPayload = {
+  hook: "patient-view",
+  hookInstance: "inst-nouser-001",
+  context: { patientId: "pat-8890" },
+};
+const noUserRes = await handleCdsHookRequest("medcius-patient-evolution", noUserPayload);
+assert.ok(noUserRes.cards[0].summary.includes("未检出操作医师身份上下文"), "Must fail-closed when userId is missing");
+console.log(`✓ Fail-Closed on missing user: returned '${noUserRes.cards[0].summary}'`);
+
+// 2b. Missing patientId
 const emptyPayload = {
   hook: "patient-view",
   hookInstance: "inst-empty-001",
-  context: {}, // missing patientId and patient
+  user: "Practitioner/dr-lin",
+  context: { userId: "Practitioner/dr-lin" }, // missing patientId and patient
 };
 const emptyRes = await handleCdsHookRequest("medcius-patient-evolution", emptyPayload);
 assert.ok(Array.isArray(emptyRes.cards));
 assert.equal(emptyRes.cards.length, 1);
 assert.ok(emptyRes.cards[0].summary.includes("未检出有效患者上下文"), "Must fail-closed when patient ID is missing");
-console.log(`✓ Fail-Closed verified: returned '${emptyRes.cards[0].summary}' without fabricating synthetic data`);
+console.log(`✓ Fail-Closed on missing patient: returned '${emptyRes.cards[0].summary}' without fabricating synthetic data`);
 
 // Test 3: Patient-view Hook with Real FHIR Observations (Dynamic LIS Ranges) & Medications
 console.log("\n[Test 3] Patient-view Hook call with FHIR-like context and dynamic LIS ranges...");

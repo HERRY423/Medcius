@@ -479,17 +479,47 @@
     const selectedItemIds = new Set();
 
     async function fetchSummary() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const patId = urlParams.get('patient_id');
+      
+      if (!patId) {
+        renderFailClosedState('未在 URL 参数或 EHR 上下文中检出有效 patient_id');
+        return;
+      }
+
       try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const patId = urlParams.get('patient_id') || 'pat-cardio-001';
-        const res = await fetch(`/api/v1/patient/evolution-summary?time_window=${currentWindow}&patient_id=${patId}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const res = await fetch(`/api/v1/patient/evolution-summary?time_window=${currentWindow}&patient_id=${encodeURIComponent(patId)}`);
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          throw new Error(errBody.error || `HTTP ${res.status}`);
+        }
         summaryPayload = await res.json();
         renderSummary(summaryPayload);
       } catch (err) {
-        console.warn('Using local fallback simulation payload:', err);
-        loadSampleDemoData();
+        console.error('[Medcius] Fail-Closed trigger:', err);
+        renderFailClosedState(err.message);
       }
+    }
+
+    function renderFailClosedState(reason) {
+      document.getElementById('p-name').innerHTML = `<span class="bed-badge" style="background:var(--danger)">FAIL-CLOSED</span> 未连接患者`;
+      document.getElementById('p-meta').textContent = `错误: ${reason} (按法规要求安全关闭，禁止展示虚构数据)`;
+      document.getElementById('p-egfr').style.display = 'none';
+      document.getElementById('critical-banner').style.display = 'none';
+
+      const changedDiv = document.getElementById('list-changed');
+      changedDiv.innerHTML = `<div style="padding:12px; color:#ff7b72; font-size:12px; background:#490202; border-radius:6px;">❌ EHR 接口连接异常或未检出有效患者上下文。系统已“失败关闭”，请在医院 EHR 中重新选择患者后刷新。</div>`;
+      
+      document.getElementById('list-pending').innerHTML = `<div style="padding:8px; color:var(--text-muted); font-size:12px;">无上下文数据</div>`;
+      document.getElementById('list-gaps').innerHTML = `<div style="padding:8px; color:var(--text-muted); font-size:12px;">无上下文数据</div>`;
+      document.getElementById('card-rules').style.display = 'none';
+      document.getElementById('evidence-panel').textContent = '未连接有效患者，证据面板已关闭。';
+
+      document.getElementById('badge-changed').textContent = '0项';
+      document.getElementById('badge-pending').textContent = '0项';
+      document.getElementById('badge-gaps').textContent = '0项';
+      selectedItemIds.clear();
+      updateSelectedCount();
     }
 
     function switchWindow(w) {
@@ -501,13 +531,15 @@
 
     function renderSummary(data) {
       if (!data) return;
-      document.getElementById('p-name').innerHTML = `<span class="bed-badge" id="p-bed">${data.patient.bed_number}</span> ${data.patient.name} (${data.patient.age || '成年'}岁 ${data.patient.gender})`;
-      document.getElementById('p-meta').textContent = `就诊号: ${data.patient.id} | 主诊断: ${data.patient.primary_diagnosis}`;
+      document.getElementById('p-name').innerHTML = `<span class="bed-badge" id="p-bed">${data.patient.bed_number || '未分床'}</span> ${data.patient.name || '患者'} (${data.patient.age != null ? data.patient.age + '岁' : '年龄未知'} ${data.patient.gender || '性别未知'})`;
+      document.getElementById('p-meta').textContent = `就诊号: ${data.patient.id || 'N/A'} | 主诊断: ${data.patient.primary_diagnosis || '待录入'}`;
 
       if (data.patient.egfr) {
         const egfrEl = document.getElementById('p-egfr');
         egfrEl.textContent = `eGFR ${data.patient.egfr} mL/min`;
         egfrEl.style.display = 'inline-block';
+      } else {
+        document.getElementById('p-egfr').style.display = 'none';
       }
 
       // Critical Values Banner
@@ -544,10 +576,10 @@
         vfRow.innerHTML = `
           <div style="font-weight:700; color:#58a6ff; margin-bottom:4px;">📊 护理生命体征与 24h 出入量平衡</div>
           <div class="vitals-grid">
-            <div class="vitals-pill">🌡️ 最高体温: <b>${vf.vitals?.t_max ? vf.vitals.t_max + '℃' : '36.8℃ (正常)'}</b></div>
-            <div class="vitals-pill">💓 血压/心率: <b>${vf.vitals?.bp_max || '120/75'} (${vf.vitals?.hr_avg || '72'}bpm)</b></div>
-            <div class="vitals-pill">💧 24h入量: <b>${vf.fluids?.intake_total_ml || 2100} ml</b></div>
-            <div class="vitals-pill">🚽 24h出量(尿量): <b>${vf.fluids?.output_total_ml || 1850} ml (${vf.fluids?.net_balance_label || '+250ml'})</b></div>
+            <div class="vitals-pill">🌡️ 最高体温: <b>${vf.vitals?.t_max ? vf.vitals.t_max + '℃' : '未测'}</b></div>
+            <div class="vitals-pill">💓 血压/心率: <b>${vf.vitals?.bp_max || '未测'} (${vf.vitals?.hr_avg ? vf.vitals.hr_avg + 'bpm' : '未测'})</b></div>
+            <div class="vitals-pill">💧 24h入量: <b>${vf.fluids?.intake_total_ml != null ? vf.fluids.intake_total_ml + 'ml' : '0ml'}</b></div>
+            <div class="vitals-pill">🚽 24h出量(尿量): <b>${vf.fluids?.output_total_ml != null ? vf.fluids.output_total_ml + 'ml' : '0ml'} (${vf.fluids?.net_balance_label || '0ml'})</b></div>
           </div>
         `;
         changedDiv.appendChild(vfRow);
@@ -672,7 +704,7 @@
           <span class="item-text">${item.summary}</span>
           ${extraHtml}
         </div>
-        <div class="item-source">来源: ${item.source_title || item.source_type} | 对应证据 Span: "${item.span?.slice(0, 40) || item.summary}"</div>
+        <div class="item-source">来源: ${item.source_title || item.source_type} | 对应证据: "${item.span ? item.span.slice(0, 40) : (item.summary || '')}"</div>
       `;
 
       row.appendChild(cb);
@@ -686,7 +718,7 @@
         <div style="background:#0d1117; padding:10px; border:1px solid var(--border); border-radius:6px;">
           <div style="font-weight:700; color:#fff; margin-bottom:4px;">${item.tag || '【事实证据】'} ${item.title || item.summary}</div>
           <div style="color:var(--accent); font-family:monospace; background:#161b22; padding:6px; border-radius:4px; margin:6px 0;">
-            精确 Span: "${item.span || item.summary}"
+            证据 Span / 描述: "${item.span || item.summary}"
           </div>
           <div style="font-size:11px; color:var(--text-muted);">
             • 来源系统/文档: ${item.source_title || item.source_type}<br/>
@@ -753,35 +785,50 @@
     function copyDraftText() {
       const val = document.getElementById('draft-text').value;
       navigator.clipboard.writeText(val);
-      alert('✓ 查房病程记录草稿已复制到剪贴板！');
+      alert('✓ 查房病程记录草稿已复制到系统剪贴板！');
     }
 
-    function confirmInsert() {
-      alert('✓ 已成功将选中的结构化查房摘要插入 EHR 病程草稿区！');
+    async function confirmInsert() {
+      const draftText = document.getElementById('draft-text').value;
+      
+      // 1. Copy to clipboard for immediate fallback
+      try {
+        await navigator.clipboard.writeText(draftText);
+      } catch (e) {
+        console.warn('Clipboard write failed:', e);
+      }
+
+      // 2. Real SMART Web Messaging STU 1.0 (HL7 FHIR postMessage Bridge)
+      const smartMessage = {
+        messagingHandle: window.location.href,
+        messageId: 'msg-' + Date.now(),
+        messageType: 'scratchpad.create',
+        payload: {
+          resource: {
+            resourceType: 'DocumentReference',
+            status: 'preliminary',
+            type: { text: '住院日常查房记录' },
+            subject: { reference: `Patient/${summaryPayload?.patient?.id || 'unknown'}` },
+            description: 'Medcius 查房前病情演变与调整摘要',
+            content: [
+              {
+                attachment: {
+                  contentType: 'text/plain; charset=utf-8',
+                  data: btoa(unescape(encodeURIComponent(draftText)))
+                }
+              }
+            ]
+          }
+        }
+      };
+
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage(smartMessage, '*');
+        console.log('[Medcius] Sent SMART Web Messaging scratchpad.create to host EHR:', smartMessage);
+      }
+
+      alert('✓ 查房摘要已通过 SMART Web Messaging 接口发送至宿主 EHR，并已同步写入系统剪贴板！');
       closeInsertModal();
-    }
-
-    function loadSampleDemoData() {
-      // Fallback preview
-      renderSummary({
-        patient: { id: "IP-2026-90812", name: "张** (脱敏)", gender: "男", age: 68, bed_number: "01床", primary_diagnosis: "冠心病，急性前壁心肌梗死", egfr: 52 },
-        time_window: currentWindow,
-        critical_values: [],
-        blocks: {
-          what_changed: {
-            vitals_and_fluids: { id: "VIT-01", summary: "最高体温: 37.8℃，血压: 135/85 mmHg，24h尿量: 1850ml，净平衡: +250ml" },
-            clinical_symptoms: [{ id: "SYM-01", summary: "胸闷较前明显好转，双肺底未闻及湿啰音", span: "胸闷较前明显好转", source_title: "病程记录" }],
-            abnormal_labs: [{ id: "LAB-01", test_name: "血肌酐 (Scr)", current_value: 138, unit: "μmol/L", status_label: "⚠️ 偏高", trend_direction: "↑", delta_summary: "基线: 85 → 138 μmol/L (↑ +53.0)", summary: "血肌酐 (Scr): 138 μmol/L (↑ +53.0)", source_title: "急诊生化" }],
-            imaging_changes: [],
-            medication_diff: { added: [{ id: "MED-01", summary: "新增: 替格瑞洛片 90mg po bid", source_title: "医嘱单" }], discontinued: [], adjusted: [] }
-          },
-          whats_pending: { pending_reports: [{ id: "REP-01", summary: "待出报告: 床旁超声心动图 (待出报告)", source_title: "超声科" }], pending_orders: [], scheduled_consults: [] },
-          rule_reminders: [{ id: "RULE-01", summary: "【限制使用级】头孢曲松已连续使用第 5 天，建议评估感染控制情况。" }],
-          data_gaps: [{ id: "GAP-01", title: "过敏史未明确记录", summary: "【资料不足】过敏史缺失，查房时请补问" }],
-          evidence: []
-        },
-        selectable_items: []
-      });
     }
 
     // Auto-fetch on load

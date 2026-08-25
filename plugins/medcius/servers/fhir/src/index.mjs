@@ -10,9 +10,19 @@ import { sweepStaleDocuments } from "./documents.mjs";
 import { TOOLS } from "./schemas.mjs";
 import { HANDLERS } from "./tools.mjs";
 
+const WRITE_TOOL_NAMES = new Set(["create_resource", "update_resource"]);
+const readOnly = process.env.MEDCIUS_FHIR_READ_ONLY === "true";
+const tools = readOnly ? TOOLS.filter((tool) => !WRITE_TOOL_NAMES.has(tool.name)) : TOOLS;
+const handlers = readOnly
+  ? Object.fromEntries(Object.entries(HANDLERS).filter(([name]) => !WRITE_TOOL_NAMES.has(name)))
+  : HANDLERS;
+
 sweepStaleDocuments();
 serve({
   serverInfo: { name: "mcp-server-fhir", version: "0.0.1" },
-  tools: TOOLS,
-  handlers: HANDLERS,
+  instructions: readOnly
+    ? "This Codex connection is read-only. Do not attempt to create or update EHR resources."
+    : undefined,
+  tools,
+  handlers,
 });

@@ -260,7 +260,8 @@ try {
     headers: authHeaders,
     body: JSON.stringify({
       hook: "patient-view",
-      context: {},
+      user: "Practitioner/doc-01",
+      context: { userId: "Practitioner/doc-01" },
     }),
   });
   assert.equal(resHookEmpty.status, 200);

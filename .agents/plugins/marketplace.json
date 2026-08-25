@@ -1,0 +1,20 @@
+{
+  "name": "medcius-local",
+  "interface": {
+    "displayName": "Medcius Local"
+  },
+  "plugins": [
+    {
+      "name": "medcius",
+      "source": {
+        "source": "local",
+        "path": "./plugins/medcius"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Healthcare"
+    }
+  ]
+}
