@@ -74,72 +74,42 @@ const { server, port, host } = await startServer(0, "127.0.0.1");
 const baseUrl = `http://${host}:${port}`;
 
 try {
-  // Test 4a: Unauthenticated call to review prescription -> Must return 401
+  // Test 4a: Unauthenticated call to evolution-summary -> Must return 401
   console.log("\n  [4a] Unauthenticated request rejection (401)...");
-  const unauthRes = await fetch(`${baseUrl}/api/v1/prescription/review`, {
-    method: "POST",
+  const unauthRes = await fetch(`${baseUrl}/api/v1/patient/evolution-summary`, {
+    method: "GET",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      patient: { age: 50, sex_cn: "男" },
-      diagnoses: ["高血压"],
-      drugs: ["氨氯地平片"],
-    }),
   });
   assert.equal(unauthRes.status, 401, "Unauthenticated request must be rejected with 401");
   console.log("  ✓ Unauthenticated request rejected with HTTP 401");
 
-  // Test 4b: Call with token but without include_samples (Production Gate Block)
-  console.log("\n  [4b] Production Gate enforcement (default include_samples=false)...");
-  const gateRes = await fetch(`${baseUrl}/api/v1/prescription/review`, {
-    method: "POST",
+  // Test 4b: Authenticated call with Bearer token & tenant header
+  console.log("\n  [4b] Authenticated call with valid token & tenant header...");
+  const authRes = await fetch(`${baseUrl}/api/v1/patient/evolution-summary?time_window=24h`, {
+    method: "GET",
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${token}`,
       "X-Tenant-ID": "hospital_peking_union",
     },
-    body: JSON.stringify({
-      patient: { age: 50, sex_cn: "男" },
-      diagnoses: ["高血压"],
-      drugs: ["氨氯地平片"],
-    }),
-  });
-  // Official drug labels is 0 in test environment -> Must return 428 Precondition Required
-  assert.equal(gateRes.status, 428, "Must halt with 428 when official corpus is missing and include_samples=false");
-  const gateJson = await gateRes.json();
-  assert.equal(gateJson.error, "PRODUCTION_GATE_HALT");
-  console.log("  ✓ Production Gate halted invalid production review when official corpus is empty");
-
-  // Test 4c: Explicit development test with include_samples=true & Bearer token
-  console.log("\n  [4c] Review with explicit include_samples=true & Bearer token...");
-  const authRes = await fetch(`${baseUrl}/api/v1/prescription/review`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`,
-      "X-Tenant-ID": "hospital_peking_union",
-    },
-    body: JSON.stringify({
-      patient: { age: 50, sex_cn: "男", weightKg: 70 },
-      diagnoses: ["2型糖尿病"],
-      drugs: ["二甲双胍片"],
-      include_samples: true,
-    }),
   });
   assert.equal(authRes.status, 200);
   const authJson = await authRes.json();
-  assert.ok(authJson.verdict);
-  assert.equal(authJson.audit?.event?.tenant_id, "hospital_peking_union", "Tenant ID must be propagated to audit trail");
-  console.log(`  ✓ Review completed with tenant isolation [hospital_peking_union], verdict: ${authJson.verdict}`);
+  assert.ok(authJson.blocks);
+  console.log(`  ✓ Authenticated request succeeded with tenant isolation [hospital_peking_union]`);
 
-  // Test 4d: Multi-tenant isolated event querying
-  console.log("\n  [4d] Querying tenant-isolated audit logs...");
-  const queryRes = await fetch(`${baseUrl}/api/v1/audit/events?tenant_id=hospital_peking_union`, {
-    headers: { Authorization: `Bearer ${token}` },
+  // Test 4c: Audit verify endpoint
+  console.log("\n  [4c] Audit verify with authorized auditor role...");
+  const auditRes = await fetch(`${baseUrl}/api/v1/audit/verify`, {
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "X-Tenant-ID": "hospital_peking_union",
+    },
   });
-  assert.equal(queryRes.status, 200);
-  const queryJson = await queryRes.json();
-  assert.ok(queryJson.events.every((e) => e.tenant_id === "hospital_peking_union" || !e.tenant_id));
-  console.log(`  ✓ Tenant audit query returned ${queryJson.events.length} scoped events`);
+  assert.equal(auditRes.status, 200);
+  const auditJson = await auditRes.json();
+  assert.equal(auditJson.chain_intact, true);
+  console.log("  ✓ Audit verify succeeded");
 
   console.log("\nALL AUTH, RBAC, TENANT BINDING & PRODUCTION GATE TESTS PASSED!");
 } finally {

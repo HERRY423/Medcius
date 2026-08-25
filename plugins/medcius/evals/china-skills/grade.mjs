@@ -3,7 +3,7 @@
  * Deterministic grader: local tools + 出院记录解析器。写出 results/<id>.json。
  * 不调用托管模型。无法用工具判定的陷阱标 skip（needs_agent）。
  */
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseCnNote } from "../../lib/parse-cn-note.mjs";
@@ -231,7 +231,10 @@ for (const [rel, label, table, script] of ingestMap) {
 
 const { HANDLERS: DL } = await import("../../servers/drug-labels/src/tools.mjs");
 const { HANDLERS: CC } = await import("../../servers/china-codes/src/tools.mjs");
-const { HANDLERS: TR } = await import("../../servers/china-trials/src/tools.mjs");
+const trPath = existsSync(join(__dirname, "../../../../experimental/servers/china-trials/src/tools.mjs"))
+  ? "../../../../experimental/servers/china-trials/src/tools.mjs"
+  : "../../servers/china-trials/src/tools.mjs";
+const { HANDLERS: TR } = await import(trPath);
 
 mkdirSync(RESULTS, { recursive: true });
 const scored = [];

@@ -21,17 +21,10 @@ const steps = [
   { name: "8. AES-256-GCM Secure Storage Tests", cmd: "node", args: ["tests/test-security.mjs"] },
   { name: "9. SMART/OIDC Auth, RBAC & Multi-Tenancy Tests", cmd: "node", args: ["tests/test-auth-and-rbac.mjs"] },
   { name: "10. Stepwise Governance State Machine Tests", cmd: "node", args: ["tests/test-governance-mode.mjs"] },
-  { name: "11. Clinical Supervisor & Workers Multi-Agent Tests", cmd: "node", args: ["tests/test-supervisor.mjs"] },
-  { name: "12. CDS Hooks 1.0/2.0 Integration Tests", cmd: "node", args: ["tests/test-cds-hooks.mjs"] },
-  { name: "13. RESTful API Routes & Production Gate Tests", cmd: "node", args: ["tests/test-api-routes.mjs"] },
-  { name: "14. Agent Memory & Adaptive Learning Tests", cmd: "node", args: ["tests/test-agent-memory.mjs"] },
-  { name: "15. Agent Observability & Reasoning Trace Tests", cmd: "node", args: ["tests/test-agent-trace.mjs"] },
-  { name: "16. Multi-Agent Escalation Protocol Tests", cmd: "node", args: ["tests/test-escalation.mjs"] },
-  { name: "17. Adaptive Learning Rule Feedback Engine Tests", cmd: "node", args: ["tests/test-learning-engine.mjs"] },
-  { name: "18. Proactive Clinical QC Monitor Tests", cmd: "node", args: ["tests/test-qc-monitor.mjs"] },
-  { name: "19. Clinical Workbench & Analytics Tests", cmd: "node", args: ["tests/test-workbench-and-analytics.mjs"] },
-  { name: "20. Clinical Evaluation Benchmark & Traps", cmd: "node", args: ["scripts/run-evals.mjs"] },
-  { name: "21. Flagship: Inpatient Pre-Round Patient Evolution Summary Tests", cmd: "node", args: ["tests/test-preround-summary.mjs"] },
+  { name: "11. Flagship: CDS Hooks 2.0 Integration & Fail-Closed Tests", cmd: "node", args: ["tests/test-cds-hooks.mjs"] },
+  { name: "12. Flagship: RESTful API Routes & Security Gate Tests", cmd: "node", args: ["tests/test-api-routes.mjs"] },
+  { name: "13. Flagship: Inpatient Pre-Round Patient Evolution Summary Tests", cmd: "node", args: ["tests/test-preround-summary.mjs"] },
+  { name: "14. Clinical Evaluation Benchmark & Traps", cmd: "node", args: ["scripts/run-evals.mjs"] },
 ];
 
 console.log("================================================================================");

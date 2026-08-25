@@ -1,25 +1,11 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
   "mcpServers": {
-    "本地编码与目录库 (Local China Codes)": {
+    "FHIR": {
       "type": "stdio",
       "command": "node",
       "args": [
-        "${PLUGIN_ROOT}/servers/china-codes/src/index.mjs"
-      ]
-    },
-    "本地审计链 (Local Audit Chain)": {
-      "type": "stdio",
-      "command": "node",
-      "args": [
-        "${PLUGIN_ROOT}/servers/audit/src/index.mjs"
-      ]
-    },
-    "PHI 卫士 (PHI Guard)": {
-      "type": "stdio",
-      "command": "node",
-      "args": [
-        "${PLUGIN_ROOT}/servers/phiguard/src/index.mjs"
+        "${PLUGIN_ROOT}/servers/fhir/src/index.mjs"
       ]
     },
     "Contracts Analyzer": {
@@ -29,25 +15,18 @@
         "${PLUGIN_ROOT}/servers/documents/src/index.mjs"
       ]
     },
-    "FHIR": {
+    "PHI 卫士 (PHI Guard)": {
       "type": "stdio",
       "command": "node",
       "args": [
-        "${PLUGIN_ROOT}/servers/fhir/src/index.mjs"
+        "${PLUGIN_ROOT}/servers/phiguard/src/index.mjs"
       ]
     },
-    "本地药品标签库 (Local Drug Labels)": {
+    "本地审计链 (Local Audit Chain)": {
       "type": "stdio",
       "command": "node",
       "args": [
-        "${PLUGIN_ROOT}/servers/drug-labels/src/index.mjs"
-      ]
-    },
-    "本地临床试验登记库 (Local China Trials)": {
-      "type": "stdio",
-      "command": "node",
-      "args": [
-        "${PLUGIN_ROOT}/servers/china-trials/src/index.mjs"
+        "${PLUGIN_ROOT}/servers/audit/src/index.mjs"
       ]
     }
   }
