@@ -156,6 +156,9 @@ export async function routeRequest(req, res, body) {
         diagnosticReports: body?.diagnosticReports || [],
         orders: body?.orders || [],
         allergies: body?.allergies || null,
+        nursingFeed: body?.nursingFeed || body?.nursing || [],
+        pacsFeed: body?.pacsFeed || body?.pacs || [],
+        lisFeed: body?.lisFeed || body?.lis || [],
       });
 
       return sendJson(200, summary);

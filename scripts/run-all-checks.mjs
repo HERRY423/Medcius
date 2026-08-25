@@ -27,6 +27,8 @@ const steps = [
   { name: "14. Clinical Evaluation Benchmark & Traps", cmd: "node", args: ["scripts/run-evals.mjs"] },
   { name: "15. Flagship: Cardiology Ward 2 Consecutive Cases Silent Validation", cmd: "node", args: ["plugins/medcius/evals/shadow-mode/ward-consecutive-validation.mjs"] },
   { name: "16. Flagship: Physician Time-Motion Efficiency Clinical Pilot Study", cmd: "node", args: ["plugins/medcius/evals/time-motion/time-motion-study.mjs"] },
+  { name: "17. Flagship: Hospital Multi-Source Data Fusion & Adapter Tests", cmd: "node", args: ["tests/test-multisource-adapter.mjs"] },
+  { name: "18. Flagship: Clinical Safety Guardrails & Quality Control Tests", cmd: "node", args: ["tests/test-clinical-safety-rules.mjs"] },
 ];
 
 console.log("================================================================================");

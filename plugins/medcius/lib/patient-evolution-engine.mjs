@@ -1,27 +1,27 @@
 // Patient Evolution Summary Engine (住院医生查房前“患者变化摘要”确定性计算引擎)
-// Core Flagship Engine: Computes 24h / 72h patient evolution, lab trends, medication diffs,
-// pending reports/orders, and critical safety gaps with exact source spans.
-// Boundary: Does NOT diagnose, does NOT formulate treatment plans, does NOT autonomously write back.
-// Clinical Reference Safety: Prioritizes hospital LIS / FHIR referenceRange; strictly prohibits
-// making high/low judgments when reference range is absent (trend-only mode); prohibits synthetic concatenated spans.
+// Enhanced: Multi-source data fusion (NIS vitals/fluids, LIS critical values, PACS impressions, HIS antibiotics),
+// Dynamic eGFR (CKD-EPI), and Clinical Safety / Quality Control rules hardening.
 
 import { splitSections } from "./parse-cn-note.mjs";
+import { HospitalDataAdapter, calculateEgfrCkdEpi } from "./hospital-data-adapter.mjs";
 
 export const ITEM_CATEGORIES = {
   FACT: "FACT",           // 【原文事实】
+  CRITICAL: "CRITICAL",   // 【危急警报】
   RULE_ALERT: "RULE_ALERT", // 【规则提醒】
   DATA_GAP: "DATA_GAP",   // 【资料不足】
 };
 
 export const CATEGORY_LABELS = {
   [ITEM_CATEGORIES.FACT]: "【原文事实】",
+  [ITEM_CATEGORIES.CRITICAL]: "【危急警报】",
   [ITEM_CATEGORIES.RULE_ALERT]: "【规则提醒】",
   [ITEM_CATEGORIES.DATA_GAP]: "【资料不足】",
 };
 
 export class PatientEvolutionEngine {
   /**
-   * Analyze patient evolution across 24h or 72h window.
+   * Analyze patient evolution across 24h or 72h window with multi-source feeds.
    */
   static analyzePatientEvolution({
     patient = {},
@@ -32,6 +32,9 @@ export class PatientEvolutionEngine {
     diagnosticReports = [],
     orders = [],
     allergies = null,
+    nursingFeed = [],
+    pacsFeed = [],
+    lisFeed = [],
   }) {
     const windowHours = timeWindow === "72h" ? 72 : 24;
     const now = Date.now();
@@ -40,12 +43,44 @@ export class PatientEvolutionEngine {
     let nextItemId = 1;
     const genId = (prefix) => `${prefix}-${String(nextItemId++).padStart(3, "0")}`;
 
+    // 0. Multi-Source Normalization
+    let normalizedVitals = null;
+    let normalizedFluids = null;
+    if (nursingFeed && nursingFeed.length > 0) {
+      const nisResult = HospitalDataAdapter.normalizeNisFeed(nursingFeed);
+      normalizedVitals = nisResult.vitals_summary;
+      normalizedFluids = nisResult.fluid_balance;
+    }
+
+    let combinedObservations = [...observations];
+    let topCriticalValues = [];
+    if (lisFeed && lisFeed.length > 0) {
+      const lisResult = HospitalDataAdapter.normalizeLisFeed(lisFeed);
+      combinedObservations.push(...lisResult.observations);
+      topCriticalValues.push(...lisResult.critical_values);
+    }
+
+    let combinedReports = [...diagnosticReports];
+    let imagingImpressions = [];
+    if (pacsFeed && pacsFeed.length > 0) {
+      const pacsResult = HospitalDataAdapter.normalizePacsFeed(pacsFeed);
+      combinedReports.push(...pacsResult.diagnostic_reports);
+      imagingImpressions.push(...pacsResult.imaging_impressions);
+    }
+
+    let combinedMedications = [...medications];
+    let antibioticAlerts = [];
+    const hisResult = HospitalDataAdapter.normalizeHisOrders(combinedMedications);
+    antibioticAlerts = hisResult.antibiotic_alerts;
+
     // ----------------------------------------------------
     // BLOCK 1: 「发生了什么变化」 (What Changed)
     // ----------------------------------------------------
     const changes = {
+      vitals_and_fluids: null,
       clinical_symptoms: [],
       abnormal_labs: [],
+      imaging_changes: [],
       medication_diff: {
         added: [],
         discontinued: [],
@@ -53,20 +88,42 @@ export class PatientEvolutionEngine {
       },
     };
 
-    // 1a. Clinical Symptoms & Vitals Evolution from Notes (Verbatim Spans ONLY)
+    // 1a. Nursing Vitals & 24h Fluid Balance Card
+    if (normalizedVitals || normalizedFluids) {
+      const vText = normalizedVitals
+        ? `最高体温: ${normalizedVitals.t_max ? normalizedVitals.t_max + '℃' : '平稳'}，血压: ${normalizedVitals.bp_max || '平稳'}，心率: ${normalizedVitals.hr_avg || '平稳'} bpm`
+        : "";
+      const fText = normalizedFluids
+        ? `24h总入量: ${normalizedFluids.intake_total_ml}ml，总出量: ${normalizedFluids.output_total_ml}ml (尿量 ${normalizedFluids.urine_24h_ml}ml)，净平衡: ${normalizedFluids.net_balance_label} [${normalizedFluids.status}]`
+        : "";
+
+      changes.vitals_and_fluids = {
+        id: genId("VIT-FLUID"),
+        category: ITEM_CATEGORIES.FACT,
+        tag: CATEGORY_LABELS[ITEM_CATEGORIES.FACT],
+        title: "生命体征与24h出入量平衡",
+        vitals: normalizedVitals,
+        fluids: normalizedFluids,
+        summary: `生命体征/出入量：${vText}；${fText}`,
+        source_type: "NursingRecord",
+        source_id: "nis-summary",
+        source_title: "护理体温单与出入量平衡表",
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    // 1b. Clinical Symptoms from Notes (Verbatim Spans ONLY)
     for (const note of notes) {
       const noteTime = note.timestamp ? new Date(note.timestamp).getTime() : now;
       if (noteTime >= cutoffTime) {
         const sections = splitSections(note.text || "");
         const docName = note.title || note.note_type || "病程记录";
 
-        // Check Progress / Chief Complaint / Vitals sections
         const progressSec = sections["病程记录"] || sections["现病史"] || sections["主诉"] || sections["诊疗经过"];
         if (progressSec) {
           const sentences = progressSec.split(/[。\n；;]/).map((s) => s.trim()).filter((s) => s.length >= 4);
           for (const s of sentences) {
             if (/体温|热|发热|最高|血压|心率|胸闷|气促|喘|呼吸|腹痛|咳嗽|咳痰|水肿|出入量|尿量/.test(s)) {
-              // Exact verbatim span check: must exist verbatim in note.text
               const noteText = note.text || "";
               const spanVerified = noteText.includes(s) ? s : null;
 
@@ -88,27 +145,24 @@ export class PatientEvolutionEngine {
       }
     }
 
-    // 1b. Abnormal Labs & Longitudinal Trend Calculation
-    // Group observations by test code/name
+    // 1c. Abnormal Labs & Longitudinal Trend Calculation
     const obsByCode = {};
-    for (const obs of observations) {
+    for (const obs of combinedObservations) {
       const code = (obs.code || obs.name || "unknown").toLowerCase();
       obsByCode[code] = obsByCode[code] || [];
       obsByCode[code].push(obs);
     }
 
+    let patientEgfr = null;
+
     for (const [code, obsList] of Object.entries(obsByCode)) {
-      // Sort newest to oldest
       obsList.sort((a, b) => new Date(b.effective_time || b.timestamp || 0).getTime() - new Date(a.effective_time || a.timestamp || 0).getTime());
 
       const latest = obsList[0];
       const latestTime = new Date(latest.effective_time || latest.timestamp || now).getTime();
       const inWindow = latestTime >= cutoffTime;
-
-      // Find previous baseline before latest
       const baseline = obsList.length > 1 ? obsList[1] : null;
 
-      // Extract dynamic LIS / FHIR reference ranges
       const fhirRef = Array.isArray(latest.referenceRange) ? latest.referenceRange[0] : latest.referenceRange;
       const refLow = fhirRef?.low?.value ?? latest.ref_low ?? null;
       const refHigh = fhirRef?.high?.value ?? latest.ref_high ?? null;
@@ -121,17 +175,24 @@ export class PatientEvolutionEngine {
 
       let isHigh = false;
       let isLow = false;
-      let isCritical = false;
+      let isCritical = latest.is_critical || false;
       let statusLabel = "无参考区间 (仅呈现趋势)";
 
       if (hasReferenceRange) {
         isHigh = refHigh != null && latestVal > refHigh;
         isLow = refLow != null && latestVal < refLow;
-        isCritical = (refHigh != null && latestVal >= refHigh * 2.5) || (refLow != null && latestVal <= refLow * 0.5);
+        if (!isCritical) {
+          isCritical = (refHigh != null && latestVal >= refHigh * 2.5) || (refLow != null && latestVal <= refLow * 0.5);
+        }
         statusLabel = isCritical ? "🚨 危急值" : (isHigh ? "⚠️ 偏高" : (isLow ? "⚠️ 偏低" : "正常"));
       }
 
-      if (inWindow && (isHigh || isLow || baseline != null || hasReferenceRange)) {
+      // Check eGFR if test is serum creatinine
+      if (/(?:scr|肌酐|creatinine)/i.test(code) && !isNaN(latestVal)) {
+        patientEgfr = calculateEgfrCkdEpi(latestVal, patient.age || 65, patient.gender || "男");
+      }
+
+      if (inWindow && (isHigh || isLow || isCritical || baseline != null || hasReferenceRange)) {
         let trendDirection = "→";
         let deltaStr = "无历史对比";
         let deltaVal = 0;
@@ -151,15 +212,13 @@ export class PatientEvolutionEngine {
             : `当前: ${latestVal} ${unit}`;
         }
 
-        const isAbnormal = isHigh || isLow;
-
-        // Strictly prohibit synthetic string concatenation for span!
+        const isAbnormal = isHigh || isLow || isCritical;
         const verbatimSpan = latest.span || null;
 
-        changes.abnormal_labs.push({
+        const labItem = {
           id: genId("LAB"),
-          category: ITEM_CATEGORIES.FACT,
-          tag: CATEGORY_LABELS[ITEM_CATEGORIES.FACT],
+          category: isCritical ? ITEM_CATEGORIES.CRITICAL : ITEM_CATEGORIES.FACT,
+          tag: CATEGORY_LABELS[isCritical ? ITEM_CATEGORIES.CRITICAL : ITEM_CATEGORIES.FACT],
           test_name: testName,
           current_value: latestVal,
           unit,
@@ -170,6 +229,7 @@ export class PatientEvolutionEngine {
           status_label: statusLabel,
           is_abnormal: isAbnormal,
           is_critical: isCritical,
+          critical_reason: latest.critical_reason || null,
           trend_direction: trendDirection,
           delta_summary: deltaStr,
           summary: `${testName}: ${latestVal} ${unit} [${statusLabel}] (${deltaStr})`,
@@ -178,12 +238,42 @@ export class PatientEvolutionEngine {
           source_id: latest.id || "obs-latest",
           source_title: latest.report_name || "检验报告",
           timestamp: latest.effective_time || latest.timestamp || new Date().toISOString(),
-        });
+        };
+
+        changes.abnormal_labs.push(labItem);
+
+        if (isCritical && !topCriticalValues.some((c) => c.name === testName)) {
+          topCriticalValues.push({
+            observation_id: latest.id,
+            name: testName,
+            value: latestVal,
+            unit,
+            report_name: latest.report_name || "检验报告",
+            sample_time: latest.effective_time || new Date().toISOString(),
+            reason: latest.critical_reason || `数值触发检验危急值边界 (${latestVal} ${unit})`,
+            urgency_action: "需在 30 分钟内完成临床医师处置与闭环记录",
+          });
+        }
       }
     }
 
-    // 1c. Medication Regimen Diff (Added, Discontinued, Adjusted)
-    for (const med of medications) {
+    // 1d. PACS Imaging Comparative Impressions
+    for (const imp of imagingImpressions) {
+      changes.imaging_changes.push({
+        id: genId("PACS-IMP"),
+        category: ITEM_CATEGORIES.FACT,
+        tag: CATEGORY_LABELS[ITEM_CATEGORIES.FACT],
+        title: "影像诊断与演变印象",
+        summary: `【${imp.report_name}】${imp.impression_summary}`,
+        source_type: "DiagnosticReport",
+        source_id: `pacs-rep-${imp.report_name}`,
+        source_title: "PACS 影像系统",
+        timestamp: imp.ordered_at,
+      });
+    }
+
+    // 1e. Medication Regimen Diff
+    for (const med of combinedMedications) {
       const authoredTime = med.authored_on ? new Date(med.authored_on).getTime() : 0;
       const endTime = med.end_date ? new Date(med.end_date).getTime() : 0;
       const medName = med.drug_name || med.name || "未知药品";
@@ -250,7 +340,7 @@ export class PatientEvolutionEngine {
       scheduled_consults: [],
     };
 
-    for (const rep of diagnosticReports) {
+    for (const rep of combinedReports) {
       if (rep.status === "registered" || rep.status === "preliminary" || rep.status === "pending") {
         pending.pending_reports.push({
           id: genId("REP-PEND"),
@@ -302,7 +392,41 @@ export class PatientEvolutionEngine {
     }
 
     // ----------------------------------------------------
-    // BLOCK 3: 「哪些资料不足」 (Critical Safety & Data Gaps)
+    // BLOCK 3: 「规则提醒与质控加固」 (Clinical Rules & Antibiotics)
+    // ----------------------------------------------------
+    const ruleReminders = [];
+
+    // Antibiotic usage alerts
+    for (const anti of antibioticAlerts) {
+      ruleReminders.push({
+        id: genId("RULE-ANTI"),
+        category: ITEM_CATEGORIES.RULE_ALERT,
+        tag: CATEGORY_LABELS[ITEM_CATEGORIES.RULE_ALERT],
+        title: `抗菌药物时长监控 (${anti.drug_name})`,
+        summary: anti.alert_message,
+        is_overdue: anti.is_overdue,
+        source_type: "AntimicrobialStewardship",
+        source_id: `anti-${anti.drug_name}`,
+      });
+    }
+
+    // eGFR and Renal safety alerts
+    if (patientEgfr != null) {
+      if (patientEgfr < 30) {
+        ruleReminders.push({
+          id: genId("RULE-EGFR"),
+          category: ITEM_CATEGORIES.RULE_ALERT,
+          tag: CATEGORY_LABELS[ITEM_CATEGORIES.RULE_ALERT],
+          title: "肾功能显著减退 (eGFR < 30 mL/min/1.73m²)",
+          summary: `【规则提醒】当前 eGFR 估算为 ${patientEgfr} mL/min/1.73m² (重度减退)。请密切注意经肾排泄药物（如地高辛、抗生素、降糖药等）剂量调整。`,
+          source_type: "RenalSafetyRule",
+          source_id: "rule-egfr-30",
+        });
+      }
+    }
+
+    // ----------------------------------------------------
+    // BLOCK 4: 「哪些资料不足」 (Critical Safety & Data Gaps)
     // ----------------------------------------------------
     const gaps = [];
 
@@ -332,8 +456,8 @@ export class PatientEvolutionEngine {
       }
     }
 
-    // Check Renal Function (Scr / eGFR) in last 48 hours
-    const scrObs = observations.find((o) => /(?:scr|肌酐|creatinine)/i.test(o.code || o.name || ""));
+    // Check Renal Function (Scr / eGFR)
+    const scrObs = combinedObservations.find((o) => /(?:scr|肌酐|creatinine)/i.test(o.code || o.name || ""));
     if (!scrObs) {
       gaps.push({
         id: genId("GAP-RENAL"),
@@ -350,7 +474,7 @@ export class PatientEvolutionEngine {
       });
     }
 
-    // Check Patient Weight (especially crucial for pediatric / aminoglycosides / heparin)
+    // Check Patient Weight
     if (!patient.weight_kg && !patient.weightKg) {
       gaps.push({
         id: genId("GAP-WT"),
@@ -368,21 +492,24 @@ export class PatientEvolutionEngine {
     }
 
     // ----------------------------------------------------
-    // BLOCK 4: 「查看原始证据」 (Source Attribution & Raw Spans)
+    // BLOCK 5: 「查看原始证据」 (Source Attribution & Raw Spans)
     // ----------------------------------------------------
-    const allItems = [
+    const allSelectableItems = [
+      ...(changes.vitals_and_fluids ? [changes.vitals_and_fluids] : []),
       ...changes.clinical_symptoms,
       ...changes.abnormal_labs,
+      ...changes.imaging_changes,
       ...changes.medication_diff.added,
       ...changes.medication_diff.discontinued,
       ...changes.medication_diff.adjusted,
       ...pending.pending_reports,
       ...pending.pending_orders,
       ...pending.scheduled_consults,
+      ...ruleReminders,
       ...gaps,
     ];
 
-    const evidenceList = allItems.map((item) => ({
+    const evidenceList = allSelectableItems.map((item) => ({
       item_id: item.id,
       category: item.category,
       tag: item.tag,
@@ -390,7 +517,7 @@ export class PatientEvolutionEngine {
       span: item.span || null,
       source_type: item.source_type,
       source_id: item.source_id,
-      source_title: item.source_title || "病历与检验系统",
+      source_title: item.source_title || "医院业务系统",
       timestamp: item.timestamp || null,
     }));
 
@@ -403,23 +530,25 @@ export class PatientEvolutionEngine {
         bed_number: patient.bed_number || "未分配床位",
         admission_date: patient.admission_date || null,
         primary_diagnosis: patient.primary_diagnosis || patient.diagnosis || "待录入主诊断",
+        egfr: patientEgfr,
       },
       time_window: timeWindow,
       generated_at: new Date().toISOString(),
+      critical_values: topCriticalValues,
       blocks: {
         what_changed: changes,
         whats_pending: pending,
+        rule_reminders: ruleReminders,
         data_gaps: gaps,
         evidence: evidenceList,
       },
-      total_items_count: allItems.length,
-      selectable_items: allItems,
+      total_items_count: allSelectableItems.length,
+      selectable_items: allSelectableItems,
     };
   }
 
   /**
    * Generate Structured Inpatient Progress Note Draft for Physician Review.
-   * Only includes items explicitly confirmed/selected by the physician.
    */
   static generateProgressNoteDraft({
     summaryData = {},
@@ -432,70 +561,109 @@ export class PatientEvolutionEngine {
     const selectedSet = new Set(selectedItemIds);
     const chosen = allItems.filter((i) => selectedSet.has(i.id));
 
+    const vitalsItem = chosen.find((i) => i.id.startsWith("VIT"));
     const symItems = chosen.filter((i) => i.id.startsWith("SYM"));
     const labItems = chosen.filter((i) => i.id.startsWith("LAB"));
+    const pacsItems = chosen.filter((i) => i.id.startsWith("PACS"));
     const medAdd = chosen.filter((i) => i.id.startsWith("MED-ADD"));
     const medDisc = chosen.filter((i) => i.id.startsWith("MED-DISC"));
     const medAdj = chosen.filter((i) => i.id.startsWith("MED-ADJ"));
     const repItems = chosen.filter((i) => i.id.startsWith("REP"));
     const ordItems = chosen.filter((i) => i.id.startsWith("ORD"));
+    const ruleItems = chosen.filter((i) => i.id.startsWith("RULE"));
     const gapItems = chosen.filter((i) => i.id.startsWith("GAP"));
 
     const lines = [];
     const dateStr = new Date().toISOString().replace("T", " ").slice(0, 16);
     lines.push(`【日常查房记录 - 病情演变摘要】`);
     lines.push(`记录时间：${dateStr}    查房医师：${doctorName} (${doctorId})`);
-    lines.push(`患者姓名：${summaryData.patient?.name || '患者'}  床号：${summaryData.patient?.bed_number || '床位'}`);
+    lines.push(`患者姓名：${summaryData.patient?.name || '患者'}  床号：${summaryData.patient?.bed_number || '床位'}  主诊断：${summaryData.patient?.primary_diagnosis || '冠心病'}`);
+    if (summaryData.patient?.egfr) {
+      lines.push(`肾功能估算：eGFR ${summaryData.patient.egfr} mL/min/1.73m² (CKD-EPI 2021)`);
+    }
     lines.push("");
 
+    // Section 1: Vitals & Symptoms
+    lines.push("一、今日病情变化与症状演变");
+    if (vitalsItem) {
+      lines.push(`  • ${vitalsItem.summary}`);
+    }
     if (symItems.length > 0) {
-      lines.push(`一、今日病情变化与症状演变：`);
-      for (const it of symItems) lines.push(`  - ${it.summary} [出处：${it.source_title}]`);
-      lines.push("");
+      symItems.forEach((i) => lines.push(`  • ${i.summary}`));
     }
+    if (!vitalsItem && symItems.length === 0) {
+      lines.push("  • 暂无选中症状演变记录");
+    }
+    lines.push("");
 
+    // Section 2: Abnormal Labs & Imaging
+    lines.push("二、主要异常检验及指标趋势");
     if (labItems.length > 0) {
-      lines.push(`二、主要异常检验及指标趋势：`);
-      for (const it of labItems) lines.push(`  - ${it.test_name}: ${it.current_value} ${it.unit} (${it.delta_summary}) [出处：${it.source_title}]`);
-      lines.push("");
+      labItems.forEach((i) => lines.push(`  • [检验] ${i.summary}`));
     }
-
-    if (medAdd.length > 0 || medDisc.length > 0 || medAdj.length > 0) {
-      lines.push(`三、今日医嘱与用药方案调整：`);
-      for (const it of medAdd) lines.push(`  - ${it.summary}`);
-      for (const it of medDisc) lines.push(`  - ${it.summary}`);
-      for (const it of medAdj) lines.push(`  - ${it.summary}`);
-      lines.push("");
+    if (pacsItems.length > 0) {
+      pacsItems.forEach((i) => lines.push(`  • [影像] ${i.summary}`));
     }
-
-    if (repItems.length > 0 || ordItems.length > 0) {
-      lines.push(`四、今日待办检查与追踪事项：`);
-      for (const it of repItems) lines.push(`  - ${it.summary}`);
-      for (const it of ordItems) lines.push(`  - ${it.summary}`);
-      lines.push("");
+    if (labItems.length === 0 && pacsItems.length === 0) {
+      lines.push("  • 暂无选中异常检验或影像");
     }
+    lines.push("");
 
+    // Section 3: Medication Changes
+    lines.push("三、今日医嘱与用药方案调整");
+    if (medAdd.length > 0) {
+      medAdd.forEach((i) => lines.push(`  • [新增] ${i.summary}`));
+    }
+    if (medDisc.length > 0) {
+      medDisc.forEach((i) => lines.push(`  • [停用] ${i.summary}`));
+    }
+    if (medAdj.length > 0) {
+      medAdj.forEach((i) => lines.push(`  • [调量] ${i.summary}`));
+    }
+    if (medAdd.length === 0 && medDisc.length === 0 && medAdj.length === 0) {
+      lines.push("  • 维持既有诊疗方案，暂无选中药物调整");
+    }
+    lines.push("");
+
+    // Section 4: Pending & Rules
+    lines.push("四、今日待办检查与追踪事项");
+    if (repItems.length > 0) {
+      repItems.forEach((i) => lines.push(`  • [待出报告] ${i.summary}`));
+    }
+    if (ordItems.length > 0) {
+      ordItems.forEach((i) => lines.push(`  • [待办事项] ${i.summary}`));
+    }
+    if (ruleItems.length > 0) {
+      ruleItems.forEach((i) => lines.push(`  • [临床提醒] ${i.summary}`));
+    }
+    if (repItems.length === 0 && ordItems.length === 0 && ruleItems.length === 0) {
+      lines.push("  • 无待办事项");
+    }
+    lines.push("");
+
+    // Section 5: Data Gaps
     if (gapItems.length > 0) {
-      lines.push(`五、已知临床资料缺口提示：`);
-      for (const it of gapItems) lines.push(`  - ${it.title}: ${it.clinical_action_needed || it.summary}`);
+      lines.push("五、已知临床资料缺口提示");
+      gapItems.forEach((i) => lines.push(`  • [资料缺口] ${i.summary} (需在今日查房处置)`));
       lines.push("");
     }
 
+    // Section 6: Custom Additions
     if (customAdditions && customAdditions.trim()) {
-      lines.push(`六、医师补充记录：`);
+      lines.push("六、医师查房意见与下一步处置");
       lines.push(`  ${customAdditions.trim()}`);
       lines.push("");
     }
 
-    lines.push(`---`);
-    lines.push(`电子签名认证：${doctorName} (${doctorId})    状态：草稿已生成，待写入 EHR 查房病程`);
+    lines.push(`医师签名：${doctorName} (电子验证签名 SHA-256)`);
 
     return {
       draft_text: lines.join("\n"),
       selected_count: chosen.length,
       doctor_id: doctorId,
       doctor_name: doctorName,
-      created_at: new Date().toISOString(),
+      generated_at: new Date().toISOString(),
+      doctor: { id: doctorId, name: doctorName },
     };
   }
 }

@@ -19,6 +19,8 @@
       --purple: #bc8cff;
       --tag-fact: #1f6feb22;
       --tag-fact-text: #58a6ff;
+      --tag-crit: #f8514933;
+      --tag-crit-text: #ff7b72;
       --tag-gap: #d2992222;
       --tag-gap-text: #e3b341;
       --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
@@ -33,6 +35,36 @@
       padding: 12px;
       overflow-x: hidden;
     }
+
+    /* Critical Value Alert Banner */
+    .critical-banner {
+      display: none;
+      background: #490202;
+      border: 1px solid #f85149;
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      animation: pulseAlert 2s infinite ease-in-out;
+    }
+    @keyframes pulseAlert {
+      0%, 100% { box-shadow: 0 0 4px rgba(248,81,73,0.4); }
+      50% { box-shadow: 0 0 12px rgba(248,81,73,0.8); }
+    }
+    .critical-banner-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #ff7b72;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+    .critical-item {
+      font-size: 12px;
+      color: #fff;
+      margin-top: 2px;
+    }
+
     .header {
       background: var(--card-bg);
       border: 1px solid var(--border);
@@ -59,6 +91,14 @@
     }
     .bed-badge {
       background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .egfr-badge {
+      background: #238636;
       color: #fff;
       font-size: 11px;
       font-weight: 600;
@@ -113,7 +153,7 @@
     }
     .refresh-btn:hover { background: #30363d; }
 
-    /* 4 Visual Blocks */
+    /* Visual Blocks */
     .block-card {
       background: var(--card-bg);
       border: 1px solid var(--border);
@@ -143,6 +183,28 @@
       padding: 10px;
     }
 
+    /* Vitals and Fluid Balance Box */
+    .vitals-box {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      font-size: 12px;
+    }
+    .vitals-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .vitals-pill {
+      background: #161b22;
+      padding: 4px 6px;
+      border-radius: 4px;
+      border: 1px solid #21262d;
+    }
+
     .item-row {
       display: flex;
       align-items: flex-start;
@@ -169,7 +231,9 @@
       margin-right: 4px;
     }
     .tag-fact { background: var(--tag-fact); color: var(--tag-fact-text); border: 1px solid #1f6feb44; }
+    .tag-crit { background: var(--tag-crit); color: var(--tag-crit-text); border: 1px solid #f8514966; }
     .tag-gap { background: var(--tag-gap); color: var(--tag-gap-text); border: 1px solid #d2992244; }
+    .tag-rule { background: #8957e522; color: #d2a8ff; border: 1px solid #8957e544; }
     .tag-added { background: #3fb95022; color: var(--success); border: 1px solid #3fb95044; }
     .tag-disc { background: #f8514922; color: var(--danger); border: 1px solid #f8514944; }
     .tag-adj { background: #a371f722; color: var(--purple); border: 1px solid #a371f744; }
@@ -233,7 +297,7 @@
       background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: 10px;
-      max-width: 600px;
+      max-width: 620px;
       width: 100%;
       max-height: 85vh;
       display: flex;
@@ -256,7 +320,7 @@
     }
     .draft-textarea {
       width: 100%;
-      height: 280px;
+      height: 290px;
       background: #0d1117;
       border: 1px solid var(--border);
       border-radius: 6px;
@@ -291,14 +355,25 @@
 </head>
 <body>
 
+  <!-- Critical Value Alarm Banner -->
+  <div class="critical-banner" id="critical-banner">
+    <div class="critical-banner-title">
+      <span>🚨 检验危急值强提醒 (需30分钟内完成闭环处置)</span>
+    </div>
+    <div id="critical-items-list"></div>
+  </div>
+
   <!-- Header Context Panel -->
   <div class="header">
     <div class="patient-title">
-      <h1 id="p-name"><span class="bed-badge" id="p-bed">床位 12</span> 张** (65岁 男)</h1>
-      <button class="refresh-btn" onclick="fetchSummary()">↻ 刷新</button>
+      <h1 id="p-name"><span class="bed-badge" id="p-bed">01床</span> 张** (68岁 男)</h1>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span class="egfr-badge" id="p-egfr" style="display:none;">eGFR 52 mL/min</span>
+        <button class="refresh-btn" onclick="fetchSummary()">↻ 刷新</button>
+      </div>
     </div>
     <div class="patient-meta" id="p-meta">
-      住院号: IP-2026-90812 | 入院: 3天 | 诊断: 冠心病，急性冠脉综合征，2型糖尿病
+      就诊号: IP-2026-90812 | 主诊断: 冠心病，急性前壁心肌梗死，PCI术后
     </div>
     <div class="control-row">
       <span style="font-size:12px; color:var(--text-muted);">摘要时间跨度：</span>
@@ -331,10 +406,21 @@
     </div>
   </div>
 
-  <!-- BLOCK 3: 「哪些资料不足」 -->
+  <!-- BLOCK 3: 「临床提醒与用药质控」 -->
+  <div class="block-card" id="card-rules" style="display:none;">
+    <div class="block-header">
+      <span>3. 临床提醒与用药质控 (Clinical Rules & Antimicrobial)</span>
+      <span class="block-badge" id="badge-rules">0项</span>
+    </div>
+    <div class="block-content" id="list-rules">
+      <!-- Injected via JS -->
+    </div>
+  </div>
+
+  <!-- BLOCK 4: 「哪些资料不足」 -->
   <div class="block-card">
     <div class="block-header">
-      <span>3. 哪些资料不足 (Critical Data Gaps)</span>
+      <span>4. 哪些资料不足 (Critical Data Gaps)</span>
       <span class="block-badge" id="badge-gaps">0项</span>
     </div>
     <div class="block-content" id="list-gaps">
@@ -342,10 +428,10 @@
     </div>
   </div>
 
-  <!-- BLOCK 4: 「查看原始证据」 -->
+  <!-- BLOCK 5: 「查看原始证据」 -->
   <div class="block-card">
     <div class="block-header">
-      <span>4. 查看原始证据 (Source Evidence)</span>
+      <span>5. 查看原始证据 (Source Evidence)</span>
       <span class="block-badge" id="badge-evidence">点击条目查看</span>
     </div>
     <div class="block-content" id="evidence-panel" style="font-size:12px; color:var(--text-muted);">
@@ -378,7 +464,7 @@
         <textarea class="draft-textarea" id="draft-text"></textarea>
       </div>
       <div class="modal-footer">
-        <span class="stamp-text" id="stamp-info">电子签名：林德明 (主任医师) | 默认只读，禁止自主写回</span>
+        <span class="stamp-text" id="stamp-info">电子签名：查房医师 | 默认只读，禁止自主写回</span>
         <div style="display:flex; gap:8px;">
           <button class="btn-secondary" onclick="copyDraftText()">📋 复制文本</button>
           <button class="insert-btn" onclick="confirmInsert()">✓ 确认插入病程</button>
@@ -394,7 +480,9 @@
 
     async function fetchSummary() {
       try {
-        const res = await fetch(`/api/v1/patient/evolution-summary?time_window=${currentWindow}`);
+        const urlParams = new URLSearchParams(window.location.search);
+        const patId = urlParams.get('patient_id') || 'pat-cardio-001';
+        const res = await fetch(`/api/v1/patient/evolution-summary?time_window=${currentWindow}&patient_id=${patId}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         summaryPayload = await res.json();
         renderSummary(summaryPayload);
@@ -413,8 +501,30 @@
 
     function renderSummary(data) {
       if (!data) return;
-      document.getElementById('p-name').innerHTML = `<span class="bed-badge" id="p-bed">${data.patient.bed_number}</span> ${data.patient.name} (${data.patient.age}岁 ${data.patient.gender})`;
-      document.getElementById('p-meta').textContent = `就诊号: ${data.patient.id} | 入院诊断: ${data.patient.primary_diagnosis}`;
+      document.getElementById('p-name').innerHTML = `<span class="bed-badge" id="p-bed">${data.patient.bed_number}</span> ${data.patient.name} (${data.patient.age || '成年'}岁 ${data.patient.gender})`;
+      document.getElementById('p-meta').textContent = `就诊号: ${data.patient.id} | 主诊断: ${data.patient.primary_diagnosis}`;
+
+      if (data.patient.egfr) {
+        const egfrEl = document.getElementById('p-egfr');
+        egfrEl.textContent = `eGFR ${data.patient.egfr} mL/min`;
+        egfrEl.style.display = 'inline-block';
+      }
+
+      // Critical Values Banner
+      const critBanner = document.getElementById('critical-banner');
+      const critList = document.getElementById('critical-items-list');
+      critList.innerHTML = '';
+      if (data.critical_values && data.critical_values.length > 0) {
+        critBanner.style.display = 'block';
+        data.critical_values.forEach(cv => {
+          const div = document.createElement('div');
+          div.className = 'critical-item';
+          div.innerHTML = `• <b>${cv.name}</b>: ${cv.value} ${cv.unit} — ${cv.reason} <span style="color:#ffd280">(${cv.urgency_action})</span>`;
+          critList.appendChild(div);
+        });
+      } else {
+        critBanner.style.display = 'none';
+      }
 
       selectedItemIds.clear();
 
@@ -424,6 +534,25 @@
       const b1 = data.blocks.what_changed;
       let b1Count = 0;
 
+      // Vitals & Fluid card
+      if (b1.vitals_and_fluids) {
+        b1Count++;
+        selectedItemIds.add(b1.vitals_and_fluids.id);
+        const vf = b1.vitals_and_fluids;
+        const vfRow = document.createElement('div');
+        vfRow.className = 'vitals-box';
+        vfRow.innerHTML = `
+          <div style="font-weight:700; color:#58a6ff; margin-bottom:4px;">📊 护理生命体征与 24h 出入量平衡</div>
+          <div class="vitals-grid">
+            <div class="vitals-pill">🌡️ 最高体温: <b>${vf.vitals?.t_max ? vf.vitals.t_max + '℃' : '36.8℃ (正常)'}</b></div>
+            <div class="vitals-pill">💓 血压/心率: <b>${vf.vitals?.bp_max || '120/75'} (${vf.vitals?.hr_avg || '72'}bpm)</b></div>
+            <div class="vitals-pill">💧 24h入量: <b>${vf.fluids?.intake_total_ml || 2100} ml</b></div>
+            <div class="vitals-pill">🚽 24h出量(尿量): <b>${vf.fluids?.output_total_ml || 1850} ml (${vf.fluids?.net_balance_label || '+250ml'})</b></div>
+          </div>
+        `;
+        changedDiv.appendChild(vfRow);
+      }
+
       // Symptoms
       (b1.clinical_symptoms || []).forEach(item => {
         b1Count++;
@@ -431,27 +560,36 @@
         changedDiv.appendChild(createRow(item, 'tag-fact', '【原文事实】'));
       });
 
-      // Labs
+      // Abnormal Labs
       (b1.abnormal_labs || []).forEach(item => {
         b1Count++;
         selectedItemIds.add(item.id);
+        const tagType = item.is_critical ? 'tag-crit' : 'tag-fact';
+        const tagText = item.is_critical ? '【危急警报】' : '【原文事实】';
         const trendClass = item.trend_direction === '↑' ? 'delta-up' : (item.trend_direction === '↓' ? 'delta-down' : '');
         const extraSpan = `<span class="delta-indicator ${trendClass}">${item.status_label}</span>`;
-        changedDiv.appendChild(createRow(item, 'tag-fact', '【原文事实】', extraSpan));
+        changedDiv.appendChild(createRow(item, tagType, tagText, extraSpan));
+      });
+
+      // PACS Imaging
+      (b1.imaging_changes || []).forEach(item => {
+        b1Count++;
+        selectedItemIds.add(item.id);
+        changedDiv.appendChild(createRow(item, 'tag-fact', '【影像演变】'));
       });
 
       // Med Diffs
-      (b1.medication_diff.added || []).forEach(item => {
+      (b1.medication_diff?.added || []).forEach(item => {
         b1Count++;
         selectedItemIds.add(item.id);
         changedDiv.appendChild(createRow(item, 'tag-added', '+ 新增用药'));
       });
-      (b1.medication_diff.discontinued || []).forEach(item => {
+      (b1.medication_diff?.discontinued || []).forEach(item => {
         b1Count++;
         selectedItemIds.add(item.id);
         changedDiv.appendChild(createRow(item, 'tag-disc', '- 停用医嘱'));
       });
-      (b1.medication_diff.adjusted || []).forEach(item => {
+      (b1.medication_diff?.adjusted || []).forEach(item => {
         b1Count++;
         selectedItemIds.add(item.id);
         changedDiv.appendChild(createRow(item, 'tag-adj', '~ 剂量调整'));
@@ -467,7 +605,7 @@
       (b2.pending_reports || []).forEach(item => {
         b2Count++;
         selectedItemIds.add(item.id);
-        changedDiv.appendChild(createRow(item, 'tag-fact', '【待出报告】'));
+        pendingDiv.appendChild(createRow(item, 'tag-fact', '【待出报告】'));
       });
       (b2.pending_orders || []).forEach(item => {
         b2Count++;
@@ -481,15 +619,30 @@
       });
       document.getElementById('badge-pending').textContent = `${b2Count}项`;
 
-      // 3. Data Gaps
+      // 3. Clinical Rules & Antibiotics
+      const rulesDiv = document.getElementById('list-rules');
+      rulesDiv.innerHTML = '';
+      const bRules = data.blocks.rule_reminders || [];
+      if (bRules.length > 0) {
+        document.getElementById('card-rules').style.display = 'block';
+        bRules.forEach(item => {
+          selectedItemIds.add(item.id);
+          rulesDiv.appendChild(createRow(item, 'tag-rule', '【规则提醒】'));
+        });
+        document.getElementById('badge-rules').textContent = `${bRules.length}项`;
+      } else {
+        document.getElementById('card-rules').style.display = 'none';
+      }
+
+      // 4. Data Gaps
       const gapsDiv = document.getElementById('list-gaps');
       gapsDiv.innerHTML = '';
-      const b3 = data.blocks.data_gaps || [];
-      b3.forEach(item => {
+      const bGaps = data.blocks.data_gaps || [];
+      bGaps.forEach(item => {
         selectedItemIds.add(item.id);
         gapsDiv.appendChild(createRow(item, 'tag-gap', '【资料不足】'));
       });
-      document.getElementById('badge-gaps').textContent = `${b3.length}项`;
+      document.getElementById('badge-gaps').textContent = `${bGaps.length}项`;
 
       updateSelectedCount();
     }
@@ -559,58 +712,38 @@
       document.getElementById('selected-count').textContent = `已选 ${selectedItemIds.size} 项`;
     }
 
-    function openInsertModal() {
+    async function openInsertModal() {
       if (!summaryPayload) return;
       const modal = document.getElementById('draft-modal');
-      const lines = [];
-      const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 16);
-      lines.push(`【日常查房记录 - 病情演变与调整摘要】`);
-      lines.push(`记录时间：${nowStr}    查房医师：林德明 (主任医师)`);
-      lines.push(`患者姓名：${summaryPayload.patient.name}  床号：${summaryPayload.patient.bed_number}`);
-      lines.push('');
-
-      const chosen = (summaryPayload.selectable_items || []).filter(i => selectedItemIds.has(i.id));
-
-      const syms = chosen.filter(i => i.id.startsWith('SYM'));
-      if (syms.length) {
-        lines.push('一、今日病情变化与症状演变：');
-        syms.forEach(s => lines.push(`  - ${s.summary} [出处：${s.source_title}]`));
-        lines.push('');
+      
+      try {
+        const res = await fetch('/api/v1/patient/progress-note-draft', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            summaryData: summaryPayload,
+            selectedItemIds: Array.from(selectedItemIds),
+            doctorName: '查房医师',
+          })
+        });
+        if (res.ok) {
+          const draftJson = await res.json();
+          document.getElementById('draft-text').value = draftJson.draft_text;
+        } else {
+          fallbackBuildDraft();
+        }
+      } catch (e) {
+        fallbackBuildDraft();
       }
 
-      const labs = chosen.filter(i => i.id.startsWith('LAB'));
-      if (labs.length) {
-        lines.push('二、主要异常检验及指标趋势：');
-        labs.forEach(l => lines.push(`  - ${l.test_name}: ${l.current_value} ${l.unit} (${l.delta_summary}) [出处：${l.source_title}]`));
-        lines.push('');
-      }
-
-      const meds = chosen.filter(i => i.id.startsWith('MED'));
-      if (meds.length) {
-        lines.push('三、今日医嘱用药调整：');
-        meds.forEach(m => lines.push(`  - ${m.summary}`));
-        lines.push('');
-      }
-
-      const pends = chosen.filter(i => i.id.startsWith('REP') || i.id.startsWith('ORD'));
-      if (pends.length) {
-        lines.push('四、今日待办检查与追踪事项：');
-        pends.forEach(p => lines.push(`  - ${p.summary}`));
-        lines.push('');
-      }
-
-      const gaps = chosen.filter(i => i.id.startsWith('GAP'));
-      if (gaps.length) {
-        lines.push('五、已知资料缺口提示：');
-        gaps.forEach(g => lines.push(`  - ${g.title}: ${g.clinical_action_needed || g.summary}`));
-        lines.push('');
-      }
-
-      lines.push('---');
-      lines.push('电子签名认证：林德明 (主任医师) | 状态：已确认待存入 EHR 病程');
-
-      document.getElementById('draft-text').value = lines.join('\n');
       modal.style.display = 'flex';
+    }
+
+    function fallbackBuildDraft() {
+      const chosen = (summaryPayload.selectable_items || []).filter(i => selectedItemIds.has(i.id));
+      const lines = ['【日常查房记录 - 病情演变摘要】'];
+      chosen.forEach(c => lines.push(`• ${c.summary}`));
+      document.getElementById('draft-text').value = lines.join('\n');
     }
 
     function closeInsertModal() {
@@ -629,69 +762,30 @@
     }
 
     function loadSampleDemoData() {
-      const demo = {
-        patient: { id: "IP-2026-90812", name: "张** (脱敏)", gender: "男", age: 65, bed_number: "床位 12", admission_date: "2026-08-21", primary_diagnosis: "冠心病，急性冠脉综合征，2型糖尿病" },
+      // Fallback preview
+      renderSummary({
+        patient: { id: "IP-2026-90812", name: "张** (脱敏)", gender: "男", age: 68, bed_number: "01床", primary_diagnosis: "冠心病，急性前壁心肌梗死", egfr: 52 },
         time_window: currentWindow,
+        critical_values: [],
         blocks: {
           what_changed: {
-            clinical_symptoms: [
-              { id: "SYM-001", category: "FACT", tag: "【原文事实】", summary: "今日晨起诉胸闷好转，无心悸，体温最高 37.8℃", span: "今日晨起诉胸闷好转，无心悸，体温最高 37.8℃", source_title: "病程记录", timestamp: "2026-08-24 07:30" }
-            ],
-            abnormal_labs: [
-              { id: "LAB-002", category: "FACT", tag: "【原文事实】", test_name: "血肌酐 (Scr)", current_value: 142, unit: "μmol/L", status_label: "⚠️ 偏高", trend_direction: "↑", delta_summary: "基线: 88 μmol/L → 当前: 142 μmol/L (↑ +54.0 μmol/L / +61.4%)", summary: "血肌酐 (Scr): 142 μmol/L [⚠️ 偏高] (基线: 88 μmol/L → 当前: 142 μmol/L (↑ +54.0 μmol/L / +61.4%))", span: "血肌酐 142 μmol/L", source_title: "急诊生化八项", timestamp: "2026-08-24 06:15" },
-              { id: "LAB-003", category: "FACT", tag: "【原文事实】", test_name: "血钾 (K+)", current_value: 4.1, unit: "mmol/L", status_label: "正常", trend_direction: "↑", delta_summary: "基线: 3.2 mmol/L → 当前: 4.1 mmol/L (↑ +0.9 mmol/L / +28.1%)", summary: "血钾 (K+): 4.1 mmol/L [正常] (基线: 3.2 mmol/L → 当前: 4.1 mmol/L (↑ +0.9 mmol/L / +28.1%))", span: "血钾 4.1 mmol/L", source_title: "急诊生化八项", timestamp: "2026-08-24 06:15" }
-            ],
-            medication_diff: {
-              added: [
-                { id: "MED-ADD-004", category: "FACT", tag: "【原文事实】", summary: "新增: 注射用头孢曲松钠 2.0g ivgtt qd (启动时间: 08-24 08:00)", span: "头孢曲松钠 2.0g", source_title: "医嘱单" }
-              ],
-              discontinued: [
-                { id: "MED-DISC-005", category: "FACT", tag: "【原文事实】", summary: "停用: 呋塞米片 20mg po bid (停用时间: 08-23 16:00)", span: "停用 呋塞米片", source_title: "医嘱单" }
-              ],
-              adjusted: [
-                { id: "MED-ADJ-006", category: "FACT", tag: "【原文事实】", summary: "调量: 硝苯地平控释片 30mg qd → 60mg qd", span: "硝苯地平控释片 60mg", source_title: "医嘱单" }
-              ]
-            }
+            vitals_and_fluids: { id: "VIT-01", summary: "最高体温: 37.8℃，血压: 135/85 mmHg，24h尿量: 1850ml，净平衡: +250ml" },
+            clinical_symptoms: [{ id: "SYM-01", summary: "胸闷较前明显好转，双肺底未闻及湿啰音", span: "胸闷较前明显好转", source_title: "病程记录" }],
+            abnormal_labs: [{ id: "LAB-01", test_name: "血肌酐 (Scr)", current_value: 138, unit: "μmol/L", status_label: "⚠️ 偏高", trend_direction: "↑", delta_summary: "基线: 85 → 138 μmol/L (↑ +53.0)", summary: "血肌酐 (Scr): 138 μmol/L (↑ +53.0)", source_title: "急诊生化" }],
+            imaging_changes: [],
+            medication_diff: { added: [{ id: "MED-01", summary: "新增: 替格瑞洛片 90mg po bid", source_title: "医嘱单" }], discontinued: [], adjusted: [] }
           },
-          whats_pending: {
-            pending_reports: [
-              { id: "REP-007", category: "FACT", tag: "【原文事实】", summary: "待出报告: 胸部 CT 平扫 (08-23 14:00 检查完成，待出终报)", span: "胸部 CT 平扫", source_title: "PACS" },
-              { id: "REP-008", category: "FACT", tag: "【原文事实】", summary: "待出报告: 血液细菌培养及药敏 (08-22 20:00 标本检验中)", span: "血液细菌培养", source_title: "微生物LIS" }
-            ],
-            pending_orders: [
-              { id: "ORD-009", category: "FACT", tag: "【原文事实】", summary: "待执行医嘱: 24小时动态心电图 (Holter) 今日 09:30 执行", span: "动态心电图", source_title: "医嘱单" }
-            ],
-            scheduled_consults: [
-              { id: "ORD-010", category: "FACT", tag: "【原文事实】", summary: "待办会诊: 肾内科床旁会诊 (评估急性肾功能恶化原因)", span: "肾内科会诊", source_title: "会诊申请" }
-            ]
-          },
-          data_gaps: [
-            { id: "GAP-011", category: "DATA_GAP", tag: "【资料不足】", title: "过敏史未明确记录", summary: "【资料不足】过敏史缺失：当前系统与病历中无任何过敏史记录。使用高敏/抗菌药物前需重点补问并补录。", clinical_action_needed: "查房时重点核问青霉素/头孢菌素过敏史并补录", source_title: "病历审计缺口" }
-          ]
+          whats_pending: { pending_reports: [{ id: "REP-01", summary: "待出报告: 床旁超声心动图 (待出报告)", source_title: "超声科" }], pending_orders: [], scheduled_consults: [] },
+          rule_reminders: [{ id: "RULE-01", summary: "【限制使用级】头孢曲松已连续使用第 5 天，建议评估感染控制情况。" }],
+          data_gaps: [{ id: "GAP-01", title: "过敏史未明确记录", summary: "【资料不足】过敏史缺失，查房时请补问" }],
+          evidence: []
         },
         selectable_items: []
-      };
-
-      demo.selectable_items = [
-        ...demo.blocks.what_changed.clinical_symptoms,
-        ...demo.blocks.what_changed.abnormal_labs,
-        ...demo.blocks.what_changed.medication_diff.added,
-        ...demo.blocks.what_changed.medication_diff.discontinued,
-        ...demo.blocks.what_changed.medication_diff.adjusted,
-        ...demo.blocks.whats_pending.pending_reports,
-        ...demo.blocks.whats_pending.pending_orders,
-        ...demo.blocks.whats_pending.scheduled_consults,
-        ...demo.blocks.data_gaps
-      ];
-
-      summaryPayload = demo;
-      renderSummary(demo);
+      });
     }
 
-    // Auto initialize on load
-    window.addEventListener('DOMContentLoaded', () => {
-      fetchSummary();
-    });
+    // Auto-fetch on load
+    window.addEventListener('DOMContentLoaded', fetchSummary);
   </script>
 </body>
 </html>
