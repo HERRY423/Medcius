@@ -37,6 +37,12 @@ try {
       process.stderr.write(`mcp-server-audit: ${msg}\n`);
       throw new Error(msg);
     }
+    try { db.exec("ALTER TABLE audit_events ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'default'"); } catch {}
+    try { db.exec("ALTER TABLE audit_signoffs ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'default'"); } catch {}
+    try { db.exec("ALTER TABLE audit_signoffs ADD COLUMN signature TEXT"); } catch {}
+    try { db.exec("ALTER TABLE audit_signoffs ADD COLUMN signature_algorithm TEXT DEFAULT 'ECDSA_P256_SHA256'"); } catch {}
+    try { db.exec("ALTER TABLE audit_signoffs ADD COLUMN key_id TEXT"); } catch {}
+    try { db.exec("ALTER TABLE audit_signoffs ADD COLUMN signed_hash TEXT"); } catch {}
     db.exec(schemaSql);
   });
 } catch (e) {

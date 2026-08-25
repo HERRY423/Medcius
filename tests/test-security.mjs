@@ -7,15 +7,16 @@ import { encryptPayload, decryptPayload, SecureRecordStore, resolveKeyHex } from
 
 console.log("== Testing Enhanced PHI Guard ==");
 
-// Test 1: Medical record with doctor, bed/ward, address, fixed phone, and ID card
+// Test 1: Medical record with doctor, bed/ward, address, fixed phone, bank card, and ID card
 const clinicalSample = `
 入院记录
 患者：张三峰  性别：男  年龄：62岁
 住院号：ZY-20260824-001  病区：心内科三病区  床位：32床
 联系地址：北京市朝阳区北苑路108号院
+银行卡号：6222021234567890123
 固定电话：010-84981234  联系电话：13812345678
 身份证号：110101199003072378
-主管医师：李四光  审核药师：王五
+科主任：陈大夫  主管医师：李四光  审核药师：王五
 诊断：冠状动脉粥样硬化性心脏病
 `;
 
@@ -31,6 +32,7 @@ assert.ok(typesFound.has("address_label"), "Should detect address label");
 assert.ok(typesFound.has("phone_cn_fixed"), "Should detect fixed phone");
 assert.ok(typesFound.has("phone_cn_mobile"), "Should detect mobile phone");
 assert.ok(typesFound.has("id_card"), "Should detect 18-digit ID card");
+assert.ok(typesFound.has("bank_card"), "Should detect bank card");
 assert.ok(typesFound.has("doctor_label"), "Should detect doctor/pharmacist signature");
 
 // Test 2: Redaction

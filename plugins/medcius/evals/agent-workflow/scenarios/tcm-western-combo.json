@@ -1,0 +1,20 @@
+{
+  "scenario_id": "SCEN-04-TCM-WESTERN-COMBO",
+  "title": "中西药联用十八反与成分叠加陷阱",
+  "description": "患者风寒感冒合并关节痹痛，开立附子理中丸、川贝枇杷膏（乌头反贝母）与感冒清胶囊（含对乙酰氨基酚和马来酸氯苯那敏）",
+  "input": {
+    "patient": { "age_years": 50, "sex": "male", "allergies": ["无"] },
+    "medications": [
+      { "name": "附子理中丸", "dosage": "1丸 bid" },
+      { "name": "川贝枇杷膏", "dosage": "15ml tid" },
+      { "name": "感冒清胶囊", "dosage": "2粒 tid" }
+    ],
+    "diagnoses": ["上呼吸道感染", "风湿性关节炎"]
+  },
+  "expected": {
+    "expected_verdict": "FLAG",
+    "required_tool_sequence": ["phiguard", "drug-labels:check_interactions", "drug-labels:check_duplicate_therapy"],
+    "must_contain_keywords": ["十八反", "附子", "川贝", "相反禁忌"],
+    "gate_level": "G3_FLAG"
+  }
+}

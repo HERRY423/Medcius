@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "is_demo": true,
+  "pack_id": "HKP-DEMO-SYNTHETIC-TEMPLATE-2026",
+  "hospital_name": "示例教学医院（DEMO 演示模板，禁止用于生产）",
+  "hospital_code": "DEMO-HOSP-000",
+  "pack_version": "2026.08.01-demo",
+  "effective_date": "2026-08-01",
+  "expiration_date": "2027-08-01",
+  "license": {
+    "type": "Demo Synthetic Evaluation License (开源样例评测授权，非正式许可)",
+    "authority": "开源样例评测与工程验证组",
+    "license_number": "DEMO-LIC-2026-000",
+    "authorized_departments": ["全部示范科室"]
+  },
+  "sources": [
+    {
+      "source_name": "NMPA 样例说明书测试集",
+      "source_type": "nmpa_label_sample",
+      "source_url": "local://sample-labels.json",
+      "file_sha256": "4b4f53594e5448455449435f53414d504c455f48415348323032363038303100",
+      "ingested_at": "2026-08-01T00:00:00Z"
+    }
+  ],
+  "sla": {
+    "nmpa_drug_labels_sla_days": 14,
+    "nhsa_national_catalog_sla_days": 7,
+    "provincial_benefit_rules_sla_days": 30,
+    "hospital_formulary_sync_sla_days": 1
+  },
+  "formulary": [
+    {
+      "hospital_drug_code": "DEMO-HD-00101",
+      "generic_name": "阿托伐他汀钙片",
+      "brand_name": "立普妥",
+      "spec": "20mg*7片/盒",
+      "dosage_form": "片剂",
+      "hospital_classification": "基本用药",
+      "insurance_category": "甲类",
+      "max_daily_dose_mg": 80,
+      "requires_pharmacist_double_sign": false
+    },
+    {
+      "hospital_drug_code": "DEMO-HD-00102",
+      "generic_name": "二甲双胍片",
+      "brand_name": "格华止",
+      "spec": "0.5g*20片/盒",
+      "dosage_form": "片剂",
+      "hospital_classification": "基本用药",
+      "insurance_category": "甲类",
+      "max_daily_dose_mg": 2000,
+      "renal_cutoff_egfr": 45
+    },
+    {
+      "hospital_drug_code": "DEMO-HD-00103",
+      "generic_name": "注射用头孢曲松钠",
+      "brand_name": "罗氏芬",
+      "spec": "1.0g/支",
+      "dosage_form": "注射剂",
+      "hospital_classification": "限制使用级抗菌药物",
+      "insurance_category": "乙类",
+      "special_rules": ["青霉素过敏性休克史者禁用", "严禁与含钙注射液配伍"]
+    },
+    {
+      "hospital_drug_code": "DEMO-HD-00104",
+      "generic_name": "硫酸吗啡缓释片",
+      "brand_name": "美施康定",
+      "spec": "30mg*10片/盒",
+      "dosage_form": "缓释片",
+      "hospital_classification": "麻醉药品 (特殊管制)",
+      "insurance_category": "乙类",
+      "max_outpatient_days": 7,
+      "requires_pharmacist_double_sign": true
+    }
+  ],
+  "custom_rules": [
+    {
+      "rule_id": "DEMO-RULE-RENAL-DOSE",
+      "name": "肾内科肌酐清除率预警 (演示)",
+      "condition": "CrCl < 30 mL/min",
+      "target_drugs": ["依诺肝素钠", "头孢他啶", "阿昔洛韦"],
+      "action": "FLAG",
+      "message": "重度肾功能不全，依据示范用药常规必须阶梯减量并由药师人工复核"
+    }
+  ],
+  "approver": {
+    "signer_name": "开源测试管理员",
+    "role": "QA / Lead Evaluator",
+    "signed_at": "2026-08-01T00:00:00Z",
+    "key_id": "demo-qa-key-001",
+    "signature": "DEMO_SIGNATURE_P256_SYNTHETIC_HEX_TEST_ONLY"
+  }
+}

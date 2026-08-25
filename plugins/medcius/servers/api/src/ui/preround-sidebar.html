@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Medcius - 住院医生查房前“患者变化摘要”</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-hover: #1f6feb;
+      --danger: #f85149;
+      --warning: #d29922;
+      --success: #3fb950;
+      --purple: #bc8cff;
+      --tag-fact: #1f6feb22;
+      --tag-fact-text: #58a6ff;
+      --tag-gap: #d2992222;
+      --tag-gap-text: #e3b341;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 13px;
+      line-height: 1.45;
+      padding: 12px;
+      overflow-x: hidden;
+    }
+    .header {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .patient-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .patient-title h1 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .bed-badge {
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .patient-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .control-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid var(--border);
+      padding-top: 8px;
+    }
+    .btn-group {
+      display: inline-flex;
+      background: var(--bg);
+      border-radius: 6px;
+      padding: 2px;
+      border: 1px solid var(--border);
+    }
+    .btn-group button {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.15s;
+    }
+    .btn-group button.active {
+      background: var(--accent);
+      color: #fff;
+    }
+    .refresh-btn {
+      background: #21262d;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .refresh-btn:hover { background: #30363d; }
+
+    /* 4 Visual Blocks */
+    .block-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .block-header {
+      background: #1c2128;
+      border-bottom: 1px solid var(--border);
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .block-badge {
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      background: #30363d;
+      color: var(--text-muted);
+    }
+    .block-content {
+      padding: 10px;
+    }
+
+    .item-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 7px 6px;
+      border-bottom: 1px solid #21262d;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.1s;
+    }
+    .item-row:last-child { border-bottom: none; }
+    .item-row:hover { background: #21262d; }
+    .item-row input[type="checkbox"] {
+      margin-top: 3px;
+      cursor: pointer;
+    }
+    .item-body { flex: 1; min-width: 0; }
+    .tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 1px 5px;
+      border-radius: 4px;
+      margin-right: 4px;
+    }
+    .tag-fact { background: var(--tag-fact); color: var(--tag-fact-text); border: 1px solid #1f6feb44; }
+    .tag-gap { background: var(--tag-gap); color: var(--tag-gap-text); border: 1px solid #d2992244; }
+    .tag-added { background: #3fb95022; color: var(--success); border: 1px solid #3fb95044; }
+    .tag-disc { background: #f8514922; color: var(--danger); border: 1px solid #f8514944; }
+    .tag-adj { background: #a371f722; color: var(--purple); border: 1px solid #a371f744; }
+
+    .item-text {
+      color: #e6edf3;
+      font-size: 12.5px;
+      word-break: break-word;
+    }
+    .item-source {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .delta-indicator {
+      font-weight: 700;
+      margin-left: 4px;
+    }
+    .delta-up { color: var(--danger); }
+    .delta-down { color: var(--success); }
+
+    /* Sticky Bottom Action Bar */
+    .action-bar {
+      position: sticky;
+      bottom: 0;
+      background: #161b22;
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+      z-index: 10;
+    }
+    .insert-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .insert-btn:hover { background: var(--accent-hover); }
+
+    /* Modal for Draft Preview */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+    }
+    .modal {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      max-width: 600px;
+      width: 100%;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.8);
+    }
+    .modal-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-header h3 { font-size: 14px; color: #fff; }
+    .close-btn { background: transparent; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; }
+    .modal-body {
+      padding: 14px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .draft-textarea {
+      width: 100%;
+      height: 280px;
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: #e6edf3;
+      padding: 10px;
+      font-family: var(--font);
+      font-size: 12.5px;
+      line-height: 1.5;
+      resize: vertical;
+    }
+    .modal-footer {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .stamp-text {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .btn-secondary {
+      background: #21262d;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header Context Panel -->
+  <div class="header">
+    <div class="patient-title">
+      <h1 id="p-name"><span class="bed-badge" id="p-bed">床位 12</span> 张** (65岁 男)</h1>
+      <button class="refresh-btn" onclick="fetchSummary()">↻ 刷新</button>
+    </div>
+    <div class="patient-meta" id="p-meta">
+      住院号: IP-2026-90812 | 入院: 3天 | 诊断: 冠心病，急性冠脉综合征，2型糖尿病
+    </div>
+    <div class="control-row">
+      <span style="font-size:12px; color:var(--text-muted);">摘要时间跨度：</span>
+      <div class="btn-group">
+        <button id="btn-24h" class="active" onclick="switchWindow('24h')">过去 24 小时</button>
+        <button id="btn-72h" onclick="switchWindow('72h')">过去 72 小时</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BLOCK 1: 「发生了什么变化」 -->
+  <div class="block-card">
+    <div class="block-header">
+      <span>1. 发生了什么变化 (What Changed)</span>
+      <span class="block-badge" id="badge-changed">0项</span>
+    </div>
+    <div class="block-content" id="list-changed">
+      <!-- Injected via JS -->
+    </div>
+  </div>
+
+  <!-- BLOCK 2: 「今天仍待处理什么」 -->
+  <div class="block-card">
+    <div class="block-header">
+      <span>2. 今天仍待处理什么 (What's Pending)</span>
+      <span class="block-badge" id="badge-pending">0项</span>
+    </div>
+    <div class="block-content" id="list-pending">
+      <!-- Injected via JS -->
+    </div>
+  </div>
+
+  <!-- BLOCK 3: 「哪些资料不足」 -->
+  <div class="block-card">
+    <div class="block-header">
+      <span>3. 哪些资料不足 (Critical Data Gaps)</span>
+      <span class="block-badge" id="badge-gaps">0项</span>
+    </div>
+    <div class="block-content" id="list-gaps">
+      <!-- Injected via JS -->
+    </div>
+  </div>
+
+  <!-- BLOCK 4: 「查看原始证据」 -->
+  <div class="block-card">
+    <div class="block-header">
+      <span>4. 查看原始证据 (Source Evidence)</span>
+      <span class="block-badge" id="badge-evidence">点击条目查看</span>
+    </div>
+    <div class="block-content" id="evidence-panel" style="font-size:12px; color:var(--text-muted);">
+      点击上方任意卡片条目，在此高亮展开病历原文段落或检验报告单来源。
+    </div>
+  </div>
+
+  <!-- Sticky Bottom Action Bar -->
+  <div class="action-bar">
+    <div>
+      <label style="cursor:pointer; font-weight:600; font-size:12px;">
+        <input type="checkbox" id="select-all-cb" onchange="toggleSelectAll(this.checked)" checked /> 全选
+      </label>
+      <span style="margin-left:8px; font-size:12px; color:var(--text-muted);" id="selected-count">已选 0 项</span>
+    </div>
+    <button class="insert-btn" onclick="openInsertModal()">✍️ 插入查房记录</button>
+  </div>
+
+  <!-- Modal: Progress Note Draft Preview -->
+  <div class="modal-overlay" id="draft-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>确认并生成查房病程记录草稿</h3>
+        <button class="close-btn" onclick="closeInsertModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">
+          以下为您确认勾选的结构化事实与待办。不含任何自主诊断结论，可编辑后复制或插入 EHR 病程：
+        </p>
+        <textarea class="draft-textarea" id="draft-text"></textarea>
+      </div>
+      <div class="modal-footer">
+        <span class="stamp-text" id="stamp-info">电子签名：林德明 (主任医师) | 默认只读，禁止自主写回</span>
+        <div style="display:flex; gap:8px;">
+          <button class="btn-secondary" onclick="copyDraftText()">📋 复制文本</button>
+          <button class="insert-btn" onclick="confirmInsert()">✓ 确认插入病程</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentWindow = '24h';
+    let summaryPayload = null;
+    const selectedItemIds = new Set();
+
+    async function fetchSummary() {
+      try {
+        const res = await fetch(`/api/v1/patient/evolution-summary?time_window=${currentWindow}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        summaryPayload = await res.json();
+        renderSummary(summaryPayload);
+      } catch (err) {
+        console.warn('Using local fallback simulation payload:', err);
+        loadSampleDemoData();
+      }
+    }
+
+    function switchWindow(w) {
+      currentWindow = w;
+      document.getElementById('btn-24h').classList.toggle('active', w === '24h');
+      document.getElementById('btn-72h').classList.toggle('active', w === '72h');
+      fetchSummary();
+    }
+
+    function renderSummary(data) {
+      if (!data) return;
+      document.getElementById('p-name').innerHTML = `<span class="bed-badge" id="p-bed">${data.patient.bed_number}</span> ${data.patient.name} (${data.patient.age}岁 ${data.patient.gender})`;
+      document.getElementById('p-meta').textContent = `就诊号: ${data.patient.id} | 入院诊断: ${data.patient.primary_diagnosis}`;
+
+      selectedItemIds.clear();
+
+      // 1. What Changed
+      const changedDiv = document.getElementById('list-changed');
+      changedDiv.innerHTML = '';
+      const b1 = data.blocks.what_changed;
+      let b1Count = 0;
+
+      // Symptoms
+      (b1.clinical_symptoms || []).forEach(item => {
+        b1Count++;
+        selectedItemIds.add(item.id);
+        changedDiv.appendChild(createRow(item, 'tag-fact', '【原文事实】'));
+      });
+
+      // Labs
+      (b1.abnormal_labs || []).forEach(item => {
+        b1Count++;
+        selectedItemIds.add(item.id);
+        const trendClass = item.trend_direction === '↑' ? 'delta-up' : (item.trend_direction === '↓' ? 'delta-down' : '');
+        const extraSpan = `<span class="delta-indicator ${trendClass}">${item.status_label}</span>`;
+        changedDiv.appendChild(createRow(item, 'tag-fact', '【原文事实】', extraSpan));
+      });
+
+      // Med Diffs
+      (b1.medication_diff.added || []).forEach(item => {
+        b1Count++;
+        selectedItemIds.add(item.id);
+        changedDiv.appendChild(createRow(item, 'tag-added', '+ 新增用药'));
+      });
+      (b1.medication_diff.discontinued || []).forEach(item => {
+        b1Count++;
+        selectedItemIds.add(item.id);
+        changedDiv.appendChild(createRow(item, 'tag-disc', '- 停用医嘱'));
+      });
+      (b1.medication_diff.adjusted || []).forEach(item => {
+        b1Count++;
+        selectedItemIds.add(item.id);
+        changedDiv.appendChild(createRow(item, 'tag-adj', '~ 剂量调整'));
+      });
+      document.getElementById('badge-changed').textContent = `${b1Count}项`;
+
+      // 2. What's Pending
+      const pendingDiv = document.getElementById('list-pending');
+      pendingDiv.innerHTML = '';
+      const b2 = data.blocks.whats_pending;
+      let b2Count = 0;
+
+      (b2.pending_reports || []).forEach(item => {
+        b2Count++;
+        selectedItemIds.add(item.id);
+        changedDiv.appendChild(createRow(item, 'tag-fact', '【待出报告】'));
+      });
+      (b2.pending_orders || []).forEach(item => {
+        b2Count++;
+        selectedItemIds.add(item.id);
+        pendingDiv.appendChild(createRow(item, 'tag-fact', '【待办医嘱】'));
+      });
+      (b2.scheduled_consults || []).forEach(item => {
+        b2Count++;
+        selectedItemIds.add(item.id);
+        pendingDiv.appendChild(createRow(item, 'tag-fact', '【待办会诊】'));
+      });
+      document.getElementById('badge-pending').textContent = `${b2Count}项`;
+
+      // 3. Data Gaps
+      const gapsDiv = document.getElementById('list-gaps');
+      gapsDiv.innerHTML = '';
+      const b3 = data.blocks.data_gaps || [];
+      b3.forEach(item => {
+        selectedItemIds.add(item.id);
+        gapsDiv.appendChild(createRow(item, 'tag-gap', '【资料不足】'));
+      });
+      document.getElementById('badge-gaps').textContent = `${b3.length}项`;
+
+      updateSelectedCount();
+    }
+
+    function createRow(item, tagClass, tagText, extraHtml = '') {
+      const row = document.createElement('div');
+      row.className = 'item-row';
+      row.onclick = (e) => {
+        if (e.target.type !== 'checkbox') showEvidence(item);
+      };
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = true;
+      cb.id = `cb-${item.id}`;
+      cb.onchange = (e) => {
+        if (e.target.checked) selectedItemIds.add(item.id);
+        else selectedItemIds.delete(item.id);
+        updateSelectedCount();
+      };
+
+      const body = document.createElement('div');
+      body.className = 'item-body';
+      body.innerHTML = `
+        <div>
+          <span class="tag ${tagClass}">${tagText}</span>
+          <span class="item-text">${item.summary}</span>
+          ${extraHtml}
+        </div>
+        <div class="item-source">来源: ${item.source_title || item.source_type} | 对应证据 Span: "${item.span?.slice(0, 40) || item.summary}"</div>
+      `;
+
+      row.appendChild(cb);
+      row.appendChild(body);
+      return row;
+    }
+
+    function showEvidence(item) {
+      const p = document.getElementById('evidence-panel');
+      p.innerHTML = `
+        <div style="background:#0d1117; padding:10px; border:1px solid var(--border); border-radius:6px;">
+          <div style="font-weight:700; color:#fff; margin-bottom:4px;">${item.tag || '【事实证据】'} ${item.title || item.summary}</div>
+          <div style="color:var(--accent); font-family:monospace; background:#161b22; padding:6px; border-radius:4px; margin:6px 0;">
+            精确 Span: "${item.span || item.summary}"
+          </div>
+          <div style="font-size:11px; color:var(--text-muted);">
+            • 来源系统/文档: ${item.source_title || item.source_type}<br/>
+            • 资源标识 (ID): ${item.source_id || 'N/A'}<br/>
+            • 发生时间: ${item.timestamp || '近 24 小时'}
+          </div>
+        </div>
+      `;
+    }
+
+    function toggleSelectAll(checked) {
+      if (!summaryPayload) return;
+      (summaryPayload.selectable_items || []).forEach(item => {
+        const el = document.getElementById(`cb-${item.id}`);
+        if (el) el.checked = checked;
+        if (checked) selectedItemIds.add(item.id);
+        else selectedItemIds.delete(item.id);
+      });
+      updateSelectedCount();
+    }
+
+    function updateSelectedCount() {
+      document.getElementById('selected-count').textContent = `已选 ${selectedItemIds.size} 项`;
+    }
+
+    function openInsertModal() {
+      if (!summaryPayload) return;
+      const modal = document.getElementById('draft-modal');
+      const lines = [];
+      const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 16);
+      lines.push(`【日常查房记录 - 病情演变与调整摘要】`);
+      lines.push(`记录时间：${nowStr}    查房医师：林德明 (主任医师)`);
+      lines.push(`患者姓名：${summaryPayload.patient.name}  床号：${summaryPayload.patient.bed_number}`);
+      lines.push('');
+
+      const chosen = (summaryPayload.selectable_items || []).filter(i => selectedItemIds.has(i.id));
+
+      const syms = chosen.filter(i => i.id.startsWith('SYM'));
+      if (syms.length) {
+        lines.push('一、今日病情变化与症状演变：');
+        syms.forEach(s => lines.push(`  - ${s.summary} [出处：${s.source_title}]`));
+        lines.push('');
+      }
+
+      const labs = chosen.filter(i => i.id.startsWith('LAB'));
+      if (labs.length) {
+        lines.push('二、主要异常检验及指标趋势：');
+        labs.forEach(l => lines.push(`  - ${l.test_name}: ${l.current_value} ${l.unit} (${l.delta_summary}) [出处：${l.source_title}]`));
+        lines.push('');
+      }
+
+      const meds = chosen.filter(i => i.id.startsWith('MED'));
+      if (meds.length) {
+        lines.push('三、今日医嘱用药调整：');
+        meds.forEach(m => lines.push(`  - ${m.summary}`));
+        lines.push('');
+      }
+
+      const pends = chosen.filter(i => i.id.startsWith('REP') || i.id.startsWith('ORD'));
+      if (pends.length) {
+        lines.push('四、今日待办检查与追踪事项：');
+        pends.forEach(p => lines.push(`  - ${p.summary}`));
+        lines.push('');
+      }
+
+      const gaps = chosen.filter(i => i.id.startsWith('GAP'));
+      if (gaps.length) {
+        lines.push('五、已知资料缺口提示：');
+        gaps.forEach(g => lines.push(`  - ${g.title}: ${g.clinical_action_needed || g.summary}`));
+        lines.push('');
+      }
+
+      lines.push('---');
+      lines.push('电子签名认证：林德明 (主任医师) | 状态：已确认待存入 EHR 病程');
+
+      document.getElementById('draft-text').value = lines.join('\n');
+      modal.style.display = 'flex';
+    }
+
+    function closeInsertModal() {
+      document.getElementById('draft-modal').style.display = 'none';
+    }
+
+    function copyDraftText() {
+      const val = document.getElementById('draft-text').value;
+      navigator.clipboard.writeText(val);
+      alert('✓ 查房病程记录草稿已复制到剪贴板！');
+    }
+
+    function confirmInsert() {
+      alert('✓ 已成功将选中的结构化查房摘要插入 EHR 病程草稿区！');
+      closeInsertModal();
+    }
+
+    function loadSampleDemoData() {
+      const demo = {
+        patient: { id: "IP-2026-90812", name: "张** (脱敏)", gender: "男", age: 65, bed_number: "床位 12", admission_date: "2026-08-21", primary_diagnosis: "冠心病，急性冠脉综合征，2型糖尿病" },
+        time_window: currentWindow,
+        blocks: {
+          what_changed: {
+            clinical_symptoms: [
+              { id: "SYM-001", category: "FACT", tag: "【原文事实】", summary: "今日晨起诉胸闷好转，无心悸，体温最高 37.8℃", span: "今日晨起诉胸闷好转，无心悸，体温最高 37.8℃", source_title: "病程记录", timestamp: "2026-08-24 07:30" }
+            ],
+            abnormal_labs: [
+              { id: "LAB-002", category: "FACT", tag: "【原文事实】", test_name: "血肌酐 (Scr)", current_value: 142, unit: "μmol/L", status_label: "⚠️ 偏高", trend_direction: "↑", delta_summary: "基线: 88 μmol/L → 当前: 142 μmol/L (↑ +54.0 μmol/L / +61.4%)", summary: "血肌酐 (Scr): 142 μmol/L [⚠️ 偏高] (基线: 88 μmol/L → 当前: 142 μmol/L (↑ +54.0 μmol/L / +61.4%))", span: "血肌酐 142 μmol/L", source_title: "急诊生化八项", timestamp: "2026-08-24 06:15" },
+              { id: "LAB-003", category: "FACT", tag: "【原文事实】", test_name: "血钾 (K+)", current_value: 4.1, unit: "mmol/L", status_label: "正常", trend_direction: "↑", delta_summary: "基线: 3.2 mmol/L → 当前: 4.1 mmol/L (↑ +0.9 mmol/L / +28.1%)", summary: "血钾 (K+): 4.1 mmol/L [正常] (基线: 3.2 mmol/L → 当前: 4.1 mmol/L (↑ +0.9 mmol/L / +28.1%))", span: "血钾 4.1 mmol/L", source_title: "急诊生化八项", timestamp: "2026-08-24 06:15" }
+            ],
+            medication_diff: {
+              added: [
+                { id: "MED-ADD-004", category: "FACT", tag: "【原文事实】", summary: "新增: 注射用头孢曲松钠 2.0g ivgtt qd (启动时间: 08-24 08:00)", span: "头孢曲松钠 2.0g", source_title: "医嘱单" }
+              ],
+              discontinued: [
+                { id: "MED-DISC-005", category: "FACT", tag: "【原文事实】", summary: "停用: 呋塞米片 20mg po bid (停用时间: 08-23 16:00)", span: "停用 呋塞米片", source_title: "医嘱单" }
+              ],
+              adjusted: [
+                { id: "MED-ADJ-006", category: "FACT", tag: "【原文事实】", summary: "调量: 硝苯地平控释片 30mg qd → 60mg qd", span: "硝苯地平控释片 60mg", source_title: "医嘱单" }
+              ]
+            }
+          },
+          whats_pending: {
+            pending_reports: [
+              { id: "REP-007", category: "FACT", tag: "【原文事实】", summary: "待出报告: 胸部 CT 平扫 (08-23 14:00 检查完成，待出终报)", span: "胸部 CT 平扫", source_title: "PACS" },
+              { id: "REP-008", category: "FACT", tag: "【原文事实】", summary: "待出报告: 血液细菌培养及药敏 (08-22 20:00 标本检验中)", span: "血液细菌培养", source_title: "微生物LIS" }
+            ],
+            pending_orders: [
+              { id: "ORD-009", category: "FACT", tag: "【原文事实】", summary: "待执行医嘱: 24小时动态心电图 (Holter) 今日 09:30 执行", span: "动态心电图", source_title: "医嘱单" }
+            ],
+            scheduled_consults: [
+              { id: "ORD-010", category: "FACT", tag: "【原文事实】", summary: "待办会诊: 肾内科床旁会诊 (评估急性肾功能恶化原因)", span: "肾内科会诊", source_title: "会诊申请" }
+            ]
+          },
+          data_gaps: [
+            { id: "GAP-011", category: "DATA_GAP", tag: "【资料不足】", title: "过敏史未明确记录", summary: "【资料不足】过敏史缺失：当前系统与病历中无任何过敏史记录。使用高敏/抗菌药物前需重点补问并补录。", clinical_action_needed: "查房时重点核问青霉素/头孢菌素过敏史并补录", source_title: "病历审计缺口" }
+          ]
+        },
+        selectable_items: []
+      };
+
+      demo.selectable_items = [
+        ...demo.blocks.what_changed.clinical_symptoms,
+        ...demo.blocks.what_changed.abnormal_labs,
+        ...demo.blocks.what_changed.medication_diff.added,
+        ...demo.blocks.what_changed.medication_diff.discontinued,
+        ...demo.blocks.what_changed.medication_diff.adjusted,
+        ...demo.blocks.whats_pending.pending_reports,
+        ...demo.blocks.whats_pending.pending_orders,
+        ...demo.blocks.whats_pending.scheduled_consults,
+        ...demo.blocks.data_gaps
+      ];
+
+      summaryPayload = demo;
+      renderSummary(demo);
+    }
+
+    // Auto initialize on load
+    window.addEventListener('DOMContentLoaded', () => {
+      fetchSummary();
+    });
+  </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # Medcius（插件本体）
 
-**边界：** 医保编码、处方审核辅助、病历抽取。不做诊断决策。MCP 仅本地。
+**边界：** 住院医生查房前“患者变化摘要”插件。医生打开患者病历时自动通过 SMART on FHIR 2.2 / EHR 侧边栏读取上下文，一屏式呈现过去 24/72 小时变化、异常检验趋势、用药方案变动、待办检查与关键资料缺口。不做诊断决策、不制定治疗方案、不自主写回病历。数据与 MCP 均在本地。
 
 ```
 安装到 Codex / 其他支持 Agent Plugins 的 Agent：
@@ -11,22 +11,18 @@
   /plugin install medcius@medcius
 ```
 
-## 核心技能
+## 核心旗舰与支撑技能
 
 | Skill | 对象 | 功能 |
 |---|---|---|
-| `nhsa-coding` | 编码员、医保办 | 医保版 ICD-10 / 手术操作：查询+校验，六字段出处 |
-| `prescription-review` | 药师 | 证据门控审方辅助（G1/G2/G3）；不替代药师 |
-| `clinical-note-extract` | 病案/编码 | 中国住院 schema：入院/出院诊断、手术、过敏史、体格检查 |
-| `nhsa-policy` | 医保办 | 四层政策：目录 ≠ 报销比例 |
-| `nmpa-drugs` | 药师 | 本地说明书库；无 NMPA 注册连接器，未命中即停 |
-| `china-clinical-trials` | 研究 | 本地 CTR 摘录；未命中转官网或停止 |
-| `hospital-info-systems` | 信息科/医保办 | 结算清单字段对照 + 电子病历评级约束 |
+| `fhir` | 住院医生、临床信息科 | SMART on FHIR 2.2 连接器；自动预取当前患者就诊、检验、医嘱与病历 |
+| `clinical-note-extract` | 住院医生 | 从病程与出院记录中提取客观症状与体征（带原文精确 span，识别否定与时间性） |
+| `nhsa-coding` | 辅助支撑 | 本地医保版 ICD-10 诊断与手术编码库查询 |
+| `drug-labels` | 辅助支撑 | 本地药品版本化说明书库与极量查询 |
+| `china-clinical-trials` | 辅助支撑 | 本地临床试验与伦理登记查询 |
 
-生产：`node scripts/doctor.mjs`（official=0 不得当生产）。导入：`packs/README.md`。病历入口：`node scripts/intake-discharge.mjs <出院记录> --code`。
-
-其余技能为上游美国 payer/FHIR 遗产：无用户自备连接器则停止，不调用托管 MCP。
+生产准入：`node scripts/doctor.mjs`（official=0 不得当生产）。导入：`packs/README.md`。
 
 ## MCP（仅本地 stdio）
 
-`mcp.json` 与 `.mcp.json` 同一组服务器：`china-codes`、`drug-labels`、`documents`、`fhir`。
+`mcp.json` 与 `.mcp.json` 包含核心本地服务：`fhir`、`documents`、`phiguard`、`audit`、`china-codes`、`drug-labels`。

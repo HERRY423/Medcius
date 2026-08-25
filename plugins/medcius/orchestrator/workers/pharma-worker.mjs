@@ -17,7 +17,7 @@ export class PharmaWorker {
     const allergies = Array.isArray(input?.allergies) ? input.allergies.map(String).filter(Boolean) : [];
     const daysSupply = typeof input?.days_supply === "number" ? input.days_supply : 7;
     const encounter = input?.encounter ?? "outpatient";
-    const includeSamples = Boolean(input?.include_samples ?? true);
+    const includeSamples = Boolean(input?.include_samples ?? false);
 
     if (!drugs.length) {
       return {

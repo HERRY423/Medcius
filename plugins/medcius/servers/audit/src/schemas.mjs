@@ -6,7 +6,7 @@
 export const TOOLS = [
   {
     name: "record_event",
-    description: "Append a tamper-evident audit event (hash-chained). subject_ref/payload MUST be pre-redacted — raw ID/phone patterns are rejected unless phi_guard='acknowledged' (which leaves an explicit risk record).",
+    description: "Append a tamper-evident audit event (hash-chained). subject_ref/payload MUST be pre-redacted — raw PHI (ID card, mobile phone, bank card) is strictly rejected.",
     inputSchema: {
       $schema: "http://json-schema.org/draft-07/schema#",
       type: "object",
@@ -15,7 +15,8 @@ export const TOOLS = [
         action: { type: "string", minLength: 1, maxLength: 64 },
         subject_ref: { type: "string", minLength: 1, maxLength: 128 },
         payload: { type: "object" },
-        phi_guard: { type: "string", enum: ["enforced", "acknowledged"] },
+        tenant_id: { type: "string" },
+        phi_guard: { type: "string", enum: ["enforced"] },
       },
       required: ["actor", "action", "subject_ref", "payload"],
     },
@@ -32,7 +33,7 @@ export const TOOLS = [
   },
   {
     name: "query_events",
-    description: "Query events by actor/action/subject_ref/time range. Returns metadata only (no payload) by default to keep list views lean.",
+    description: "Query events by actor/action/subject_ref/tenant_id/time range. Returns metadata only (no payload) by default to keep list views lean.",
     inputSchema: {
       $schema: "http://json-schema.org/draft-07/schema#",
       type: "object",
@@ -40,6 +41,7 @@ export const TOOLS = [
         actor: { type: "string" },
         action: { type: "string" },
         subject_ref: { type: "string" },
+        tenant_id: { type: "string" },
         since: { type: "string" },
         until: { type: "string" },
         limit: { type: "integer", minimum: 1, maximum: 200 },
@@ -48,16 +50,21 @@ export const TOOLS = [
   },
   {
     name: "signoff",
-    description: "Pharmacist/physician/admin sign-off on an event: agree | override | reject + reason. Immutable once written. REQUIRES_PHARMACIST_REVIEW batches are not 'done' until signed.",
+    description: "Pharmacist/physician/admin/auditor sign-off on an event: agree | override | reject + reason with verifiable digital signature.",
     inputSchema: {
       $schema: "http://json-schema.org/draft-07/schema#",
       type: "object",
       properties: {
         event_id: { type: "integer", minimum: 1 },
         signer: { type: "string", minLength: 1, maxLength: 128 },
-        role: { type: "string", enum: ["pharmacist", "physician", "admin"] },
+        role: { type: "string", enum: ["pharmacist", "physician", "admin", "auditor"] },
         decision: { type: "string", enum: ["agree", "override", "reject"] },
         reason: { type: "string", minLength: 1 },
+        signature: { type: "string" },
+        signature_algorithm: { type: "string" },
+        key_id: { type: "string" },
+        signed_hash: { type: "string" },
+        tenant_id: { type: "string" },
       },
       required: ["event_id", "signer", "role", "decision", "reason"],
     },

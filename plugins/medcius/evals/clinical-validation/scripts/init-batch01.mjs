@@ -93,7 +93,7 @@ try {
     actor: "clinical-validation",
     action: "validation_batch_start",
     subject_ref: "BATCH01-PSN",
-    payload: { batch: "batch01", gold_rows: goldRows.length, gold_sha256: goldHash, pred_sha256: predHash, dims: DIMS, perDim, note: "合成演示批次，真实批次需药师盲标替换 gold" },
+    payload: { batch: "batch01", gold_rows: goldRows.length, gold_sha256: goldHash, pred_sha256: predHash, dims: DIMS, perDim, note: "合成管线基准测试批次，真实批次需药师盲标替换 gold" },
   });
   const end = HANDLERS.record_event({
     actor: "clinical-validation",

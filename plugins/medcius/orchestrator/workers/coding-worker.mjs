@@ -14,7 +14,7 @@ export class CodingWorker {
     const diagnoses = Array.isArray(input?.diagnoses) ? input.diagnoses.map(String).filter(Boolean) : [];
     const procedures = Array.isArray(input?.procedures) ? input.procedures.map(String).filter(Boolean) : [];
     const patientGender = input?.patient_gender ?? input?.sex_cn ?? null;
-    const includeSamples = Boolean(input?.include_samples ?? true); // Default true for internal pipeline probe
+    const includeSamples = Boolean(input?.include_samples ?? false); // Default false for strict production gate
 
     const resolvedItems = [];
     const retrievedAt = new Date().toISOString();

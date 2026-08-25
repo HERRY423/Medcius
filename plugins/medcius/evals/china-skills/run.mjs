@@ -116,15 +116,21 @@ function aggregateResults() {
   if (!existsSync(RESULTS_DIR)) return null;
   const files = readdirSync(RESULTS_DIR).filter((f) => f.endsWith(".json"));
   if (!files.length) return null;
-  let pass = 0, fail = 0, items = [];
+  let pass = 0, fail = 0, skip = 0, items = [];
   for (const f of files) {
     try {
       const j = JSON.parse(readFileSync(join(RESULTS_DIR, f), "utf8"));
-      items.push({ file: f, id: j.id ?? f, verdict: j.verdict ?? j.status ?? "unknown" });
-      if ((j.verdict ?? j.status) === "pass") pass++; else fail++;
-    } catch { items.push({ file: f, verdict: "unreadable" }); fail++; }
+      const verdict = j.verdict ?? j.status ?? "unknown";
+      items.push({ file: f, id: j.id ?? f, verdict });
+      if (verdict === "pass") pass++;
+      else if (verdict === "skip") skip++;
+      else fail++;
+    } catch {
+      items.push({ file: f, verdict: "unreadable" });
+      fail++;
+    }
   }
-  return { pass, fail, total: pass + fail, items };
+  return { pass, fail, skip, total: pass + fail + skip, items };
 }
 
 // ---- main ----
@@ -169,8 +175,10 @@ if (withCorpus) {
     } catch {}
   }
   corpusInfo = await probeCorpus();
-  if (corpusInfo.error) console.log(`  corpus probe error: ${corpusInfo.error}`);
-  else {
+  if (corpusInfo.error) {
+    console.log(`  corpus probe error: ${corpusInfo.error}`);
+    errors.push(`corpus probe error: ${corpusInfo.error}`);
+  } else {
     console.log(`  drug-labels: total=${corpusInfo.corpus_status.counts.total} official=${corpusInfo.corpus_status.counts.official} sample=${corpusInfo.corpus_status.counts.sample} mentions=${corpusInfo.corpus_status.interaction_mentions}`);
     console.log(`  china-codes: codes=${corpusInfo.china_codes.counts.codes.total} catalog=${corpusInfo.china_codes.counts.catalog.total}`);
     console.log(`  probes:`);
@@ -197,8 +205,11 @@ if (withCorpus) {
       const got = corpusInfo.probes[k]; const ok = got===exp ? "✓" : "✗";
       console.log(`    ${ok} ${k}: got ${got} (expect ${exp})`);
     }
-    const ok = expect.every(([k, exp]) => corpusInfo.probes[k] === exp);
-    console.log(`  probe verdict: ${ok ? "OK" : "UNEXPECTED"}`);
+    const probesOk = expect.every(([k, exp]) => corpusInfo.probes[k] === exp);
+    console.log(`  probe verdict: ${probesOk ? "OK" : "UNEXPECTED"}`);
+    if (!probesOk) {
+      errors.push("Corpus probe tests failed (unexpected probe results)");
+    }
   }
 }
 
@@ -210,17 +221,47 @@ if (withGrade) {
   if (g.stderr) process.stderr.write(g.stderr);
   if (g.status !== 0 && g.status != null) {
     console.log("grader reported failures");
+    errors.push(`Deterministic grader exited with status ${g.status}`);
   }
 }
 
 const agg = aggregateResults();
+let engineeringPass = false;
+let syntheticValidationPass = false;
+const clinicalEvidencePass = false; // Never true for offline evals
+
 if (agg) {
-  console.log(`\nresults/: ${agg.pass} pass / ${agg.fail} fail / ${agg.total} scored`);
-  for (const it of agg.items) console.log(`  ${it.verdict === "pass" ? "✓" : "✗"} ${it.id} (${it.file}): ${it.verdict}`);
+  console.log(`\nresults/: ${agg.pass} pass / ${agg.fail} fail / ${agg.skip} skip / ${agg.total} total`);
+  for (const it of agg.items) {
+    const sym = it.verdict === "pass" ? "✓" : (it.verdict === "skip" ? "○" : "✗");
+    console.log(`  ${sym} ${it.id} (${it.file}): ${it.verdict}`);
+  }
+  if (agg.fail > 0) {
+    errors.push(`Evaluation results contain ${agg.fail} failures.`);
+  }
+  if (agg.pass < 27) {
+    errors.push(`Required deterministic pass count not reached: ${agg.pass}/27`);
+  }
+  if (agg.skip > 26) {
+    errors.push(`Too many skipped cases: ${agg.skip} > 26 allowed`);
+  }
+  engineeringPass = agg.fail === 0 && agg.pass >= 27 && errors.length === 0;
+  syntheticValidationPass = agg.fail === 0 && errors.length === 0;
 } else {
   console.log("\nresults/: (no scores — run with --grade)");
 }
 
-const ok = errors.length === 0;
-console.log(ok ? "\nALL CHECKS PASSED" : "\nCHECKS FAILED");
+console.log("\n================================================================================");
+console.log(" Evaluation Pass Classification (Three-Tier Integrity Audit)");
+console.log("================================================================================");
+console.log(`- 1. engineering_pass:          ${engineeringPass ? "🟢 PASS (Deterministic tools & parsers verified)" : "🔴 FAIL"}`);
+console.log(`- 2. synthetic_validation_pass:  ${syntheticValidationPass ? "🟢 PASS (Synthetic trap benchmark verified)" : "🔴 FAIL"}`);
+console.log(`- 3. clinical_evidence_pass:    🔒 BLOCKED (Requires live multi-center shadow study with independent blind labeling)`);
+console.log("================================================================================");
+
+const ok = errors.length === 0 && engineeringPass;
+console.log(ok ? "\nALL EVALUATION CHECKS PASSED" : "\nEVALUATION CHECKS FAILED");
+if (!ok) {
+  for (const err of errors) console.error(`  - ${err}`);
+}
 process.exit(ok ? 0 : 1);

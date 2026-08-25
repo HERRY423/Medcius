@@ -1,0 +1,16 @@
+{
+  "scenario_id": "SCEN-07-SETTLEMENT-TRAP",
+  "title": "医保结算主诊断违规与性别限制冲突",
+  "description": "男性患者主诊断为'妊娠剧吐(O21.0)'，开立'子宫下段剖宫产术(74.1)'",
+  "input": {
+    "patient": { "age_years": 42, "sex": "male" },
+    "diagnoses": ["中度妊娠剧吐"],
+    "procedures": ["子宫下段剖宫产术"]
+  },
+  "expected": {
+    "expected_verdict": "FLAG",
+    "required_tool_sequence": ["phiguard", "china-codes:search_codes", "china-codes:check_settlement_list"],
+    "must_contain_keywords": ["性别冲突", "男性", "妊娠", "剖宫产", "医保结算拒绝"],
+    "gate_level": "SETTLEMENT_REJECT"
+  }
+}

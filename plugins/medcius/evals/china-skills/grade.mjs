@@ -212,6 +212,23 @@ const cases = readdirSync(CASES)
   .filter((f) => f.endsWith(".json"))
   .flatMap((f) => JSON.parse(readFileSync(join(CASES, f), "utf8")).map((c) => ({ ...c, _file: f })));
 
+// Ensure sample test fixtures are seeded for deterministic grading
+const ingestMap = [
+  ["../../servers/drug-labels/src/db.mjs", "drug-labels", "drug_labels", "../../servers/drug-labels/scripts/ingest.mjs"],
+  ["../../servers/china-codes/src/db.mjs", "china-codes", "nhsa_codes", "../../servers/china-codes/scripts/ingest.mjs"],
+  ["../../servers/china-trials/src/db.mjs", "china-trials", "clinical_trials", "../../servers/china-trials/scripts/ingest.mjs"],
+];
+for (const [rel, label, table, script] of ingestMap) {
+  try {
+    const { db } = await import(rel);
+    const n = db.prepare(`SELECT count(*) n FROM ${table}`).get().n;
+    if (n === 0) {
+      const { spawnSync } = await import("node:child_process");
+      spawnSync("node", [join(__dirname, script), "--sample"], { encoding: "utf8" });
+    }
+  } catch {}
+}
+
 const { HANDLERS: DL } = await import("../../servers/drug-labels/src/tools.mjs");
 const { HANDLERS: CC } = await import("../../servers/china-codes/src/tools.mjs");
 const { HANDLERS: TR } = await import("../../servers/china-trials/src/tools.mjs");
@@ -236,6 +253,12 @@ const summary = {
   total: scored.length,
   pass_rate_graded: graded ? pass / graded : 0,
   pass_rate_all: scored.length ? pass / scored.length : 0,
+  engineering_pass: fail === 0 && pass === 27,
+  synthetic_validation_pass: fail === 0,
+  clinical_evidence_pass: false, // Deterministic grader is synthetic test, NEVER clinical evidence
 };
 process.stdout.write(`${JSON.stringify({ summary, items: scored.map((s) => ({ id: s.id, verdict: s.verdict })) }, null, 2)}\n`);
-if (fail > 0) process.exit(1);
+if (fail > 0 || pass < 27) {
+  console.error(`\n[CRITICAL] Grader failed: ${fail} failures, only ${pass}/27 required deterministic cases passed.`);
+  process.exit(1);
+}

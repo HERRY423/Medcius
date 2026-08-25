@@ -25,9 +25,9 @@
 ## 下一步升级路径
 
 - [x] Agent 在环自评首轮：53 例全量跑，产出首个行为通过率（见下节 R1）
-- [x] 回顾性验证 batch01 演示（120例合成）→ `evals/clinical-validation/reports/batch01.md` 已产出（总体灵敏92%/特异94%，McNemar p=0.73，仅管线验证）+ audit seq2 verify OK；`--full-300` 可一键扩至 300 满足医院“≥300份预测试”门槛（见 `batch01-README.md`）
-- [ ] 回顾性真实验证 batch01（≥300 张脱敏处方 × 药师盲标，每维度≥100真阳）→ 同一 `run.mjs` 出 Wilson 区间 + McNemar 报告并替换演示 gold
-- [ ] 每次回归将 summary 数字写入审计链事件（action=`validation_batch_start/end` 含 gold_sha256），实现"哪次提交、哪个语料版本、多少分"的可追溯（演示已落 seq1-2）
+- [x] 合成管线基准测试 batch01 冻结（300例合成）→ `evals/clinical-validation/reports/batch01.md` 已产出（总体灵敏93.1%/特异89.4%，仅管线与公式验证）+ audit seq2 verify OK；已冻结为 CI 自动化基准
+- [x] 多中心 Shadow Mode 双药师盲标研究引擎建立 → `evals/shadow-mode/shadow-study.mjs` + 方案 `shadow-protocol.md`（双药师独立盲标 + 第三人专家裁决 + 中心/科室/药物类别分层）
+- [ ] 回顾性/前瞻性多中心真实验证（≥300 张脱敏处方 × 独立药师双盲标，每维度≥100真阳）→ 由合作医院药师执行并替换合成 gold
 
 ## Round 1 · Agent 在环评测（2026-08-23）
 
@@ -54,12 +54,12 @@
 
 - **本评测证明的是**：技能文档充分性（每个陷阱都有明文条款禁止对应失败模式）、门控设计一致性、工具返回值与协议语义兼容；
 - **不证明**：任意模型在真实部署中的依从率与临床准确性。同一模型家族既执行又评分存在循环性，且协议遵循≠实际遵循；
-- 临床性能结论的唯一合法来源仍是 batch01 回顾性验证（药师盲法金标准）与后续注册临床评价；
+- 临床性能结论的唯一合法来源仍是多中心 Shadow Mode 双药师盲标研究与后续注册临床评价；
 - 重评触发条件：SKILL 规则、门控语义或输出模板任何变更后，R1 需全量重跑（对应 MNT-02）。
 
-## Batch01 演示（2026-08-24）
+## Batch01 合成管线基准（2026-08-24 冻结）
 
-- 命令：`node plugins/medcius/evals/clinical-validation/scripts/init-batch01.mjs`（生成 120 行合成 gold+pred → `run.mjs --gold gold/batch01.jsonl --pred pred/batch01.jsonl --out reports/batch01.md`）
-- 配对样本：120（6 维度 ×20），合成灵敏度 90%/特异度 92% 模拟，报告灵敏92.1%/特异93.9% **仅验证管线与公式**，不得作为性能宣称
-- 审计：`validation_batch_start` seq1 + `validation_batch_end` seq2，`verify_chain` OK，gold_sha256 `18414f...` 已入链
-- 升级：`--full-300` 产出 300 行（6×50）满足 `EVIDENCE-PRIOR-ART.md:29` 医院“≥300份预测试”门槛；真实医院批次按 `batch01-README.md` 盲法 SOP 替换 gold 后重跑同命令即可
+- 命令：`node plugins/medcius/evals/clinical-validation/scripts/init-batch01.mjs --full-300`（生成 300 行合成 gold+pred → `run.mjs --gold gold/batch01.jsonl --pred pred/batch01.jsonl --out reports/batch01.md`）
+- 配对样本：300（6 维度 ×50），合成灵敏度 93.1%/特异度 89.4%，报告**仅验证管线与统计公式**，不得作为临床性能宣称
+- 审计：`validation_batch_start` seq1 + `validation_batch_end` seq2，`verify_chain` OK，gold_sha256 已入链
+- 真实多中心盲标：按 `evals/shadow-mode/shadow-protocol.md` SOP 由独立药师双盲标注并裁决产生真实 Gold。

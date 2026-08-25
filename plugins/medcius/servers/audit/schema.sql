@@ -4,6 +4,7 @@
 CREATE TABLE IF NOT EXISTS audit_events (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   seq          INTEGER NOT NULL UNIQUE,          -- monotonic, gap-free by construction
+  tenant_id    TEXT    NOT NULL DEFAULT 'default', -- multi-tenant isolation key
   ts           TEXT    NOT NULL DEFAULT (datetime('now')),
   actor        TEXT    NOT NULL,                 -- component/user that produced the decision
   action       TEXT    NOT NULL,                 -- e.g. rx_review_verdict / label_retrieval / export
@@ -12,12 +13,13 @@ CREATE TABLE IF NOT EXISTS audit_events (
   payload_hash TEXT    NOT NULL,                 -- sha256(canonicalJson(payload))
   prev_hash    TEXT    NOT NULL,                 -- chain link ('GENESIS' for seq=1)
   chain_hash   TEXT    NOT NULL,                 -- sha256(prev|seq|payload_hash|ts)
-  phi_guard    TEXT    NOT NULL DEFAULT 'enforced' CHECK (phi_guard IN ('enforced','acknowledged'))
+  phi_guard    TEXT    NOT NULL DEFAULT 'enforced' CHECK (phi_guard = 'enforced')
 );
-CREATE INDEX IF NOT EXISTS idx_events_ts     ON audit_events(ts);
-CREATE INDEX IF NOT EXISTS idx_events_actor  ON audit_events(actor);
-CREATE INDEX IF NOT EXISTS idx_events_subj   ON audit_events(subject_ref);
-CREATE INDEX IF NOT EXISTS idx_events_action ON audit_events(action);
+CREATE INDEX IF NOT EXISTS idx_events_ts      ON audit_events(ts);
+CREATE INDEX IF NOT EXISTS idx_events_actor   ON audit_events(actor);
+CREATE INDEX IF NOT EXISTS idx_events_subj    ON audit_events(subject_ref);
+CREATE INDEX IF NOT EXISTS idx_events_action  ON audit_events(action);
+CREATE INDEX IF NOT EXISTS idx_events_tenant  ON audit_events(tenant_id);
 
 -- Append-only: no UPDATE, no DELETE. The chain is the point.
 DROP TRIGGER IF EXISTS audit_events_no_update;
@@ -27,17 +29,23 @@ DROP TRIGGER IF EXISTS audit_events_no_delete;
 CREATE TRIGGER audit_events_no_delete BEFORE DELETE ON audit_events
 BEGIN SELECT RAISE(ABORT, 'audit_events are immutable (append-only hash chain)'); END;
 
--- Pharmacist/clinician sign-off on events requiring human disposition.
+-- Pharmacist/clinician sign-off on events requiring human disposition with digital signature.
 CREATE TABLE IF NOT EXISTS audit_signoffs (
-  id         INTEGER PRIMARY KEY AUTOINCREMENT,
-  event_id   INTEGER NOT NULL REFERENCES audit_events(id),
-  signer     TEXT    NOT NULL,
-  role       TEXT    NOT NULL CHECK (role IN ('pharmacist','physician','admin')),
-  decision   TEXT    NOT NULL CHECK (decision IN ('agree','override','reject')),
-  reason     TEXT    NOT NULL,
-  signed_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+  id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_id            INTEGER NOT NULL REFERENCES audit_events(id),
+  tenant_id           TEXT    NOT NULL DEFAULT 'default',
+  signer              TEXT    NOT NULL,
+  role                TEXT    NOT NULL CHECK (role IN ('pharmacist','physician','admin','auditor')),
+  decision            TEXT    NOT NULL CHECK (decision IN ('agree','override','reject')),
+  reason              TEXT    NOT NULL,
+  signature           TEXT,                              -- cryptographic signature (base64)
+  signature_algorithm TEXT    DEFAULT 'ECDSA_P256_SHA256',
+  key_id              TEXT,                              -- signer key identifier
+  signed_hash         TEXT,                              -- hash of decision payload signed
+  signed_at           TEXT    NOT NULL DEFAULT (datetime('now'))
 );
-CREATE INDEX IF NOT EXISTS idx_signoffs_event ON audit_signoffs(event_id);
+CREATE INDEX IF NOT EXISTS idx_signoffs_event  ON audit_signoffs(event_id);
+CREATE INDEX IF NOT EXISTS idx_signoffs_tenant ON audit_signoffs(tenant_id);
 
 DROP TRIGGER IF EXISTS signoffs_immutable;
 CREATE TRIGGER signoffs_immutable BEFORE UPDATE ON audit_signoffs

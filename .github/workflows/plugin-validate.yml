@@ -25,11 +25,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Repo checks (skills manifest + compliance lint + DHF sync)
+      - name: Master CI Quality Gates, Security, Shadow Study & Clinical Evals
         run: |
           set -euo pipefail
-          node scripts/validate-skills.mjs
-          node plugins/medcius/scripts/compliance-lint.mjs
+          node scripts/run-all-checks.mjs
 
       - name: Cache Claude Code CLI
         id: cli-cache

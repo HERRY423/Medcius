@@ -5,15 +5,15 @@
     "email": "z1326434525@gmail.com"
   },
   "metadata": {
-    "version": "0.1.0",
-    "description": "Medcius — 中国医保编码、处方审核辅助、病历抽取。不做诊断决策。仅本地 MCP。"
+    "version": "0.2.0-pilot",
+    "description": "Medcius — 住院医生查房前“患者变化摘要”插件。不做诊断决策、不自主写回病历。仅本地 MCP。"
   },
   "plugins": [
     {
       "name": "medcius",
-      "displayName": "中国医疗智能助手 / Medcius",
+      "displayName": "住院医生查房前患者变化摘要 / Medcius",
       "source": "./plugins/medcius",
-      "description": "医保编码、处方审核辅助、病历抽取（china-inpatient schema）。不做诊断决策。本地 china-codes / drug-labels MCP。",
+      "description": "住院医生查房前“患者变化摘要”插件。呈现过去24/72小时变化、异常检验趋势、药物方案变动、待办检查与资料缺口。",
       "category": "healthcare",
       "tags": [
         "healthcare",

@@ -1,0 +1,16 @@
+{
+  "scenario_id": "SCEN-09-CONFLICTING-EVIDENCE",
+  "title": "不同版本说明书证据冲突与最新版本锁定",
+  "description": "某抗癫痫药老版本说明书允许妊娠期常规使用，新版本黑框警告致畸风险，Agent 必须以最新 effective_date 证据为准",
+  "input": {
+    "patient": { "age_years": 28, "sex": "female", "pregnancy_status": "pregnant_12w", "allergies": ["无"] },
+    "medications": [{ "name": "丙戊酸钠缓释片", "dosage": "0.5g bid" }],
+    "diagnoses": ["癫痫大发作", "早孕12周"]
+  },
+  "expected": {
+    "expected_verdict": "FLAG",
+    "required_tool_sequence": ["phiguard", "drug-labels:get_label", "drug-labels:check_special_population"],
+    "must_contain_keywords": ["妊娠期", "致畸风险", "神经管缺陷", "黑框警告", "最新版本"],
+    "gate_level": "G3_FLAG"
+  }
+}

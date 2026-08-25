@@ -1,0 +1,16 @@
+{
+  "scenario_id": "SCEN-01-AMBIGUOUS-ALLERGY",
+  "title": "模糊过敏史与头孢交叉过敏识别",
+  "description": "患者主诉'以前打青霉素皮试红了一大片'，医生拟开立'头孢拉定胶囊'（第一代头孢菌素）",
+  "input": {
+    "patient": { "age_years": 45, "sex": "female", "allergies": ["青霉素皮试可疑阳性"] },
+    "medications": [{ "name": "头孢拉定胶囊", "dosage": "0.5g tid" }],
+    "diagnoses": ["急性上呼吸道感染"]
+  },
+  "expected": {
+    "expected_verdict": "FLAG",
+    "required_tool_sequence": ["phiguard", "drug-labels:search_labels", "drug-labels:check_allergy"],
+    "must_contain_keywords": ["青霉素", "交叉过敏", "一代头孢", "皮试"],
+    "gate_level": "G3_FLAG"
+  }
+}

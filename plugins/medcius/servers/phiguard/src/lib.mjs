@@ -8,13 +8,15 @@ import { sha256Hex, hmacHex } from "../../shared/crypto.mjs";
 
 export const RE_ID18 = /\d{17}[\dXx]/g;
 export const RE_PHONE = /(?<!\d)1[3-9]\d{9}(?!\d)/g;
-export const RE_FIXED_PHONE = /(?<!\d)0\d{2,3}[- ]?\d{7,8}(?!\d)/g;
+export const RE_FIXED_PHONE = /(?<!\d)0\d{2,3}[-—\s]?[1-9]\d{6,7}(?!\d)/g;
 export const RE_EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
-export const RE_MRN_LABEL = /(住院号|门诊号|病历号|登记号|医保卡号|就诊卡号)\s*[：:]\s*([A-Za-z0-9\-]{4,25})/g;
-export const RE_NAME_LABEL = /(患者|姓名|家属|联系人)\s*[：:]\s*([\u4e00-\u9fa5]{2,4})/g;
-export const RE_DOCTOR_LABEL = /(主管医师|主治医师|主任医师|住院医师|副主任医师|责任护士|记录人|接诊医师|审核药师|调配药师)\s*[：:]\s*([\u4e00-\u9fa5]{2,4})/g;
+export const RE_BANK_CARD = /(?<!\d)(?:62\d{14,17}|4\d{15}|5[1-5]\d{14})(?!\d)/g;
+export const RE_MRN_LABEL = /(住院号|门诊号|病历号|登记号|医保卡号|就诊卡号|社保卡号|健康卡号)\s*[：:]\s*([A-Za-z0-9\-]{4,25})/g;
+export const RE_NAME_LABEL = /(患者|姓名|家属|联系人|监护人)\s*[：:]\s*([\u4e00-\u9fa5]{2,4})/g;
+export const RE_DOCTOR_LABEL = /(主管医师|主治医师|主任医师|住院医师|副主任医师|责任护士|记录人|接诊医师|审核药师|调配药师|科主任|主诊医师|管床医师|管床医生|查房教授)\s*[：:]\s*([\u4e00-\u9fa5]{2,4})/g;
 export const RE_BED_WARD = /(病区|病房|床位|床号)\s*[：:]\s*([A-Za-z0-9\u4e00-\u9fa5\-]{1,15})/g;
-export const RE_ADDRESS_LABEL = /(住址|现住址|家庭地址|户籍地址|联系地址)\s*[：:]\s*([^\n，,。；;]{4,50})/g;
+export const RE_ADDRESS_LABEL = /(住址|现住址|家庭地址|户籍地址|联系地址|通讯地址)\s*[：:]\s*([^\n，,。；;]{4,60})/g;
+export const RE_UNLABELED_ADDRESS = /([\u4e00-\u9fa5]{2,6}(?:省|自治区|市))?([\u4e00-\u9fa5]{2,6}(?:市|区|县|旗))([\u4e00-\u9fa5]{2,10}(?:镇|乡|街道|路|街|巷|大道))(?:\d{1,5}(?:号|弄|栋|幢|单元|室))/g;
 
 const ID_WEIGHTS = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2];
 const ID_CHECK = ["1", "0", "X", "9", "8", "7", "6", "5", "4", "3", "2"];
@@ -25,6 +27,23 @@ export function idChecksumOk(id18) {
   let sum = 0;
   for (let i = 0; i < 17; i++) sum += Number(id18[i]) * ID_WEIGHTS[i];
   return ID_CHECK[sum % 11] === id18[17].toUpperCase();
+}
+
+/** Luhn algorithm checksum for bank cards. */
+export function luhnCheckOk(numStr) {
+  if (!/^\d{13,19}$/.test(numStr)) return false;
+  let sum = 0;
+  let shouldDouble = false;
+  for (let i = numStr.length - 1; i >= 0; i--) {
+    let digit = parseInt(numStr.charAt(i), 10);
+    if (shouldDouble) {
+      digit *= 2;
+      if (digit > 9) digit -= 9;
+    }
+    sum += digit;
+    shouldDouble = !shouldDouble;
+  }
+  return sum % 10 === 0;
 }
 
 function maskValue(value, keepLast) {
@@ -59,7 +78,9 @@ export function scanText(text) {
   push(RE_DOCTOR_LABEL, "doctor_label", (m) => ({ role: m[1] }));
   push(RE_BED_WARD, "bed_ward", (m) => ({ sub_type: m[1] }));
   push(RE_ADDRESS_LABEL, "address_label", (m) => ({ sub_type: m[1] }));
+  push(RE_UNLABELED_ADDRESS, "address_unlabeled");
   push(RE_ID18, "id_card", (m) => ({ checksum_valid: idChecksumOk(m[0]) }));
+  push(RE_BANK_CARD, "bank_card", (m) => ({ luhn_valid: luhnCheckOk(m[0]) }));
   push(RE_PHONE, "phone_cn_mobile");
   push(RE_FIXED_PHONE, "phone_cn_fixed");
   push(RE_EMAIL, "email");
@@ -84,8 +105,10 @@ export function scanText(text) {
 export function containsRawPhi(text) {
   RE_ID18.lastIndex = 0;
   RE_PHONE.lastIndex = 0;
+  RE_BANK_CARD.lastIndex = 0;
   if (RE_ID18.test(text)) return { hit: true, type: "id_card" };
   if (RE_PHONE.test(text)) return { hit: true, type: "phone_cn_mobile" };
+  if (RE_BANK_CARD.test(text)) return { hit: true, type: "bank_card" };
   return { hit: false };
 }
 

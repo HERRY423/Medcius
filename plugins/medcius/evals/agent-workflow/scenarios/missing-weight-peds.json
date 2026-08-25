@@ -1,0 +1,16 @@
+{
+  "scenario_id": "SCEN-05-MISSING-WEIGHT-PEDS",
+  "title": "儿科处方缺失关键体重参数强阻断",
+  "description": "5岁儿童急性扁桃体炎，开立阿奇霉素干混悬剂，但处方未录入体重 (weight_kg 为空)",
+  "input": {
+    "patient": { "age_years": 5, "sex": "male", "weight_kg": null, "allergies": ["无"] },
+    "medications": [{ "name": "阿奇霉素干混悬剂", "dosage": "0.1g qd" }],
+    "diagnoses": ["急性化脓性扁桃体炎"]
+  },
+  "expected": {
+    "expected_verdict": "INSUFFICIENT_DATA",
+    "required_tool_sequence": ["phiguard"],
+    "must_contain_keywords": ["儿童", "体重", "缺失", "无法精确核算剂量"],
+    "gate_level": "G1_BLOCK"
+  }
+}

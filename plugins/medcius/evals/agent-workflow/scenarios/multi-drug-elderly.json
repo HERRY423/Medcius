@@ -1,0 +1,21 @@
+{
+  "scenario_id": "SCEN-02-MULTI-DRUG-ELDERLY",
+  "title": "高龄多病共存多药联用相互作用链",
+  "description": "78岁男性，冠心病+高脂血症+慢支急性发作，联用阿托伐他汀、克拉霉素、氨茶碱与地高辛",
+  "input": {
+    "patient": { "age_years": 78, "sex": "male", "weight_kg": 60, "creatinine_umol_l": 95, "allergies": ["无"] },
+    "medications": [
+      { "name": "阿托伐他汀钙片", "dosage": "20mg qn" },
+      { "name": "克拉霉素缓释片", "dosage": "0.5g qd" },
+      { "name": "茶碱缓释片", "dosage": "0.1g bid" },
+      { "name": "地高辛片", "dosage": "0.125mg qd" }
+    ],
+    "diagnoses": ["冠心病", "慢性支气管炎急性发作", "混合型高脂血症"]
+  },
+  "expected": {
+    "expected_verdict": "FLAG",
+    "required_tool_sequence": ["phiguard", "drug-labels:safety_screen"],
+    "must_contain_keywords": ["CYP3A4", "克拉霉素", "横纹肌溶解", "茶碱血药浓度", "地高辛中毒"],
+    "gate_level": "G3_FLAG"
+  }
+}

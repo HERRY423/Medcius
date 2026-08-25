@@ -1,29 +1,26 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "medcius",
-  "version": "0.1.0",
-  "description": "中国医保编码、处方审核辅助与病历结构化抽取。不做诊断决策。数据与 MCP 均在本地，不依赖托管服务。Agent Plugins 1.0.0。",
+  "version": "0.2.0-pilot",
+  "description": "住院医生查房前“患者变化摘要”插件。医生打开患者病历时自动通过 SMART on FHIR 2.2 / EHR 侧边栏读取上下文，一屏式呈现过去 24/72 小时变化、异常检验趋势、用药方案变动、待办检查与关键资料缺口。每条内容对应原文精确证据，不诊断、不制定治疗方案、不自主写回病历。",
   "author": {
-    "name": "Medcius Contributors",
+    "name": "Medcius Clinical Intelligence Team",
     "url": "https://github.com/HERRY423/Medcius"
   },
   "homepage": "https://github.com/HERRY423/Medcius",
   "repository": "https://github.com/HERRY423/Medcius",
   "license": "MIT",
   "keywords": [
-    "医疗",
-    "医保",
-    "ICD-10",
-    "NMPA",
-    "临床试验",
-    "医院信息",
-    "处方审核",
-    "healthcare",
-    "medical-insurance",
-    "medical-coding",
-    "chinese-medicine",
-    "china-healthcare",
-    "fhir",
-    "医院信息系统"
+    "住院医生查房",
+    "患者变化摘要",
+    "SMART-on-FHIR",
+    "EHR-Sidebar",
+    "CDS-Hooks",
+    "检验趋势分析",
+    "用药调整比对",
+    "查房记录生成",
+    "临床资料缺口",
+    "patient-evolution-summary",
+    "inpatient-rounds"
   ]
 }

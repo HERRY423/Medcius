@@ -6,6 +6,7 @@ import { ExtractWorker } from "./workers/extract-worker.mjs";
 import { CodingWorker } from "./workers/coding-worker.mjs";
 import { PharmaWorker } from "./workers/pharma-worker.mjs";
 import { AuditWorker } from "./workers/audit-worker.mjs";
+import { escalationProtocol } from "./escalation.mjs";
 
 export class ClinicalSupervisor {
   constructor(options = {}) {
@@ -14,14 +15,16 @@ export class ClinicalSupervisor {
     this.codingWorker = new CodingWorker(options);
     this.pharmaWorker = new PharmaWorker(options);
     this.auditWorker = new AuditWorker(options);
+    this.escalationProtocol = escalationProtocol;
   }
 
   /**
    * Complete End-to-End Clinical Encounter Processing:
    * 1. Extract clinical structure from free text note.
    * 2. Fan-out: Run CodingWorker on diagnoses/procedures + PharmaWorker on drugs/labs.
-   * 3. Record full trace to AuditWorker.
-   * 4. Return consolidated, evidence-backed report.
+   * 3. Cross-validate findings & evaluate escalation thresholds.
+   * 4. Record full trace to AuditWorker.
+   * 5. Return consolidated, evidence-backed report.
    */
   async processEncounter({
     noteText = "",
@@ -29,8 +32,9 @@ export class ClinicalSupervisor {
     allergies = [],
     actor = "system:supervisor",
     subjectRef = null,
-    includeSamples = true,
+    includeSamples = false,
     signoff = null,
+    tenant_id = "default",
   }) {
     const startTime = Date.now();
     const timeline = [];
@@ -94,13 +98,27 @@ export class ClinicalSupervisor {
     timeline.push({ phase: "parallel_workers", durationMs: Date.now() - phase2Start });
 
     // ----------------------------------------------------
-    // Phase 3: Consolidated Review & Arbitration
+    // Phase 3: Consolidated Review, Cross-Validation & Escalation
     // ----------------------------------------------------
+    const crossVal = this.escalationProtocol.crossValidateWorkers({
+      extraction: rec,
+      coding: codingResult,
+      pharma: pharmaResult,
+    });
+
+    const escalation = this.escalationProtocol.evaluateEscalationThreshold({
+      pharmaVerdict: pharmaResult,
+      crossValidationAlerts: crossVal.alerts,
+    });
+
     const summary = {
       diagnoses_resolved: codingResult?.items?.length ?? 0,
       coding_checklist_passed: codingResult?.settlement_checklist?.passed ?? true,
       pharma_verdict: pharmaResult?.verdict ?? "N/A",
       pharma_issues_count: pharmaResult?.issues_count ?? 0,
+      cross_validation_passed: crossVal.crossValidationPassed,
+      escalation_tier: escalation.escalationTier,
+      requires_escalation: escalation.shouldEscalate,
     };
 
     // ----------------------------------------------------
@@ -112,11 +130,14 @@ export class ClinicalSupervisor {
       actor,
       subject_ref: resolvedSubject,
       data_class: includeSamples ? "sample" : "official",
+      tenant_id: tenant_id || "default",
       payload: {
         summary,
         coding_items: codingResult?.items?.map((i) => ({ code: i.code, name: i.name, status: i.validation_status })),
         pharma_verdict: pharmaResult?.verdict,
         g_gates: pharmaResult?.g_gates,
+        cross_validation: crossVal,
+        escalation,
       },
       signoff,
     });
@@ -136,6 +157,8 @@ export class ClinicalSupervisor {
       extraction: extraction?.record ?? null,
       coding: codingResult,
       pharmacology: pharmaResult,
+      cross_validation: crossVal,
+      escalation,
       audit: auditRes,
       summary,
     };
@@ -148,6 +171,7 @@ export class ClinicalSupervisor {
       action: "rx_review_verdict",
       actor: params.actor ?? "clinician:pharmacist",
       subject_ref: params.subjectRef ?? "[PSN:rx-review]",
+      tenant_id: params.tenant_id ?? "default",
       data_class: params.include_samples ? "sample" : "official",
       payload: {
         verdict: pharmaRes.verdict,
@@ -170,6 +194,7 @@ export class ClinicalSupervisor {
       action: "coding_resolved",
       actor: params.actor ?? "coder:specialist",
       subject_ref: params.subjectRef ?? "[PSN:coding]",
+      tenant_id: params.tenant_id ?? "default",
       data_class: params.include_samples ? "sample" : "official",
       payload: {
         total_items: codeRes.items?.length,

@@ -1,0 +1,19 @@
+{
+  "scenario_id": "SCEN-10-ESCALATION-NEEDED",
+  "title": "跨专科用药矛盾与药师紧急介入升级",
+  "description": "重症监护室患者出现多器官衰竭，肾功能急剧恶化 (CrCl 12ml/min)，同时存在难治性真菌感染必须使用伏立康唑，需发起紧急跨学科药师会诊升级",
+  "input": {
+    "patient": { "age_years": 63, "sex": "male", "weight_kg": 68, "creatinine_umol_l": 410, "allergies": ["无"] },
+    "medications": [
+      { "name": "注射用伏立康唑", "dosage": "200mg q12h" },
+      { "name": "盐酸万古霉素", "dosage": "1.0g q12h" }
+    ],
+    "diagnoses": ["侵袭性曲霉菌病", "急性肾损伤3期", "脓毒症休克"]
+  },
+  "expected": {
+    "expected_verdict": "REQUIRES_PHARMACIST_REVIEW",
+    "required_tool_sequence": ["phiguard", "drug-labels:calc_renal", "drug-labels:check_renal_dosing", "audit:signoff"],
+    "must_contain_keywords": ["TDM", "血药浓度监测", "肾毒性累加", "环糊精蓄积", "临床药师急会诊"],
+    "gate_level": "ESCALATE_TO_PHARMACIST"
+  }
+}

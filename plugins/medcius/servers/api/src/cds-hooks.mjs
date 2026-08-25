@@ -1,211 +1,249 @@
 // HL7 FHIR CDS Hooks 1.0/2.0 Provider for Medcius
-// Translates incoming CDS Hook triggers (medication-prescribe, order-sign, patient-view)
-// into evidence-gated Medcius evaluations and returns standard CDS Cards.
+// Implements: patient-view (Inpatient Pre-Round Patient Evolution Summary)
+// Security & Governance: Fail-closed on missing data, zero synthetic fallback on real requests.
 
-import { ClinicalSupervisor } from "../../../orchestrator/supervisor.mjs";
-
-const supervisor = new ClinicalSupervisor();
+import { PatientEvolutionEngine } from "../../../lib/patient-evolution-engine.mjs";
 
 export const CDS_SERVICES = [
   {
-    id: "medcius-prescription-review",
-    hook: "medication-prescribe",
-    title: "Medcius 中国处方安全与合理用药审核",
-    description: "依据《处方管理办法》与国家药品监督管理局版本化说明书执行 G1-G3 门控审核，检测配伍禁忌、重复用药、肾功能剂量及妊娠禁忌。",
+    id: "medcius-patient-evolution",
+    hook: "patient-view",
+    title: "Medcius 住院医生查房前“患者变化摘要”",
+    description: "医生打开病历或进入查房列表时自动预取过去 24/72 小时症状演变、异常检验趋势、药物调整、待办检查与关键资料缺口。",
     prefetch: {
       patient: "Patient/{{context.patientId}}",
       conditions: "Condition?patient={{context.patientId}}&clinical-status=active",
-      draftMedications: "MedicationRequest?patient={{context.patientId}}&status=draft",
+      observations: "Observation?patient={{context.patientId}}&_sort=-date&_count=20",
+      medications: "MedicationRequest?patient={{context.patientId}}&status=active",
+      reports: "DiagnosticReport?patient={{context.patientId}}&_sort=-date&_count=10",
+      orders: "ServiceRequest?patient={{context.patientId}}&status=active",
     },
-  },
-  {
-    id: "medcius-order-sign",
-    hook: "order-sign",
-    title: "Medcius 医保结算清单与签署前质控",
-    description: "医保版 ICD-10 诊断与手术编码合规性校验、主要诊断资格检查及医保限定支付提示。",
-    prefetch: {
-      patient: "Patient/{{context.patientId}}",
-      conditions: "Condition?patient={{context.patientId}}",
-    },
-  },
-  {
-    id: "medcius-patient-view",
-    hook: "patient-view",
-    title: "Medcius 患者病历结构化概览",
-    description: "提取病历结构化摘要并呈现过敏史与关键诊疗线索。",
   },
 ];
 
-/** Extract simple drug names from FHIR MedicationRequest or raw strings */
-function parseFhirDrugs(context, prefetch) {
-  const drugs = [];
-  const entries = [
-    ...(context?.draftOrders?.entry ?? []),
-    ...(context?.medications ?? []),
-    ...(prefetch?.draftMedications?.entry ?? []),
-  ];
-
-  for (const item of entries) {
-    const res = item.resource ?? item;
-    // FHIR MedicationRequest codeableConcept text or display
-    const text =
-      res?.medicationCodeableConcept?.text ||
-      res?.medicationCodeableConcept?.coding?.[0]?.display ||
-      res?.medicationReference?.display ||
-      res?.name ||
-      (typeof res === "string" ? res : null);
-    if (text) drugs.push(String(text).trim());
-  }
-
-  // Also check raw string array in context
-  if (Array.isArray(context?.drugs)) {
-    drugs.push(...context.drugs.map(String));
-  }
-
-  return Array.from(new Set(drugs.filter(Boolean)));
-}
-
-/** Extract diagnoses from FHIR Condition or raw strings */
-function parseFhirConditions(context, prefetch) {
-  const conds = [];
-  const entries = [
-    ...(prefetch?.conditions?.entry ?? []),
-    ...(context?.conditions ?? []),
-  ];
-
-  for (const item of entries) {
-    const res = item.resource ?? item;
-    const text =
-      res?.code?.text ||
-      res?.code?.coding?.[0]?.display ||
-      (typeof res === "string" ? res : null);
-    if (text) conds.push(String(text).trim());
-  }
-
-  if (Array.isArray(context?.diagnoses)) {
-    conds.push(...context.diagnoses.map(String));
-  }
-
-  return Array.from(new Set(conds.filter(Boolean)));
-}
-
-/** Extract patient demographics from FHIR Patient */
+/** Extract patient demographics from FHIR Patient or context */
 function parseFhirPatient(context, prefetch) {
-  const pat = prefetch?.patient?.resource ?? prefetch?.patient ?? context?.patient ?? {};
+  const pat = prefetch?.patient?.resource ?? prefetch?.patient ?? context?.patient;
+  const patId = pat?.id ?? context?.patientId ?? null;
+
+  if (!patId && !pat) {
+    return null; // Fail-closed: missing patient context
+  }
+
   let age = null;
-  if (pat.birthDate) {
+  if (pat?.birthDate) {
     const birthYear = new Date(pat.birthDate).getFullYear();
     const curYear = new Date().getFullYear();
     age = curYear - birthYear;
-  } else if (typeof pat.age === "number") {
+  } else if (typeof pat?.age === "number") {
     age = pat.age;
   }
 
+  const gender = pat?.gender || "unknown";
+  const sex_cn = gender === "male" ? "男" : gender === "female" ? "女" : "未知";
+
   return {
-    age,
-    sex: pat.gender === "male" ? "male" : pat.gender === "female" ? "female" : null,
-    sex_cn: pat.gender === "male" ? "男" : pat.gender === "female" ? "女" : pat.sex_cn,
-    weightKg: pat.weightKg,
-    scrUmolL: pat.scrUmolL ?? pat.scr,
+    id: patId || "UNKNOWN-PATIENT",
+    name: pat?.name?.[0]?.text || pat?.name || `患者 (ID: ${patId})`,
+    age: age || null,
+    gender,
+    sex_cn,
+    bed_number: pat?.bed_number || pat?.bed || "未分配床位",
+    primary_diagnosis: pat?.primary_diagnosis || pat?.diagnosis || "待录入主诊断",
+    weight_kg: pat?.weight_kg || pat?.weightKg || null,
   };
 }
 
-/**
- * Handle CDS Hooks Request and return standard CDS Cards
- */
-export async function handleCdsHookRequest(serviceId, body) {
-  const context = body?.context ?? {};
-  const prefetch = body?.prefetch ?? {};
-  const user = body?.user ?? "Practitioner/default";
+/** Extract observations from FHIR Bundle / Array */
+function parseFhirObservations(context, prefetch) {
+  const rawList = [
+    ...(prefetch?.observations?.entry ?? []),
+    ...(context?.observations ?? []),
+  ];
 
-  const patient = parseFhirPatient(context, prefetch);
-  const drugs = parseFhirDrugs(context, prefetch);
-  const diagnoses = parseFhirConditions(context, prefetch);
-  const allergies = Array.isArray(context?.allergies) ? context.allergies : [];
-
-  const cards = [];
-
-  if (serviceId === "medcius-prescription-review") {
-    if (!drugs.length) {
-      return {
-        cards: [
-          {
-            summary: "Medcius: 暂无待审核药品",
-            detail: "处方医嘱上下文中未检测到有效拟开立药品。",
-            indicator: "info",
-            source: { label: "Medcius 审方引擎", url: "https://github.com/HERRY423/Medcius" },
-          },
-        ],
-      };
-    }
-
-    const rxResult = await supervisor.reviewPrescription({
-      patient,
-      diagnoses,
-      drugs,
-      allergies,
-      actor: user,
-      include_samples: true,
-    });
-
-    const indicatorMap = {
-      PASS: "info",
-      REQUIRES_PHARMACIST_REVIEW: "warning",
-      INSUFFICIENT_DATA: "warning",
-      FLAG: "critical",
+  return rawList.map((item) => {
+    const res = item.resource ?? item;
+    return {
+      id: res.id || "obs-unknown",
+      name: res.code?.text || res.code?.coding?.[0]?.display || res.name || "检验项目",
+      code: res.code?.coding?.[0]?.code || res.code || res.name || "unknown",
+      value: res.valueQuantity?.value ?? res.value ?? null,
+      unit: res.valueQuantity?.unit ?? res.unit ?? "",
+      effective_time: res.effectiveDateTime || res.effective_time || res.timestamp || null,
+      referenceRange: res.referenceRange || (res.ref_low != null || res.ref_high != null ? [{
+        low: res.ref_low != null ? { value: res.ref_low, unit: res.unit } : undefined,
+        high: res.ref_high != null ? { value: res.ref_high, unit: res.unit } : undefined,
+        text: res.ref_text || res.reference_range,
+      }] : null),
+      report_name: res.report_name || "检验报告",
+      span: res.span || null,
     };
+  }).filter((o) => o.value != null);
+}
 
-    const card = {
-      uuid: `card-rx-${Date.now()}`,
-      summary: `Medcius 审方结论: 【${rxResult.verdict}】 (发现 ${rxResult.issues_count} 项考量)`,
-      detail:
-        rxResult.issues.length > 0
-          ? rxResult.issues.map((i, idx) => `${idx + 1}. [${i.level}] ${i.message}`).join("\n")
-          : "三道门控全部满足，未检出已知配伍禁忌或用药安全风险。",
-      indicator: indicatorMap[rxResult.verdict] || "info",
+/** Extract medications from FHIR Bundle / Array */
+function parseFhirMedications(context, prefetch) {
+  const rawList = [
+    ...(prefetch?.medications?.entry ?? []),
+    ...(context?.medications ?? []),
+  ];
+
+  return rawList.map((item) => {
+    const res = item.resource ?? item;
+    const drugName =
+      res.medicationCodeableConcept?.text ||
+      res.medicationCodeableConcept?.coding?.[0]?.display ||
+      res.medicationReference?.display ||
+      res.drug_name ||
+      res.name ||
+      "未知药品";
+
+    const dose = res.dosageInstruction?.[0]?.text || res.dosage || "";
+    return {
+      id: res.id || "med-unknown",
+      drug_name: drugName,
+      dosage: dose,
+      route: res.route || "",
+      frequency: res.frequency || "",
+      change_type: res.change_type || (res.status === "active" ? "added" : (res.status === "stopped" ? "discontinued" : null)),
+      authored_on: res.authoredOn || res.authored_on || null,
+      end_date: res.endDate || res.end_date || null,
+      stop_reason: res.stop_reason || null,
+      span: res.span || null,
+    };
+  });
+}
+
+/** Extract diagnostic reports from FHIR Bundle / Array */
+function parseFhirReports(context, prefetch) {
+  const rawList = [
+    ...(prefetch?.reports?.entry ?? []),
+    ...(context?.diagnosticReports ?? []),
+  ];
+
+  return rawList.map((item) => {
+    const res = item.resource ?? item;
+    return {
+      id: res.id || "rep-unknown",
+      name: res.code?.text || res.code?.coding?.[0]?.display || res.name || res.title || "检查报告",
+      status: res.status || "registered",
+      ordered_at: res.effectiveDateTime || res.ordered_at || res.timestamp || null,
+      span: res.span || null,
+    };
+  });
+}
+
+/** Extract orders/service requests */
+function parseFhirOrders(context, prefetch) {
+  const rawList = [
+    ...(prefetch?.orders?.entry ?? []),
+    ...(context?.orders ?? []),
+  ];
+
+  return rawList.map((item) => {
+    const res = item.resource ?? item;
+    return {
+      id: res.id || "ord-unknown",
+      title: res.code?.text || res.code?.coding?.[0]?.display || res.title || res.name || "医嘱项目",
+      status: res.status || "active",
+      order_type: res.order_type || (/会诊/.test(res.title || "") ? "consult" : "order"),
+      department: res.department || null,
+      purpose: res.purpose || null,
+      scheduled_time: res.scheduled_time || null,
+      span: res.span || null,
+    };
+  });
+}
+
+/** Handle incoming CDS Hook request */
+export async function handleCdsHookRequest(serviceId, requestBody) {
+  const { hook, context, prefetch } = requestBody || {};
+
+  // Fail-Closed: Validate patient context presence
+  const patient = parseFhirPatient(context, prefetch);
+  if (!patient || !patient.id || patient.id === "UNKNOWN-PATIENT") {
+    return {
+      cards: [
+        {
+          uuid: `card-err-${Date.now()}`,
+          summary: "Medcius: 未检出有效患者上下文",
+          detail: "未提供有效的 Patient ID 或就诊记录。请在 EHR 患者病历界面中打开查房插件。",
+          indicator: "info",
+          source: {
+            label: "Medcius 患者变化摘要插件",
+            url: "https://github.com/HERRY423/Medcius",
+          },
+        },
+      ],
+    };
+  }
+
+  // Parse real clinical entities without injecting synthetic records
+  const notes = context?.notes || [];
+  const observations = parseFhirObservations(context, prefetch);
+  const medications = parseFhirMedications(context, prefetch);
+  const diagnosticReports = parseFhirReports(context, prefetch);
+  const orders = parseFhirOrders(context, prefetch);
+  const allergies = context?.allergies || prefetch?.allergies || null;
+
+  const timeWindow = context?.time_window || "24h";
+
+  const summary = PatientEvolutionEngine.analyzePatientEvolution({
+    patient,
+    timeWindow,
+    notes,
+    observations,
+    medications,
+    diagnosticReports,
+    orders,
+    allergies,
+  });
+
+  const b1 = summary.blocks.what_changed;
+  const b2 = summary.blocks.whats_pending;
+  const b3 = summary.blocks.data_gaps;
+
+  const hasCritical = b1.abnormal_labs.some((l) => l.is_critical);
+  const hasGaps = b3.length > 0;
+  const totalChanges =
+    b1.clinical_symptoms.length +
+    b1.abnormal_labs.length +
+    b1.medication_diff.added.length +
+    b1.medication_diff.discontinued.length +
+    b1.medication_diff.adjusted.length;
+
+  const detailLines = [];
+  detailLines.push(`【过去 ${timeWindow === "72h" ? "72" : "24"} 小时变化摘要】`);
+  if (b1.clinical_symptoms.length) detailLines.push(`• 症状/体征: ${b1.clinical_symptoms[0].summary}`);
+  if (b1.abnormal_labs.length) detailLines.push(`• 异常检验: ${b1.abnormal_labs.map((l) => `${l.test_name} ${l.current_value}${l.unit} (${l.trend_direction})`).join(", ")}`);
+  if (b1.medication_diff.added.length) detailLines.push(`• 用药调整: 新增 ${b1.medication_diff.added.map((m) => m.drug_name).join(", ")}`);
+  if (b2.pending_reports.length) detailLines.push(`• 今日待办: ${b2.pending_reports.map((r) => r.summary).join("; ")}`);
+  if (b3.length) detailLines.push(`• 资料缺口: ${b3.map((g) => g.title).join(", ")}`);
+
+  if (detailLines.length === 1) {
+    detailLines.push("• 近期未检测到新增化验异常、医嘱调整或待办事项。");
+  }
+
+  const cards = [
+    {
+      uuid: `card-evo-${Date.now()}`,
+      summary: `Medcius 查房摘要: ${patient.bed_number} ${patient.name} (近 24 小时 ${totalChanges} 项变化，${b2.pending_reports.length + b2.pending_orders.length} 项待办)`,
+      detail: detailLines.join("\n"),
+      indicator: hasCritical ? "critical" : (hasGaps ? "warning" : "info"),
       source: {
-        label: "Medcius 处方审核辅助",
+        label: "Medcius 患者变化摘要插件",
         url: "https://github.com/HERRY423/Medcius",
       },
       links: [
         {
-          label: "查看药品版本化依据与门控快照",
-          url: `https://medcius.local/audit/${rxResult.audit?.sequence ?? 0}`,
-          type: "absolute",
+          label: "打开查房前变化摘要侧边栏 (一屏速览 & 插入病程)",
+          url: `/sidebar?patient_id=${patient.id}`,
+          type: "smart",
+          appContext: JSON.stringify({ patient_id: patient.id, time_window: timeWindow }),
         },
       ],
-    };
-
-    cards.push(card);
-  } else if (serviceId === "medcius-order-sign") {
-    const codeResult = await supervisor.resolveCoding({
-      diagnoses,
-      procedures: context?.procedures ?? [],
-      patient_gender: patient.sex_cn,
-      include_samples: true,
-    });
-
-    const checklist = codeResult.settlement_checklist;
-    const hasIssues = checklist?.checks?.some((c) => c.passed === false);
-
-    cards.push({
-      uuid: `card-sign-${Date.now()}`,
-      summary: hasIssues ? "Medcius 医保签署前预警：存在结算清单不一致项" : "Medcius 医保编码校验通过",
-      detail:
-        codeResult.items.map((i) => `• ${i.kind === "diagnosis" ? "诊断" : "手术"}: ${i.term} → ${i.code} (${i.code_system}, 状态:${i.validation_status})`).join("\n") +
-        (hasIssues ? `\n\n清单校验提示:\n${checklist.checks.filter((c) => !c.passed).map((c) => `⚠ ${c.message}`).join("\n")}` : ""),
-      indicator: hasIssues ? "warning" : "info",
-      source: { label: "Medcius 医保编码校验", url: "https://github.com/HERRY423/Medcius" },
-    });
-  } else {
-    cards.push({
-      uuid: `card-default-${Date.now()}`,
-      summary: "Medcius 临床辅助服务已就绪",
-      detail: "服务正常响应，未发现针对当前视图的特定警示。",
-      indicator: "info",
-      source: { label: "Medcius", url: "https://github.com/HERRY423/Medcius" },
-    });
-  }
+    },
+  ];
 
   return { cards };
 }

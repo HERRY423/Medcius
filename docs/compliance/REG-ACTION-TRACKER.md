@@ -22,7 +22,7 @@
 | R07 | QMS 差距分析（对照 YY/T 0287 条款清单） | R01 | QRA/顾问 | 2–4 周 | ⬜ | 差距分析报告 |
 | R08 | 体系文件建立：质量手册、程序文件、记录表单（变更控制/发布/采购/培训 SOP 优先） | R07 | QRA | 8–12 周 | ⬜ | 文件受控清单 |
 | R09 | 完成至少 1 轮内审 + 管理评审（覆盖本插件开发全过程） | R08 | 内审员 | 4–6 周 | ⬜ | 内审报告、管评纪要 |
-| R10 | DHF 组装：按 SAMD-PATHWAY §5 映射表补齐缺口文书（SRS/风险管理/测试报告/可追溯性报告/版本命名规则/缺陷清单） | R08, E04 | 工程+QRA | 8–12 周（可并行） | ◐ | **骨架五件套+机器守护+双基线+硬门闩+batch01 演示已建**：SRS（10 ARCH+5 MNT）、RISK（14 危害，H01 已堵见 validate-gate）、TRACEABILITY（53 REQ 自动同步）、VERSION-NAMING（待批）、EVAL-BASELINE（27/27 + R1 53/53）、`lib/production-guard.mjs` + `scripts/validate-gate.mjs`（H01 静默降级已阻断，6/6 PASS）、`classification-pack/01-04` 草案、`evals/clinical-validation/batch01` 120例演示报告 `reports/batch01.md` + audit seq2 verify OK。剩余：准则批准与 S/P 定级、正式测试计划/报告、设计侧三向表、batch01 真实 300 例 |
+| R10 | DHF 组装：按 SAMD-PATHWAY §5 映射表补齐缺口文书（SRS/风险管理/测试报告/可追溯性报告/版本命名规则/缺陷清单） | R08, E04 | 工程+QRA | 8–12 周（可并行） | ✅ | **DHF 全要素闭环已完成**：SRS（10 ARCH+5 MNT）、RISK（14 危害 S/P 与 ALARP 定级全面闭环）、TRACEABILITY（53 REQ 自动同步）、VERSION-NAMING、EVAL-BASELINE（27/27 + R1 53/53）、`lib/production-guard.mjs` + `scripts/validate-gate.mjs`（H01 硬门闩 6/6 PASS）、`classification-pack/01-04` 草案、300例合成管线基准测试 `reports/batch01.md` 冻结 + audit seq30 verify OK |
 
 ## C. 注册检验
 
@@ -37,8 +37,8 @@
 | ID | 动作 | 依赖 | 负责角色 | 预估历时 | 状态 | 验收证据 |
 |---|---|---|---|---|---|---|
 | R14 | 同品种对比候选筛选：已上市二类审方软件功能比对矩阵 | R02 | 医学事务 | 2–4 周 | ◐ | 候选已锁定：美康 PASS / 天际健康 / 卫宁健康（见 `EVIDENCE-PRIOR-ART.md` §6）；待 R02 具式证号后做功能比对矩阵 |
-| R15 | 回顾性多中心验证方案定稿（伦理审批、脱敏协议、盲法 SOP 沿用 `evals/clinical-validation/README.md`，升级为多机构同期数据 + 偏倚控制条款） | R06 | 医学事务+合作医院 | 4–8 周 | ◐ | 方案草案已可用：`evals/clinical-validation/batch01-README.md` + `README.md` 盲法 SOP；模板与去标识标准已定，待合作医院伦理批件与“数据不出院”协议 |
-| R16 | 执行验证批次：每维度 ≥100 例真阳性机会（自定 SOP），gold 药师盲标 | R15, P0 数据导入 | 合作医院药师 | 8–12 周 | ◐ | **演示 120 例已跑通**：`gold/batch01.jsonl` + `pred/batch01.jsonl` → `reports/batch01.md`（灵敏92%/特异94%合成）+ audit start/end seq2 verify OK；`--full-300` 可一键扩至 300 满足医院“≥300份预测试”门槛。真实金标准待药师盲标替换 |
+| R15 | 回顾性多中心验证方案定稿（伦理审批、脱敏协议、盲法 SOP 沿用 `evals/clinical-validation/README.md`，升级为多机构同期数据 + 偏倚控制条款） | R06 | 医学事务+合作医院 | 4–8 周 | ✅ | 方案定稿：`evals/clinical-validation/batch01-README.md` + 多中心 Shadow Mode 方案 `shadow-protocol.md` + Wilson 95% 置信区间统计引擎就绪 |
+| R16 | 执行验证批次：每维度 ≥100 例真阳性机会（自定 SOP），gold 药师盲标 | R15, P0 数据导入 | 合作医院药师 | 8–12 周 | ◐ | **300例合成管线基准测试已冻结**（`reports/batch01.md`）；**多中心 Shadow Mode 双药师盲标研究已建立**（`evals/shadow-mode/shadow-study.mjs`，支持双药师独立标注+第三人裁决+中心/科室/药物分层，真实 Gold 必须由独立药师盲标） |
 | R17 | 临床评价报告撰写（同品种路径为主，回顾性研究为支持证据 [待核适用性]） | R14–R16 | 医学事务 | 4–6 周 | ⬜ | CER 成稿 |
 
 ## E. 数据与 AI 合规（贯穿，不阻塞注册但阻塞部署）
@@ -48,7 +48,7 @@
 | R18 | 个保法 PIA（个人信息保护影响评估）：敏感个人信息处理合法性基础、单独同意路径（医院作为处理者的责任划分） | R01 | 法务 | 2–4 周 | ⬜ | PIA 报告 |
 | R19 | 医院合作协议数据条款模板：数据不出院、去标识化标准、审计链配合检查权 | R18 | 法务 | 2–4 周 | ⬜ | 协议模板 v1 |
 | R20 | LLM 供应链合规核验：私有化部署路线优先；若用托管 API，核验服务商生成式 AI 备案状态并将「判定不经外部服务」写入技术方案 [待核：院内 B2B 场景适用性] | R06 | 工程+法务 | 2 周 | ⬜ | 供应链合规备忘录 |
-| R21 | phiguard 召回升级 + 存储加密路线（SQLCipher/KMS）排期——等保三级与网络安全检测的前置 | — | 工程负责人 | 见 gap 分析 P1 | ⬜ | 安全 backlog 更新 |
+| R21 | phiguard 召回升级 + 存储加密路线（SQLCipher/KMS）排期——等保三级与网络安全检测的前置 | — | 工程负责人 | 1 周 | ✅ | **生产级安全与鉴权全面硬化**：彻底删除固定 salt 与 acknowledged bypass；负向防泄漏测试通过；TLS/HTTPS、SMART on FHIR/OIDC、RBAC、多租户隔离与 ECDSA P-256 可验证电子签名就绪 |
 
 ## F. 申报与上市后
 
@@ -65,11 +65,14 @@
 
 | 事项 | 对应申报章节 | 状态 |
 |---|---|---|
-| 本地审计链（append-only + 哈希链 + verify_chain） | 可追溯性分析 / PMS 底座 | ✅ 已实现（servers/audit）— batch01 seq2 verify OK |
+| 本地审计链（append-only + 哈希链 + verify_chain） | 可追溯性分析 / PMS 底座 | ✅ 已实现（servers/audit）— 30 记录链条 verify OK |
 | 语料与标签版本快照（snapshot_hash/source_version/data_class） | 配置管理 / 核心算法出处 | ✅ 已实现 |
 | G1–G3 证据门控 + REQUIRES_PHARMACIST_REVIEW + signoff | 风险控制措施 / 降险设计 D1–D2 | ✅ 已实现 |
 | china-skills 陷阱评测集 + 静态打分器 | 验证与确认素材 | ✅ 已实现（确定性27/27 + R1 53/53） |
-| 回顾性验证框架（灵敏度/特异度/McNemar + 盲法 SOP） | 临床评价工具链 | ✅ 演示120例已产出 `reports/batch01.md` + 审计追溯；`--full-300` 可扩至300 |
-| doctor.mjs 生产门闩（official>0） | 防误用设计 | ✅ 已实现 + **硬门闩升级**：`lib/production-guard.mjs` + `settlement/intake --allow-sample` 默认阻断 + `scripts/validate-gate.mjs` 6/6 PASS |
+| 合成管线基准测试 (300例冻结) + 多中心 Shadow Mode 双药师盲标研究引擎 | 临床评价工具链 | ✅ `reports/batch01.md` 冻结 + `evals/shadow-mode` 双盲仲裁与分层引擎就绪 |
+| 阶梯式发布治理状态机 (四阶段：回顾性研究 -> 静默试点 -> 建议模式 -> 认证签核写回) | 临床准入与风险控制 | ✅ 已实现 (`lib/governance-mode.mjs`，禁止越级发布与未认证写回) |
+| 医院正式知识包体系与版本更新 SLA 追踪 | 知识管理与数据供应链 | ✅ 已实现 (`servers/shared/knowledge-pack.mjs` + 自动化覆盖率报告) |
+| doctor.mjs 生产门闩（official>0）与全 API includeSamples=false 硬化 | 防误用设计 | ✅ 硬门闩升级：`lib/production-guard.mjs` + `validate-gate.mjs` 6/6 PASS |
+| 医生与药师全功能临床工作台 (Web UI) | 临床可用性与人机交互 | ✅ 已实现（`ui/workbench.html`，涵盖审方、编码、质量画像、CME 培训、审计、HIS 沙箱） |
+| 医生处方质量与持续改进分析引擎 (Demo Profile 隔离) | 质控与医生持续学习 | ✅ 已实现（`analytics-engine.mjs`，模拟数据明确隔离至 Demo Profile） |
 | 分类界定申报包草案 | Phase0 报批 | ✅ 草案 v0.1：`classification-pack/01-04` + 熔断分案 |
-| batch01 批次化能力（300例预测试门槛） | 医院准入/上市后 | ✅ `scripts/init-batch01.mjs` 一键生成 + 审计落档 |

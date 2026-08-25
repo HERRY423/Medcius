@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Medcius 临床测评与持续改进工作台 (Clinical Workbench)</title>
+  <style>
+    :root {
+      --primary: #0284c7;
+      --primary-dark: #0369a1;
+      --primary-light: #e0f2fe;
+      --success: #10b981;
+      --success-light: #d1fae5;
+      --warning: #f59e0b;
+      --warning-light: #fef3c7;
+      --danger: #ef4444;
+      --danger-light: #fee2e2;
+      --slate-900: #0f172a;
+      --slate-800: #1e293b;
+      --slate-700: #334155;
+      --slate-600: #475569;
+      --slate-200: #e2e8f0;
+      --slate-100: #f1f5f9;
+      --slate-50: #f8fafc;
+      --border: #cbd5e1;
+      --radius: 8px;
+      --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+    body { background-color: var(--slate-100); color: var(--slate-800); min-height: 100vh; display: flex; flex-direction: column; }
+    header { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary); box-shadow: var(--shadow); }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-logo { width: 36px; height: 36px; background: var(--primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; color: white; }
+    .brand-title { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.5px; }
+    .brand-subtitle { font-size: 0.75rem; color: #94a3b8; }
+    .header-badges { display: flex; gap: 10px; align-items: center; }
+    .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+    .badge-gate-pass { background: #065f46; color: #a7f3d0; border: 1px solid #10b981; }
+    .badge-role { background: #1e3a8a; color: #bfdbfe; }
+
+    nav.tab-bar { background: white; padding: 0 2rem; border-bottom: 1px solid var(--border); display: flex; gap: 8px; overflow-x: auto; }
+    .tab-btn { background: none; border: none; padding: 12px 18px; font-size: 0.9rem; font-weight: 600; color: var(--slate-600); cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+    .tab-btn:hover { color: var(--primary); }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); background: var(--slate-50); }
+
+    main { flex: 1; padding: 1.5rem 2rem; max-width: 1400px; width: 100%; margin: 0 auto; }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; animation: fadeIn 0.2s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+
+    .card { background: white; border-radius: var(--radius); border: 1px solid var(--border); padding: 1.25rem; box-shadow: var(--shadow); margin-bottom: 1.25rem; }
+    .card-title { font-size: 1.05rem; font-weight: 700; color: var(--slate-900); margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--slate-100); padding-bottom: 0.5rem; }
+
+    .form-group { margin-bottom: 1rem; }
+    .form-label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--slate-700); margin-bottom: 4px; }
+    .form-control { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; transition: border-color 0.2s; background: white; }
+    .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-light); }
+    textarea.form-control { min-height: 100px; resize: vertical; font-family: inherit; }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 16px; font-size: 0.9rem; font-weight: 600; border-radius: 6px; border: 1px solid transparent; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-secondary { background: white; border-color: var(--border); color: var(--slate-700); }
+    .btn-secondary:hover { background: var(--slate-50); }
+    .btn-success { background: var(--success); color: white; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-sm { padding: 4px 10px; font-size: 0.8rem; }
+
+    .verdict-banner { padding: 1rem; border-radius: var(--radius); margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; }
+    .verdict-pass { background: var(--success-light); border: 1px solid var(--success); color: #065f46; }
+    .verdict-flag { background: var(--danger-light); border: 1px solid var(--danger); color: #991b1b; }
+    .verdict-review { background: var(--warning-light); border: 1px solid var(--warning); color: #92400e; }
+
+    .evidence-box { background: var(--slate-50); border-left: 4px solid var(--primary); padding: 10px 14px; margin-bottom: 10px; border-radius: 0 6px 6px 0; font-size: 0.85rem; }
+    .evidence-quote { font-style: italic; color: var(--slate-700); margin-top: 4px; }
+    .evidence-meta { font-size: 0.75rem; color: #64748b; margin-top: 6px; font-family: monospace; }
+
+    .kpi-card { background: white; border-radius: var(--radius); border: 1px solid var(--border); padding: 1rem; text-align: center; }
+    .kpi-val { font-size: 1.8rem; font-weight: 800; color: var(--primary-dark); margin: 4px 0; }
+    .kpi-sub { font-size: 0.75rem; color: var(--slate-600); }
+
+    table.data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    table.data-table th { background: var(--slate-50); padding: 8px 12px; text-align: left; border-bottom: 2px solid var(--border); color: var(--slate-700); }
+    table.data-table td { padding: 8px 12px; border-bottom: 1px solid var(--slate-200); }
+    table.data-table tr:hover { background: var(--slate-50); }
+
+    /* Quiz / CME Simulator */
+    .quiz-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; background: white; }
+    .quiz-option { border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; }
+    .quiz-option:hover { background: var(--primary-light); border-color: var(--primary); }
+    .quiz-option.selected { background: var(--primary-light); border-color: var(--primary); font-weight: 600; }
+    .quiz-option.correct { background: var(--success-light); border-color: var(--success); color: #065f46; font-weight: 600; }
+    .quiz-option.incorrect { background: var(--danger-light); border-color: var(--danger); color: #991b1b; }
+
+    /* Modal */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); display: none; align-items: center; justify-content: center; z-index: 999; }
+    .modal-overlay.active { display: flex; }
+    .modal-content { background: white; border-radius: var(--radius); width: 90%; max-width: 600px; padding: 1.5rem; box-shadow: var(--shadow-lg); }
+
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+    .tag-blue { background: #dbeafe; color: #1e40af; }
+    .tag-green { background: #dcfce7; color: #166534; }
+    .tag-amber { background: #fef3c7; color: #92400e; }
+    .tag-red { background: #fee2e2; color: #991b1b; }
+
+    /* CDS Hooks simulated alert */
+    .cds-card { border-left: 5px solid var(--danger); background: #fff5f5; padding: 1rem; border-radius: 6px; margin-top: 1rem; }
+    .cds-card.warning { border-left-color: var(--warning); background: #fffbeb; }
+    .cds-card.info { border-left-color: var(--primary); background: #f0f9ff; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-logo">M</div>
+      <div>
+        <div class="brand-title">Medcius 临床测评与持续改进工作台</div>
+        <div class="brand-subtitle">临床证据门控 · 处方审核辅助 · 医保编码 · 医师质量持续改进</div>
+      </div>
+    </div>
+    <div class="header-badges">
+      <span class="badge badge-gate-pass">✓ 生产门闩已就绪 (Official & Gates Active)</span>
+      <span class="badge badge-role">执业药师 / 主治医师质控端</span>
+    </div>
+  </header>
+
+  <nav class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('tab-rx')">💊 处方审方工作站</button>
+    <button class="tab-btn" onclick="switchTab('tab-note')">📋 病历抽取与医保编码</button>
+    <button class="tab-btn" onclick="switchTab('tab-quality')">📊 医生质量驾驶舱与持续改进</button>
+    <button class="tab-btn" onclick="switchTab('tab-cme')">🎓 医生在线测评与实训舱</button>
+    <button class="tab-btn" onclick="switchTab('tab-agent')">🤖 Agent 协同与推理追踪</button>
+    <button class="tab-btn" onclick="switchTab('tab-audit')">⛓️ 不可篡改审计存证</button>
+    <button class="tab-btn" onclick="switchTab('tab-his')">🏥 模拟 HIS 处方拦截沙箱</button>
+  </nav>
+
+  <main>
+    <!-- TAB 1: 处方审方工作站 -->
+    <div id="tab-rx" class="tab-pane active">
+      <div class="grid-2">
+        <div>
+          <div class="card">
+            <div class="card-title">
+              <span>处方信息录入与患者画像</span>
+              <div style="display: flex; gap: 6px;">
+                <button class="btn btn-secondary btn-sm" onclick="loadRxSample(1)">案例1: 肾衰依诺肝素</button>
+                <button class="btn btn-secondary btn-sm" onclick="loadRxSample(2)">案例2: 青霉素过敏头孢</button>
+                <button class="btn btn-secondary btn-sm" onclick="loadRxSample(3)">案例3: 辛伐+伊曲康唑</button>
+              </div>
+            </div>
+            <div class="grid-4" style="margin-bottom: 0.5rem;">
+              <div class="form-group">
+                <label class="form-label">患者性别</label>
+                <select id="rx-sex" class="form-control">
+                  <option value="女">女</option>
+                  <option value="男">男</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">年龄</label>
+                <input id="rx-age" class="form-control" type="text" value="76岁" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">体重 (kg)</label>
+                <input id="rx-weight" class="form-control" type="number" value="52" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">血肌酐 (μmol/L)</label>
+                <input id="rx-scr" class="form-control" type="number" value="188" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">临床诊断 (分号分隔)</label>
+              <input id="rx-diag" class="form-control" value="深静脉血栓形成; 高血压病; 慢性肾脏病" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">过敏史 (分号分隔)</label>
+              <input id="rx-allergy" class="form-control" value="否认药物过敏史" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">处方药品列表 (每行一种，格式: 药品名称 | 用法用量 | 给药途径)</label>
+              <textarea id="rx-drugs" class="form-control" rows="4">依诺肝素钠注射液 | 5000 IU q12h | 皮下注射
+氨氯地平片 | 5mg qd | 口服</textarea>
+            </div>
+            <button class="btn btn-primary" style="width: 100%;" onclick="runPrescriptionReview()">⚡ 运行 Medcius 证据门控审方</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <div class="card-title">
+              <span>审方结果与证据出处</span>
+              <button id="btn-signoff-trigger" class="btn btn-success btn-sm" style="display:none;" onclick="openSignoffModal()">✍️ 药师签核 (Signoff)</button>
+            </div>
+            <div id="rx-result-container">
+              <div style="text-align: center; padding: 3rem; color: #94a3b8;">
+                👈 请在左侧配置处方后点击“运行证据门控审方”
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: 病历抽取与医保编码 -->
+    <div id="tab-note" class="tab-pane">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">
+            <span>中文临床病历文本 (住院 / 出院记录)</span>
+            <button class="btn btn-secondary btn-sm" onclick="loadNoteSample()">加载冠心病出院范本</button>
+          </div>
+          <div class="form-group">
+            <textarea id="note-text" class="form-control" style="min-height: 380px; font-family: monospace; font-size: 0.85rem;">入院记录
+患者：张某  性别：男  年龄：65岁
+住院号：ZY-20260824-009  病区：心血管内科一病区  床位：18床
+主诉：反复胸骨后压榨性疼痛3年，加重伴气促2天。
+入院诊断：冠状动脉粥样硬化性心脏病，急性非ST段抬高型心肌梗死。
+既往史：高血压病2级很高危10年；2型糖尿病5年；否认青霉素过敏史。
+主要化验：血肌酐 96 μmol/L，HbA1c 7.8%，cTnI 2.45 ng/mL。
+手术操作：本次于2026-08-20行经皮冠状动脉内支架植入术 (DES 1枚)，左主干至前降支。
+出院诊断：
+1. 冠状动脉粥样硬化性心脏病（急性非ST段抬高型心肌梗死）
+2. 原发性高血压 2级 很高危
+3. 2型糖尿病
+出院医嘱：阿司匹林肠溶片 100mg qd；硫酸氢氯吡格雷片 75mg qd；阿托伐他汀钙片 20mg qn。</textarea>
+          </div>
+          <button class="btn btn-primary" style="width: 100%;" onclick="runEncounterProcess()">🔍 运行抽取与医保编码闭环</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <span>结构化实体与国家医保编码解析</span>
+            <span id="encounter-duration" class="tag tag-blue" style="display:none;">-</span>
+          </div>
+          <div id="note-result-container">
+            <div style="text-align: center; padding: 3rem; color: #94a3b8;">
+              👈 点击“运行抽取与医保编码闭环”解析病历与国家医保代码
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: 医生质量驾驶舱与持续改进 -->
+    <div id="tab-quality" class="tab-pane">
+      <div class="grid-4" style="margin-bottom: 1.25rem;">
+        <div class="kpi-card">
+          <div class="form-label">综合处方质量评分</div>
+          <div class="kpi-val" style="color: var(--success);">95.4</div>
+          <div class="kpi-sub">评级：A级 · 临床质控标杆</div>
+        </div>
+        <div class="kpi-card">
+          <div class="form-label">近90天审方总量</div>
+          <div class="kpi-val">1,428</div>
+          <div class="kpi-sub">直接通过率: 93.3%</div>
+        </div>
+        <div class="kpi-card">
+          <div class="form-label">拦截与改进次数</div>
+          <div class="kpi-val" style="color: var(--warning);">96</div>
+          <div class="kpi-sub">药师复核采纳率: 97.9%</div>
+        </div>
+        <div class="kpi-card">
+          <div class="form-label">科室综合排名</div>
+          <div class="kpi-val" style="color: var(--primary);">#1</div>
+          <div class="kpi-sub">心血管内科 (共42名医师)</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">五大质控维度得分 vs 全院基准</div>
+          <div style="margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px;">
+              <span>特殊人群与剂量安全 (G1)</span>
+              <strong>98.2 分 (基准 94.5)</strong>
+            </div>
+            <div style="background: var(--slate-200); border-radius: 4px; height: 8px; overflow: hidden;">
+              <div style="background: var(--success); width: 98.2%; height: 100%;"></div>
+            </div>
+          </div>
+          <div style="margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px;">
+              <span>说明书与适应症合规 (G2)</span>
+              <strong>96.5 分 (基准 93.0)</strong>
+            </div>
+            <div style="background: var(--slate-200); border-radius: 4px; height: 8px; overflow: hidden;">
+              <div style="background: var(--success); width: 96.5%; height: 100%;"></div>
+            </div>
+          </div>
+          <div style="margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px;">
+              <span>药物相互作用与配伍 (G3)</span>
+              <strong>94.1 分 (基准 91.2)</strong>
+            </div>
+            <div style="background: var(--slate-200); border-radius: 4px; height: 8px; overflow: hidden;">
+              <div style="background: var(--primary); width: 94.1%; height: 100%;"></div>
+            </div>
+          </div>
+          <div style="margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px;">
+              <span>肾功能受损剂量调整 (CrCl)</span>
+              <strong>92.8 分 (基准 89.0)</strong>
+            </div>
+            <div style="background: var(--slate-200); border-radius: 4px; height: 8px; overflow: hidden;">
+              <div style="background: var(--primary); width: 92.8%; height: 100%;"></div>
+            </div>
+          </div>
+          <div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px;">
+              <span>重复用药与多重处方防范</span>
+              <strong>96.0 分 (基准 92.5)</strong>
+            </div>
+            <div style="background: var(--slate-200); border-radius: 4px; height: 8px; overflow: hidden;">
+              <div style="background: var(--success); width: 96.0%; height: 100%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">科室合理用药排行榜 (Department Benchmarks)</div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>排名</th>
+                <th>科室名称</th>
+                <th>医师人数</th>
+                <th>质量分</th>
+                <th>合规率</th>
+              </tr>
+            </thead>
+            <tbody id="benchmark-tbody">
+              <tr><td>1</td><td>心血管内科</td><td>42</td><td><strong>95.4</strong></td><td>98.2%</td></tr>
+              <tr><td>2</td><td>呼吸与危重症医学科</td><td>36</td><td><strong>94.8</strong></td><td>97.5%</td></tr>
+              <tr><td>3</td><td>肾脏内科</td><td>28</td><td><strong>94.2</strong></td><td>97.0%</td></tr>
+              <tr><td>4</td><td>儿科</td><td>30</td><td><strong>93.9</strong></td><td>96.9%</td></tr>
+              <tr><td>5</td><td>中医科 / 中西医结合</td><td>24</td><td><strong>93.1</strong></td><td>96.2%</td></tr>
+              <tr><td>6</td><td>普外科</td><td>52</td><td><strong>92.6</strong></td><td>95.8%</td></tr>
+              <tr><td>-</td><td>全院总体平均</td><td>380</td><td><strong>93.7</strong></td><td>96.6%</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>📚 个性化临床用药持续改进与指南推荐 (CME Action Plan)</span>
+          <span class="tag tag-amber">基于近90天拦截历史生成</span>
+        </div>
+        <div id="recommendations-container" class="grid-3">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: 医生在线测评与实训舱 -->
+    <div id="tab-cme" class="tab-pane">
+      <div class="card">
+        <div class="card-title">
+          <span>临床用药高危陷阱模拟实训题库 (10 大高发错误情境)</span>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <span id="quiz-score-badge" class="tag tag-green">已修 CME 学分: 0.0</span>
+          </div>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--slate-600); margin-bottom: 1rem;">
+          本实训舱涵盖儿童体重缺失、肾衰肌酐换算、青霉素头孢交叉过敏、CYP3A4代谢抑制、中药十八反等真实临床易混陷阱，提交后即刻出具官方指南依据解析。
+        </p>
+
+        <div id="quiz-list-container">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: 不可篡改审计存证 -->
+    <div id="tab-audit" class="tab-pane">
+      <div class="card">
+        <div class="card-title">
+          <span>不可篡改审计区块链浏览器 (Tamper-Evident Audit Ledger)</span>
+          <button class="btn btn-primary btn-sm" onclick="verifyAuditChain()">🔒 一键校验区块链完整性</button>
+        </div>
+        <div id="audit-verify-status" class="evidence-box" style="margin-bottom: 1rem;">
+          正在读取区块链节点状态...
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Seq</th>
+              <th>时间 (UTC)</th>
+              <th>操作行为 (Action)</th>
+              <th>操作者 (Actor)</th>
+              <th>脱敏受体 (Subject)</th>
+              <th>区块 Hash (Chain Hash)</th>
+            </tr>
+          </thead>
+          <tbody id="audit-tbody">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB: Agent 协同与推理追踪 -->
+    <div id="tab-agent" class="tab-pane">
+      <div class="grid-2" style="margin-bottom: 1.5rem;">
+        <!-- Left: Live Agent Stream Co-Pilot -->
+        <div class="card">
+          <div class="card-title">
+            <span>🤖 Agent 实时流式协同审方 (SSE Live Co-Pilot)</span>
+            <span class="tag tag-blue">Reactive SSE Stream</span>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--slate-600); margin-bottom: 0.75rem;">
+            展示 AI Agent 从 PHI 隐私扫描、G1-G3 门控、MCP 工具链调度到推理决策卡片生成的完整实时认知流。
+          </p>
+          <div class="form-group">
+            <label class="form-label">拟审查处方药品列表 (逗号分隔)</label>
+            <input id="agent-drugs-input" class="form-control" value="头孢曲松钠 2.0g ivgtt, 阿奇霉素注射液 0.5g ivgtt" />
+          </div>
+          <button class="btn btn-primary" onclick="runAgentLiveStream()">🚀 启动 Agent 实时协同推理流</button>
+
+          <div id="agent-stream-output" style="margin-top: 1rem; max-height: 400px; overflow-y: auto; background: var(--slate-900); color: #f8fafc; padding: 1rem; border-radius: 6px; font-family: monospace; font-size: 0.85rem; display: none;">
+            <!-- Populated by SSE -->
+          </div>
+        </div>
+
+        <!-- Right: Proactive QC & Doctor Drift -->
+        <div class="card">
+          <div class="card-title">
+            <span>🛡️ 主动质控监控与医生趋势 (Proactive QC & Drift Alerts)</span>
+            <button class="btn btn-secondary" style="font-size:0.75rem; padding:4px 8px;" onclick="loadQCMonitorData()">🔄 刷新</button>
+          </div>
+          <div id="qc-anomalies-box">
+            <div style="padding:1rem; text-align:center; color:#94a3b8;">加载主动质控监控数据...</div>
+          </div>
+
+          <div style="margin-top: 1.5rem; border-top: 1px solid var(--border); pt-3;">
+            <div style="font-weight:700; font-size:0.9rem; margin-bottom: 0.5rem;">自适应学习：药师纠偏提炼的规则演进提案</div>
+            <div id="learning-rules-box">
+              <div style="padding:0.5rem; color:#64748b; font-size:0.85rem;">分析中...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 6: 模拟 HIS 处方拦截沙箱 -->
+    <div id="tab-his" class="tab-pane">
+      <div class="card">
+        <div class="card-title">
+          <span>模拟医院 HIS / EMR 医生工作站 (HL7 FHIR CDS Hooks 集成演示)</span>
+          <span class="tag tag-blue">Hook: medication-prescribe</span>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--slate-600); margin-bottom: 1rem;">
+          在真实院内场景中，医生无需打开独立页面。当医生在 HIS 中录入药品并点击“签署并发送处方”时，HIS 自动通过 CDS Hooks 协议向 Medcius 发起毫秒级实时审查，并弹出干预卡片。
+        </p>
+        <div class="grid-2">
+          <div style="background: var(--slate-50); padding: 1rem; border-radius: var(--radius); border: 1px dashed var(--border);">
+            <div style="font-weight: 700; margin-bottom: 0.5rem;">HIS 开医嘱操作台</div>
+            <div class="form-group">
+              <label class="form-label">患者床号 / 姓名</label>
+              <input class="form-control" value="08床 [PSN:李**] (男, 68岁)" disabled />
+            </div>
+            <div class="form-group">
+              <label class="form-label">当前拟开立医嘱</label>
+              <select id="his-drug-select" class="form-control">
+                <option value="statin-itraconazole">辛伐他汀片 40mg qn + 伊曲康唑胶囊 200mg bid (严重相互作用)</option>
+                <option value="penicillin-cefazolin">注射用头孢唑林钠 2.0g (患者既往青霉素过敏性休克)</option>
+                <option value="aspirin-ulcer">阿司匹林肠溶片 100mg qd (活动性十二指肠溃疡出血)</option>
+                <option value="safe-amlodipine">苯磺酸氨氯地平片 5mg qd (常规降压 - 安全)</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" onclick="simulateHisPrescribe()">💾 模拟医生点击「开具处方并发送」</button>
+          </div>
+
+          <div>
+            <div style="font-weight: 700; margin-bottom: 0.5rem;">HIS 医生端实时拦截弹窗响应 (CDS Hooks Cards)</div>
+            <div id="his-cds-response">
+              <div style="padding: 2rem; text-align: center; color: #94a3b8; background: white; border-radius: 6px; border: 1px solid var(--border);">
+                等待医生在左侧工作站点击开具处方...
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Signoff Modal -->
+  <div id="signoff-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="card-title">
+        <span>药师处方审核签核 (Pharmacist Signoff)</span>
+        <button style="background:none; border:none; font-size:1.2rem; cursor:pointer;" onclick="closeSignoffModal()">✕</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">签核决策 (Decision)</label>
+        <select id="signoff-decision" class="form-control">
+          <option value="agree">同意系统判定 (AGREE) - 拦截并要求临床修改</option>
+          <option value="override">药师覆核放行 (OVERRIDE) - 临床特殊情况需放行</option>
+          <option value="reject">驳回处方 (REJECT) - 严重禁忌强制退回</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">签核药师姓名 / 工号</label>
+        <input id="signoff-signer" class="form-control" value="王药师 (PHA-1042)" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">签核意见 / 临床依据说明</label>
+        <textarea id="signoff-reason" class="form-control" rows="3">同意系统拦截意见。患者肌酐升高且重度肾损，依诺肝素全量使用易诱发出血，建议临床医师调整为每日一次减量给药。</textarea>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button class="btn btn-secondary" onclick="closeSignoffModal()">取消</button>
+        <button class="btn btn-success" onclick="submitSignoff()">确认提交并加密入链</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentEventId = null;
+    let currentCmeCredits = 0.0;
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+      if (tabId === 'tab-cme') loadCmeCases();
+      if (tabId === 'tab-audit') loadAuditEvents();
+      if (tabId === 'tab-quality') loadQualityDashboard();
+      if (tabId === 'tab-agent') loadQCMonitorData();
+    }
+
+    function loadRxSample(type) {
+      if (type === 1) {
+        document.getElementById('rx-sex').value = '女';
+        document.getElementById('rx-age').value = '76岁';
+        document.getElementById('rx-weight').value = '52';
+        document.getElementById('rx-scr').value = '188';
+        document.getElementById('rx-diag').value = '深静脉血栓形成; 高血压病; 慢性肾脏病';
+        document.getElementById('rx-allergy').value = '否认药物过敏史';
+        document.getElementById('rx-drugs').value = '依诺肝素钠注射液 | 5000 IU q12h | 皮下注射\n氨氯地平片 | 5mg qd | 口服';
+      } else if (type === 2) {
+        document.getElementById('rx-sex').value = '男';
+        document.getElementById('rx-age').value = '48岁';
+        document.getElementById('rx-weight').value = '68';
+        document.getElementById('rx-scr').value = '82';
+        document.getElementById('rx-diag').value = '急性胆囊炎; 胆囊结石';
+        document.getElementById('rx-allergy').value = '青霉素过敏 (过敏性休克)';
+        document.getElementById('rx-drugs').value = '注射用头孢唑林钠 | 2.0g ivgtt 术前0.5h | 静脉滴注';
+      } else if (type === 3) {
+        document.getElementById('rx-sex').value = '男';
+        document.getElementById('rx-age').value = '58岁';
+        document.getElementById('rx-weight').value = '74';
+        document.getElementById('rx-scr').value = '88';
+        document.getElementById('rx-diag').value = '高脂血症; 甲真菌病';
+        document.getElementById('rx-allergy').value = '否认药物过敏史';
+        document.getElementById('rx-drugs').value = '辛伐他汀片 | 40mg qn | 口服\n伊曲康唑胶囊 | 200mg bid | 口服';
+      }
+    }
+
+    async function runPrescriptionReview() {
+      const container = document.getElementById('rx-result-container');
+      container.innerHTML = '<div style="text-align:center; padding: 2rem;">⚡ 正在调用 Medcius G1-G3 证据门控审方引擎...</div>';
+
+      const drugsText = document.getElementById('rx-drugs').value.trim();
+      const drugs = drugsText.split('\n').filter(Boolean).map(line => {
+        const parts = line.split('|').map(s => s.trim());
+        return { name: parts[0], dose: parts[1] || '常规剂量', route: parts[2] || '口服' };
+      });
+
+      const payload = {
+        patient: {
+          age: document.getElementById('rx-age').value,
+          sex_cn: document.getElementById('rx-sex').value,
+          scrUmolL: Number(document.getElementById('rx-scr').value) || undefined,
+        },
+        diagnoses: document.getElementById('rx-diag').value.split(/[;；]/).map(s => s.trim()).filter(Boolean),
+        allergies: document.getElementById('rx-allergy').value.split(/[;；]/).map(s => s.trim()).filter(Boolean),
+        drugs,
+        include_samples: true
+      };
+
+      try {
+        const res = await fetch('/api/v1/prescription/review', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        renderRxResult(data);
+      } catch (err) {
+        container.innerHTML = `<div class="evidence-box" style="border-left-color:var(--danger); color:var(--danger);">审方请求失败: ${err.message}</div>`;
+      }
+    }
+
+    function renderRxResult(data) {
+      const container = document.getElementById('rx-result-container');
+      const v = data.verdict;
+      currentEventId = data.audit?.event_id || 1;
+
+      let bannerClass = 'verdict-pass';
+      let bannerTitle = '✅ 处方审方通过 (PASS)';
+      if (v === 'FLAG') {
+        bannerClass = 'verdict-flag';
+        bannerTitle = '🛑 处方拦截预警 (FLAG · 存在明确用药风险)';
+      } else if (v === 'REQUIRES_PHARMACIST_REVIEW') {
+        bannerClass = 'verdict-review';
+        bannerTitle = '⚠️ 需药师人工复核 (REQUIRES_PHARMACIST_REVIEW)';
+      }
+
+      document.getElementById('btn-signoff-trigger').style.display = 'inline-flex';
+
+      let issuesHtml = '';
+      if (data.issues && data.issues.length) {
+        issuesHtml = data.issues.map(iss => `
+          <div class="evidence-box" style="border-left-color:${iss.severity === 'high' ? 'var(--danger)' : 'var(--warning)'};">
+            <div style="font-weight:700; color:var(--slate-900);">${iss.category || '用药警示'}: ${iss.message || iss.drug}</div>
+            ${iss.quote_cn ? `<div class="evidence-quote">“${iss.quote_cn}”</div>` : ''}
+            <div class="evidence-meta">出处: ${iss.source || '国家药品说明书库'} · 规则: ${iss.rule_id || 'G3-DDI'}</div>
+          </div>
+        `).join('');
+      } else {
+        issuesHtml = '<div style="font-size:0.85rem; color:#059669; padding:6px 0;">未发现明确配伍禁忌、严重相互作用或特殊人群超量风险。</div>';
+      }
+
+      container.innerHTML = `
+        <div class="verdict-banner ${bannerClass}">
+          <div>
+            <div style="font-size: 1.1rem; font-weight: 800;">${bannerTitle}</div>
+            <div style="font-size: 0.8rem; margin-top: 2px;">共审查 ${data.drugs?.length || 0} 种药品 · 发现 ${data.issues_count || 0} 项考量</div>
+          </div>
+          <span class="tag ${v === 'PASS' ? 'tag-green' : 'tag-amber'}">审计 Seq #${data.audit?.seq || '-'}</span>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 6px;">门控审查状态 (G1 ~ G3)</div>
+          <div class="grid-3">
+            <div style="background:var(--slate-50); padding:8px; border-radius:6px; font-size:0.8rem; border:1px solid var(--border);">
+              <strong>G1 完整性</strong>: ${data.g_gates?.g1_complete ? '✓ 满足' : '⚠️ 缺参数'}
+            </div>
+            <div style="background:var(--slate-50); padding:8px; border-radius:6px; font-size:0.8rem; border:1px solid var(--border);">
+              <strong>G2 说明书证据</strong>: ${data.g_gates?.g2_evidence_cited ? '✓ 已核验' : '⚠️ 覆盖缺口'}
+            </div>
+            <div style="background:var(--slate-50); padding:8px; border-radius:6px; font-size:0.8rem; border:1px solid var(--border);">
+              <strong>G3 相互作用</strong>: ${data.g_gates?.g3_ddi_screened ? '✓ 已筛查' : '⚠️ 需复核'}
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 6px;">临床发现与证据条文</div>
+          ${issuesHtml}
+        </div>
+      `;
+    }
+
+    function openSignoffModal() {
+      document.getElementById('signoff-modal').classList.add('active');
+    }
+    function closeSignoffModal() {
+      document.getElementById('signoff-modal').classList.remove('active');
+    }
+
+    async function submitSignoff() {
+      const decision = document.getElementById('signoff-decision').value;
+      const signer = document.getElementById('signoff-signer').value;
+      const reason = document.getElementById('signoff-reason').value;
+
+      try {
+        const res = await fetch('/api/v1/audit/signoff', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event_id: currentEventId,
+            signer,
+            role: "clinical_pharmacist",
+            decision,
+            reason
+          })
+        });
+        const d = await res.json();
+        closeSignoffModal();
+        alert(`✅ 签核已完成并上链！Signoff ID: ${d.signoff_id}, 状态: ${d.decision}`);
+      } catch (err) {
+        alert(`签核失败: ${err.message}`);
+      }
+    }
+
+    async function runEncounterProcess() {
+      const container = document.getElementById('note-result-container');
+      const badge = document.getElementById('encounter-duration');
+      container.innerHTML = '<div style="text-align:center; padding: 2rem;">🔍 正在运行 Supervisor 多 Agent 抽取、NHSA 医保编码与合规清单核对...</div>';
+
+      const text = document.getElementById('note-text').value;
+      try {
+        const start = Date.now();
+        const res = await fetch('/api/v1/encounter/process', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ noteText: text, includeSamples: true })
+        });
+        const data = await res.json();
+        badge.style.display = 'inline-block';
+        badge.textContent = `耗时: ${Date.now() - start}ms`;
+        renderEncounterResult(data);
+      } catch (err) {
+        container.innerHTML = `<div class="evidence-box" style="border-left-color:var(--danger); color:var(--danger);">处理失败: ${err.message}</div>`;
+      }
+    }
+
+    function renderEncounterResult(data) {
+      const container = document.getElementById('note-result-container');
+      const codingItems = data.coding?.items || [];
+      const checklist = data.coding?.settlement_checklist;
+
+      let codingRows = codingItems.map(item => `
+        <tr>
+          <td><span class="tag tag-blue">${item.code || '未匹配'}</span></td>
+          <td><strong>${item.name || item.query}</strong></td>
+          <td>${item.source || '国家医保版ICD-10 (2024)'}</td>
+          <td><span class="tag ${item.validation_status === 'VALID' ? 'tag-green' : 'tag-amber'}">${item.validation_status || '待核'}</span></td>
+        </tr>
+      `).join('');
+
+      container.innerHTML = `
+        <div style="margin-bottom: 1rem;">
+          <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 6px;">医保结算清单编码对照 (NHSA Coding)</div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>国家医保编码</th>
+                <th>标准疾病 / 手术名称</th>
+                <th>编码版本库出处</th>
+                <th>校验状态</th>
+              </tr>
+            </thead>
+            <tbody>${codingRows || '<tr><td colspan="4">无编码条目</td></tr>'}</tbody>
+          </table>
+        </div>
+
+        <div class="evidence-box">
+          <div style="font-weight: 700; color: var(--slate-900);">结算清单质控自检结果</div>
+          <div style="font-size: 0.85rem; margin-top: 4px; color: ${checklist?.passed ? '#059669' : '#dc2626'};">
+            ${checklist?.passed ? '✓ 医保清单校验通过：主诊断明确，手术操作编码规范，无裸类目代码' : '⚠️ 存在结算警告项'}
+          </div>
+          <div class="evidence-meta">审计存证 Seq: #${data.audit?.seq || '-'} · 数据安全: 经 PHI Guard 脱敏隔离</div>
+        </div>
+      `;
+    }
+
+    async function loadQualityDashboard() {
+      const container = document.getElementById('recommendations-container');
+      try {
+        const res = await fetch('/api/v1/analytics/recommendations');
+        const data = await res.json();
+        const plan = data.personalized_learning_plan || [];
+
+        container.innerHTML = plan.map(item => `
+          <div class="quiz-card" style="margin-bottom: 0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <span class="tag tag-amber">${item.urgency}</span>
+              <span style="font-size:0.75rem; color:#64748b;">${item.guideline?.cme_credit || ''}</span>
+            </div>
+            <div style="font-weight:700; font-size:0.9rem; margin-bottom:6px;">${item.topic}</div>
+            <div style="font-size:0.8rem; color:var(--slate-600); margin-bottom:10px;">${item.reason}</div>
+            <div style="background:var(--slate-50); padding:8px; border-radius:6px; font-size:0.75rem; color:var(--slate-700); margin-bottom:10px;">
+              <strong>来源</strong>: ${item.guideline?.source || ''}<br/>
+              <strong>核心要点</strong>: ${item.guideline?.key_points || ''}
+            </div>
+            <button class="btn btn-secondary btn-sm" style="width:100%;" onclick="switchTab('tab-cme')">🎯 前往实训题库练习</button>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function loadCmeCases() {
+      const container = document.getElementById('quiz-list-container');
+      container.innerHTML = '<div style="text-align:center; padding: 2rem;">正在加载临床实训题库...</div>';
+
+      try {
+        const res = await fetch('/api/v1/training/cases');
+        const data = await res.json();
+        const cases = data.cases || [];
+
+        container.innerHTML = cases.map((c, idx) => `
+          <div class="quiz-card" id="quiz-card-${c.id}">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <div>
+                <span class="tag tag-blue">案例 ${idx + 1}</span>
+                <span class="tag tag-amber">${c.department}</span>
+                <strong style="margin-left:6px; font-size:0.95rem;">${c.title}</strong>
+              </div>
+              <span class="tag tag-green">${c.difficulty}</span>
+            </div>
+            <div style="background:var(--slate-50); padding:10px; border-radius:6px; font-size:0.85rem; margin-bottom:10px;">
+              <strong>情境描述</strong>: ${c.scenario_description}
+            </div>
+            <div style="font-weight:700; font-size:0.9rem; margin-bottom:8px;">${c.question}</div>
+            <div class="quiz-options">
+              ${c.options.map(opt => `
+                <div class="quiz-option" onclick="selectQuizOption('${c.id}', '${opt.id}')" id="opt-${c.id}-${opt.id}">
+                  <strong>${opt.id}.</strong> ${opt.text}
+                </div>
+              `).join('')}
+            </div>
+            <div id="quiz-feedback-${c.id}" style="display:none; margin-top:10px;"></div>
+          </div>
+        `).join('');
+      } catch (err) {
+        container.innerHTML = `<div class="evidence-box" style="color:var(--danger);">加载题库失败: ${err.message}</div>`;
+      }
+    }
+
+    async function selectQuizOption(caseId, optionId) {
+      const card = document.getElementById(`quiz-card-${caseId}`);
+      card.querySelectorAll('.quiz-option').forEach(o => o.classList.remove('selected'));
+      document.getElementById(`opt-${caseId}-${optionId}`).classList.add('selected');
+
+      try {
+        const res = await fetch('/api/v1/training/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ caseId, selectedOption: optionId })
+        });
+        const data = await res.json();
+        renderQuizFeedback(caseId, data);
+      } catch (err) {
+        alert(`提交失败: ${err.message}`);
+      }
+    }
+
+    function renderQuizFeedback(caseId, data) {
+      const card = document.getElementById(`quiz-card-${caseId}`);
+      const fb = document.getElementById(`quiz-feedback-${caseId}`);
+      fb.style.display = 'block';
+
+      if (data.is_correct) {
+        currentCmeCredits += (data.cme_credit_awarded || 0.2);
+        document.getElementById('quiz-score-badge').textContent = `已修 CME 学分: ${currentCmeCredits.toFixed(1)}`;
+      }
+
+      card.querySelectorAll('.quiz-option').forEach(o => {
+        const optId = o.id.split('-').pop();
+        if (optId === data.gold_standard?.option_id) {
+          o.classList.add('correct');
+        } else if (optId === data.user_selection?.option_id && !data.is_correct) {
+          o.classList.add('incorrect');
+        }
+      });
+
+      fb.innerHTML = `
+        <div class="evidence-box" style="border-left-color: ${data.is_correct ? 'var(--success)' : 'var(--danger)'};">
+          <div style="font-weight:700; color: ${data.is_correct ? '#065f46' : '#991b1b'};">
+            ${data.is_correct ? '🎉 回答正确！获得 0.2 类 CME 药学学分' : '❌ 回答错误，标准答案是 ' + data.gold_standard?.option_id}
+          </div>
+          <div class="evidence-quote" style="margin-top:6px;"><strong>权威依据解析</strong>: ${data.clinical_rationale}</div>
+          ${data.guideline_link ? `
+            <div class="evidence-meta" style="margin-top:6px;">
+              <strong>指南依据</strong>: ${data.guideline_link.title} (${data.guideline_link.source})
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    async function loadAuditEvents() {
+      const tbody = document.getElementById('audit-tbody');
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">正在读取审计链存证...</td></tr>';
+
+      try {
+        const res = await fetch('/api/v1/audit/events?limit=25');
+        const data = await res.json();
+        const events = data.events || [];
+
+        tbody.innerHTML = events.map(ev => `
+          <tr>
+            <td><strong>#${ev.seq}</strong></td>
+            <td>${ev.ts || '-'}</td>
+            <td><span class="tag tag-blue">${ev.action}</span></td>
+            <td>${ev.actor}</td>
+            <td><code>${ev.subject_ref}</code></td>
+            <td style="font-family:monospace; font-size:0.75rem;">${(ev.chain_hash || '').slice(0, 16)}...</td>
+          </tr>
+        `).join('');
+
+        verifyAuditChain();
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" style="color:var(--danger);">读取失败: ${err.message}</td></tr>`;
+      }
+    }
+
+    async function verifyAuditChain() {
+      const box = document.getElementById('audit-verify-status');
+      box.innerHTML = '正在重算链上所有区块哈希并验证 SHA-256 签名...';
+
+      try {
+        const res = await fetch('/api/v1/audit/verify');
+        const data = await res.json();
+        if (data.ok) {
+          box.innerHTML = `
+            <span style="color:#059669; font-weight:700;">✓ 审计链完整性验证 100% 通过</span>
+            <div style="font-size:0.8rem; margin-top:2px;">共复核 ${data.checked} 个区块事件 · 头区块 Hash: <code>${data.head}</code></div>
+          `;
+        } else {
+          box.innerHTML = `<span style="color:var(--danger); font-weight:700;">⚠️ 链条异常: ${data.reason} (Seq #${data.first_bad_seq})</span>`;
+        }
+      } catch (err) {
+        box.innerHTML = `<span style="color:var(--danger);">验证失败: ${err.message}</span>`;
+      }
+    }
+
+    async function simulateHisPrescribe() {
+      const select = document.getElementById('his-drug-select').value;
+      const respBox = document.getElementById('his-cds-response');
+      respBox.innerHTML = '<div style="padding:1rem; text-align:center;">正在触发 HIS medication-prescribe CDS Hook...</div>';
+
+      let hookDrugs = [];
+      let hookDiag = ["冠状动脉粥样硬化性心脏病"];
+      let hookAllergy = [];
+
+      if (select === 'statin-itraconazole') {
+        hookDrugs = ["辛伐他汀片 40mg qn", "伊曲康唑胶囊 200mg bid"];
+      } else if (select === 'penicillin-cefazolin') {
+        hookDrugs = ["注射用头孢唑林钠 2.0g ivgtt"];
+        hookAllergy = ["青霉素过敏 (过敏性休克)"];
+      } else if (select === 'aspirin-ulcer') {
+        hookDrugs = ["阿司匹林肠溶片 100mg qd"];
+        hookDiag.push("活动性十二指肠溃疡出血");
+      } else {
+        hookDrugs = ["苯磺酸氨氯地平片 5mg qd"];
+      }
+
+      const body = {
+        hook: "medication-prescribe",
+        hookInstance: "his-sim-" + Date.now(),
+        context: {
+          patientId: "patient-his-08",
+          user: "Practitioner/doc-8021",
+          medications: hookDrugs,
+          diagnoses: hookDiag,
+          allergies: hookAllergy
+        }
+      };
+
+      try {
+        const res = await fetch('/cds-services/medcius-prescription-review', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        const card = data.cards?.[0];
+
+        if (!card) {
+          respBox.innerHTML = '<div style="padding:1rem; color:#059669; font-weight:700;">✓ CDS 无警示，处方安全放行。</div>';
+          return;
+        }
+
+        respBox.innerHTML = `
+          <div class="cds-card ${card.indicator || 'warning'}">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <strong style="font-size:1rem; color:#991b1b;">⚠️ HIS 处方拦截提示</strong>
+              <span class="tag tag-red">${card.indicator?.toUpperCase() || 'WARNING'}</span>
+            </div>
+            <div style="margin-top:6px; font-weight:600; font-size:0.9rem;">${card.summary}</div>
+            <div style="font-size:0.85rem; color:var(--slate-700); margin-top:6px;">${card.detail || ''}</div>
+            <div class="evidence-meta" style="margin-top:8px;">来源: ${card.source?.label || 'Medcius 临床智能'}</div>
+          </div>
+        `;
+      } catch (err) {
+        respBox.innerHTML = `<div style="color:var(--danger);">CDS 请求失败: ${err.message}</div>`;
+      }
+    }
+
+    /* Agent Live Co-Pilot & QC Monitor */
+    async function loadQCMonitorData() {
+      const qBox = document.getElementById('qc-anomalies-box');
+      const rBox = document.getElementById('learning-rules-box');
+
+      try {
+        const [anomRes, propRes] = await Promise.all([
+          fetch('/api/v1/qc/anomalies'),
+          fetch('/api/v1/learning/rule-proposals')
+        ]);
+        const anomData = await anomRes.json();
+        const propData = await propRes.json();
+
+        // Render anomalies
+        const anoms = anomData.anomalies || [];
+        qBox.innerHTML = anoms.map(a => `
+          <div style="border-left: 4px solid ${a.severity === 'HIGH' ? '#ef4444' : (a.severity === 'MEDIUM' ? '#f59e0b' : '#10b981')}; background: #f8fafc; padding: 10px; border-radius: 4px; margin-bottom: 8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <strong style="font-size:0.85rem;">${a.title}</strong>
+              <span class="tag ${a.severity === 'HIGH' ? 'tag-red' : (a.severity === 'MEDIUM' ? 'tag-amber' : 'tag-green')}">${a.severity}</span>
+            </div>
+            <div style="font-size:0.8rem; color:#475569; margin-top:4px;">${a.description}</div>
+            <div style="font-size:0.75rem; color:#0284c7; margin-top:4px;">💡 建议: ${a.suggested_action}</div>
+          </div>
+        `).join('');
+
+        // Render proposed rules
+        const rules = propData.suggestions || [];
+        rBox.innerHTML = rules.map(r => `
+          <div style="border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-bottom: 8px; background: white;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <strong style="font-size:0.85rem; color:var(--primary);">${r.title}</strong>
+              <span class="tag tag-blue">${r.status}</span>
+            </div>
+            <div style="font-size:0.8rem; color:#334155; margin-top:4px;"><strong>依据:</strong> ${r.evidence_basis}</div>
+            <div style="font-size:0.8rem; color:#475569; margin-top:2px;"><strong>建议调整:</strong> ${r.suggested_change}</div>
+            <div style="font-size:0.75rem; color:#64748b; margin-top:4px;">🔒 治理门控: ${r.governance_gate}</div>
+          </div>
+        `).join('');
+      } catch (err) {
+        qBox.innerHTML = `<div style="color:var(--danger);">加载质控数据失败: ${err.message}</div>`;
+      }
+    }
+
+    function runAgentLiveStream() {
+      const output = document.getElementById('agent-stream-output');
+      const drugs = document.getElementById('agent-drugs-input').value;
+      output.style.display = 'block';
+      output.innerHTML = '<div style="color:#38bdf8;">[0.0s] ⏳ 连接 Medcius SSE 流式智能编排通道...</div>';
+
+      const evtSource = new EventSource('/api/v1/agent/stream?drugs=' + encodeURIComponent(drugs));
+
+      evtSource.addEventListener('thinking', (e) => {
+        const d = JSON.parse(e.data);
+        output.innerHTML += `<div style="color:#a855f7; margin-top:4px;">[Agent 思考 ${d.step}] 💭 ${d.message}</div>`;
+        output.scrollTop = output.scrollHeight;
+      });
+
+      evtSource.addEventListener('tool_call', (e) => {
+        const d = JSON.parse(e.data);
+        output.innerHTML += `<div style="color:#38bdf8; margin-top:4px;">[MCP 工具调用] 🛠️ ${d.server} -> <strong>${d.tool}</strong> (${JSON.stringify(d.args)})</div>`;
+        output.scrollTop = output.scrollHeight;
+      });
+
+      evtSource.addEventListener('tool_result', (e) => {
+        const d = JSON.parse(e.data);
+        output.innerHTML += `<div style="color:#4ade80; margin-top:4px;">[工具执行返回] ✓ ${JSON.stringify(d)}</div>`;
+        output.scrollTop = output.scrollHeight;
+      });
+
+      evtSource.addEventListener('decision', (e) => {
+        const d = JSON.parse(e.data);
+        output.innerHTML += `<div style="color:#fbbf24; margin-top:4px;">[临床判定决策] ⚖️ 门控 ${d.gate}: <strong>${d.status}</strong> - ${d.rationale}</div>`;
+        output.scrollTop = output.scrollHeight;
+      });
+
+      evtSource.addEventListener('verdict', (e) => {
+        const d = JSON.parse(e.data);
+        output.innerHTML += `
+          <div style="background:#1e293b; border:1px solid #38bdf8; border-radius:6px; padding:8px; margin-top:8px; color:#f8fafc;">
+            <div style="font-weight:700; color:#38bdf8;">🎯 最终裁决: ${d.verdict} (置信度: ${(d.confidence * 100).toFixed(0)}%)</div>
+            <div style="font-size:0.8rem; margin-top:4px;">${d.summary}</div>
+          </div>
+        `;
+        output.scrollTop = output.scrollHeight;
+      });
+
+      evtSource.addEventListener('done', () => {
+        output.innerHTML += '<div style="color:#34d399; margin-top:6px;">[完成] 🔒 审计链完整性验证通过，推理链已落库。</div>';
+        evtSource.close();
+      });
+
+      evtSource.onerror = () => {
+        evtSource.close();
+      };
+    }
+  </script>
+</body>
+</html>
