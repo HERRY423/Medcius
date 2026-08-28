@@ -368,4 +368,198 @@ export class HospitalDataAdapter {
 
     return { medications, orders, antibiotic_alerts: antibioticAlerts };
   }
+
+  /**
+   * 5. Structured Multi-Source Priority Alignment (结构化多源临床对齐图谱)
+   * Correlates NIS vitals/fluids, LIS lab trends/criticals, PACS imaging impressions, and HIS orders
+   * into cohesive clinical domains without forcing doctors to mentally reconstruct cross-system streams.
+   */
+  static alignMultiSourceTimeline({
+    vitalsSummary = null,
+    fluidBalance = null,
+    observations = [],
+    criticalValues = [],
+    diagnosticReports = [],
+    medications = [],
+    orders = [],
+    patient = {},
+    rulePack = null,
+  } = {}) {
+    const alignments = [];
+
+    // Helper: find observations by keyword
+    const findObs = (kw) => {
+      const target = kw.toLowerCase();
+      return observations.filter((o) => {
+        const code = String(o.code || "").toLowerCase();
+        const name = String(o.name || "").toLowerCase();
+        return code.includes(target) || name.includes(target);
+      });
+    };
+
+    // Helper: find medications by keyword
+    const findMeds = (kw) => {
+      return medications.filter((m) => {
+        const dName = String(m.drug_name || m.medication || "").toLowerCase();
+        return dName.includes(kw.toLowerCase());
+      });
+    };
+
+    // --- Domain 1: 液体平衡 - 肾功能 - 血压 - 利尿对齐 (Fluid / Renal / Hemodynamics) ---
+    const scrObs = findObs("肌酐") || findObs("scr") || findObs("creatinine");
+    const kObs = findObs("钾") || findObs("potassium");
+    const diuretics = medications.filter((m) => {
+      const d = String(m.drug_name || m.medication || "");
+      return /呋塞米|托拉塞米|螺内酯|氢氯噻嗪|布美他尼|重组人脑利钠肽|新活素/.test(d);
+    });
+    const vasoactives = medications.filter((m) => {
+      const d = String(m.drug_name || m.medication || "");
+      return /硝普钠|硝酸甘油|去甲肾上腺素|多巴胺|肾上腺素|硝苯地平|美托洛尔|比索洛尔|卡维地洛/.test(d);
+    });
+
+    const hasFluid = fluidBalance != null;
+    const hasScr = scrObs.length > 0;
+    const hasDiuretic = diuretics.length > 0;
+    const hasVaso = vasoactives.length > 0;
+
+    if (hasFluid || hasScr || hasDiuretic || hasVaso) {
+      const nisParts = [];
+      if (fluidBalance) {
+        nisParts.push(`24h入量 ${fluidBalance.intake_total_ml}ml, 出量 ${fluidBalance.output_total_ml}ml (尿量 ${fluidBalance.urine_24h_ml}ml), 净平衡 ${fluidBalance.net_balance_label}`);
+      }
+      if (vitalsSummary?.bp_max) {
+        nisParts.push(`血压极值: ${vitalsSummary.bp_max} ~ ${vitalsSummary.bp_min || ""}`);
+      }
+
+      const lisParts = [];
+      if (scrObs.length > 0) {
+        const latestScr = scrObs[0];
+        lisParts.push(`血肌酐: ${latestScr.value} ${latestScr.unit || "μmol/L"}`);
+      }
+
+      const hisParts = [];
+      if (diuretics.length > 0) {
+        hisParts.push(`利尿药: ${diuretics.map((d) => d.drug_name || d.medication).join("、")}`);
+      }
+      if (vasoactives.length > 0) {
+        hisParts.push(`心血管/血管活性药: ${vasoactives.map((d) => d.drug_name || d.medication).join("、")}`);
+      }
+
+      let syn = "出入量与肾功能演变监控中";
+      if (fluidBalance && fluidBalance.net_balance_ml > 800) {
+        syn = `24h显著净正平衡 (${fluidBalance.net_balance_label})` + (diuretics.length > 0 ? "，已有在用利尿剂治疗" : "，提示关注容量负荷");
+      } else if (fluidBalance && fluidBalance.urine_24h_ml < 500 && fluidBalance.urine_24h_ml > 0) {
+        syn = `少尿状态 (24h 尿量 ${fluidBalance.urine_24h_ml}ml)` + (scrObs.length > 0 ? ` 伴肌酐 ${scrObs[0].value} μmol/L` : "");
+      }
+
+      alignments.push({
+        domain_id: "fluid_renal_hemodynamic",
+        domain_title: "液体平衡 - 肾功能 - 循环与利尿对齐",
+        nis_summary: nisParts.join("；") || "无特定记录",
+        lis_summary: lisParts.join("；") || "未查血肌酐",
+        his_summary: hisParts.join("；") || "无在用利尿/血管活性药",
+        clinical_synthesis: syn,
+        requires_attention: fluidBalance?.net_balance_ml > 1000 || (fluidBalance?.urine_24h_ml > 0 && fluidBalance?.urine_24h_ml < 500),
+      });
+    }
+
+    // --- Domain 2: 体温 - 感染指标 - 抗菌药物对齐 (Infection / Antimicrobial) ---
+    const infObs = observations.filter((o) => {
+      const n = String(o.name || o.code || "");
+      return /白细胞|wbc|中性粒|crp|c反应蛋白|pct|降钙素原|培养/.test(n.toLowerCase());
+    });
+    const antibiotics = medications.filter((m) => {
+      return m.antibiotic_info != null || /头孢|青霉素|他唑巴坦|舒巴坦|卡巴培南|培南|莫西沙星|左氧氟沙星|阿奇霉素|万古霉素|替考拉宁|利奈唑胺|阿米卡星/.test(m.drug_name || m.medication || "");
+    });
+
+    if (vitalsSummary?.t_max != null || infObs.length > 0 || antibiotics.length > 0) {
+      const nisParts = [];
+      if (vitalsSummary?.t_max) {
+        nisParts.push(`最高体温: ${vitalsSummary.t_max}℃` + (vitalsSummary.t_max >= 38.5 ? " (高热)" : vitalsSummary.t_max >= 37.3 ? " (低热)" : " (正常)"));
+      }
+
+      const lisParts = infObs.map((o) => `${o.name || o.code}: ${o.value} ${o.unit || ""}`);
+      const hisParts = antibiotics.map((a) => {
+        const name = a.drug_name || a.medication;
+        const dur = a.antibiotic_info?.duration_days ? `第${a.antibiotic_info.duration_days}天` : "";
+        const lvl = a.antibiotic_info?.level ? `[${a.antibiotic_info.level}]` : "";
+        return `${name} ${dur} ${lvl}`.trim();
+      });
+
+      let syn = "感染与体温指标平稳";
+      if (vitalsSummary?.t_max >= 38.0) {
+        syn = `监测到体温升高 (${vitalsSummary.t_max}℃)` + (antibiotics.length > 0 ? `，当前使用 ${antibiotics.map((a) => a.drug_name || a.medication).join("、")}` : "，未启用抗菌药物");
+      } else if (antibiotics.some((a) => a.antibiotic_info?.is_overdue)) {
+        syn = "抗菌药物已达院内规则包复核时间点，建议复核降阶梯或停药指征";
+      }
+
+      alignments.push({
+        domain_id: "infection_temperature_antimicrobial",
+        domain_title: "体温 - 感染指标 - 抗菌药物对齐",
+        nis_summary: nisParts.join("；") || "体温平稳",
+        lis_summary: lisParts.join("；") || "近期未见感染指标化验",
+        his_summary: hisParts.join("；") || "未开立抗菌药物",
+        clinical_synthesis: syn,
+        requires_attention: (vitalsSummary?.t_max >= 38.5) || antibiotics.some((a) => a.antibiotic_info?.is_overdue),
+      });
+    }
+
+    // --- Domain 3: 电解质异常与补给闭环对齐 (Electrolyte Balance & Replenishment) ---
+    const electrolyteObs = observations.filter((o) => {
+      const n = String(o.name || o.code || "").toLowerCase();
+      return /钾|钠|钙|镁|k|na|ca|mg/.test(n) && (o.is_critical || o.value < 3.5 || o.value > 5.3 || o.value < 135 || o.value > 145);
+    });
+    const replenishments = medications.filter((m) => {
+      const d = String(m.drug_name || m.medication || "");
+      return /氯化钾|枸橼酸钾|碳酸氢钠|浓氯化钠|葡萄糖酸钙|硫酸镁/.test(d);
+    });
+
+    if (electrolyteObs.length > 0 || replenishments.length > 0) {
+      const lisParts = electrolyteObs.map((o) => `${o.name || o.code}: ${o.value} ${o.unit || ""} (${o.is_critical ? "危急值" : "异常"})`);
+      const hisParts = replenishments.map((m) => `${m.drug_name || m.medication} ${m.dosage || ""} ${m.route || ""}`);
+
+      alignments.push({
+        domain_id: "electrolytes_replenishment",
+        domain_title: "电解质异常 - 纠正医嘱 - 复查闭环对齐",
+        nis_summary: "生命体征同步监测",
+        lis_summary: lisParts.join("；") || "电解质平稳",
+        his_summary: hisParts.join("；") || "无电解质补充医嘱",
+        clinical_synthesis: electrolyteObs.length > 0 && replenishments.length > 0 ? "已见电解质异常并开立对应用药，关注复查闭环" : (electrolyteObs.length > 0 ? "检出电解质异常，尚未见纠正医嘱" : "在用电解质补充药物"),
+        requires_attention: electrolyteObs.some((o) => o.is_critical),
+      });
+    }
+
+    // --- Domain 4: 心血管标志物与抗栓/扩冠用药对齐 (Cardiovascular Markers & Therapy) ---
+    const cardiacObs = observations.filter((o) => {
+      const n = String(o.name || o.code || "").toLowerCase();
+      return /肌钙蛋白|ctni|ctnt|bnp|probnp|d-二聚体|ck-mb|inr|凝血/.test(n);
+    });
+    const cardiacMeds = medications.filter((m) => {
+      const d = String(m.drug_name || m.medication || "");
+      return /阿司匹林|氯吡格雷|替格瑞洛|肝素|依诺肝素|华法林|利伐沙班|达比加群|阿托伐他汀|瑞舒伐他汀|硝酸异山梨酯|单硝酸/.test(d);
+    });
+    const cardiacPacs = diagnosticReports.filter((r) => {
+      const n = String(r.name || r.modality || "");
+      return /心|冠脉|超声心动|cta|血管/.test(n);
+    });
+
+    if (cardiacObs.length > 0 || cardiacMeds.length > 0 || cardiacPacs.length > 0) {
+      const lisParts = cardiacObs.map((o) => `${o.name || o.code}: ${o.value} ${o.unit || ""}`);
+      const pacsParts = cardiacPacs.map((p) => `${p.name}: ${p.impression || p.status}`);
+      const hisParts = cardiacMeds.map((m) => `${m.drug_name || m.medication}`);
+
+      alignments.push({
+        domain_id: "cardiovascular_biomarkers_medication",
+        domain_title: "心血管标志物 - 影像 - 抗栓与调脂对齐",
+        nis_summary: vitalsSummary?.bp_max ? `血压: ${vitalsSummary.bp_max}, 心率: ${vitalsSummary.hr_avg || "平稳"} bpm` : "体征平稳",
+        lis_summary: lisParts.join("；") || "未复查心肌酶/BNP",
+        pacs_summary: pacsParts.join("；") || "无近期心血管影像报告",
+        his_summary: hisParts.join("；") || "无在用抗栓/调脂医嘱",
+        clinical_synthesis: "心血管专科指标与用药协同监测中",
+        requires_attention: cardiacObs.some((o) => o.is_critical),
+      });
+    }
+
+    return alignments;
+  }
 }

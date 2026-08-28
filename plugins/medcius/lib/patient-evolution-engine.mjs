@@ -89,6 +89,32 @@ export class PatientEvolutionEngine {
       now: nowMs,
     });
 
+    // 0b. Structured Multi-Source Cross-System Clinical Alignment
+    const structuredAlignments = HospitalDataAdapter.alignMultiSourceTimeline({
+      vitalsSummary: normalizedVitals,
+      fluidBalance: normalizedFluids,
+      observations: combinedObservations,
+      criticalValues: topCriticalValues,
+      diagnosticReports: combinedReports,
+      medications: hisResult.medications,
+      orders: hisResult.orders,
+      patient,
+      rulePack,
+    });
+
+    const alignmentSelectableItems = structuredAlignments.map((align) => ({
+      id: genId("ALIGN"),
+      category: ITEM_CATEGORIES.FACT,
+      tag: "【多源对齐】",
+      title: align.domain_title,
+      summary: `【${align.domain_title}】${align.clinical_synthesis} (NIS: ${align.nis_summary} | LIS: ${align.lis_summary} | HIS: ${align.his_summary})`,
+      alignment: align,
+      source_type: "MultiSourceCrossAlignment",
+      source_id: `align-${align.domain_id}`,
+      source_title: "多源跨系统临床对齐图谱 (NIS/LIS/PACS/HIS)",
+      requires_attention: align.requires_attention,
+    }));
+
     // ----------------------------------------------------
     // BLOCK 1: 「发生了什么变化」 (What Changed)
     // ----------------------------------------------------
@@ -514,6 +540,7 @@ export class PatientEvolutionEngine {
     // BLOCK 5: 「查看原始证据」 (Source Attribution & Raw Spans)
     // ----------------------------------------------------
     const allSelectableItems = [
+      ...alignmentSelectableItems,
       ...(changes.vitals_and_fluids ? [changes.vitals_and_fluids] : []),
       ...changes.clinical_symptoms,
       ...changes.abnormal_labs,
@@ -555,6 +582,7 @@ export class PatientEvolutionEngine {
       generated_at: new Date(nowMs).toISOString(),
       critical_values: topCriticalValues,
       blocks: {
+        structured_multisource_alignment: structuredAlignments,
         what_changed: changes,
         whats_pending: pending,
         rule_reminders: ruleReminders,
@@ -581,6 +609,7 @@ export class PatientEvolutionEngine {
     const selectedSet = new Set(selectedItemIds);
     const chosen = allItems.filter((i) => selectedSet.has(i.id));
 
+    const alignItems = chosen.filter((i) => i.id.startsWith("ALIGN"));
     const vitalsItem = chosen.find((i) => i.id.startsWith("VIT"));
     const symItems = chosen.filter((i) => i.id.startsWith("SYM"));
     const labItems = chosen.filter((i) => i.id.startsWith("LAB"));
@@ -602,6 +631,13 @@ export class PatientEvolutionEngine {
       lines.push(`肾功能估算：eGFR ${summaryData.patient.egfr} mL/min/1.73m² (CKD-EPI 2021)`);
     }
     lines.push("");
+
+    // Section 0: Structured Multi-Source Alignment
+    if (alignItems.length > 0) {
+      lines.push("【多源跨系统临床对齐 (NIS/LIS/PACS/HIS)】");
+      alignItems.forEach((i) => lines.push(`  • ${i.summary}`));
+      lines.push("");
+    }
 
     // Section 1: Vitals & Symptoms
     lines.push("一、今日病情变化与症状演变");

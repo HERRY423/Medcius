@@ -180,4 +180,41 @@ assert.ok(antiAlert.duration_days >= 5, `Expected >= 5 days, got ${antiAlert.dur
 
 console.log(`✓ HIS Antimicrobial Monitor detected: ${antiAlert.alert_message}`);
 
+// ----------------------------------------------------
+// Test 6: Structured Multi-Source Clinical Alignment (NIS/LIS/PACS/HIS)
+// ----------------------------------------------------
+console.log("\n[Test 6] Testing Structured Multi-Source Cross-System Clinical Alignment...");
+
+const alignments = HospitalDataAdapter.alignMultiSourceTimeline({
+  vitalsSummary: nisResult.vitals_summary,
+  fluidBalance: nisResult.fluid_balance,
+  observations: lisResult.observations,
+  criticalValues: lisResult.critical_values,
+  diagnosticReports: pacsResult.diagnostic_reports,
+  medications: hisResult.medications,
+  orders: hisResult.orders,
+  patient: { id: "P-CARD-001", age: 65, gender: "男" },
+  rulePack: sandboxRulePack,
+});
+
+assert.ok(Array.isArray(alignments) && alignments.length >= 3, `Expected >=3 alignments, got ${alignments.length}`);
+
+const fluidAlign = alignments.find((a) => a.domain_id === "fluid_renal_hemodynamic");
+assert.ok(fluidAlign, "Must generate fluid/renal alignment");
+assert.ok(fluidAlign.nis_summary.includes("24h入量 3000ml"));
+assert.ok(fluidAlign.lis_summary.includes("血肌酐: 410"));
+
+const infAlign = alignments.find((a) => a.domain_id === "infection_temperature_antimicrobial");
+assert.ok(infAlign, "Must generate infection alignment");
+assert.ok(infAlign.nis_summary.includes("最高体温: 38.6℃"));
+assert.ok(infAlign.his_summary.includes("注射用头孢曲松钠"));
+
+const kAlign = alignments.find((a) => a.domain_id === "electrolytes_replenishment");
+assert.ok(kAlign, "Must generate electrolyte alignment");
+assert.ok(kAlign.lis_summary.includes("血钾测定: 2.4"));
+
+console.log(`✓ Structured Multi-Source Alignment generated ${alignments.length} clinical domains:`);
+alignments.forEach((a) => console.log(`   - [${a.domain_title}]: ${a.clinical_synthesis}`));
+
 console.log("\nALL HOSPITAL MULTI-SOURCE ADAPTER TESTS PASSED!\n");
+

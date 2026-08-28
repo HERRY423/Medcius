@@ -566,6 +566,32 @@
       const b1 = data.blocks.what_changed;
       let b1Count = 0;
 
+      // 0. Structured Multi-Source Alignment (NIS/LIS/PACS/HIS)
+      const alignments = data.blocks.structured_multisource_alignment || [];
+      if (alignments.length > 0) {
+        const alignBox = document.createElement('div');
+        alignBox.className = 'vitals-box';
+        alignBox.style.borderColor = '#8957e5';
+        alignBox.style.marginBottom = '10px';
+        alignBox.innerHTML = `
+          <div style="font-weight:700; color:#d2a8ff; margin-bottom:6px; display:flex; justify-content:space-between;">
+            <span>🎯 跨系统结构化多源临床对齐 (NIS/LIS/PACS/HIS)</span>
+            <span style="font-size:11px; color:var(--text-muted);">自动对齐护理体征/化验动态/影像印象/医嘱处置</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            ${alignments.map(a => `
+              <div style="background:#161b22; padding:6px 8px; border-radius:4px; border:1px solid ${a.requires_attention ? '#f8514966' : '#30363d'};">
+                <div style="font-weight:600; color:${a.requires_attention ? '#ff7b72' : '#58a6ff'}; font-size:12px;">${a.requires_attention ? '⚠️ ' : '• '}${a.domain_title}: ${a.clinical_synthesis}</div>
+                <div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">
+                  <span style="color:#79c0ff;">[NIS]</span> ${a.nis_summary} | <span style="color:#7ee787;">[LIS]</span> ${a.lis_summary} | <span style="color:#d2a8ff;">[HIS]</span> ${a.his_summary}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+        changedDiv.appendChild(alignBox);
+      }
+
       // Vitals & Fluid card
       if (b1.vitals_and_fluids) {
         b1Count++;
