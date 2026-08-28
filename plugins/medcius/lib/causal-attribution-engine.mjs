@@ -1,4 +1,4 @@
-﻿// Causal Attribution & Dual-Track Gating Engine (因果假设归因与双通道规则守门引擎)
+// Causal Attribution & Dual-Track Gating Engine (因果假设归因与双通道规则守门引擎)
 // Implements:
 // 1. Differential hypothesis generation with supporting/refuting evidence and 3-state logic (Negative / Not mentioned / Not evaluated)
 // 2. Dual-track rule gating & arbitration (Hard rule deterministic checks + LLM context synthesis)
@@ -37,8 +37,9 @@ export class CausalAttributionEngine {
 
       if (nephrotoxicMeds.length > 0) {
         attributions.push({
-          hypothesis: "药物性急性肾损伤 (Drug-induced AKI)",
-          likelihood: "High",
+          hypothesis: "肾毒性药物关联观察 (Nephrotoxic Medication Association)",
+          observation_nature: "PARALLEL_EVIDENCE_OBSERVATION",
+          diagnostic_ranking_prohibited: true,
           supporting_evidence: nephrotoxicMeds.map((m) => ({
             text_span: `用药记录: ${m.name || m.medicationCodeableConcept?.text} (${m.dosage || "剂量见医嘱"})`,
             source_reference: m.id ? `MedicationRequest/${m.id}` : "HIS_MEDICATION_ORDER",
@@ -46,6 +47,7 @@ export class CausalAttributionEngine {
             source_type: "FHIR_RESOURCE",
           })),
           refuting_evidence: [],
+          disclaimer: "非辅助决策定位：本项仅呈现与肌酐变化并行的用药事实与时间轴，不作概率排序或药物性AKI确定性诊断。",
         });
       }
 
@@ -58,8 +60,9 @@ export class CausalAttributionEngine {
       const negativeFluidEvidence = fluidNotes.filter((o) => Number(o.value) < 0 || String(o.value).includes("-"));
       if (negativeFluidEvidence.length > 0) {
         attributions.push({
-          hypothesis: "肾前性有效循环灌注不足 (Pre-renal Hypoperfusion / Negative Balance)",
-          likelihood: "Moderate",
+          hypothesis: "体液负平衡/有效循环灌注观察 (Negative Fluid Balance Observation)",
+          observation_nature: "PARALLEL_EVIDENCE_OBSERVATION",
+          diagnostic_ranking_prohibited: true,
           supporting_evidence: negativeFluidEvidence.map((o) => ({
             text_span: `24h 出入量/尿量监测: ${o.value} ${o.unit || "mL"}`,
             source_reference: o.id ? `Observation/${o.id}` : "NIS_FLUID_BALANCE",
@@ -67,6 +70,7 @@ export class CausalAttributionEngine {
             source_type: "DEVICE_TELEMETRY",
           })),
           refuting_evidence: [],
+          disclaimer: "非辅助决策定位：本项仅呈现出入量与尿量客观数据，不作肾前性少尿之鉴别概率推断。",
         });
       }
 

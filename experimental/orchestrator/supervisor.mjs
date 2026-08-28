@@ -1,6 +1,13 @@
-// Clinical Supervisor Multi-Agent Orchestrator
-// Coordinates specialized workers (ExtractWorker, CodingWorker, PharmaWorker, AuditWorker)
-// into structured DAG pipelines with strict schema enforcement, audit tracking, and error boundaries.
+// ⚠️ ARCHITECTURAL BOUNDARY & ANTI-PATTERN WARNING (REG-ACTION-TRACKER):
+// ClinicalSupervisor is strictly an EXPERIMENTAL evaluation benchmark harness.
+// It is explicitly PROHIBITED from being deployed as a frontline clinical orchestrator.
+// In frontline clinical practice, Medcius strictly enforces human-in-the-loop:
+// Host Agent handles conversational interaction, Medcius Plugin handles read-only facts,
+// and the physician performs clinical synthesis and sovereign CA sign-off.
+// Automated multi-agent autonomous closed-loops over clinical encounters replace the physician
+// and are rejected by Medcius's safety philosophy.
+//
+// Clinical Supervisor Multi-Agent Orchestrator (Experimental Benchmarking Only)
 
 import { ExtractWorker } from "./workers/extract-worker.mjs";
 import { CodingWorker } from "./workers/coding-worker.mjs";

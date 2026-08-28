@@ -1,4 +1,4 @@
-﻿import assert from "node:assert/strict";
+import assert from "node:assert/strict";
 import { TimelineReconstructor } from "../plugins/medcius/lib/timeline-reconstructor.mjs";
 import { CausalAttributionEngine, DualTrackGatingEngine, THREE_STATE_EVALUATION } from "../plugins/medcius/lib/causal-attribution-engine.mjs";
 import { StagedDraftService } from "../plugins/medcius/lib/staged-draft-service.mjs";
@@ -59,8 +59,9 @@ const causalResult = CausalAttributionEngine.analyzeAttributionsForEvent(renalEv
   observations: mockObsForCausal,
 });
 
-assert.equal(causalResult.attributions.length, 2, "Should identify both Drug-induced AKI and Pre-renal hypoperfusion hypotheses");
-assert.equal(causalResult.attributions[0].likelihood, "High");
+assert.equal(causalResult.attributions.length, 2, "Should identify both Nephrotoxic and Fluid balance parallel observations");
+assert.equal(causalResult.attributions[0].observation_nature, "PARALLEL_EVIDENCE_OBSERVATION");
+assert.equal(causalResult.attributions[0].diagnostic_ranking_prohibited, true, "Must prohibit diagnostic probability ranking in non-CDS posture");
 assert.equal(causalResult.attributions[0].supporting_evidence[0].source_reference, "MedicationRequest/med-01");
 
 // Verify 3-state gap evaluation

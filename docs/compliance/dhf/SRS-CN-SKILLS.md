@@ -8,11 +8,15 @@
 
 ### 1.1 目的与范围
 
-本文规定 Medcius 中国技能线（`nhsa-coding`、`nhsa-policy`、`prescription-review`、`clinical-note-extract`、`nmpa-drugs`、`china-clinical-trials`）及其本地 MCP 基础设施的需求。不含美国遗留技能（prior-auth、icd10-cm 等），其无连接器即停用。
+本文规定 Medcius 中国临床生产技能线（`patient-evolution-summary`、`shift-handover`、`consult-preparation`、`discharge-readiness-check`、`clinical-note-extract`、`fhir`）及其本地只读 MCP 基础设施的需求。
+
+> ⚠️ **技能分级与隔离机制**：
+> 1. **生产核心技能线 (Production Line)**：以一线住院医生查房前演变、交接班备忘、会诊资料包、出院核对为核心，以非辅助决策的信息整理与多源确定性对齐为法定边界。
+> 2. **实验研究技能线 (Experimental Line)**：原 `nhsa-coding`、`prescription-review`、`nmpa-drugs`、`china-clinical-trials` 等技能已移入 `experimental/` 隔离评测区，默认在生产环境中关闭并禁止即兴调用。
 
 ### 1.2 预期用途边界（需求之上的约束）
 
-供病案/编码/药学专业人员使用的**辅助工具**；不做诊断决策、不生成鉴别诊断、不出具用药建议；处方审核为药师法定职责（国卫办医发〔2018〕14 号第六条）。此边界是分类界定的前提，修改须过合规评审。
+供一线执业临床医师使用的**只读信息整理与多源对齐辅助工具**；不做自主诊断决策、不生成鉴别诊断概率排序、不出具自主处方与治疗建议；不实施任何未经医师 CA 签章的原生 EMR 自动写回。此边界是分类界定与合规备案的前提，修改须过合规评审。
 
 ## 2. 系统级需求（ARCH 层）
 
