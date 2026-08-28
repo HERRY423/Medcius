@@ -30,6 +30,19 @@ const steps = [
   { name: "17. Reference Workflow: Synthetic Physician Time-Motion Protocol", cmd: "node", args: ["plugins/medcius/evals/time-motion/time-motion-study.mjs"] },
   { name: "18. Reference Workflow: Hospital Multi-Source Adapter Tests", cmd: "node", args: ["tests/test-multisource-adapter.mjs"] },
   { name: "19. Reference Workflow: Clinical Safety Contract Tests", cmd: "node", args: ["tests/test-clinical-safety-rules.mjs"] },
+  { name: "20. Host-Agnostic Hospital Agent Adapter & Fail-Closed Tests", cmd: "node", args: ["tests/test-hospital-agent-adapter.mjs"] },
+  { name: "21. Reference Workflow: Independent Physician Annotation & Kappa Tests", cmd: "node", args: ["tests/test-physician-annotation.mjs"] },
+  { name: "22. Reference Workflow: Independent Physician Annotation Report", cmd: "node", args: ["plugins/medcius/evals/physician-annotation/physician-annotation-report.mjs"] },
+  { name: "23. Workflow Skill Pack: Shift Handover Tests", cmd: "node", args: ["tests/test-shift-handover.mjs"] },
+  { name: "24. Workflow Skill Pack: Consultation Preparation Tests", cmd: "node", args: ["tests/test-consult-preparation.mjs"] },
+  { name: "25. Workflow Skill Pack: Discharge Readiness & Completeness Tests", cmd: "node", args: ["tests/test-discharge-readiness.mjs"] },
+  { name: "26. Clinical Closure: High-Risk Follow-up, Rule Packs & Read-Only Bridge", cmd: "node", args: ["tests/test-clinical-closure.mjs"] },
+  { name: "27. Real-System Integration: FHIR R4 / CDA Connector PoC & PHI Exit Guard", cmd: "node", args: ["tests/test-real-connectors.mjs"] },
+  { name: "28. Public-Reference Validation: Deterministic Reviewer vs Public Pharmacology Facts", cmd: "node", args: ["plugins/medcius/evals/public-reference-validation/run.mjs"] },
+  { name: "29. Performance Baseline: Hot-Path Benchmarks vs Budget Gates", cmd: "node", args: ["plugins/medcius/evals/performance-baseline/bench.mjs"] },
+  { name: "30. API Security Hardening: Rate Limit / Brute-Force Lockout / Security Headers", cmd: "node", args: ["tests/test-security-hardening.mjs"] },
+  { name: "31. Clinical Landing: Dual-Timestamp, Causal Attribution & Progressive Views", cmd: "node", args: ["tests/test-clinical-landing-advancement.mjs"] },
+  { name: "32. Privacy, Air-Gap, SaMD Traceability & Ward Complexity Benchmark", cmd: "node", args: ["tests/test-security-compliance-and-benchmarks.mjs"] },
 ];
 
 console.log("================================================================================");

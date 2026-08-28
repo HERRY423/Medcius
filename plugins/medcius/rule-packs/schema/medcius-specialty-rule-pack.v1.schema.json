@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://medcius.local/schemas/medcius-specialty-rule-pack.v1.schema.json",
+  "title": "Medcius Specialty Ward Rule Pack",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "pack_id",
+    "version",
+    "specialty",
+    "care_setting",
+    "data_class",
+    "status",
+    "authority",
+    "clinical_rules"
+  ],
+  "properties": {
+    "schema_version": { "const": "medcius.specialty-rule-pack.v1" },
+    "pack_id": { "type": "string", "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$" },
+    "version": { "type": "string", "minLength": 1 },
+    "specialty": { "type": "string", "minLength": 1 },
+    "care_setting": { "type": "string", "minLength": 1 },
+    "data_class": { "enum": ["sample", "candidate", "official"] },
+    "status": { "enum": ["sandbox_only", "candidate", "approved", "retired"] },
+    "authority": {
+      "type": "object",
+      "required": ["organization", "effective_from"],
+      "properties": {
+        "organization": { "type": "string", "minLength": 1 },
+        "hospital_scope": { "type": ["string", "null"] },
+        "approved_by": { "type": ["string", "null"] },
+        "effective_from": { "type": "string", "format": "date" },
+        "review_due": { "type": ["string", "null"], "format": "date" }
+      },
+      "additionalProperties": false
+    },
+    "clinical_rules": {
+      "type": "object",
+      "required": ["critical_values", "restricted_antibiotics", "ward_thresholds", "followup"],
+      "properties": {
+        "critical_values": { "type": "object" },
+        "restricted_antibiotics": { "type": "array" },
+        "ward_thresholds": {
+          "type": "object",
+          "required": ["fluid_balance_net_ml", "egfr_attention_below"],
+          "properties": {
+            "fluid_balance_net_ml": {
+              "type": "object",
+              "required": ["high_attention_above", "low_attention_below"],
+              "properties": {
+                "high_attention_above": { "type": "number" },
+                "low_attention_below": { "type": "number" }
+              },
+              "additionalProperties": false
+            },
+            "egfr_attention_below": { "type": "number", "exclusiveMinimum": 0 }
+          },
+          "additionalProperties": false
+        },
+        "followup": { "type": "array" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

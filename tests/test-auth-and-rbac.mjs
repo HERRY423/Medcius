@@ -85,7 +85,7 @@ try {
 
   // Test 4b: Authenticated call with Bearer token & tenant header
   console.log("\n  [4b] Authenticated call with valid token & tenant header...");
-  const authRes = await fetch(`${baseUrl}/api/v1/patient/evolution-summary?time_window=24h&patient_id=IP-001`, {
+  const authRes = await fetch(`${baseUrl}/api/v1/patient/evolution-summary?time_window=24h&patient_id=IP-001&encounter_id=ENC-001`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",

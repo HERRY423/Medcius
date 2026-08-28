@@ -8,7 +8,15 @@ const WRAPPER = "plugins/medcius/scripts/codex-mcp-server.mjs";
 const REQUIRED_SKILLS = [
   ".trae/skills/medcius-fhir/SKILL.md",
   ".trae/skills/medcius-clinical-note-extract/SKILL.md",
+  ".trae/skills/medcius-patient-evolution-summary/SKILL.md",
+  ".trae/skills/medcius-shift-handover/SKILL.md",
+  ".trae/skills/medcius-consult-preparation/SKILL.md",
+  ".trae/skills/medcius-discharge-readiness-check/SKILL.md",
   ".codebuddy/skills/medcius/SKILL.md",
+  ".codebuddy/skills/medcius-patient-evolution-summary/SKILL.md",
+  ".codebuddy/skills/medcius-shift-handover/SKILL.md",
+  ".codebuddy/skills/medcius-consult-preparation/SKILL.md",
+  ".codebuddy/skills/medcius-discharge-readiness-check/SKILL.md",
 ];
 const REQUIRED_RULES = [".trae/rules/project_rules.md", ".rules/medcius.md"];
 

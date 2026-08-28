@@ -6,6 +6,7 @@ import { createServer as createHttpServer } from "node:http";
 import { createServer as createHttpsServer } from "node:https";
 import { readFileSync, existsSync } from "node:fs";
 import { routeRequest } from "./rest-routes.mjs";
+import { applySecurityHeaders } from "./security-hardening.mjs";
 
 const MAX_BODY_BYTES = 10 * 1024 * 1024; // 10MB limit
 
@@ -13,6 +14,9 @@ export function createServer(options = {}) {
   const isProduction = process.env.NODE_ENV === "production" || process.env.MEDCIUS_PROFILE === "production";
 
   const requestHandler = async (req, res) => {
+    // Strict security headers on every response (HSTS only when TLS).
+    applySecurityHeaders(res, { isTls: Boolean(options.tls || getEnvTlsConfig()) });
+
     let bodyBuffer = "";
     let bodyLength = 0;
 

@@ -76,7 +76,7 @@ try {
 
   // Test 5: GET /api/v1/patient/evolution-summary
   console.log("\n[Test 5] GET /api/v1/patient/evolution-summary...");
-  const sumRes = await fetch(`${baseUrl}/api/v1/patient/evolution-summary?time_window=24h&patient_id=P-1001`, {
+  const sumRes = await fetch(`${baseUrl}/api/v1/patient/evolution-summary?time_window=24h&patient_id=P-1001&encounter_id=ENC-1001`, {
     headers: authHeaders,
   });
   assert.equal(sumRes.status, 200);

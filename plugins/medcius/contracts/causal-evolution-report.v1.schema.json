@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://medcius.local/schemas/causal-evolution-report.v1.schema.json",
+  "title": "Medcius Causal Evolution Report",
+  "description": "Structured schema for clinical evolution events, differential causal attributions, 3-state gap analysis, and progressive disclosure views.",
+  "type": "object",
+  "required": [
+    "patient_id",
+    "encounter_id",
+    "evaluation_time",
+    "fail_closed_status",
+    "evolution_events"
+  ],
+  "properties": {
+    "patient_id": { "type": "string", "minLength": 1 },
+    "encounter_id": { "type": "string", "minLength": 1 },
+    "evaluation_time": { "type": "string", "format": "date-time" },
+    "fail_closed_status": {
+      "type": "object",
+      "required": ["is_blocked", "reason"],
+      "properties": {
+        "is_blocked": { "type": "boolean" },
+        "reason": { "type": ["string", "null"] }
+      }
+    },
+    "evolution_events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "event_id",
+          "summary",
+          "clinical_status",
+          "differential_attributions",
+          "missing_evaluations"
+        ],
+        "properties": {
+          "event_id": { "type": "string" },
+          "summary": { "type": "string" },
+          "clinical_status": {
+            "type": "string",
+            "enum": ["Improving", "Stable", "Deteriorating", "Fluctuating", "Unknown"]
+          },
+          "differential_attributions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["hypothesis", "likelihood", "supporting_evidence", "refuting_evidence"],
+              "properties": {
+                "hypothesis": { "type": "string" },
+                "likelihood": { "type": "string", "enum": ["High", "Moderate", "Low", "Uncertain"] },
+                "supporting_evidence": {
+                  "type": "array",
+                  "items": { "$ref": "#/$defs/EvidenceItem" }
+                },
+                "refuting_evidence": {
+                  "type": "array",
+                  "items": { "$ref": "#/$defs/EvidenceItem" }
+                }
+              }
+            }
+          },
+          "missing_evaluations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["item", "status"],
+              "properties": {
+                "item": { "type": "string" },
+                "status": { "type": "string", "enum": ["Not evaluated", "Not mentioned"] },
+                "clinical_rationale": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "progressive_views": {
+      "type": "object",
+      "properties": {
+        "glance": { "type": "object" },
+        "digest": { "type": "object" },
+        "drilldown": { "type": "object" }
+      }
+    }
+  },
+  "$defs": {
+    "EvidenceItem": {
+      "type": "object",
+      "required": ["text_span", "source_reference", "event_timestamp"],
+      "properties": {
+        "text_span": { "type": "string" },
+        "source_reference": { "type": "string" },
+        "event_timestamp": { "type": "string", "format": "date-time" },
+        "source_type": { "type": "string", "enum": ["FHIR_RESOURCE", "EMR_NOTE", "DEVICE_TELEMETRY"] }
+      }
+    }
+  }
+}

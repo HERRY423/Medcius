@@ -1,0 +1,66 @@
+{
+  "schema_version": "medcius.specialty-rule-pack.v1",
+  "pack_id": "cardiology-inpatient-sandbox",
+  "version": "1.0.0",
+  "specialty": "cardiology",
+  "care_setting": "inpatient",
+  "data_class": "sample",
+  "status": "sandbox_only",
+  "authority": {
+    "organization": "Medcius synthetic cardiology sandbox",
+    "hospital_scope": null,
+    "approved_by": null,
+    "effective_from": "2026-08-25",
+    "review_due": "2026-11-25"
+  },
+  "clinical_rules": {
+    "critical_values": {
+      "k": { "name": "血钾", "low": 2.8, "high": 6.2, "unit": "mmol/L", "danger_hint": "沙箱规则：危急值闭环" },
+      "na": { "name": "血钠", "low": 120, "high": 160, "unit": "mmol/L", "danger_hint": "沙箱规则：危急值闭环" },
+      "scr": { "name": "血肌酐", "high": 350, "unit": "μmol/L", "danger_hint": "沙箱规则：肾功能高风险结果" },
+      "ctni": { "name": "肌钙蛋白I", "high": 1.0, "unit": "ng/mL", "danger_hint": "沙箱规则：心肌损伤标志物高风险结果" },
+      "bnp": { "name": "BNP/NT-proBNP", "high": 5000, "unit": "pg/mL", "danger_hint": "沙箱规则：心衰标志物高风险结果" },
+      "plt": { "name": "血小板", "low": 30, "unit": "x10^9/L", "danger_hint": "沙箱规则：严重减少结果" },
+      "wbc": { "name": "白细胞", "low": 1.5, "high": 30.0, "unit": "x10^9/L", "danger_hint": "沙箱规则：极端白细胞结果" },
+      "glu": { "name": "血糖", "low": 2.2, "high": 22.2, "unit": "mmol/L", "danger_hint": "沙箱规则：极端血糖结果" }
+    },
+    "restricted_antibiotics": [
+      { "name": "头孢曲松", "class": "三代头孢", "level": "限制使用级", "review_after_days": 7 },
+      { "name": "头孢他啶", "class": "三代头孢", "level": "限制使用级", "review_after_days": 7 },
+      { "name": "头孢哌酮舒巴坦", "class": "三代头孢+酶抑制剂", "level": "限制使用级", "review_after_days": 7 },
+      { "name": "哌拉西林他唑巴坦", "class": "广谱青霉素+酶抑制剂", "level": "限制使用级", "review_after_days": 7 },
+      { "name": "莫西沙星", "class": "呼吸喹诺酮", "level": "限制使用级", "review_after_days": 7 },
+      { "name": "左氧氟沙星", "class": "喹诺酮类", "level": "限制使用级", "review_after_days": 7 },
+      { "name": "美罗培南", "class": "碳青霉烯类", "level": "特殊使用级", "review_after_days": 5 },
+      { "name": "亚胺培南西司他丁", "class": "碳青霉烯类", "level": "特殊使用级", "review_after_days": 5 },
+      { "name": "万古霉素", "class": "糖肽类", "level": "特殊使用级", "review_after_days": 7 },
+      { "name": "去甲万古霉素", "class": "糖肽类", "level": "特殊使用级", "review_after_days": 7 },
+      { "name": "利奈唑胺", "class": "恶唑烷酮类", "level": "特殊使用级", "review_after_days": 7 },
+      { "name": "替加环素", "class": "甘氨酰环素类", "level": "特殊使用级", "review_after_days": 7 },
+      { "name": "多粘菌素B", "class": "多粘菌素类", "level": "特殊使用级", "review_after_days": 7 }
+    ],
+    "ward_thresholds": {
+      "fluid_balance_net_ml": {
+        "high_attention_above": 1000,
+        "low_attention_below": -1000
+      },
+      "egfr_attention_below": 30
+    },
+    "followup": [
+      {
+        "rule_id": "source-reported-critical-lab",
+        "kind": "laboratory",
+        "match": { "explicit_critical": true },
+        "required_stages": ["ordered", "collected", "resulted", "acknowledged"],
+        "due_minutes": { "resulted": 30 }
+      },
+      {
+        "rule_id": "urgent-cardiac-imaging",
+        "kind": "imaging",
+        "match": { "priorities": ["stat", "urgent"] },
+        "required_stages": ["ordered", "scheduled", "resulted", "acknowledged"],
+        "due_minutes": { "ordered": 120, "preliminary": 120, "resulted": 60 }
+      }
+    ]
+  }
+}

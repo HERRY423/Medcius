@@ -65,7 +65,10 @@ async function probeCorpus() {
     try { probes.codes_bare = CH.validate_code({code:"J45"}).validation_status ?? "error"; } catch (e) { probes.codes_bare = `error: ${e.message}`; }
     try { probes.codes_valid = CH.validate_code({code:"J45.900"}).validation_status ?? "error"; } catch (e) { probes.codes_valid = `error: ${e.message}`; }
     try {
-      const { HANDLERS: TH } = await import("../../servers/china-trials/src/tools.mjs");
+      const trPath = existsSync(join(__dirname, "../../../../experimental/servers/china-trials/src/tools.mjs"))
+        ? "../../../../experimental/servers/china-trials/src/tools.mjs"
+        : "../../servers/china-trials/src/tools.mjs";
+      const { HANDLERS: TH } = await import(trPath);
       probes.trials_fmt = TH.validate_ctr_format({ ctr: "CTR2025" }).ok === false ? "ok" : "error";
       probes.trials_get_missing = TH.get_trial({ ctr: "CTR20251234" }).error === "not_in_corpus" || TH.get_trial({ ctr: "CTR20251234" }).error ? "ok" : "error";
     } catch (e) { probes.trials = `error: ${e.message}`; }
@@ -157,10 +160,17 @@ if (errors.length) {
 let corpusInfo = null;
 if (withCorpus) {
   console.log("\n-- --with-corpus: probing local corpora --");
+  const trDbPath = existsSync(join(__dirname, "../../../../experimental/servers/china-trials/src/db.mjs"))
+    ? "../../../../experimental/servers/china-trials/src/db.mjs"
+    : "../../servers/china-trials/src/db.mjs";
+  const trIngestScript = existsSync(join(__dirname, "../../../../experimental/servers/china-trials/scripts/ingest.mjs"))
+    ? "../../../../experimental/servers/china-trials/scripts/ingest.mjs"
+    : "../../servers/china-trials/scripts/ingest.mjs";
+
   const ingestMap = [
     ["../../servers/drug-labels/src/db.mjs", "drug-labels", "drug_labels", "../../servers/drug-labels/scripts/ingest.mjs"],
     ["../../servers/china-codes/src/db.mjs", "china-codes", "nhsa_codes", "../../servers/china-codes/scripts/ingest.mjs"],
-    ["../../servers/china-trials/src/db.mjs", "china-trials", "clinical_trials", "../../servers/china-trials/scripts/ingest.mjs"],
+    [trDbPath, "china-trials", "clinical_trials", trIngestScript],
   ];
   for (const [rel, label, table, script] of ingestMap) {
     try {

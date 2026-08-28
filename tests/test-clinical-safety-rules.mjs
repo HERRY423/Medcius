@@ -1,6 +1,9 @@
 // Clinical Safety & Quality Control Rules Hardening Tests
 import assert from "node:assert/strict";
 import { PatientEvolutionEngine, ITEM_CATEGORIES } from "../plugins/medcius/lib/patient-evolution-engine.mjs";
+import { loadSpecialtyRulePack } from "../plugins/medcius/lib/specialty-rule-pack.mjs";
+
+const sandboxRulePack = loadSpecialtyRulePack("cardiology-inpatient-sandbox");
 
 console.log("== Testing Clinical Safety & Quality Control Rules Hardening ==");
 
@@ -46,6 +49,7 @@ const lisFeed = [
     test_name: "血清肌酐",
     result_value: 265,
     unit: "μmol/L",
+    is_critical_reported: true,
     reference_range_text: "59 - 104 μmol/L",
     referenceRange: [{ low: { value: 59, unit: "μmol/L" }, high: { value: 104, unit: "μmol/L" } }],
   },
@@ -108,6 +112,7 @@ const summary = PatientEvolutionEngine.analyzePatientEvolution({
   nursingFeed,
   pacsFeed,
   lisFeed,
+  rulePack: sandboxRulePack,
 });
 
 // Assert Critical Values Detection
@@ -116,7 +121,7 @@ const kCrit = summary.critical_values.find((c) => c.name === "血清钾");
 assert.ok(kCrit);
 assert.equal(kCrit.value, 2.6);
 assert.ok(kCrit.reason.includes("低于危急值下限"));
-console.log("✓ LIS Critical Values (K 2.6 mmol/L & Scr 265 μmol/L) intercepted with 30-min urgent closed-loop requirement");
+console.log("✓ LIS Critical Values (rule-pack K boundary plus source-reported Scr flag) retained for staged closure tracking");
 
 // Assert Vitals & 24h Fluid Balance
 assert.ok(summary.blocks.what_changed.vitals_and_fluids);

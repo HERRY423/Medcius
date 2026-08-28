@@ -1,0 +1,4 @@
+# Public benchmark datasets never enter git (license + privacy review required)
+data/raw/
+data/converted/
+reports/*.local.md

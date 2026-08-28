@@ -6,6 +6,9 @@ import {
   CRITICAL_VALUE_THRESHOLDS,
   RESTRICTED_ANTIBIOTICS,
 } from "../plugins/medcius/lib/hospital-data-adapter.mjs";
+import { loadSpecialtyRulePack } from "../plugins/medcius/lib/specialty-rule-pack.mjs";
+
+const sandboxRulePack = loadSpecialtyRulePack("cardiology-inpatient-sandbox");
 
 console.log("== Testing Hospital Multi-Source Data Fusion Adapter ==");
 
@@ -109,7 +112,7 @@ const lisSample = [
   },
 ];
 
-const lisResult = HospitalDataAdapter.normalizeLisFeed(lisSample);
+const lisResult = HospitalDataAdapter.normalizeLisFeed(lisSample, { rulePack: sandboxRulePack });
 assert.equal(lisResult.observations.length, 3);
 assert.equal(lisResult.critical_values.length, 2, "Must intercept 2 critical values (K=2.4 and Scr=410)");
 
@@ -168,7 +171,7 @@ const hisSample = [
   },
 ];
 
-const hisResult = HospitalDataAdapter.normalizeHisOrders(hisSample);
+const hisResult = HospitalDataAdapter.normalizeHisOrders(hisSample, { rulePack: sandboxRulePack });
 assert.equal(hisResult.antibiotic_alerts.length, 1, "Must detect restricted antibiotic头孢曲松");
 const antiAlert = hisResult.antibiotic_alerts[0];
 assert.equal(antiAlert.drug_name, "注射用头孢曲松钠");

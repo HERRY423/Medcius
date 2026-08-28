@@ -4,6 +4,7 @@
 
 import { splitSections } from "./parse-cn-note.mjs";
 import { HospitalDataAdapter, calculateEgfrCkdEpi } from "./hospital-data-adapter.mjs";
+import { trackHighRiskFollowup } from "./high-risk-followup-tracker.mjs";
 
 export const ITEM_CATEGORIES = {
   FACT: "FACT",           // 【原文事实】
@@ -35,14 +36,17 @@ export class PatientEvolutionEngine {
     nursingFeed = [],
     pacsFeed = [],
     lisFeed = [],
+    rulePack = null,
+    now = new Date(),
   }) {
     if (!patient || !patient.id || patient.id === "UNKNOWN-PATIENT" || String(patient.id).trim() === "") {
       throw new Error("INVALID_PATIENT_CONTEXT: Missing or invalid Patient ID. System fails closed to prevent ungrounded synthesis.");
     }
 
     const windowHours = timeWindow === "72h" ? 72 : 24;
-    const now = Date.now();
-    const cutoffTime = now - windowHours * 60 * 60 * 1000;
+    const nowMs = new Date(now).getTime();
+    if (!Number.isFinite(nowMs)) throw new Error("INVALID_TIME_CONTEXT: now must be a valid timestamp");
+    const cutoffTime = nowMs - windowHours * 60 * 60 * 1000;
 
     let nextItemId = 1;
     const genId = (prefix) => `${prefix}-${String(nextItemId++).padStart(3, "0")}`;
@@ -51,7 +55,7 @@ export class PatientEvolutionEngine {
     let normalizedVitals = null;
     let normalizedFluids = null;
     if (nursingFeed && nursingFeed.length > 0) {
-      const nisResult = HospitalDataAdapter.normalizeNisFeed(nursingFeed);
+      const nisResult = HospitalDataAdapter.normalizeNisFeed(nursingFeed, { rulePack });
       normalizedVitals = nisResult.vitals_summary;
       normalizedFluids = nisResult.fluid_balance;
     }
@@ -59,7 +63,7 @@ export class PatientEvolutionEngine {
     let combinedObservations = [...observations];
     let topCriticalValues = [];
     if (lisFeed && lisFeed.length > 0) {
-      const lisResult = HospitalDataAdapter.normalizeLisFeed(lisFeed);
+      const lisResult = HospitalDataAdapter.normalizeLisFeed(lisFeed, { rulePack });
       combinedObservations.push(...lisResult.observations);
       topCriticalValues.push(...lisResult.critical_values);
     }
@@ -74,8 +78,16 @@ export class PatientEvolutionEngine {
 
     let combinedMedications = [...medications];
     let antibioticAlerts = [];
-    const hisResult = HospitalDataAdapter.normalizeHisOrders(combinedMedications);
+    const hisResult = HospitalDataAdapter.normalizeHisOrders(combinedMedications, { rulePack, now: nowMs });
     antibioticAlerts = hisResult.antibiotic_alerts;
+
+    const highRiskFollowup = trackHighRiskFollowup({
+      orders,
+      observations: combinedObservations,
+      diagnosticReports: combinedReports,
+      rulePack,
+      now: nowMs,
+    });
 
     // ----------------------------------------------------
     // BLOCK 1: 「发生了什么变化」 (What Changed)
@@ -118,7 +130,7 @@ export class PatientEvolutionEngine {
 
     // 1b. Clinical Symptoms from Notes (Verbatim Spans ONLY)
     for (const note of notes) {
-      const noteTime = note.timestamp ? new Date(note.timestamp).getTime() : now;
+      const noteTime = note.timestamp ? new Date(note.timestamp).getTime() : nowMs;
       if (noteTime >= cutoffTime) {
         const sections = splitSections(note.text || "");
         const docName = note.title || note.note_type || "病程记录";
@@ -152,7 +164,8 @@ export class PatientEvolutionEngine {
     // 1c. Abnormal Labs & Longitudinal Trend Calculation
     const obsByCode = {};
     for (const obs of combinedObservations) {
-      const code = (obs.code || obs.name || "unknown").toLowerCase();
+      const rawCode = typeof obs.code === "string" ? obs.code : (obs.code?.coding?.[0]?.code || obs.name || "unknown");
+      const code = String(rawCode).toLowerCase();
       obsByCode[code] = obsByCode[code] || [];
       obsByCode[code].push(obs);
     }
@@ -163,7 +176,7 @@ export class PatientEvolutionEngine {
       obsList.sort((a, b) => new Date(b.effective_time || b.timestamp || 0).getTime() - new Date(a.effective_time || a.timestamp || 0).getTime());
 
       const latest = obsList[0];
-      const latestTime = new Date(latest.effective_time || latest.timestamp || now).getTime();
+      const latestTime = new Date(latest.effective_time || latest.timestamp || nowMs).getTime();
       const inWindow = latestTime >= cutoffTime;
       const baseline = obsList.length > 1 ? obsList[1] : null;
 
@@ -185,9 +198,6 @@ export class PatientEvolutionEngine {
       if (hasReferenceRange) {
         isHigh = refHigh != null && latestVal > refHigh;
         isLow = refLow != null && latestVal < refLow;
-        if (!isCritical) {
-          isCritical = (refHigh != null && latestVal >= refHigh * 2.5) || (refLow != null && latestVal <= refLow * 0.5);
-        }
         statusLabel = isCritical ? "🚨 危急值" : (isHigh ? "⚠️ 偏高" : (isLow ? "⚠️ 偏低" : "正常"));
       }
 
@@ -259,7 +269,7 @@ export class PatientEvolutionEngine {
             report_name: latest.report_name || "检验报告",
             sample_time: latest.effective_time || latest.timestamp || null,
             reason: latest.critical_reason || `数值触发检验危急值边界 (${latestVal} ${unit})`,
-            urgency_action: "需在 30 分钟内完成临床医师处置与闭环记录",
+            urgency_action: "按医院批准制度完成人工确认与闭环记录；本插件仅追踪阶段",
           });
         }
       }
@@ -419,16 +429,17 @@ export class PatientEvolutionEngine {
     }
 
     // eGFR and Renal safety alerts
-    if (patientEgfr != null) {
-      if (patientEgfr < 30) {
+    const egfrAttentionBelow = rulePack?.clinical_rules?.ward_thresholds?.egfr_attention_below;
+    if (patientEgfr != null && Number.isFinite(egfrAttentionBelow)) {
+      if (patientEgfr < egfrAttentionBelow) {
         ruleReminders.push({
           id: genId("RULE-EGFR"),
           category: ITEM_CATEGORIES.RULE_ALERT,
           tag: CATEGORY_LABELS[ITEM_CATEGORIES.RULE_ALERT],
-          title: "肾功能显著减退 (eGFR < 30 mL/min/1.73m²)",
-          summary: `【规则提醒】当前 eGFR 估算为 ${patientEgfr} mL/min/1.73m² (重度减退)。请密切注意经肾排泄药物（如地高辛、抗生素、降糖药等）剂量调整。`,
+          title: `eGFR 触发规则包关注边界 (< ${egfrAttentionBelow} mL/min/1.73m²)`,
+          summary: `【规则提醒】当前 eGFR 估算为 ${patientEgfr} mL/min/1.73m²，触发规则包 ${rulePack.pack_id} 的关注边界。请临床医师核对原始检验、患者背景及院内规则；本插件不提供剂量或治疗建议。`,
           source_type: "RenalSafetyRule",
-          source_id: "rule-egfr-30",
+          source_id: `rule-${rulePack.pack_id}-egfr`,
         });
       }
     }
@@ -541,12 +552,13 @@ export class PatientEvolutionEngine {
         egfr: patientEgfr,
       },
       time_window: timeWindow,
-      generated_at: new Date().toISOString(),
+      generated_at: new Date(nowMs).toISOString(),
       critical_values: topCriticalValues,
       blocks: {
         what_changed: changes,
         whats_pending: pending,
         rule_reminders: ruleReminders,
+        high_risk_followup: highRiskFollowup,
         data_gaps: gaps,
         evidence: evidenceList,
       },

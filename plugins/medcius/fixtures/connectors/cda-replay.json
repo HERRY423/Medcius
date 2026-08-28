@@ -1,0 +1,18 @@
+{
+  "_comment": "Synthetic replay fixture for the P2 CDA/document channel read-only connector PoC (R26) and the PHI exit guard (R28). The narrative deliberately embeds syntactically valid but entirely fake identifiers (reused from tests/test-negative-leakage.mjs) so the exit-guard tokenization and blocking paths stay under continuous regression. No real patient data may ever enter this file.",
+  "source_version": "synthetic-cda-replay-v1",
+  "documents": [
+    {
+      "id": "doc-discharge-synth-1",
+      "title": "出院记录（合成）",
+      "content_type": "application/hl7-cda+xml",
+      "body": "<ClinicalDocument xmlns=\"urn:hl7-org:v3\"><title>出院记录（合成）</title><component><structuredBody><component><section><title>诊疗经过</title><text><table><tr><td>患者姓名：张三丰</td><td>身份证号：110101199003072378</td><td>联系电话：13900001111</td></tr><tr><td>住院号：SYNTH-001234</td><td>入院日期：2026-08-20</td></tr></table><paragraph>患者因胸闷气促入院，诊断为冠心病（合成示例），予注射用头孢曲松钠抗感染治疗，复查血钾 2.4 mmol/L，已按危急值流程上报并处理。</paragraph><paragraph>出院医嘱：继续口服药物，一周后门诊复查心电图。</paragraph></text></section></structuredBody></component></ClinicalDocument>"
+    },
+    {
+      "id": "doc-progressnote-synth-2",
+      "title": "病程记录（合成）",
+      "content_type": "application/hl7-cda+xml",
+      "body": "<ClinicalDocument xmlns=\"urn:hl7-org:v3\"><title>病程记录（合成）</title><component><structuredBody><component><section><text><paragraph>今晨查房：患者体温 37.2℃，血压 120/75 mmHg，引流液性状正常。继续当前治疗方案，密切观察。</paragraph></text></section></structuredBody></component></ClinicalDocument>"
+    }
+  ]
+}

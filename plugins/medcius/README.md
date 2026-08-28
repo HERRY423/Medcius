@@ -18,6 +18,10 @@ Medcius 不是独立临床软件或医院信息平台，也不是自主诊疗的
 | `servers/phiguard` | PHI 扫描、脱敏与假名化支持 |
 | `servers/audit` | 本地防篡改检测用哈希链审计 |
 | `lib/patient-evolution-engine.mjs` | 首个参考工作流“查房前患者变化摘要” |
+| `lib/patient-affordability-context.mjs` | 出院场景的来源绑定费用负担/医疗可获得性核对；不推断患者自付额 |
+| `lib/high-risk-followup-tracker.mjs` | 高风险检查检验阶段与未闭环状态追踪 |
+| `lib/specialty-rule-pack.mjs`、`rule-packs/` | 专科病区规则包校验、版本、审批和回滚元数据 |
+| `lib/read-only-hospital-data-bridge.mjs` | NIS/LIS/PACS/HIS/EMR 异构来源只读桥接与上下文绑定 |
 | `servers/api` | 参考侧边栏、REST 与 CDS Hooks 适配器 |
 
 “查房前患者变化摘要”用于证明插件内核如何支撑一个真实临床工作流，但不再代表 Medcius 的全部产品边界。后续工作流必须以独立技能包扩展，并分别定义用户、触发时点、权限、证据、失败行为和验证方案。
@@ -31,6 +35,8 @@ Medcius 不是独立临床软件或医院信息平台，也不是自主诊疗的
 - Agent 适配默认只读，不暴露 `create_resource` 或 `update_resource`；
 - 不输出自主诊断、治疗推荐、处方裁决或无人工确认的 EHR 写回；
 - 工程检查和合成病例不等于临床证据。
+- 未配置医院批准规则包时，不启用通用检验阈值或药物时限；仅保留源系统显式高风险标志；
+- 检查检验“最终结果”不得推断为“医生已确认”，缺少确认时间时保持未闭环。
 
 ## 宿主适配
 

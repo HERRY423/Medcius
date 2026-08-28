@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://medcius.local/schemas/patient-financial-access-record.v1.schema.json",
+  "title": "Medcius Patient Financial Access Record",
+  "description": "A source-bound affordability or access fact. It is not a benefit determination, bill, treatment recommendation, or discharge decision.",
+  "type": "object",
+  "required": ["id", "kind", "category", "status", "recorded_at"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "kind": {
+      "enum": [
+        "affordability_screen",
+        "coverage_verification",
+        "patient_cost_estimate",
+        "assistance_referral"
+      ]
+    },
+    "category": {
+      "enum": ["medication", "follow_up", "transportation", "equipment", "home_care", "other"]
+    },
+    "status": {
+      "enum": [
+        "barrier_reported",
+        "no_barrier_reported",
+        "unknown",
+        "not_completed",
+        "verified",
+        "pending",
+        "denied",
+        "not_verified",
+        "available",
+        "unavailable",
+        "expired",
+        "offered",
+        "accepted",
+        "declined",
+        "completed"
+      ]
+    },
+    "recorded_at": { "type": "string", "format": "date-time" },
+    "amount": { "type": "number", "minimum": 0 },
+    "currency": { "type": "string", "minLength": 1 },
+    "valid_until": { "type": "string", "format": "date-time" },
+    "estimate_scope_code": { "type": ["string", "null"] },
+    "patient_id": { "type": "string" },
+    "encounter_id": { "type": "string" },
+    "source_reference": {
+      "type": "object",
+      "required": ["source_system", "resource_id"],
+      "properties": {
+        "source_system": { "type": "string", "minLength": 1 },
+        "resource_id": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "_source": {
+      "type": "object",
+      "required": ["system", "record_id", "read_only"],
+      "properties": {
+        "system": { "type": "string", "minLength": 1 },
+        "kind": { "const": "financial_access" },
+        "record_id": { "type": "string", "minLength": 1 },
+        "fetched_at": { "type": "string", "format": "date-time" },
+        "source_version": { "type": ["string", "null"] },
+        "read_only": { "const": true }
+      },
+      "additionalProperties": false
+    }
+  },
+  "oneOf": [
+    { "required": ["source_reference"] },
+    { "required": ["_source"] }
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": { "const": "patient_cost_estimate" },
+          "status": { "const": "available" }
+        },
+        "required": ["kind", "status"]
+      },
+      "then": { "required": ["amount", "currency", "valid_until"] }
+    }
+  ],
+  "additionalProperties": false
+}

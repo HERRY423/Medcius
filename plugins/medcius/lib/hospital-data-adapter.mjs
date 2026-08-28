@@ -2,38 +2,24 @@
 // Ingests: NIS (Nursing vitals & 24h fluid balance), LIS (Labs & Critical Values), PACS (Imaging & Impressions), HIS (Orders & Notes)
 // Outputs: Standardized FHIR R4 Bundles & Normalized Clinical Feeds for PatientEvolutionEngine
 
-/**
- * Standard Critical Value Clinical Thresholds (根据国家卫健委《医疗质量安全核心制度》检验危急值通用范围)
- */
-export const CRITICAL_VALUE_THRESHOLDS = {
-  k: { name: "血钾", low: 2.8, high: 6.2, unit: "mmol/L", danger_hint: "严重心律失常 / 心脏骤停风险" },
-  na: { name: "血钠", low: 120, high: 160, unit: "mmol/L", danger_hint: "严重渗透压紊乱 / 脑水肿风险" },
-  scr: { name: "血肌酐", high: 350, unit: "μmol/L", danger_hint: "急性肾损伤 (AKI 3期) 风险" },
-  ctni: { name: "肌钙蛋白I", high: 1.0, unit: "ng/mL", danger_hint: "急性心肌坏死 / ACS 高危" },
-  bnp: { name: "BNP/NT-proBNP", high: 5000, unit: "pg/mL", danger_hint: "急性失代偿性心力衰竭" },
-  plt: { name: "血小板", low: 30, unit: "x10^9/L", danger_hint: "自发性严重出血风险" },
-  wbc: { name: "白细胞", low: 1.5, high: 30.0, unit: "x10^9/L", danger_hint: "严重骨髓抑制或脓毒症反应" },
-  glu: { name: "血糖", low: 2.2, high: 22.2, unit: "mmol/L", danger_hint: "低血糖昏迷或高渗高血糖状态 (HHS)" },
-};
+import { loadSpecialtyRulePack } from "./specialty-rule-pack.mjs";
+
+const LEGACY_SANDBOX_RULE_PACK = loadSpecialtyRulePack("cardiology-inpatient-sandbox");
 
 /**
- * Restricted / Special Class Antibiotics Classification (限制使用级与特殊使用级抗菌药物目录)
+ * Compatibility export for synthetic fixtures only. Runtime normalization does
+ * not apply these values unless a rule pack is passed explicitly.
  */
-export const RESTRICTED_ANTIBIOTICS = [
-  { name: "头孢曲松", class: "三代头孢", level: "限制使用级", max_recommended_days: 7 },
-  { name: "头孢他啶", class: "三代头孢", level: "限制使用级", max_recommended_days: 7 },
-  { name: "头孢哌酮舒巴坦", class: "三代头孢+酶抑制剂", level: "限制使用级", max_recommended_days: 7 },
-  { name: "哌拉西林他唑巴坦", class: "广谱青霉素+酶抑制剂", level: "限制使用级", max_recommended_days: 7 },
-  { name: "莫西沙星", class: "呼吸喹诺酮", level: "限制使用级", max_recommended_days: 7 },
-  { name: "左氧氟沙星", class: "喹诺酮类", level: "限制使用级", max_recommended_days: 7 },
-  { name: "美罗培南", class: "碳青霉烯类", level: "特殊使用级", max_recommended_days: 5 },
-  { name: "亚胺培南西司他丁", class: "碳青霉烯类", level: "特殊使用级", max_recommended_days: 5 },
-  { name: "万古霉素", class: "糖肽类", level: "特殊使用级", max_recommended_days: 7 },
-  { name: "去甲万古霉素", class: "糖肽类", level: "特殊使用级", max_recommended_days: 7 },
-  { name: "利奈唑胺", class: "恶唑烷酮类", level: "特殊使用级", max_recommended_days: 7 },
-  { name: "替加环素", class: "甘氨酰环素类", level: "特殊使用级", max_recommended_days: 7 },
-  { name: "多粘菌素B", class: "多粘菌素类", level: "特殊使用级", max_recommended_days: 7 },
-];
+export const CRITICAL_VALUE_THRESHOLDS = LEGACY_SANDBOX_RULE_PACK.clinical_rules.critical_values;
+
+/**
+ * Compatibility export for synthetic fixtures only. Hospital-approved packs
+ * must replace it in production.
+ */
+export const RESTRICTED_ANTIBIOTICS = LEGACY_SANDBOX_RULE_PACK.clinical_rules.restricted_antibiotics.map((rule) => ({
+  ...rule,
+  max_recommended_days: rule.review_after_days,
+}));
 
 /**
  * Calculate eGFR via CKD-EPI 2021 equation (mL/min/1.73 m2)
@@ -63,7 +49,7 @@ export class HospitalDataAdapter {
   /**
    * 1. Normalize NIS (Nursing Info System) Vital Signs and 24h Fluid Balance
    */
-  static normalizeNisFeed(nisFeed = []) {
+  static normalizeNisFeed(nisFeed = [], { rulePack = null } = {}) {
     if (!Array.isArray(nisFeed) || nisFeed.length === 0) {
       return { vitals_summary: null, fluid_balance: null, fhir_observations: [] };
     }
@@ -158,6 +144,17 @@ export class HospitalDataAdapter {
     };
 
     const netBalance = intakeTotal - outputTotal;
+    const fluidThresholds = rulePack?.clinical_rules?.ward_thresholds?.fluid_balance_net_ml;
+    let fluidStatus = "已记录（未配置专科判断阈值）";
+    if (fluidThresholds) {
+      if (netBalance > fluidThresholds.high_attention_above) {
+        fluidStatus = `触发规则包净正平衡关注边界 (> ${fluidThresholds.high_attention_above} ml)`;
+      } else if (netBalance < fluidThresholds.low_attention_below) {
+        fluidStatus = `触发规则包净负平衡关注边界 (< ${fluidThresholds.low_attention_below} ml)`;
+      } else {
+        fluidStatus = "未触发规则包液体平衡关注边界";
+      }
+    }
     const fluidBalance = {
       intake_total_ml: intakeTotal,
       output_total_ml: outputTotal,
@@ -167,7 +164,8 @@ export class HospitalDataAdapter {
       drain_24h_ml: drainTotal,
       stool_24h_count: stoolCount,
       drain_details: drainDetails,
-      status: netBalance > 1000 ? "显著正平衡 (需警惕容量负荷过重)" : (netBalance < -1000 ? "显著负平衡 (有效循环容量关注)" : "基本平衡"),
+      status: fluidStatus,
+      rule_pack_id: rulePack?.pack_id || null,
     };
 
     return { vitals_summary: vitalsSummary, fluid_balance: fluidBalance, fhir_observations: fhirObservations };
@@ -176,7 +174,7 @@ export class HospitalDataAdapter {
   /**
    * 2. Normalize LIS (Laboratory Info System) and Detect Critical Values
    */
-  static normalizeLisFeed(lisFeed = []) {
+  static normalizeLisFeed(lisFeed = [], { rulePack = null } = {}) {
     if (!Array.isArray(lisFeed)) return { observations: [], critical_values: [] };
 
     const observations = [];
@@ -192,8 +190,9 @@ export class HospitalDataAdapter {
       let isCritical = false;
       let criticalReason = null;
 
-      // Rule check against national critical thresholds
-      const thresh = CRITICAL_VALUE_THRESHOLDS[codeKey];
+      // Context-conditioned rule check. With no explicit rule pack, only the
+      // source system's own critical flag is retained; no universal fallback.
+      const thresh = rulePack?.clinical_rules?.critical_values?.[codeKey];
       if (thresh && !isNaN(val)) {
         if (thresh.low != null && val <= thresh.low) {
           isCritical = true;
@@ -222,6 +221,13 @@ export class HospitalDataAdapter {
         is_critical: isCritical,
         critical_reason: criticalReason,
         span: item.span || null,
+        status: item.status || item.result_status || "final",
+        priority: item.priority || item.urgency || null,
+        order_id: item.order_id || item.service_request_id || null,
+        collected_at: item.collected_at || item.specimen_received_at || item.sample_time || null,
+        resulted_at: item.resulted_at || item.issued || item.effective_time || item.sample_time || null,
+        acknowledged_at: item.acknowledged_at || null,
+        _source: item._source || null,
       };
 
       observations.push(obsObj);
@@ -235,7 +241,9 @@ export class HospitalDataAdapter {
           report_name: reportName,
           sample_time: sampleTime,
           reason: criticalReason,
-          urgency_action: "危急值需在 30 分钟内完成临床医师处置与闭环记录",
+          urgency_action: "按医院批准的危急值制度完成临床确认与闭环；本插件仅追踪阶段，不给出处置建议",
+          acknowledged_at: item.acknowledged_at || null,
+          order_id: item.order_id || item.service_request_id || null,
         });
       }
     }
@@ -266,6 +274,13 @@ export class HospitalDataAdapter {
         status: status,
         ordered_at: orderedAt,
         impression: impression,
+        code: item.code || item.study_code || null,
+        priority: item.priority || item.urgency || null,
+        order_id: item.order_id || item.service_request_id || item.based_on_id || null,
+        scheduled_time: item.scheduled_time || null,
+        resulted_at: item.resulted_at || item.issued || null,
+        acknowledged_at: item.acknowledged_at || null,
+        _source: item._source || null,
       });
 
       if (impression) {
@@ -284,13 +299,13 @@ export class HospitalDataAdapter {
   /**
    * 4. Normalize HIS (Hospital Info System) Orders & Track Antibiotic Durations
    */
-  static normalizeHisOrders(ordersFeed = []) {
+  static normalizeHisOrders(ordersFeed = [], { rulePack = null, now = Date.now() } = {}) {
     if (!Array.isArray(ordersFeed)) return { medications: [], orders: [], antibiotic_alerts: [] };
 
     const medications = [];
     const orders = [];
     const antibioticAlerts = [];
-    const now = Date.now();
+    const antibioticRules = rulePack?.clinical_rules?.restricted_antibiotics || [];
 
     for (const item of ordersFeed) {
       if (item.is_medication || item.drug_name) {
@@ -300,19 +315,20 @@ export class HospitalDataAdapter {
         const durationDays = Math.max(1, Math.ceil((now - startTimestamp) / (24 * 3600000)));
 
         // Check if restricted/special antibiotic
-        const matchAnti = RESTRICTED_ANTIBIOTICS.find((a) => drugName.includes(a.name));
+        const matchAnti = antibioticRules.find((a) => drugName.includes(a.name));
         let antiInfo = null;
 
         if (matchAnti) {
-          const isOverdue = durationDays >= matchAnti.max_recommended_days;
+          const reviewAfterDays = matchAnti.review_after_days;
+          const isOverdue = Number.isFinite(reviewAfterDays) ? durationDays >= reviewAfterDays : null;
           antiInfo = {
             drug_name: drugName,
             class: matchAnti.class,
             level: matchAnti.level,
             duration_days: durationDays,
-            max_recommended_days: matchAnti.max_recommended_days,
+            review_after_days: reviewAfterDays ?? null,
             is_overdue: isOverdue,
-            alert_message: `【${matchAnti.level}】${drugName}已使用第 ${durationDays} 天。${isOverdue ? "已达常规疗程上限，建议结合复查感染指标（PCT/CRP）与病原药敏结果评估降阶梯或停药。" : "需持续观察感染控制情况与脏器功能。"}`
+            alert_message: `【${matchAnti.level}】${drugName}已使用第 ${durationDays} 天。${isOverdue === true ? "已达到院内规则包配置的复核时间点，需由临床团队复核。" : "尚未达到规则包复核时间点。"}`,
           };
           antibioticAlerts.push(antiInfo);
         }
@@ -328,6 +344,7 @@ export class HospitalDataAdapter {
           authored_on: authoredOn,
           stop_reason: item.stop_reason,
           antibiotic_info: antiInfo,
+          _source: item._source || null,
         });
       } else {
         orders.push({
@@ -338,6 +355,13 @@ export class HospitalDataAdapter {
           purpose: item.purpose,
           status: item.status || "active",
           scheduled_time: item.scheduled_time || "今日待执行",
+          code: item.code || item.order_code || null,
+          priority: item.priority || item.urgency || item.order_priority || null,
+          authored_on: item.authored_on || item.ordered_at || null,
+          collected_at: item.collected_at || null,
+          resulted_at: item.resulted_at || null,
+          acknowledged_at: item.acknowledged_at || null,
+          _source: item._source || null,
         });
       }
     }

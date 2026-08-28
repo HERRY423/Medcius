@@ -1,0 +1,38 @@
+{
+  "_disclaimer": "公开参考事实库（data_class=public_reference）：每条事实均来自可公开核实的权威来源（药品说明书公开文本、药典、公开指南），仅用于工程级一致性验证。本库不构成临床建议，不得替代药师审核，不得冒充临床证据。",
+  "_tier": "public_reference_validation —— 工程级公开参考一致性层，介于合成基准与真实临床评价之间；clinical_evidence_pass 不因本层而解锁。",
+  "source_version": "public-ref-v1-2026-08-25",
+  "interaction_pairs": [
+    { "fact_id": "PRF-INT-001", "drug_a": "华法林", "drug_b": "阿莫西林克拉维酸", "mechanism": "抗菌药抑制肠道菌群减少维生素K合成并增强抗凝", "risk": "INR 升高、出血风险", "source": "华法林钠说明书【药物相互作用】节（公开文本）" },
+    { "fact_id": "PRF-INT-002", "drug_a": "华法林", "drug_b": "复方磺胺甲噁唑", "mechanism": "TMP-SMX 抑制 CYP2C9 使华法林代谢减慢", "risk": "INR 显著升高、出血", "source": "华法林钠说明书【药物相互作用】节（公开文本）；临床药学教科书共识" },
+    { "fact_id": "PRF-INT-003", "drug_a": "华法林", "drug_b": "左氧氟沙星", "mechanism": "氟喹诺酮增强抗凝效应", "risk": "INR 升高、出血", "source": "华法林钠说明书【药物相互作用】节（公开文本）" },
+    { "fact_id": "PRF-INT-004", "drug_a": "华法林", "drug_b": "甲硝唑", "mechanism": "CYP2C9 强抑制", "risk": "抗凝作用显著增强", "source": "华法林钠说明书【药物相互作用】节（公开文本）" },
+    { "fact_id": "PRF-INT-005", "drug_a": "华法林", "drug_b": "布洛芬", "mechanism": "NSAID 抗血小板叠加及胃肠道黏膜损伤", "risk": "出血风险增加", "source": "华法林钠说明书【药物相互作用】节（公开文本）" },
+    { "fact_id": "PRF-INT-006", "drug_a": "地高辛", "drug_b": "呋塞米", "mechanism": "袢利尿剂致低钾血症增加洋地黄中毒风险", "risk": "心律失常", "source": "地高辛说明书【注意事项/药物相互作用】节（公开文本）" },
+    { "fact_id": "PRF-INT-007", "drug_a": "辛伐他汀", "drug_b": "克拉霉素", "mechanism": "CYP3A4 强抑制剂显著升高他汀血药浓度", "risk": "肌病、横纹肌溶解", "source": "辛伐他汀说明书【药物相互作用】节（公开文本）" },
+    { "fact_id": "PRF-INT-008", "drug_a": "依那普利", "drug_b": "螺内酯", "mechanism": "ACEI 减少醛固酮叠加保钾利尿", "risk": "高钾血症", "source": "两药说明书【药物相互作用】节（公开文本）" },
+    { "fact_id": "PRF-INT-009", "drug_a": "二甲双胍", "drug_b": "碘造影剂", "mechanism": "造影剂肾病背景下乳酸酸中毒风险", "risk": "乳酸酸中毒（检查前后需停药）", "source": "二甲双胍说明书【注意事项】节（公开文本）" },
+    { "fact_id": "PRF-INT-010", "drug_a": "莫西沙星", "drug_b": "胺碘酮", "mechanism": "两者均延长 QT 间期，效应叠加", "risk": "尖端扭转型室速", "source": "两药说明书【警告/药物相互作用】节（公开文本）" },
+    { "fact_id": "PRF-INT-011", "drug_a": "甲氨蝶呤", "drug_b": "复方磺胺甲噁唑", "mechanism": "TMP 竞争肾排泄并协同抗叶酸", "risk": "骨髓抑制、严重血细胞减少", "source": "甲氨蝶呤说明书【药物相互作用】节（公开文本）" },
+    { "fact_id": "PRF-INT-012", "drug_a": "碳酸锂", "drug_b": "布洛芬", "mechanism": "NSAID 减少锂肾清除", "risk": "锂中毒", "source": "碳酸锂说明书【药物相互作用】节（公开文本）" }
+  ],
+  "contraindications": [
+    { "fact_id": "PRF-CON-001", "drug": "华法林", "condition": "pregnancy", "statement": "妊娠期禁用（致畸）", "source": "华法林钠说明书【孕妇及哺乳期妇女用药】节（公开文本）" },
+    { "fact_id": "PRF-CON-002", "drug": "依那普利", "condition": "pregnancy", "statement": "妊娠期禁用（胎儿肾毒性）", "source": "依那普利说明书【孕妇及哺乳期妇女用药】节（公开文本）" },
+    { "fact_id": "PRF-CON-003", "drug": "辛伐他汀", "condition": "active_liver_disease", "statement": "活动性肝病或不明原因转氨酶持续升高者禁用", "source": "辛伐他汀说明书【禁忌】节（公开文本）" },
+    { "fact_id": "PRF-CON-004", "drug": "复方磺胺甲噁唑", "condition": "sulfa_allergy", "statement": "对磺胺类药物过敏者禁用", "source": "复方磺胺甲噁唑说明书【禁忌】节（公开文本）" }
+  ],
+  "renal_rules": [
+    { "fact_id": "PRF-REN-001", "drug": "二甲双胍", "crcl_threshold_ml_min": 30, "action": "forbidden_below", "statement": "eGFR/CrCl<30 mL/min 禁用；30–45 减量并密切评估", "source": "二甲双胍说明书【用法用量/禁忌】节（公开文本）" },
+    { "fact_id": "PRF-REN-002", "drug": "依诺肝素", "crcl_threshold_ml_min": 30, "action": "reduce_or_monitor_below", "statement": "CrCl<30 mL/min 需减量并监测抗Xa", "source": "依诺肝素说明书【用法用量】节（公开文本）" }
+  ],
+  "special_population": [
+    { "fact_id": "PRF-POP-001", "drug": "左氧氟沙星", "population": "pediatric_under_18", "statement": "18岁以下患者不宜使用（影响软骨发育）", "source": "左氧氟沙星说明书【儿童用药】节（公开文本）" },
+    { "fact_id": "PRF-POP-002", "drug": "多西环素", "population": "pregnancy", "statement": "妊娠期不宜使用（影响胎儿骨骼与牙齿）", "source": "多西环素说明书【孕妇及哺乳期妇女用药】节（公开文本）" }
+  ],
+  "duplicate_therapy": [
+    { "fact_id": "PRF-DUP-001", "class": "statin", "members": ["辛伐他汀", "阿托伐他汀", "瑞舒伐他汀"], "statement": "同为他汀类，联用属重复用药且增加肌病风险", "source": "他汀类说明书共性【药物相互作用】节与临床用药常识（公开文本）" },
+    { "fact_id": "PRF-DUP-002", "class": "nsaid", "members": ["布洛芬", "双氯芬酸", "塞来昔布"], "statement": "同为 NSAID，联用不增疗效只增消化道/肾毒性", "source": "NSAID 类说明书共性【注意事项】节（公开文本）" }
+  ],
+  "negative_controls_note": "阴性对照由 cases 文件定义（预期 clear），用于证明引擎不会把无关组合误判为 flag；阴性结论必须绑定『未命中任何参考事实』而非『未提及』。"
+}

@@ -23,6 +23,16 @@ Medcius 不是一套独立临床软件或平台，也不是一个能够自主诊
 
 医学生可以在合成或脱敏场景中参与模板、术语、标注与可用性共创；真实患者访问和临床使用必须遵循医院授权、教学权限和数据处理边界。
 
+## 核心定位与竞争壁垒重构 (Moat & Strategic Positioning)
+
+通用大模型“24/72 小时文本摘要”已被主流 EHR 内嵌（如 Epic Inpatient Insights 提供 Patient Story、Recent Notes 与事件摘要，512 名试点用户每日使用超 1,000 次，见 JAMIA 真实部署研究）。因此，Medcius **绝不仅靠通用的“自动文本摘要”竞争**。
+
+Medcius 的核心壁垒与临床机会在于：
+1. **结构化数据优先 (Structured-Data-First)**：跨院内多系统（NIS 护理体征与引流液、LIS 检验动态与危急值、PACS 影像检查与 HIS 医嘱变动），打破数据孤岛；
+2. **确定性精确变化检测 (Exact Change Detection)**：精准计算 24h 出入量代数和、体温/血氧极值波动、电解质演变与抗菌药累计天数，不依赖 LLM 模糊泛化；
+3. **未闭环事项与安全缺口追踪 (Diagnostic Loop Closure & Safety Gaps)**：按院内批准规则追踪尚未完成、未出最终报告或未确认的检查检验，并把过敏史与基线资料缺失显式呈现给医生；
+4. **证据追踪与防篡改审计 (Verbatim Provenance & Immutable Audit)**：事实严格绑定病历原文 Span 或 FHIR 资源 ID，通过 SHA-256 哈希链保留完整不可篡改轨迹。
+
 ## 插件能提供什么
 
 ### 基础能力层
@@ -35,22 +45,23 @@ Medcius 不是一套独立临床软件或平台，也不是一个能够自主诊
 - 通过本地哈希链保留工具调用、证据引用与人工确认的审计记录；
 - 为不同宿主提供一致的技能、MCP 和安全规则入口。
 
-### 首个参考工作流
+### 生产核心参考工作流 (Production Core Reference Workflow)
 
-“查房前患者变化摘要”是 Medcius 的第一个参考工作流，而不是整个产品定位。它将过去 24/72 小时的病历、检验、用药医嘱和检查状态整理为：
+“查房前患者变化与未闭环核对摘要”是 Medcius 生产核心的首个参考工作流。它将过去 24/72 小时的病历、检验、用药医嘱和检查状态整理为：
 
-1. 发生了什么变化；
-2. 今天仍待处理什么；
-3. 哪些关键资料不足；
-4. 每条信息来自哪里。
+1. **发生了什么变化 (What Changed)**：体征极值、检验动态、医嘱调整与引流动态；
+2. **今天仍待处理什么 (What's Pending)**：未回报病理/药敏、待执行会诊与处置；
+3. **哪些关键资料不足 (Data Gaps)**：过敏史缺失、基线检验缺失；
+4. **每条信息来自哪里 (Evidence)**：原文 span、FHIR resource ID 与时间戳。
 
-医生可以查看原始病历片段或 FHIR resource ID，并只使用自己确认的条目生成草稿。侧边栏和 REST/CDS Hooks 接口是该工作流的参考适配器，不是 Medcius 必须自建的独立临床平台。
+### 分阶段模块化工作流技能包 (Staged Modular Skill Packs)
 
-### 后续工作流扩展
+Medcius 以“小而可验证的独立技能包”分步扩展，每个技能包必须独立声明用户、触发时点、权限、失败行为与验证方案后，在医院获批试点中按需启用，不稀释核心采用目标：
+- **`shift-handover`（临床交接班准备）**：基于 SBAR 模型整理夜间重点关注患者、监护极值、危急值与待办预案；
+- **`consult-preparation`（专科会诊前资料整理）**：紧扣会诊诉求整合专科病程、检验时间轴与未出检查；
+- **`discharge-readiness-check`（出院资料完整性核对）**：核查关键检查检验闭环、出院带药衔接及安全缺口。
 
-Medcius 将以“小而可验证的技能包”扩展，而不是发展成一个包揽所有任务的临床 Agent。交接班准备、会诊前资料整理、出院资料完整性检查等能力，只有在各自明确用户、触发时点、数据权限、失败行为和验证方案后，才可成为独立版本的工作流技能。
-
-诊断推断、治疗推荐、处方裁决、自动下医嘱、无人工确认的病历写回、自主多 Agent 行动和在线自学习不属于插件核心默认能力。
+诊断推断、治疗推荐、处方裁决、自动下医嘱、无人工确认的病历写回、自主多 Agent 行动和在线自学习严格禁止进入核心能力。
 
 ## 架构
 
@@ -82,17 +93,40 @@ Medcius Agent Plugin
 
 | 组件 | 当前作用 |
 |---|---|
+| `skills/patient-evolution-summary` | 住院查房前患者变化摘要技能（首个参考工作流） |
+| `skills/shift-handover` | 临床交接班与夜间值班重点整理技能（SBAR / I-PASS 模型） |
+| `skills/consult-preparation` | 专科会诊与多学科协作 (MDT) 会诊前资料整理技能 |
+| `skills/discharge-readiness-check` | 出院资料核对与完整性检查技能（闭环/带药/缺口/费用负担与可获得性） |
 | `skills/fhir` | 受约束的 FHIR 读取与来源绑定 |
 | `skills/clinical-note-extract` | 带原文 span 和断言状态的病历事实抽取 |
 | `skills/doc-extract` | 文档与附件提取 |
+| `lib/hospital-agent-adapter.mjs` | 面向 Codex、Trae、WorkBuddy 与医院自建 Agent 的宿主无关适配内核 |
+| `lib/patient-evolution-engine.mjs` | 查房前患者变化整理引擎 |
+| `lib/shift-handover-engine.mjs` | 临床交接班 SBAR 结构化整理引擎 |
+| `lib/consult-preparation-engine.mjs` | 专科会诊前资料包整理引擎 |
+| `lib/discharge-readiness-engine.mjs` | 出院准备度与资料完整性核对引擎 |
+| `lib/patient-affordability-context.mjs` | 来源绑定的患者费用负担、覆盖/估算与援助转介状态；不计算自付额或自动改药 |
+| `contracts/patient-financial-access-record.v1.schema.json` | 费用负担与可获得性输入记录的机器可检查契约 |
+| `lib/hospital-data-adapter.mjs` | NIS/LIS/PACS/HIS 医院多源数据融合与危急值/抗菌药监控 |
+| `lib/high-risk-followup-tracker.mjs` | 高风险检查检验从开立、采集、结果到医生确认的阶段追踪；不自动处置 |
+| `lib/specialty-rule-pack.mjs` + `rule-packs/` | 专科病区规则包加载、版本哈希、审批元数据与生产环境失败关闭 |
+| `lib/read-only-hospital-data-bridge.mjs` | 院内异构接口只读桥；逐源绑定租户、患者、就诊和来源哈希 |
+| `evals/physician-annotation/` | 独立医生双盲标注、Kappa 一致性评测与仲裁体系 |
 | `servers/fhir` | SMART on FHIR R4 连接器；Codex、Trae、WorkBuddy 适配入口强制只读 |
 | `servers/documents` | 本地文档提取与来源处理 |
 | `servers/phiguard` | PHI 扫描、脱敏与假名化支持 |
 | `servers/audit` | 本地防篡改检测用哈希链审计 |
-| `lib/patient-evolution-engine.mjs` | 首个参考工作流的患者变化整理引擎 |
 | `servers/api` | 参考侧边栏、REST 与 CDS Hooks 适配 |
 
 部分上游遗留能力仍需从正式插件包中继续拆分。处方、编码、临床试验、管理驾驶舱和多 Agent 模块不得因为存在于仓库中就被视为 Medcius 核心能力。
+
+### 临床闭环深化边界
+
+- 高风险检查检验只跟踪 `ordered → scheduled/collected → preliminary/final → acknowledged` 阶段，显式区分待执行、待最终结果、待医生确认、取消/录入错误；
+- “未识别到高风险项”只表示当前规则包和可用数据源没有识别，不等于临床上不存在风险；
+- 检验危急值、液体平衡、eGFR 关注边界、抗菌药复核时间点和阶段时限必须来自具名、版本化的院内规则包；缺少规则包时仅保留 LIS/PACS/HIS 自身明确上报的高风险标志；
+- `sample`/`candidate` 规则包在生产配置下失败关闭，正式包必须具备医院范围、具名审批人、生效日期和可审计哈希；
+- 异构桥接连接器只能声明和实现 `readPatient`，任何 create/update/delete/write 能力都会在注册时被拒绝；原始医院数据在 PHI Guard 与输出策略完成前不得进入模型上下文。
 
 ## 安全契约
 

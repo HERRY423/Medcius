@@ -165,6 +165,119 @@ export function getCardiologyWardFixture() {
   return patients;
 }
 
+/** Generate multi-source feeds (NIS, LIS, PACS, HIS) for the cardiology ward */
+export function getCardiologyMultiSourceFeeds() {
+  const cases = getCardiologyWardFixture();
+  const now = Date.now();
+  const h = (hours) => new Date(now - hours * 3600000).toISOString();
+
+  return cases.map((c, index) => {
+    const bed = index + 1;
+    const isOverload = bed === 2; // Bed 02 is severe heart failure
+
+    const nis = [
+      {
+        id: `nis-${bed}-01`,
+        timestamp: h(2),
+        temperature: 36.5 + (bed % 5) * 0.2,
+        systolic_bp: 120 + (bed % 25),
+        diastolic_bp: 75 + (bed % 15),
+        heart_rate: 70 + (bed % 20),
+        spo2: 96 + (bed % 4),
+        oral_intake_ml: 1200,
+        iv_intake_ml: 500,
+        urine_output_ml: isOverload ? 1850 : 1400,
+        drain_output_ml: bed === 1 ? 50 : 0,
+        drain_name: bed === 1 ? "心包穿刺引流" : null,
+        drain_desc: bed === 1 ? "淡黄色清亮液体" : null,
+        stool_count: 1,
+      },
+    ];
+
+    const lis = c.observations.map((obs) => ({
+      id: obs.id,
+      code: obs.code,
+      name: obs.name,
+      value: obs.value,
+      unit: obs.unit,
+      sample_time: obs.effective_time,
+      referenceRange: obs.referenceRange,
+      span: obs.span,
+    }));
+
+    // Add critical value sample for bed 1 (cTnI high)
+    if (bed === 1) {
+      lis.push({
+        id: `lis-${bed}-k-crit`,
+        code: "k",
+        name: "血钾",
+        value: 2.7, // Critical low
+        unit: "mmol/L",
+        sample_time: h(1),
+        is_critical: true,
+      });
+    }
+
+    const pacs = c.diagnosticReports.map((rep) => ({
+      id: rep.id,
+      modality: rep.name.includes("CT") ? "CT" : (rep.name.includes("超声") ? "US" : "XR"),
+      study_name: rep.name,
+      ordered_at: rep.ordered_at,
+      status: rep.status,
+      impression: `${rep.name}未见明显急性渗出或机械并发症。`,
+    }));
+
+    const his_orders = [
+      ...c.medications.map((m) => ({
+        id: m.id,
+        is_medication: true,
+        drug_name: m.drug_name,
+        dosage: m.dosage,
+        route: m.route,
+        frequency: m.frequency,
+        change_type: m.change_type,
+        previous_dosage: m.previous_dosage,
+        authored_on: m.authored_on,
+        stop_reason: m.stop_reason,
+      })),
+      ...c.orders.map((o) => ({
+        id: o.id,
+        is_medication: false,
+        name: o.title,
+        status: o.status,
+        scheduled_time: o.scheduled_time,
+        department: o.department,
+        purpose: o.purpose,
+      })),
+    ];
+
+    // Add restricted antibiotic on bed 3 to test antibiotic tracking
+    if (bed === 3) {
+      his_orders.push({
+        id: `his-med-anti-${bed}`,
+        is_medication: true,
+        drug_name: "注射用美罗培南",
+        dosage: "1.0g",
+        route: "ivgtt",
+        frequency: "q8h",
+        change_type: "active",
+        authored_on: h(144), // 6 days ago -> overdue alert!
+      });
+    }
+
+    return {
+      patient: c.patient,
+      encounter: c.encounter,
+      notes: c.notes,
+      allergies: c.allergies,
+      nis,
+      lis,
+      pacs,
+      his_orders,
+    };
+  });
+}
+
 /** SMART on FHIR 2.2 Launch Helper */
 export function createSmartLaunchContext(patientId, doctorId = "DOC-PKU-CARDIO-8801") {
   return {
@@ -176,3 +289,4 @@ export function createSmartLaunchContext(patientId, doctorId = "DOC-PKU-CARDIO-8
     scope: "launch/patient patient/*.read encounter/*.read openid profile",
   };
 }
+

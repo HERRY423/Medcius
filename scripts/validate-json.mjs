@@ -7,6 +7,10 @@ const files = [
   "plugins/medcius/mcp.json",
   "plugins/medcius/.claude-plugin/plugin.json",
   ".claude-plugin/marketplace.json",
+  "plugins/medcius/rule-packs/schema/medcius-specialty-rule-pack.v1.schema.json",
+  "plugins/medcius/rule-packs/specialties/cardiology-inpatient-sandbox.json",
+  "plugins/medcius/contracts/patient-financial-access-record.v1.schema.json",
+  "plugins/medcius/contracts/causal-evolution-report.v1.schema.json",
 ];
 
 let ok = true;

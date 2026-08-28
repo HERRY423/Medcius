@@ -213,10 +213,17 @@ const cases = readdirSync(CASES)
   .flatMap((f) => JSON.parse(readFileSync(join(CASES, f), "utf8")).map((c) => ({ ...c, _file: f })));
 
 // Ensure sample test fixtures are seeded for deterministic grading
+const trDbPath = existsSync(join(__dirname, "../../../../experimental/servers/china-trials/src/db.mjs"))
+  ? "../../../../experimental/servers/china-trials/src/db.mjs"
+  : "../../servers/china-trials/src/db.mjs";
+const trIngestScript = existsSync(join(__dirname, "../../../../experimental/servers/china-trials/scripts/ingest.mjs"))
+  ? "../../../../experimental/servers/china-trials/scripts/ingest.mjs"
+  : "../../servers/china-trials/scripts/ingest.mjs";
+
 const ingestMap = [
   ["../../servers/drug-labels/src/db.mjs", "drug-labels", "drug_labels", "../../servers/drug-labels/scripts/ingest.mjs"],
   ["../../servers/china-codes/src/db.mjs", "china-codes", "nhsa_codes", "../../servers/china-codes/scripts/ingest.mjs"],
-  ["../../servers/china-trials/src/db.mjs", "china-trials", "clinical_trials", "../../servers/china-trials/scripts/ingest.mjs"],
+  [trDbPath, "china-trials", "clinical_trials", trIngestScript],
 ];
 for (const [rel, label, table, script] of ingestMap) {
   try {

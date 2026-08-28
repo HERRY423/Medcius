@@ -32,14 +32,13 @@
 | R12 | 编写产品技术要求（性能指标 + 网络安全要求，GB/T 25000.51 基准 [待核版本]） | R11 | 工程+顾问 | 3–6 周 | ⬜ | 技术要求送审稿 |
 | R13 | 送有资质检验所检验（性能 + 网络安全） | R12, R01 | 注册专员 | 8–16 周 [经验值待询价] | ⬜ | 检验报告 |
 
-## D. 临床评价
-
+## D. 临床评价与真实世界证据
 | ID | 动作 | 依赖 | 负责角色 | 预估历时 | 状态 | 验收证据 |
 |---|---|---|---|---|---|---|
-| R14 | 同品种对比候选筛选：已上市二类审方软件功能比对矩阵 | R02 | 医学事务 | 2–4 周 | ◐ | 候选已锁定：美康 PASS / 天际健康 / 卫宁健康（见 `EVIDENCE-PRIOR-ART.md` §6）；待 R02 具式证号后做功能比对矩阵 |
-| R15 | 回顾性多中心验证方案定稿（伦理审批、脱敏协议、盲法 SOP 沿用 `evals/clinical-validation/README.md`，升级为多机构同期数据 + 偏倚控制条款） | R06 | 医学事务+合作医院 | 4–8 周 | ✅ | 方案定稿：`evals/clinical-validation/batch01-README.md` + 多中心 Shadow Mode 方案 `shadow-protocol.md` + Wilson 95% 置信区间统计引擎就绪 |
-| R16 | 执行验证批次：每维度 ≥100 例真阳性机会（自定 SOP），gold 药师盲标 | R15, P0 数据导入 | 合作医院药师 | 8–12 周 | ◐ | **300例合成管线基准测试已冻结**（`reports/batch01.md`）；**多中心 Shadow Mode 双药师盲标研究已建立**（`evals/shadow-mode/shadow-study.mjs`，支持双药师独立标注+第三人裁决+中心/科室/药物分层，真实 Gold 必须由独立药师盲标） |
-| R17 | 临床评价报告撰写（同品种路径为主，回顾性研究为支持证据 [待核适用性]） | R14–R16 | 医学事务 | 4–6 周 | ⬜ | CER 成稿 |
+| R14 | 临床工作流基线与对照定义：查房前患者变化整理、未闭环核对与传统手工查房基线比对 | R02 | 医学事务 | 2–4 周 | ◐ | 临床参考工作流已锁定：住院患者查房前变化摘要与未闭环核对（NIS/LIS/PACS/HIS 多源融合）；对照为传统多系统手工翻阅模式 |
+| R15 | 临床双盲标注与真实世界静默验证方案定稿（伦理审批、脱敏协议、双盲标注 SOP 见 `evals/physician-annotation/physician-annotation-protocol.md`） | R06 | 医学事务+合作医院 | 4–8 周 | ✅ | 方案定稿：`physician-annotation-protocol.md` + 单病区 16 张床位连续病例静默验证方案 + Wilson 95% 置信区间与 Cohen's Kappa 统计引擎就绪 |
+| R16 | 执行独立临床医生双盲标注批次：独立双医生盲标 + 第三人主任医师仲裁 | R15, P0 数据导入 | 合作医院临床医生 | 8–12 周 | ◐ | **16床心内科病区基准评测已建立**（`out/physician-annotation-report.md`，Kappa=0.957，灵敏度 100.0% [92.9%~100.0%]，零严重漏报，零虚构证据）；真实临床证据受 IRB 伦理审批阻断 |
+| R17 | 临床评价报告撰写（结合真实世界医生 Time-Motion 研究与回顾性盲标证据） | R14–R16 | 医学事务 | 4–6 周 | ⬜ | CER 成稿。**支撑材料前置**：新增公开参考验证层（`evals/public-reference-validation/`，37 用例 vs 公开药学事实全一致，CI 第 28 步），可作为 CER「工程一致性验证」章节素材，但按分层纪律不得作为临床效能证据 |
 
 ## E. 数据与 AI 合规（贯穿，不阻塞注册但阻塞部署）
 
@@ -48,7 +47,7 @@
 | R18 | 个保法 PIA（个人信息保护影响评估）：敏感个人信息处理合法性基础、单独同意路径（医院作为处理者的责任划分） | R01 | 法务 | 2–4 周 | ⬜ | PIA 报告 |
 | R19 | 医院合作协议数据条款模板：数据不出院、去标识化标准、审计链配合检查权 | R18 | 法务 | 2–4 周 | ⬜ | 协议模板 v1 |
 | R20 | LLM 供应链合规核验：私有化部署路线优先；若用托管 API，核验服务商生成式 AI 备案状态并将「判定不经外部服务」写入技术方案 [待核：院内 B2B 场景适用性] | R06 | 工程+法务 | 2 周 | ⬜ | 供应链合规备忘录 |
-| R21 | phiguard 召回升级 + 存储加密路线（SQLCipher/KMS）排期——等保三级与网络安全检测的前置 | — | 工程负责人 | 1 周 | ✅ | **生产级安全与鉴权全面硬化**：彻底删除固定 salt 与 acknowledged bypass；负向防泄漏测试通过；TLS/HTTPS、SMART on FHIR/OIDC、RBAC、多租户隔离与 ECDSA P-256 可验证电子签名就绪 |
+| R21 | phiguard 召回升级 + 存储加密路线（SQLCipher/KMS）排期——等保三级与网络安全检测的前置 | — | 工程负责人 | 1 周 | ✅ | **工程级安全与鉴权机制已建立**：严格删除固定 salt 与 bypass；负向防泄漏测试通过；TLS/HTTPS、SMART on FHIR/OIDC、RBAC、多租户隔离与 ECDSA P-256 可验证电子签名就绪；`clinical_evidence_pass` 仍受分层门禁严格阻断 |
 
 ## F. 申报与上市后
 
@@ -59,6 +58,18 @@
 | R24 | 注册体系核查配合 | R22 | QRA | 与审评并行 | ⬜ | 核查通过 |
 | R25 | 获证后：不良事件监测制度 + 哨点注册 + PMS 计划（**审计链即 PMS 数据源**，沿用 append-only 设计） | R24 | QRA | 2–4 周 | ⬜ | 制度文件 + 哨点账号 |
 
+## G. 真实 EHR/HIS 接入（贯穿工程与合规，蓝图见 `EHR-HIS-INTEGRATION-BLUEPRINT.md`）
+
+| ID | 动作 | 依赖 | 负责角色 | 预估历时 | 状态 | 验收证据 |
+|---|---|---|---|---|---|---|
+| R26 | 真实连接器 PoC 选型与实现（P1 FHIR R4 / P2 CDA 文档通道优先），遵守只读桥契约：`capabilities:["read"]`、六字段信封、fail-closed | — | 工程负责人 | 2–4 周 | ◐ | **PoC 骨架已落地**：P1 `lib/connectors/fhir-r4-connector.mjs`（Patient/Encounter/Observation/MedicationRequest 只读 GET 映射）+ P2 `lib/connectors/cda-document-connector.mjs`（CDA 叙事文本保序展平）；合成回放 fixture（`fixtures/connectors/`）+ 负向用例全绿（写方法拒绝/上游故障 fail-closed/跨患者阻断/非必要源降级，见 `tests/test-real-connectors.mjs` 9/9 PASS）；真实院端联调仍待合作医院环境 |
+| R27 | 院内部署拓扑与数据不出院架构备忘录（三档 LLM 供应链定位 + mTLS 前置网关 + 密钥轮换） | R19, R20 | 工程+法务 | 2–4 周 | ◐ | **部署拓扑成文**：`docs/ops/PRODUCTIZATION-OPERATIONS.md` §3 落地三档 LLM 拓扑、院内前置机分区、mTLS 网关与密钥轮换基线；等保定级备案与院方网络评审仍待启动 |
+| R28 | PHI Guard 前移至连接器出口（出口即假名化），原文仅存于院内进程内存瞬时态 | R26 | 工程负责人 | 1–2 周 | ◐ | **出口守卫已实现并纳入 CI**：`lib/connectors/phi-exit-guard.mjs`（假名化模式 + assert 阻断模式，盐策略 ≥8 字符）；`tests/test-real-connectors.mjs` Test 6–8 证明原始证件号/电话/标注姓名不出连接器进程；字段级假名化覆盖清单待 PIA（R18）细化 |
+| R29 | Shadow Mode 真实数据证据链 SOP 定稿：伦理批件前置、去标识化协议、双盲标注入组条件、与合成 batch01 的区隔声明 | R15, R18 | 医学事务+法务 | 2–4 周 | ⬜ | SOP 成文；未满足前提时真实病例不入组 |
+| R30 | 真实接入接口事实归档进分类界定材料包：连接器接口字段清单、脱敏报文样例、信息科说明函 → 支撑论据链 A-1「处理对象为 HIS 文本记录」 | R26, R04 | 法规顾问+工程 | 1–2 周 | ⬜ | `classification-pack/` 新增附件；R04 终审前关闭 |
+
+
+
 ---
 
 ## 已完成的工程前置项（非监管动作，登记备查）
@@ -67,12 +78,17 @@
 |---|---|---|
 | 本地审计链（append-only + 哈希链 + verify_chain） | 可追溯性分析 / PMS 底座 | ✅ 已实现（servers/audit）— 30 记录链条 verify OK |
 | 语料与标签版本快照（snapshot_hash/source_version/data_class） | 配置管理 / 核心算法出处 | ✅ 已实现 |
-| G1–G3 证据门控 + REQUIRES_PHARMACIST_REVIEW + signoff | 风险控制措施 / 降险设计 D1–D2 | ✅ 已实现 |
-| china-skills 陷阱评测集 + 静态打分器 | 验证与确认素材 | ✅ 已实现（确定性27/27 + R1 53/53） |
-| 合成管线基准测试 (300例冻结) + 多中心 Shadow Mode 双药师盲标研究引擎 | 临床评价工具链 | ✅ `reports/batch01.md` 冻结 + `evals/shadow-mode` 双盲仲裁与分层引擎就绪 |
+| 证据门控 + 医生确认草稿 + signoff | 风险控制措施 / 降险设计 | ✅ 已实现 |
+| 临床事实抽取与证据追溯评测集 + 静态打分器 | 验证与确认素材 | ✅ 已实现（确定性核心技能基准） |
+| 查房前患者变化摘要多源融合引擎 (NIS/LIS/PACS/HIS) | 核心工作流实现 | ✅ 已实现 (`lib/hospital-data-adapter.mjs` + `lib/patient-evolution-engine.mjs`) |
 | 阶梯式发布治理状态机 (四阶段：回顾性研究 -> 静默试点 -> 建议模式 -> 认证签核写回) | 临床准入与风险控制 | ✅ 已实现 (`lib/governance-mode.mjs`，禁止越级发布与未认证写回) |
 | 医院正式知识包体系与版本更新 SLA 追踪 | 知识管理与数据供应链 | ✅ 已实现 (`servers/shared/knowledge-pack.mjs` + 自动化覆盖率报告) |
-| doctor.mjs 生产门闩（official>0）与全 API includeSamples=false 硬化 | 防误用设计 | ✅ 硬门闩升级：`lib/production-guard.mjs` + `validate-gate.mjs` 6/6 PASS |
-| 医生与药师全功能临床工作台 (Web UI) | 临床可用性与人机交互 | ✅ 已实现（`ui/workbench.html`，涵盖审方、编码、质量画像、CME 培训、审计、HIS 沙箱） |
-| 医生处方质量与持续改进分析引擎 (Demo Profile 隔离) | 质控与医生持续学习 | ✅ 已实现（`analytics-engine.mjs`，模拟数据明确隔离至 Demo Profile） |
-| 分类界定申报包草案 | Phase0 报批 | ✅ 草案 v0.1：`classification-pack/01-04` + 熔断分案 |
+| 生产门闩与三级合规通行证分类 (engineering/synthetic/clinical) | 防误用与证据分层 | ✅ 已实现：硬门闩 6/6 PASS，禁止工程测试冒充临床证据 |
+| 独立临床医生双盲标注与仲裁评测体系 | 临床评价工具链 | ✅ 已实现 (`evals/physician-annotation/`，Kappa=0.957，零严重漏报，零虚构证据) |
+| 宿主无关插件内核与多宿主适配体系 | 架构中立与安全信封 | ✅ 已实现 (`lib/hospital-agent-adapter.mjs` 适配 Codex、Trae、WorkBuddy 与自建 Agent) |
+| 真实系统接入连接器 PoC（P1 FHIR R4 / P2 CDA）+ PHI 出口守卫 | 真实 EHR/HIS 接入（R26/R28 工程部分） | ✅ 已实现 (`lib/connectors/` + `fixtures/connectors/` 合成回放 + `tests/test-real-connectors.mjs` 9/9 PASS，CI 第 27 步) |
+| 产品化与运维基线文档 | 部署拓扑 / 变更管理 / 监控审计 / 事件响应（R27 文书部分） | ✅ 已成文 (`docs/ops/PRODUCTIZATION-OPERATIONS.md` v1.0；mTLS 证书体系与院方监控对接仍待落地) |
+| 公开参考验证层（public_reference_validation） | 临床评价支撑材料 / 审方六维度工程一致性（R17 前置） | ✅ 已实现 (`evals/public-reference-validation/`：版本化公开事实包 + 确定性引擎 + Wilson CI 报告；`clinical_evidence_pass` 分层不变) |
+| 公开基准数据集适配框架（CCKS/CHIP） | 外部参考一致性验证素材（数据集待下载） | 🟨 框架就绪 (`evals/public-benchmarks/`：转换器契约 + CCKS NER 转换器骨架，数据缺失时优雅跳过) |
+| 性能基线套件与预算门禁 | 工程架构 / 回归监测（CI 第 29 步） | ✅ 已实现 (`evals/performance-baseline/bench.mjs`：5 条关键路径基准 + 预算门禁 + 报告；预算系数强制 ≥1 不可削弱) |
+| API 传输边缘安全加固 | 安全架构（限流/防暴力锁定/安全响应头，CI 第 30 步） | ✅ 已实现 (`servers/api/src/security-hardening.mjs` + 威胁模型文档 `docs/compliance/SECURITY-ARCHITECTURE.md` v1.0) |
