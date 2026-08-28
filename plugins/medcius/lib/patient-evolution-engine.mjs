@@ -2,7 +2,7 @@
 // Enhanced: Multi-source data fusion (NIS vitals/fluids, LIS critical values, PACS impressions, HIS antibiotics),
 // Dynamic eGFR (CKD-EPI), and Clinical Safety / Quality Control rules hardening.
 
-import { splitSections } from "./parse-cn-note.mjs";
+import { splitSections, extractConTextAssertion } from "./parse-cn-note.mjs";
 import { HospitalDataAdapter, calculateEgfrCkdEpi } from "./hospital-data-adapter.mjs";
 import { trackHighRiskFollowup } from "./high-risk-followup-tracker.mjs";
 
@@ -168,14 +168,19 @@ export class PatientEvolutionEngine {
             if (/体温|热|发热|最高|血压|心率|胸闷|气促|喘|呼吸|腹痛|咳嗽|咳痰|水肿|出入量|尿量/.test(s)) {
               const noteText = note.text || "";
               const spanVerified = noteText.includes(s) ? s : null;
+              const conText = extractConTextAssertion(s);
 
               changes.clinical_symptoms.push({
                 id: genId("SYM"),
                 category: ITEM_CATEGORIES.FACT,
-                tag: CATEGORY_LABELS[ITEM_CATEGORIES.FACT],
+                tag: conText.presence_label,
                 title: "症状/体征演变",
                 summary: s,
                 span: spanVerified,
+                assertion: conText,
+                presence: conText.presence,
+                temporality: conText.temporality,
+                experiencer: conText.experiencer,
                 source_type: "ClinicalNote",
                 source_id: note.id || null,
                 source_title: docName,
@@ -236,7 +241,7 @@ export class PatientEvolutionEngine {
         }
       }
 
-      if (inWindow && (isHigh || isLow || isCritical || baseline != null || hasReferenceRange)) {
+      if (inWindow) {
         let trendDirection = "→";
         let deltaStr = "无历史对比";
         let deltaVal = 0;
@@ -256,7 +261,7 @@ export class PatientEvolutionEngine {
             : `当前: ${latestVal} ${unit}`;
         }
 
-        const isAbnormal = isHigh || isLow || isCritical;
+        const isAbnormal = hasReferenceRange ? (isHigh || isLow || isCritical) : Boolean(isCritical);
         const verbatimSpan = latest.span || null;
 
         const labItem = {
@@ -532,6 +537,23 @@ export class PatientEvolutionEngine {
         clinical_action_needed: "护士站补录患者入院体重",
         source_type: "AuditGap",
         source_id: "gap-weight",
+        span: null,
+      });
+    }
+
+    // Check Specialty Rule Pack
+    if (!rulePack) {
+      gaps.push({
+        id: genId("GAP-RULEPACK"),
+        category: ITEM_CATEGORIES.DATA_GAP,
+        tag: CATEGORY_LABELS[ITEM_CATEGORIES.DATA_GAP],
+        gap_type: "RULE_PACK_MISSING",
+        severity: "LOW",
+        title: "未指定专科规则包",
+        summary: "【资料不足】专科规则包缺失：当前仅启用源系统显式标志与通用安全基线，未配置专科特定危急值阈值与用药复核规则。",
+        clinical_action_needed: "由科室主任或医务处审批并导入本科室专科规则包 (Rule Pack)",
+        source_type: "AuditGap",
+        source_id: "gap-rulepack",
         span: null,
       });
     }

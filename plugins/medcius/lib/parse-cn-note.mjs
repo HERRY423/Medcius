@@ -83,6 +83,50 @@ function itemsFromDxBlock(block) {
   return items;
 }
 
+/**
+ * Extract ConText 3-Axis Assertions (Presence, Temporality, Experiencer)
+ * @param {string} sentence
+ */
+export function extractConTextAssertion(sentence = "") {
+  const s = String(sentence || "").trim();
+
+  // Axis 1: Presence (存在性状态: 阳性/现症, 阴性/否定, 疑似/无法判断, 未评估, 未提及)
+  let presence = "positive";
+  if (/未查|未行|未做|未予评估|未行体检|未及|未测|未见检查|未做检查/.test(s)) {
+    presence = "not_evaluated";
+  } else if (/否认|无|未见|未触及|未闻及|未诉|未出现|未发生|无明显|未有|阴性/.test(s)) {
+    presence = "negative";
+  } else if (/疑似|待查|待排|可能|拟诊|不除外|不排除|考虑|倾向/.test(s)) {
+    presence = "uncertain";
+  }
+
+  // Axis 2: Temporality (时态维度: 当前/现症, 既往史, 假设/预警)
+  let temporality = "current";
+  if (/既往|既往史|曾于|年前|月前|既往有|既往曾|既往因|既往诊断|既往行/.test(s)) {
+    temporality = "historical";
+  } else if (/若出现|如发生|必要时|随访|预警|如果|一旦|警惕/.test(s)) {
+    temporality = "hypothetical";
+  }
+
+  // Axis 3: Experiencer (经历者维度: 患者本人, 家属/家族史, 他人)
+  let experiencer = "patient";
+  if (/母亲|父亲|父母|家族|家族史|兄|弟|姐|妹|爷爷|奶奶|外公|外婆|同胞|同室/.test(s)) {
+    experiencer = "family_member";
+  }
+
+  let presence_label = "【阳性/现症】";
+  if (presence === "negative") presence_label = "【阴性/否定】";
+  else if (presence === "not_evaluated") presence_label = "【未评估】";
+  else if (presence === "uncertain") presence_label = "【疑似/待查】";
+
+  return {
+    presence,
+    temporality,
+    experiencer,
+    presence_label,
+  };
+}
+
 function field(value, span, extra = {}) {
   if (value == null || value === "") {
     return { value: null, span: null, location: extra.location ?? null, null_reason: extra.null_reason ?? "not_mentioned" };

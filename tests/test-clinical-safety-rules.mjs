@@ -175,4 +175,131 @@ assert.ok(draft.draft_text.includes("王主任医师"));
 
 console.log("✓ Progress note draft generated with multi-source facts, eGFR, vitals, and physician customization");
 
+// ----------------------------------------------------
+// Test 3: Unclosed Loops & Strict 4-Stage Lifecycle Non-Inference
+// ----------------------------------------------------
+console.log("\n[Test 3] Testing High-Risk Followup Tracker 4-Stage Lifecycle (Forbidding result -> acknowledged inference)...");
+
+import { trackHighRiskFollowup } from "../plugins/medcius/lib/high-risk-followup-tracker.mjs";
+
+const unclosedReports = [
+  {
+    id: "obs-crit-troponin",
+    test_code: "ctni",
+    name: "超敏肌钙蛋白I",
+    value: 12.5,
+    unit: "ng/mL",
+    status: "final",
+    is_critical_reported: true,
+    resulted_at: "2026-08-28T02:00:00Z",
+    acknowledged_at: null, // Doctor has NOT acknowledged yet!
+  },
+];
+
+const trackerResult = trackHighRiskFollowup({
+  orders: [],
+  observations: unclosedReports,
+  diagnosticReports: [],
+  rulePack: sandboxRulePack,
+  now: new Date("2026-08-28T02:30:00Z"),
+});
+
+assert.equal(trackerResult.items.length, 1);
+const trackedItem = trackerResult.items[0];
+assert.equal(trackedItem.stage, "resulted", "Must be in 'resulted' stage");
+assert.equal(trackedItem.gap, "PENDING_CLINICIAN_ACKNOWLEDGEMENT", "Must have gap PENDING_CLINICIAN_ACKNOWLEDGEMENT");
+assert.equal(trackerResult.counts.open, 1, "Must remain OPEN (unclosed) until doctor acknowledged");
+assert.equal(trackerResult.counts.acknowledged, 0, "Cannot infer acknowledged from resulted");
+
+console.log("✓ High-Risk Followup correctly preserved 'resulted' stage as unclosed (open=1, acknowledged=0, gap=PENDING_CLINICIAN_ACKNOWLEDGEMENT)");
+
+// ----------------------------------------------------
+// Test 4: Deterministic Missing Reference Range Handling (No Guessed Abnormality)
+// ----------------------------------------------------
+console.log("\n[Test 4] Testing Missing Reference Range Handling (Value & trend only, no speculative abnormality)...");
+
+const summaryNoRef = PatientEvolutionEngine.analyzePatientEvolution({
+  patient,
+  timeWindow: "24h",
+  notes: [],
+  observations: [
+    {
+      id: "obs-special-marker",
+      code: "special-chem-marker",
+      name: "未知生化标志物X",
+      value: 88.5,
+      unit: "U/L",
+      referenceRange: [], // Missing reference range
+      effective_time: new Date().toISOString(),
+    },
+  ],
+  medications: [],
+  diagnosticReports: [],
+  orders: [],
+  allergies: ["青霉素"],
+  rulePack: sandboxRulePack,
+});
+
+const labX = summaryNoRef.blocks.what_changed.abnormal_labs.find((l) => l.test_name === "未知生化标志物X");
+assert.ok(labX, "Must capture raw lab record");
+assert.equal(labX.has_reference_range, false, "Must flag has_reference_range = false");
+assert.equal(labX.is_abnormal, false, "Must NOT set is_abnormal = true without reference range");
+assert.ok(labX.status_label.includes("无参考区间"), "Status label must explicitly state missing reference range");
+
+console.log("✓ Missing reference range correctly yielded raw numeric trend without guessing abnormality");
+
+// ----------------------------------------------------
+// Test 5: ConText 3-Axis Assertion Model (Presence, Temporality, Experiencer)
+// ----------------------------------------------------
+console.log("\n[Test 5] Testing ConText 3-Axis Assertion Extraction (Positive, Negative, Not Evaluated, Familial)...");
+
+import { extractConTextAssertion } from "../plugins/medcius/lib/parse-cn-note.mjs";
+
+const posAssertion = extractConTextAssertion("患者诉轻度胸闷，双下肢可凹性水肿");
+assert.equal(posAssertion.presence, "positive");
+assert.equal(posAssertion.temporality, "current");
+assert.equal(posAssertion.experiencer, "patient");
+
+const negAssertion = extractConTextAssertion("患者否认夜间发热及阵发性呼吸困难");
+assert.equal(negAssertion.presence, "negative");
+assert.equal(negAssertion.presence_label, "【阴性/否定】");
+
+const notEvalAssertion = extractConTextAssertion("未行直肠指检，未查病理反射");
+assert.equal(notEvalAssertion.presence, "not_evaluated");
+assert.equal(notEvalAssertion.presence_label, "【未评估】");
+
+const famAssertion = extractConTextAssertion("母亲有高血压与冠心病史");
+assert.equal(famAssertion.experiencer, "family_member");
+
+const histAssertion = extractConTextAssertion("既往有十二指肠溃疡病史5年");
+assert.equal(histAssertion.temporality, "historical");
+
+console.log("✓ ConText 3-Axis strictly distinguished: positive, negative (否认), not_evaluated (未查), family_member, and historical");
+
+// ----------------------------------------------------
+// Test 6: Explicit Data Gaps (Allergy, Renal, Weight, Rule-Pack)
+// ----------------------------------------------------
+console.log("\n[Test 6] Testing Explicit Data Gaps Detection...");
+
+const summaryWithGaps = PatientEvolutionEngine.analyzePatientEvolution({
+  patient: { id: "P-GAPS-001", name: "未知患者" }, // Missing age, gender, weight
+  timeWindow: "24h",
+  notes: [],
+  observations: [], // No creatinine
+  medications: [],
+  diagnosticReports: [],
+  orders: [],
+  allergies: null, // Missing allergy
+  rulePack: null,  // Missing rule pack
+});
+
+const gapTypes = summaryWithGaps.blocks.data_gaps.map((g) => g.gap_type);
+assert.ok(gapTypes.includes("ALLERGY_MISSING"), "Must flag ALLERGY_MISSING");
+assert.ok(gapTypes.includes("RENAL_FUNCTION_MISSING"), "Must flag RENAL_FUNCTION_MISSING");
+assert.ok(gapTypes.includes("WEIGHT_MISSING"), "Must flag WEIGHT_MISSING");
+assert.ok(gapTypes.includes("RULE_PACK_MISSING"), "Must flag RULE_PACK_MISSING");
+
+console.log(`✓ Explicitly identified ${gapTypes.length} critical data gaps: ${gapTypes.join(", ")}`);
+
 console.log("\nALL CLINICAL SAFETY & QUALITY CONTROL HARDENING TESTS PASSED!\n");
+
