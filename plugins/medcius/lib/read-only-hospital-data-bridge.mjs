@@ -1,8 +1,8 @@
 import { canonicalJson, sha256Hex } from "../servers/shared/crypto.mjs";
 
 const ALLOWED_KINDS = new Set(["patient", "encounter", "notes", "nis", "lis", "pacs", "his", "financial_access"]);
-const WRITE_CAPABILITY_NAMES = new Set(["write", "create", "update", "delete", "patch", "execute", "order"]);
-const WRITE_METHOD_PREFIX_RE = /^(?:write|create|update|delete|patch|put|post|remove|execute|order)/i;
+const WRITE_CAPABILITY_NAMES = new Set(["write", "create", "update", "delete", "patch", "execute", "order", "create_resource", "update_resource", "delete_resource", "write_back"]);
+const WRITE_METHOD_PREFIX_RE = /^(?:write|create|update|delete|patch|put|post|remove|execute|order|create_resource|update_resource|delete_resource|write_back)/i;
 
 function requireContext(context) {
   for (const field of ["tenant_id", "doctor_id", "patient_id", "encounter_id"]) {

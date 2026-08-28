@@ -26,6 +26,7 @@ export class PatientEvolutionEngine {
    */
   static analyzePatientEvolution({
     patient = {},
+    context = null,
     timeWindow = "24h", // '24h' | '72h'
     notes = [],
     observations = [],
@@ -37,16 +38,42 @@ export class PatientEvolutionEngine {
     pacsFeed = [],
     lisFeed = [],
     rulePack = null,
+    sourceManifest = null,
     now = new Date(),
   }) {
-    if (!patient || !patient.id || patient.id === "UNKNOWN-PATIENT" || String(patient.id).trim() === "") {
+    const patientId = patient?.id || context?.patient_id;
+    if (!patientId || patientId === "UNKNOWN-PATIENT" || String(patientId).trim() === "") {
       throw new Error("INVALID_PATIENT_CONTEXT: Missing or invalid Patient ID. System fails closed to prevent ungrounded synthesis.");
+    }
+
+    if (context) {
+      for (const field of ["tenant_id", "doctor_id", "patient_id", "encounter_id"]) {
+        if (typeof context[field] !== "string" || !context[field].trim()) {
+          throw new Error(`INVALID_CONTEXT_FAIL_CLOSED: Missing required context field '${field}'.`);
+        }
+      }
+      if (patient.id && patient.id !== context.patient_id) {
+        throw new Error(`CONTEXT_PATIENT_MISMATCH_FAIL_CLOSED: patient.id (${patient.id}) !== context.patient_id (${context.patient_id})`);
+      }
+    }
+
+    if (timeWindow !== "24h" && timeWindow !== "72h") {
+      throw new Error(`INVALID_TIME_WINDOW: Expected '24h' or '72h', got '${timeWindow}'. System fails closed.`);
     }
 
     const windowHours = timeWindow === "72h" ? 72 : 24;
     const nowMs = new Date(now).getTime();
     if (!Number.isFinite(nowMs)) throw new Error("INVALID_TIME_CONTEXT: now must be a valid timestamp");
     const cutoffTime = nowMs - windowHours * 60 * 60 * 1000;
+
+    // Verify Source Manifest Hash Integrity if provided
+    if (Array.isArray(sourceManifest)) {
+      for (const entry of sourceManifest) {
+        if (!entry.payload_sha256 || typeof entry.payload_sha256 !== "string") {
+          throw new Error(`INVALID_SOURCE_MANIFEST_FAIL_CLOSED: Connector '${entry.connector_id || "unknown"}' missing payload_sha256.`);
+        }
+      }
+    }
 
     let nextItemId = 1;
     const genId = (prefix) => `${prefix}-${String(nextItemId++).padStart(3, "0")}`;

@@ -201,5 +201,41 @@ assert.throws(() => {
 }, /BRIDGE_WRITE_METHOD_REJECTED/);
 console.log("✓ Write-method detection survives the exit-guard wrapper (read-only invariant intact)");
 
+// ----------------------------------------------------
+// Test 10: Complete write method & capability blacklist rejection
+// ----------------------------------------------------
+console.log("\n[Test 10] Bridge rejects create_resource / delete_resource / write_back / update methods at init...");
+
+const writeMethodNames = ["create_resource", "update_resource", "delete_resource", "write_back", "deletePatient", "patchOrder"];
+for (const badMethod of writeMethodNames) {
+  assert.throws(
+    () => {
+      new ReadOnlyHospitalDataBridge({
+        requiredKinds: ["patient"],
+        connectors: [{ id: `rogue-${badMethod}`, kind: "patient", capabilities: ["read"], readPatient: async () => ({}), [badMethod]: async () => ({}) }],
+      });
+    },
+    /BRIDGE_WRITE_METHOD_REJECTED/,
+    `Must reject connector exposing '${badMethod}'`
+  );
+}
+
+// Capability blacklist test
+const badCapabilities = ["write", "create", "update", "delete", "create_resource", "update_resource", "write_back"];
+for (const badCap of badCapabilities) {
+  assert.throws(
+    () => {
+      new ReadOnlyHospitalDataBridge({
+        requiredKinds: ["patient"],
+        connectors: [{ id: `rogue-cap-${badCap}`, kind: "patient", capabilities: ["read", badCap], readPatient: async () => ({}) }],
+      });
+    },
+    /BRIDGE_READ_ONLY_CAPABILITY_REQUIRED/,
+    `Must reject connector with capability '${badCap}'`
+  );
+}
+console.log(`✓ All ${writeMethodNames.length} write methods and ${badCapabilities.length} write capabilities rejected at initialization time`);
+
 console.log("\nALL REAL-SYSTEM INTEGRATION CONNECTOR TESTS PASSED!\n");
+
 
