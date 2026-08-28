@@ -1,11 +1,115 @@
-﻿// Staged Draft & Progressive View Service (受控草稿箱与三层渐进式工作流服务)
+// Staged Draft & Progressive View Service (受控草稿箱与三层渐进式工作流服务)
 // Supports:
 // 1. Level 1 (3s Glance Capsule) -> Level 2 (15s Evolution Digest Card) -> Level 3 (Deep-dive Drilldown)
 // 2. Human-in-the-loop Staged Draft Sandbox (Read-only at storage level, CA signature in native EMR)
 
 export class StagedDraftService {
   /**
-   * Generates a 3-tier progressive disclosure payload for EHR embedding.
+   * Generates a 3-tier progressive disclosure payload directly from PatientEvolutionEngine summary.
+   */
+  static generateProgressiveViewsFromSummary(evolutionSummary, { patient = {}, timeWindow = "24h" } = {}) {
+    const blocks = evolutionSummary?.blocks || {};
+    const whatChanged = blocks.what_changed || {};
+    const criticals = evolutionSummary?.critical_values || [];
+    const gaps = blocks.data_gaps || [];
+    const pending = blocks.whats_pending || {};
+    const alignments = blocks.structured_multisource_alignment || [];
+    const evidenceList = blocks.evidence || [];
+
+    // --- Tier 1: Level 1 走廊胶囊 (3-second Corridor Glance Capsule) ---
+    let glanceStatus = "STABLE";
+    let glanceColor = "GREEN";
+    let glanceHeadline = "过去 24 小时生命体征与主要指标平稳，常规查房随访。";
+    let bedPriority = "常规查房顺序";
+
+    if (criticals.length > 0) {
+      glanceStatus = "CRITICAL";
+      glanceColor = "RED";
+      glanceHeadline = `🚨 触发危急值警报：${criticals.map((c) => `${c.name} ${c.value} ${c.unit}`).join("；")}`;
+      bedPriority = `[工作流提示] ${patient.bed_number || patient.bed || "床位"} 优先查房巡视 (危急警报)`;
+    } else if (alignments.some((a) => a.requires_attention) || (whatChanged.abnormal_labs && whatChanged.abnormal_labs.length > 0)) {
+      glanceStatus = "CHANGED";
+      glanceColor = "YELLOW";
+      const topAlert = alignments.find((a) => a.requires_attention);
+      glanceHeadline = topAlert ? `⚠️ ${topAlert.domain_title}: ${topAlert.clinical_synthesis}` : "⚠️ 监测到体征或生化指标动态波动，重点核对。";
+      bedPriority = `[工作流提示] 关注病情动态变化`;
+    }
+
+    const level1Glance = {
+      tier: "LEVEL_1_GLANCE",
+      status: glanceStatus,
+      color: glanceColor,
+      headline: glanceHeadline,
+      recommended_workflow_action: bedPriority,
+      time_budget: "~3s",
+      disclaimer: "工作流优先级提示仅供查房路线参考，不构成医疗医嘱或分诊结论",
+    };
+
+    // --- Tier 2: Level 2 演变卡片 (15-second Evolution Digest Card) ---
+    const level2Card = {
+      tier: "LEVEL_2_DIGEST",
+      patient_info: {
+        id: patient.id || evolutionSummary?.patient?.id,
+        name_masked: patient.name ? `${patient.name[0]}**` : "患者",
+        bed: patient.bed_number || patient.bed || "床位",
+        egfr: evolutionSummary?.patient?.egfr ?? null,
+      },
+      time_window: timeWindow,
+      time_budget: "~15s",
+      blocks: {
+        what_changed: {
+          vitals: whatChanged.vitals_and_fluids?.vitals || null,
+          fluids: whatChanged.vitals_and_fluids?.fluids || null,
+          abnormal_labs_count: whatChanged.abnormal_labs?.length || 0,
+          imaging_count: whatChanged.imaging_changes?.length || 0,
+          med_changes_count: (whatChanged.medication_diff?.added?.length || 0) + (whatChanged.medication_diff?.discontinued?.length || 0) + (whatChanged.medication_diff?.adjusted?.length || 0),
+        },
+        whats_pending: {
+          pending_reports_count: pending.pending_reports?.length || 0,
+          pending_orders_count: pending.pending_orders?.length || 0,
+          scheduled_consults_count: pending.scheduled_consults?.length || 0,
+        },
+        clinical_data_gaps: gaps.map((g) => ({
+          type: g.gap_type,
+          severity: g.severity,
+          title: g.title,
+          action_needed: g.clinical_action_needed,
+        })),
+        structured_alignments: alignments.map((a) => ({
+          domain: a.domain_title,
+          synthesis: a.clinical_synthesis,
+          requires_attention: a.requires_attention,
+        })),
+      },
+    };
+
+    // --- Tier 3: Level 3 床旁深挖 (Deep-dive Drilldown Structure) ---
+    const level3Drilldown = {
+      tier: "LEVEL_3_DRILLDOWN",
+      time_budget: "床旁需要时",
+      total_evidence_count: evidenceList.length,
+      full_evidence_spans: evidenceList.map((e) => ({
+        item_id: e.item_id,
+        category: e.category,
+        title: e.title,
+        span: e.span,
+        source_type: e.source_type,
+        source_id: e.source_id,
+        source_title: e.source_title,
+        timestamp: e.timestamp,
+      })),
+      verbatim_spans_available: evidenceList.filter((e) => e.span != null).length,
+    };
+
+    return {
+      glance: level1Glance,
+      digest: level2Card,
+      drilldown: level3Drilldown,
+    };
+  }
+
+  /**
+   * Generates a 3-tier progressive disclosure payload for EHR embedding (Legacy / Attribution wrapper).
    */
   static generateProgressiveViews({
     patient = {},
@@ -17,7 +121,6 @@ export class StagedDraftService {
     fluidBalance = null,
     gatingResult = null,
   }) {
-    // 1. Level 1: 3-second Glance Capsule
     let glanceStatus = "STABLE";
     let glanceColor = "GREEN";
     let glanceHeadline = "过去 24 小时病情相对平稳，常规查房随访。";
@@ -40,7 +143,6 @@ export class StagedDraftService {
       recommended_action: glanceStatus === "CRITICAL" ? "走廊巡视优先床位" : "常规查房顺序",
     };
 
-    // 2. Level 2: 15-second Evolution Digest Card
     const level2Card = {
       tier: "LEVEL_2_DIGEST",
       patient_info: {
@@ -56,7 +158,6 @@ export class StagedDraftService {
       clinical_gaps: missingEvaluations,
     };
 
-    // 3. Level 3: Deep-dive Drilldown Structure
     const level3Drilldown = {
       tier: "LEVEL_3_DRILLDOWN",
       full_evidence_spans: attributions.flatMap((a) => [
@@ -102,7 +203,7 @@ export class StagedDraftService {
       assessmentAndPlan,
       ``,
       `---`,
-      `> ⚠️ **合规声明**：本草稿由 Medcius Agent 辅助整理生成，仅保存在临时沙盒中。请执业医师核实原文无误后，复制至 EMR 原生病历系统加盖 CA 电子签名入库。`,
+      `> ⚠️ **合规声明**：本草稿由 Medcius Agent 辅助整理生成，仅保存在受限临时沙盒中。请执业医师核实原文无误后，复制至 EMR 原生病历系统加盖 CA 电子签名入库。`,
     ].join("\n");
 
     return {
@@ -113,6 +214,7 @@ export class StagedDraftService {
       rendered_markdown: renderedContent,
       status: "PENDING_PHYSICIAN_CA_SIGNATURE",
       human_verification_required: true,
+      write_back_blocked: true,
     };
   }
 }

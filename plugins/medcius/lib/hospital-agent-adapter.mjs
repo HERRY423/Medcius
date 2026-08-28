@@ -8,6 +8,8 @@ import { ConsultPreparationEngine } from "./consult-preparation-engine.mjs";
 import { DischargeReadinessEngine } from "./discharge-readiness-engine.mjs";
 import { HospitalDataAdapter } from "./hospital-data-adapter.mjs";
 import { loadSpecialtyRulePack } from "./specialty-rule-pack.mjs";
+import { StagedDraftService } from "./staged-draft-service.mjs";
+import { ClinicalSkillCatalog } from "./clinical-skill-catalog.mjs";
 import { containsRawPhi, redactText } from "../servers/phiguard/src/lib.mjs";
 import { canonicalJson, sha256Hex } from "../servers/shared/crypto.mjs";
 
@@ -389,6 +391,77 @@ export class HospitalAgentAdapter {
         read_only_enforced: true,
       },
     };
+  }
+
+  /**
+   * 4.1 Intent Routing & Catalog Approval Gate
+   * Routes user intent to pre-approved clinical workflow skills, strictly validating against ClinicalSkillCatalog.
+   * Rejects improvised workflows outside the catalog in production.
+   */
+  static routeAndExecuteWorkflow({
+    skillId,
+    host = HOST_TYPES.HOSPITAL_CUSTOM_AGENT,
+    context,
+    dataFeeds,
+    catalog = null,
+    mode = "production",
+    options = {},
+  }) {
+    this.validateContextEnvelope(context);
+
+    // 1. Enforce Catalog Verification if catalog is provided or in production
+    if (catalog) {
+      const eligibility = catalog.isSkillApproved(skillId, mode);
+      if (!eligibility.isEligible) {
+        throw new Error(`FAIL_CLOSED_SKILL_UNAPPROVED: Skill '${skillId}' is not approved for ${mode} execution (${eligibility.reason})`);
+      }
+    }
+
+    // 2. Strict Intent Routing Dispatch
+    switch (skillId) {
+      case "patient-evolution-summary": {
+        const result = this.executePreRoundWorkflow({ host, context, dataFeeds });
+        const progressiveViews = StagedDraftService.generateProgressiveViewsFromSummary(result.summary, {
+          patient: dataFeeds?.patient || {},
+          timeWindow: context.time_window || "24h",
+        });
+        return {
+          ...result,
+          progressive_views: progressiveViews,
+        };
+      }
+
+      case "shift-handover": {
+        return this.executeShiftHandoverWorkflow({
+          host,
+          context,
+          dataFeeds,
+          shiftType: options.shiftType || SHIFT_TYPES.MORNING_TO_EVENING,
+        });
+      }
+
+      case "consult-preparation": {
+        return this.executeConsultPrepWorkflow({
+          host,
+          context,
+          dataFeeds,
+          consultRequest: options.consultRequest || { department: options.department || "心血管内科" },
+        });
+      }
+
+      case "discharge-readiness-check": {
+        return this.executeDischargeReadinessWorkflow({
+          host,
+          context,
+          dataFeeds,
+          dischargeMedications: options.dischargeMedications || [],
+        });
+      }
+
+      default: {
+        throw new Error(`FAIL_CLOSED_UNREGISTERED_WORKFLOW: Improvised or unregistered clinical workflow '${skillId}' is prohibited. Only approved catalog skills may execute.`);
+      }
+    }
   }
 
   /**

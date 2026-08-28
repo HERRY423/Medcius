@@ -175,4 +175,145 @@ assert.equal(draftRes.audit.doctor_id, "DOC-PKU-8801");
 
 console.log("✓ Progress note draft generated with doctor sign-off metadata");
 
-console.log("\nALL HOSPITAL AGENT ADAPTER TESTS PASSED!");
+// ----------------------------------------------------
+// Test 5: Intent Routing & Catalog Approval Gate (4.1)
+// ----------------------------------------------------
+console.log("\n[Test 5] Testing Intent Routing & Catalog Approval Gate...");
+
+import { ClinicalSkillCatalog } from "../plugins/medcius/lib/clinical-skill-catalog.mjs";
+
+const sampleCatalog = new ClinicalSkillCatalog({
+  catalog_id: "inpatient-catalog-v1",
+  version: "1.0.0",
+  skills: [
+    {
+      skill_id: "patient-evolution-summary",
+      status: "approved",
+      approval_metadata: { approved_by: "林主任医师 (Cardio)" },
+    },
+    {
+      skill_id: "shift-handover",
+      status: "approved",
+      approval_metadata: { approved_by: "林主任医师 (Cardio)" },
+    },
+    {
+      skill_id: "unapproved-improvised-diagnostics",
+      status: "draft",
+    },
+    {
+      skill_id: "quarantined-experimental-skill",
+      status: "quarantined",
+    },
+  ],
+});
+
+// 5a. Route approved skill succeeds with progressive views
+const routedPreRound = HospitalAgentAdapter.routeAndExecuteWorkflow({
+  skillId: "patient-evolution-summary",
+  catalog: sampleCatalog,
+  mode: "production",
+  context: {
+    tenant_id: "hospital_pku_cardio",
+    doctor_id: "DOC-PKU-8801",
+    patient_id: "pat-cardio-001",
+    encounter_id: "enc-cardio-001",
+  },
+  dataFeeds: bed1Feed,
+});
+assert.equal(routedPreRound.success, true);
+assert.ok(routedPreRound.progressive_views);
+assert.ok(routedPreRound.progressive_views.glance);
+assert.ok(routedPreRound.progressive_views.digest);
+assert.ok(routedPreRound.progressive_views.drilldown);
+console.log("✓ Intent routed to 'patient-evolution-summary' with 3-tier progressive views generated");
+
+// 5b. Unapproved skill blocked in production
+assert.throws(
+  () => HospitalAgentAdapter.routeAndExecuteWorkflow({
+    skillId: "unapproved-improvised-diagnostics",
+    catalog: sampleCatalog,
+    mode: "production",
+    context: { tenant_id: "hosp_a", doctor_id: "doc_1", patient_id: "pat-cardio-001", encounter_id: "enc-01" },
+    dataFeeds: bed1Feed,
+  }),
+  /FAIL_CLOSED_SKILL_UNAPPROVED/,
+  "Must reject unapproved draft skill in production"
+);
+
+// 5c. Quarantined skill blocked
+assert.throws(
+  () => HospitalAgentAdapter.routeAndExecuteWorkflow({
+    skillId: "quarantined-experimental-skill",
+    catalog: sampleCatalog,
+    mode: "production",
+    context: { tenant_id: "hosp_a", doctor_id: "doc_1", patient_id: "pat-cardio-001", encounter_id: "enc-01" },
+    dataFeeds: bed1Feed,
+  }),
+  /FAIL_CLOSED_SKILL_UNAPPROVED/,
+  "Must reject quarantined skill"
+);
+
+// 5d. Improvised unregistered workflow outside catalog blocked
+assert.throws(
+  () => HospitalAgentAdapter.routeAndExecuteWorkflow({
+    skillId: "improvised-multiagent-differential-diagnostician",
+    catalog: sampleCatalog,
+    mode: "production",
+    context: { tenant_id: "hosp_a", doctor_id: "doc_1", patient_id: "pat-cardio-001", encounter_id: "enc-01" },
+    dataFeeds: bed1Feed,
+  }),
+  /FAIL_CLOSED_SKILL_UNAPPROVED/,
+  "Must reject unregistered improvised workflow"
+);
+
+console.log("✓ All catalog approval and intent routing gates strictly enforced in production mode");
+
+// ----------------------------------------------------
+// Test 6: 3-Tier Progressive Views (4.6 L1 / L2 / L3)
+// ----------------------------------------------------
+console.log("\n[Test 6] Testing 3-tier progressive disclosure (~3s L1 / ~15s L2 / Bedside L3)...");
+
+const views = routedPreRound.progressive_views;
+// L1 Glance
+assert.ok(views.glance.time_budget.includes("3s"));
+assert.ok(["STABLE", "CHANGED", "CRITICAL"].includes(views.glance.status));
+assert.ok(views.glance.recommended_workflow_action);
+assert.ok(views.glance.disclaimer.includes("不构成医疗医嘱"));
+
+// L2 Digest
+assert.ok(views.digest.time_budget.includes("15s"));
+assert.ok(views.digest.blocks.what_changed);
+assert.ok(views.digest.blocks.whats_pending);
+assert.ok(views.digest.blocks.clinical_data_gaps);
+
+// L3 Drilldown
+assert.ok(views.drilldown.full_evidence_spans.length >= 5);
+assert.ok(views.drilldown.verbatim_spans_available >= 1);
+
+console.log(`✓ 3-tier progressive views validated: L1 (${views.glance.status}), L2 (4 blocks), L3 (${views.drilldown.total_evidence_count} evidence items)`);
+
+// ----------------------------------------------------
+// Test 7: Staged Draft Service Human-in-the-Loop & Write-Back Blocking (4.7)
+// ----------------------------------------------------
+console.log("\n[Test 7] Testing StagedDraftService sandbox creation & write-back block...");
+
+import { StagedDraftService } from "../plugins/medcius/lib/staged-draft-service.mjs";
+
+const stagedDraft = StagedDraftService.createStagedDraft({
+  patient: bed1Feed.patient,
+  encounterId: "enc-cardio-001",
+  author: "林德明 (主任医师)",
+  progressiveViews: views,
+});
+
+assert.ok(stagedDraft.draft_id.startsWith("DRAFT-"));
+assert.equal(stagedDraft.status, "PENDING_PHYSICIAN_CA_SIGNATURE");
+assert.equal(stagedDraft.human_verification_required, true);
+assert.equal(stagedDraft.write_back_blocked, true, "Must strictly block automated writeback");
+assert.ok(stagedDraft.rendered_markdown.includes("【查房前病情演变与交班记录草稿】"));
+assert.ok(stagedDraft.rendered_markdown.includes("加盖 CA 电子签名入库"));
+
+console.log("✓ Staged draft sandbox generated with write_back_blocked=true and pending CA signature");
+
+console.log("\nALL HOSPITAL AGENT ADAPTER TESTS PASSED!\n");
+
