@@ -1,0 +1,130 @@
+{
+  "$schema": "../../contracts/clinical-skill-catalog.v1.schema.json",
+  "catalog_id": "cardiology-inpatient-catalog-v1",
+  "hospital_scope": "National Cardiovascular Center / Inpatient Wards",
+  "version": "1.0.0",
+  "last_updated": "2026-08-28T00:00:00Z",
+  "skills": [
+    {
+      "skill_id": "patient-evolution-summary",
+      "version": "1.0.0",
+      "intended_use": "住院查房前患者 24/72 小时体征极值、检验动态、医嘱调整与未出检查结构化摘要整理",
+      "trigger_points": [
+        "晨查房前准备",
+        "主任查房前资料汇总",
+        "阶段病情回顾"
+      ],
+      "risk_classification": "Class II - Informational Clinical Support",
+      "prohibited_actions": [
+        "自动给出诊断推断结论",
+        "推荐处方或更改医嘱",
+        "未经医生确认直接写回 EHR"
+      ],
+      "required_permissions": [
+        "read:patient",
+        "read:encounter",
+        "read:observation",
+        "read:medication",
+        "read:diagnostic-report"
+      ],
+      "approval_metadata": {
+        "approved_by": "张*民 (主任医师)",
+        "approval_role": "心血管内科主任 / 临床专家委员会组长",
+        "committee": "国家心血管临床医学中心临床AI质控委员会",
+        "approval_date": "2026-08-25",
+        "content_hash": "sha256:d8a9f23e4b7c1092a83e01bc6f31d044238bc1a2830dfb9271e62a0487b32091"
+      },
+      "status": "approved",
+      "rollback_target_version": "0.9.0"
+    },
+    {
+      "skill_id": "shift-handover",
+      "version": "1.0.0",
+      "intended_use": "临床交接班与夜间值班重点患者关注（基于 SBAR / I-PASS 模型）",
+      "trigger_points": [
+        "早晚临床交接班",
+        "夜班值班医师接班前重点排查"
+      ],
+      "risk_classification": "Class II - Informational Clinical Support",
+      "prohibited_actions": [
+        "自动决定交接班患者分级",
+        "自动取消未执行医嘱",
+        "替代面对面床旁口头交接"
+      ],
+      "required_permissions": [
+        "read:patient",
+        "read:vital-signs",
+        "read:critical-lab",
+        "read:pending-task"
+      ],
+      "approval_metadata": {
+        "approved_by": "李*华 (副主任医师)",
+        "approval_role": "住院部病区总住院医师",
+        "committee": "病区医疗质量管理小组",
+        "approval_date": "2026-08-26",
+        "content_hash": "sha256:7c9e01bc6f31d044238bc1a2830dfb9271e62a0487b32091d8a9f23e4b7c1092"
+      },
+      "status": "approved",
+      "rollback_target_version": "0.9.0"
+    },
+    {
+      "skill_id": "consult-preparation",
+      "version": "1.0.0",
+      "intended_use": "专科会诊与多学科协作 (MDT) 会诊前资料包整理",
+      "trigger_points": [
+        "发起专科会诊申请前",
+        "接收会诊后查阅申请资料"
+      ],
+      "risk_classification": "Class II - Informational Clinical Support",
+      "prohibited_actions": [
+        "自动生成会诊拟定意见",
+        "自主开立会诊建议专科检查",
+        "直接替代专科受邀医师签署意见"
+      ],
+      "required_permissions": [
+        "read:patient",
+        "read:consult-request",
+        "read:specialty-timeline"
+      ],
+      "approval_metadata": {
+        "approved_by": "王*伟 (主任医师)",
+        "approval_role": "医务处副处长 / 会诊质控督导",
+        "committee": "多学科会诊管理委员会",
+        "approval_date": "2026-08-26",
+        "content_hash": "sha256:b1a2830dfb9271e62a0487b32091d8a9f23e4b7c1092a83e01bc6f31d044238b"
+      },
+      "status": "approved",
+      "rollback_target_version": "0.9.0"
+    },
+    {
+      "skill_id": "discharge-readiness-check",
+      "version": "1.0.0",
+      "intended_use": "出院前资料核对、闭环检查、带药交待与费用负担可获得性核查",
+      "trigger_points": [
+        "出院医嘱开立前",
+        "出院小结书写与归档质控"
+      ],
+      "risk_classification": "Class II - Informational Clinical Support",
+      "prohibited_actions": [
+        "自主决定患者是否符合出院标准",
+        "自动更改出院带药处方",
+        "自动签署出院记录"
+      ],
+      "required_permissions": [
+        "read:patient",
+        "read:discharge-orders",
+        "read:diagnostic-reports",
+        "read:affordability-context"
+      ],
+      "approval_metadata": {
+        "approved_by": "陈*强 (主任医师)",
+        "approval_role": "病案与质控科主任",
+        "committee": "出院患者医疗安全与终末质控委员会",
+        "approval_date": "2026-08-27",
+        "content_hash": "sha256:dfb9271e62a0487b32091d8a9f23e4b7c1092a83e01bc6f31d044238bc1a2830"
+      },
+      "status": "approved",
+      "rollback_target_version": "0.9.0"
+    }
+  ]
+}

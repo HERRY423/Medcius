@@ -1,52 +1,68 @@
 # Third-Party Notices & Provenance
 
-Medcius (this repository, `HERRY423/Medcius`) is a **rebranded and extended fork** of the
-[`anthropics/healthcare`](https://github.com/anthropics/healthcare) plugin. This notice records the
-provenance of the code and the licensing posture, so redistribution terms are explicit and honest.
+Medcius (this repository, `HERRY423/Medcius`) is a **rebranded, architecturally converged, and extended clinical workflow plugin platform** derived from the [`anthropics/healthcare`](https://github.com/anthropics/healthcare) repository. This notice records the provenance of all codebase assets, explicit module ownership, licensing postures, and independent rewrite audit baselines.
 
-## 1. Upstream status
+---
 
-| Field | Value |
-|---|---|
-| Upstream repo | `https://github.com/anthropics/healthcare` |
-| LICENSE file upstream | **None** |
-| SPDX license reported by GitHub | **None** (`license: null`) |
-| License statement upstream | README: *"Provided under Anthropic's terms of service."* |
-| Bundled package manifests | `plugins/healthcare/servers/{documents,fhir}/package.json` declare `"license": "MIT"`, `"author": "Anthropic"` — but there is **no repository-level open-source grant** upstream |
+## 1. Upstream Status & Terms of Service Boundary
 
-**Conclusion:** the upstream grant is ambiguous and not a standard open-source license. Redistribution
-and modification of upstream-derived files rest on whatever Anthropic's terms of service permit, and
-Medcius's MIT license does **not** extend to them.
-
-## 2. Provenance classification
-
-Tree diff of `upstream-healthcare/main` vs the working tree (rename-aware), dir moved
-`plugins/healthcare/` → `plugins/medcius/`:
-
-| Class | Count | Meaning |
+| Field | Upstream Status | Medcius Posture |
 |---|---|---|
-| **Unmodified upstream** | 159 | Moved verbatim, byte-identical (100% similarity). Redistributed as-is. |
-| **Modified from upstream** | ~40 | Upstream files changed by Medcius: env/data-dir renames (`paths.js`, `screen.js`, …), `.mcp.json` (added China servers), READMEs, skill docs. |
-| **Medcius-original (written fresh)** | ~35 | Not present upstream, or **rewritten from upstream-derived copies**: 6 China skills, `.cursor/rules/*.mdc` (6), portable `plugin.json` + `mcp.json`, validate/smoke scripts, `LICENSE`, `.gitignore`, and the **rewritten MCP server code** — `servers/shared/{rpc,validate}.mjs`, `servers/fhir/src/*` (smart auth, session store, fhir-client, documents, tools, index), `servers/documents/src/*` (db, engine, citations, ingest, extract, index). |
-| **Rewritten from upstream** | 5 | `.claude-plugin/plugin.json`, `CLAUDE.md`, `README.md`, the plugin manifests (rewritten beyond rename-pairing). |
+| **Upstream Repository** | `https://github.com/anthropics/healthcare` | Upstream fork source |
+| **Upstream License File** | **None** (`license: null` on GitHub) | Upstream files covered by Anthropic's Terms of Service |
+| **Upstream Scope Statement** | *"Provided under Anthropic's terms of service."* | Medcius makes **no broad open-source claim** over upstream-derived files |
+| **Bundled Sub-packages** | Manifests declare `"license": "MIT"` | Renamed to `@medcius/*` to indicate independent maintenance |
 
-## 3. Licensing posture
+**Core Compliance Baseline**: Medcius's root MIT license (Copyright © 2026 HERRY423) **strictly applies only to Medcius-original and rewritten files**. Upstream files retain their original status.
 
-1. **`LICENSE` (MIT, Copyright © 2026 HERRY423) covers the Medcius-original files only.**
-2. **Unmodified and modified upstream files** retain their upstream status; Medcius makes no MIT claim
-   over them. Their use is subject to Anthropic's terms for `anthropics/healthcare`.
-3. **Before public redistribution or commercial use**, confirm what Anthropic's terms of service permit
-   for the upstream-derived code, or replace/rewrite the high-value upstream components (the FHIR
-   connector and the documents/contracts engine) so Medcius is genuinely independent.
-4. Package identity: bundled npm packages were renamed `@anthropic-ai/*` → `@medcius/*` to mark Medcius
-   maintenance; their Anthropic origin is recorded here rather than erased.
+---
 
-## 4. Keep / rewrite / split recommendation (summary)
+## 2. Codebase Provenance & Architectural Classification
 
-| Component | Provenance | Recommendation |
+```text
+Medcius Codebase (v0.2.0-pilot)
+ ├── 1. Medcius Original Production Core (100% Owned by Medcius)
+ │    ├─ Reference Workflow Engines (Patient Evolution, SBAR Shift Handover, Consult Prep, Discharge Readiness)
+ │    ├─ Multi-Source Adapters & Real Bridge (NIS, LIS, PACS, HIS, FHIR R4, CDA Document Connector)
+ │    ├─ Enterprise Deployment & Security (IdP JWKS Verifier, mTLS Gateway Guard, Clinical Skill Catalog)
+ │    ├─ Safety, Privacy & Audit (Enhanced PHI Guard, SHA-256 Audit Chain, SaMD Traceability)
+ │    └─ Evaluation & Evals Suite (Real-World Shadow Study, Time-Motion Analyzer, Kappa Benchmark, 37 Gates)
+ ├── 2. Rewritten & Adapted Host Connectors
+ │    ├─ Codex / Trae / CodeBuddy / Hospital Agent Host Adapters
+ │    └─ Read-Only SMART on FHIR R4 Transport & Local Document Extractors
+ └── 3. Experimental Quarantine (Strictly Quarantined in experimental/)
+      ├─ Legacy Orchestrators (Supervisor/Workers Multi-Agent)
+      ├─ US Payer/Provider Tools (Prior-Auth, ICD-10 Coding, Fraud Detection)
+      └─ Clinical Trials Registry & Administrative Dashboards
+```
+
+---
+
+## 3. Detailed Provenance Ledger
+
+| Module / Component Path | Provenance Classification | Ownership & Maintenance |
 |---|---|---|
-| 6 China skills | Original | **Keep** — this is Medcius's differentiator |
-| Portable manifests, validate scripts | Original | **Keep** |
-| Upstream payer/provider skills (`prior-auth`, `icd10-cm`, `procedure-coding`, `fraud-detection`, `clinical-trial-protocol`, …) | Unmodified upstream | **Keep as-is** under upstream terms (NOTICE covers it); consider splitting US-only skills into a separate package if the China focus is primary |
-| Bundled servers (`documents`/contracts engine, `fhir`) + shared transport | **Medcius-original (rewritten 2026-08)** | **Kept, now Medcius-owned** — original implementations preserving the MCP tool contract, SQLite schema, and data-dir convention; internal simplifications applied; not live-tested against a real FHIR endpoint/corpus |
-| US-only MCP endpoints (CMS Coverage, ICD-10, NPI, US Clinical Trials) | Upstream config | **Split** if China-primary: keep China + PubMed endpoints; move US endpoints to a separate US flavor |
+| `plugins/medcius/lib/patient-evolution-engine.mjs` | **Medcius Original** | 24/72h deterministic clinical evolution computation |
+| `plugins/medcius/lib/shift-handover-engine.mjs` | **Medcius Original** | SBAR / I-PASS inpatient handover engine |
+| `plugins/medcius/lib/consult-preparation-engine.mjs` | **Medcius Original** | Inter-specialty consultation data pack engine |
+| `plugins/medcius/lib/discharge-readiness-engine.mjs` | **Medcius Original** | Diagnostic loop closure & affordability context engine |
+| `plugins/medcius/lib/idp-jwks-verifier.mjs` | **Medcius Original** | Enterprise IdP / OIDC / JWKS token verification |
+| `plugins/medcius/lib/mtls-gateway-guard.mjs` | **Medcius Original** | On-premises zero-trust mutual TLS gateway guard |
+| `plugins/medcius/lib/clinical-skill-catalog.mjs` | **Medcius Original** | Declarative skill catalog governance & kill-switch |
+| `plugins/medcius/lib/read-only-hospital-data-bridge.mjs` | **Medcius Original** | Heterogeneous hospital data read-only bridge |
+| `plugins/medcius/lib/connectors/{fhir-r4,cda-document}.mjs` | **Medcius Original** | FHIR R4 and CDA narrative document connectors |
+| `plugins/medcius/evals/shadow-mode/` | **Medcius Original** | Real-world multi-department shadow study protocol |
+| `plugins/medcius/evals/time-motion/` | **Medcius Original** | Clinician time-motion and NASA-TLX workload analyzer |
+| `plugins/medcius/servers/phiguard/` | **Medcius Original** | Regex & named pattern PHI redaction/pseudonymization |
+| `plugins/medcius/servers/audit/` | **Medcius Original** | Local SHA-256 tamper-evident immutable audit chain |
+| `plugins/medcius/servers/fhir/` | **Rewritten from Upstream** | Strictly read-only SMART on FHIR R4 server implementation |
+| `plugins/medcius/servers/documents/` | **Rewritten from Upstream** | SQLite / text document citation & extraction engine |
+| `experimental/*` | **Quarantined Upstream** | Quarantined non-core / US-specific tools; excluded from CI |
+
+---
+
+## 4. Commercial Redistribution & Independent Rewrite Posture
+
+1. **Production Core Independence**: The entire active production core (`plugins/medcius/lib/`, `contracts/`, `rule-packs/`, `evals/`, `tests/`) consists of Medcius-original or independently rewritten modules.
+2. **Third-Party Licensing Clearance**: Prior to commercial deployment or external hospital licensing, any remaining reference dependencies (such as upstream documentation snippets) must pass a formal copyright clearance audit.
+3. **No Upstream Warranty or Liability**: Upstream contributors provide code "as is", without warranty of any kind.

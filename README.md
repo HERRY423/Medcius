@@ -107,10 +107,17 @@ Medcius Agent Plugin
 | `lib/discharge-readiness-engine.mjs` | 出院准备度与资料完整性核对引擎 |
 | `lib/patient-affordability-context.mjs` | 来源绑定的患者费用负担、覆盖/估算与援助转介状态；不计算自付额或自动改药 |
 | `contracts/patient-financial-access-record.v1.schema.json` | 费用负担与可获得性输入记录的机器可检查契约 |
+| `lib/idp-jwks-verifier.mjs` | 企业级 IdP / OIDC / JWKS 动态公钥验签与多租户隔离中间件 |
+| `lib/mtls-gateway-guard.mjs` | 院内前置机 mTLS 双向认证守卫与零信任只读安全信封 |
+| `lib/clinical-skill-catalog.mjs` + `rule-packs/catalogs/` | 临床技能目录全生命周期治理引擎（专家审批、哈希签名、一键熔断与回滚） |
+| `contracts/clinical-skill-catalog.v1.schema.json` | 临床技能目录机器可检查契约 |
 | `lib/hospital-data-adapter.mjs` | NIS/LIS/PACS/HIS 医院多源数据融合与危急值/抗菌药监控 |
 | `lib/high-risk-followup-tracker.mjs` | 高风险检查检验从开立、采集、结果到医生确认的阶段追踪；不自动处置 |
 | `lib/specialty-rule-pack.mjs` + `rule-packs/` | 专科病区规则包加载、版本哈希、审批元数据与生产环境失败关闭 |
 | `lib/read-only-hospital-data-bridge.mjs` | 院内异构接口只读桥；逐源绑定租户、患者、就诊和来源哈希 |
+| `lib/connectors/` | 真实系统 FHIR R4 与 CDA 文档通道只读连接器及 PHI 出口守卫 |
+| `evals/shadow-mode/` | 真实世界多病区连续病例影子研究（Shadow Study）协议引擎与 Wilson CI 统计 |
+| `evals/time-motion/` | 临床医生 Time-Motion 与人因认知负荷（NASA-TLX）自动化统计分析器 |
 | `evals/physician-annotation/` | 独立医生双盲标注、Kappa 一致性评测与仲裁体系 |
 | `servers/fhir` | SMART on FHIR R4 连接器；Codex、Trae、WorkBuddy 适配入口强制只读 |
 | `servers/documents` | 本地文档提取与来源处理 |
@@ -144,59 +151,12 @@ Medcius Agent Plugin
 |---|---|---|
 | 插件工程 | 已有 Codex、Trae、WorkBuddy/CodeBuddy 适配与自动化检查 | 可安装、可发现、工具边界可测试 |
 | 合成验证 | 已有合成病例和参考工作流评测 | 可验证软件契约和失败路径 |
-| 真实 EHR 接入 | 尚未形成独立生产验收证据 | 不能声称已适配真实医院工作流 |
-| 临床事实准确性 | 尚未建立独立连续病例结果 | 不能声称减少遗漏或提高准确率 |
-| 医生效率与人因 | 尚未建立真实对照证据 | 不能声称节省特定比例时间 |
-| 临床安全、泛化与监管 | 尚未建立 | 不能声称临床就绪或规模化可用 |
+| 真实 EHR 接入 | 具备真实连接器 PoC (FHIR/CDA) 与 mTLS 网关，待院端现场联调 | 不能声称已在真实生产医院完成上线验收 |
+| 临床事实准确性 | 方案已定稿 (IRB/影子研究/双盲标注)，待真实入组数据 | 不能声称减少遗漏或提高准确率 |
+| 医生效率与人因 | 已建立 Time-Motion 与 NASA-TLX 测量引擎与基准 | 不能声称已在真实对照组中验证 |
+| 临床安全、泛化与监管 | 门禁严格阻断 (`clinical_evidence_pass: 🔒 BLOCKED`) | 不能声称临床就绪或规模化可用 |
 
 任何 `engineering_pass` 或 `synthetic_validation_pass` 都不能升级为 `clinical_evidence_pass`。
-
-## 新战略：从单一功能变为插件能力生态
-
-### P0：完成定位与生产面收敛
-
-- 统一 README、插件清单和各宿主规则中的“Agent 插件”定位；
-- 将查房摘要定义为参考工作流，不再把侧边栏当作产品本体；
-- 物理排除遗留的非核心技能和高风险工具；
-- 固定只读、证据绑定、PHI Guard、审计和失败关闭为插件级公共契约。
-
-退出条件：不同宿主安装后呈现相同定位、能力清单和禁止行为。
-
-### P1：建立宿主无关的插件内核
-
-- 为每个技能定义统一的用户意图、患者/就诊上下文、输入输出、来源字段和失败状态；
-- 建立 Codex、Trae、WorkBuddy/CodeBuddy 与医院 Agent 的兼容性测试；
-- 将宿主对话、Medcius 技能调用和医院数据访问分层，避免把宿主 Agent 误写成 Medcius 自有 Agent；
-- 提供最小权限、安装、升级、回滚和数据流说明。
-
-退出条件：同一合成任务可在至少两个宿主上得到契约等价、可追溯的结果。
-
-### P2：验证第一个临床工作流技能包
-
-- 以查房前患者变化摘要作为首个低自主性、高频参考场景；
-- 完成一个医院沙箱的只读 EHR 字段映射和患者/就诊/用户/租户绑定；
-- 在不向医生展示的静默模式下做连续病例评估；
-- 由独立医生标注关键事实、遗漏、虚构、来源绑定和弃权。
-
-退出条件：达到医院预先批准的患者错配、虚构事实、关键遗漏、来源覆盖和系统失败边界。
-
-### P3：形成临床工作流技能包方法
-
-- 每个新增技能独立声明预期用途、目标用户、触发时点、所需权限和临床风险；
-- 每个技能独立版本化、测试、发布和回滚，不形成一个无边界的“万能临床 Agent”；
-- 由临床医生主导需求与验收，医学生参与合成病例、术语、标注和可用性研究；
-- 优先扩展信息检索、整理、核对和文书准备，不跨越到自主诊疗。
-
-退出条件：第二个技能包可复用同一插件内核，而不复制宿主、数据平台和安全机制。
-
-### P4：医院部署与生态化
-
-- 对接医院 IdP/JWKS、SMART 授权、租户隔离、TLS、日志和事件响应；
-- 建立真实医生 time-motion、人因、安全非劣效和负面结果报告；
-- 在第二家医院或第二种宿主 Agent 上验证适配器可迁移性；
-- 建立由临床人员共创、医院审核、可追溯发布的技能目录。
-
-退出条件：插件可以在不同宿主和医院边界内复用，同时保留一致的临床责任、安全和证据契约。
 
 ## 插件扩展准入
 

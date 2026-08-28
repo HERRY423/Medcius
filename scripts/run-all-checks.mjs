@@ -43,6 +43,11 @@ const steps = [
   { name: "30. API Security Hardening: Rate Limit / Brute-Force Lockout / Security Headers", cmd: "node", args: ["tests/test-security-hardening.mjs"] },
   { name: "31. Clinical Landing: Dual-Timestamp, Causal Attribution & Progressive Views", cmd: "node", args: ["tests/test-clinical-landing-advancement.mjs"] },
   { name: "32. Privacy, Air-Gap, SaMD Traceability & Ward Complexity Benchmark", cmd: "node", args: ["tests/test-security-compliance-and-benchmarks.mjs"] },
+  { name: "33. Repository Architecture Convergence & Quarantine Linter", cmd: "node", args: ["scripts/lint-repository-convergence.mjs"] },
+  { name: "34. Clinical Skill Catalog Governance & Integrity Gate", cmd: "node", args: ["scripts/validate-skill-catalog.mjs"] },
+  { name: "35. Enterprise Deployment: IdP JWKS & mTLS Gateway Tests", cmd: "node", args: ["tests/test-enterprise-deployment.mjs"] },
+  { name: "36. Cross-Hospital Migration & Heterogeneous Dialect Tests", cmd: "node", args: ["tests/test-cross-hospital-migration.mjs"] },
+  { name: "37. Multi-Department Real-World Shadow Study & Time-Motion Analyzer", cmd: "node", args: ["plugins/medcius/evals/shadow-mode/real-world-study-protocol.mjs"] },
 ];
 
 console.log("================================================================================");

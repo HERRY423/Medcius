@@ -1,50 +1,66 @@
-# 02 产品描述与降险架构（对应 2022-9号 核心功能/核心算法）
+# 02 产品描述与技术架构说明书（分类界定送审草案）
 
-## 1. 系统架构（本地 stdio，无托管 MCP）
+> 依据《医疗器械软件注册审查指导原则（2022年修订版）》与《人工智能医用软件产品分类界定指导原则》编制。
 
+---
+
+## 1. 系统总体架构
+
+Medcius 采用**宿主无关的临床 Agent 插件架构**，运行于医院内网隔离前置机或本地受控环境。
+
+```text
+[ 医院多源业务系统 ] (NIS / LIS / PACS / HIS / EMR)
+       │
+       ▼ (mTLS 双向认证 + 只读连接器通道)
+[ Medcius 院内前置只读数据桥 (ReadOnlyHospitalDataBridge) ]
+       │ ├─ PHI 出口守卫 (出口假名化脱敏)
+       │ ├─ FHIR R4 & CDA 文档适配器
+       │ └─ 六字段不可变数据信封
+       ▼
+[ 确定性演变计算与安全规则引擎 ]
+       │ ├─ 24/72h 体征极值与液体平衡代数和计算
+       │ ├─ 检验动态趋势与参考区间比对
+       │ ├─ 高风险检查检验阶段状态追踪
+       │ └─ 资料缺口显式标记 (过敏史/基线缺失)
+       ▼
+[ 临床技能目录与证据治理引擎 ]
+       │ ├─ 具名主任医师审批元数据核验
+       │ ├─ SHA-256 审计链本地不可篡改存证
+       │ └─ 原文 Span 严格绑定
+       ▼
+[ 宿主 Agent 交互呈现 ] (Codex / Trae / CodeBuddy / 医院自建工作台)
+       │ 医师主动核对来源 Span，最终确认草稿
 ```
-处方/病历文本 → phiguard.scan/redact → 技能门控判定 → audit.record_event (hash链) → signoff
-                     ↑                         ↑
-              production-guard (official>0)   本地语料库 (china-codes/drug-labels)
-```
 
-- MCP 仅本地 stdio：`china-codes` / `drug-labels` / `china-trials` / `documents` / `fhir` / `phiguard` / `audit`（`CLAUDE.md:4`）
-- 不调用 `hcls.mcp.claude.com` / `pubmed.mcp.claude.com`（`validate-json.mjs` 校验）
-- 数据落盘：`~/.claude/data/medcius/<component>/`，audit 库 `PRAGMA synchronous=FULL` + append-only 触发器
+---
 
-## 2. 核心功能分解
+## 2. 核心技术模块与功能分解
 
-| 模块 | 输入 | 处理 | 输出 | 分类相关性 |
+| 核心组件 | 输入数据 | 处理逻辑 | 输出结果 | 监管分类属性 |
 |---|---|---|---|---|
-| 抽取 | 病历自由文本 | `parse-cn-note.mjs` + worker 抽取 + span校验 | 结构化字段（原文+span） | 不诊断，仅定位 |
-| 编码 | 诊断/手术术语 | `search_codes` → `validate_code` → 六字段出处 | code/system/version/date/validation_status | 版本缺失则 unverifiable |
-| 审方 | 处方 + 患者要素 + 官方标签 | G1(信息完整) G2(版本化证据) G3(逐对核对) 规则引擎 | 四态之一 + 证据清单 | LLM不生成结论句 |
+| **查房演变整理引擎 (`patient-evolution-engine`)** | 24/72h EMR 病程、LIS 检验、NIS 体征、HIS 医嘱 | 确定性极值统计、动态趋势计算、未回报检查核对 | 四块结构化查房事实摘要与原文 Span 证据 | 纯客观事实重组，无诊断推断 |
+| **交接班 SBAR 引擎 (`shift-handover-engine`)** | 夜间监护数据、危急值、待办任务 | SBAR/I-PASS 模型归纳、严重度分级展示 | 结构化夜班交接单草稿 | 临床信息展示辅助 |
+| **专科会诊资料引擎 (`consult-preparation-engine`)** | 会诊申请单、专科病程、检验时间轴 | 专科检验时间轴重构、未出检查提示 | 专科会诊资料包 | 跨科室信息汇聚 |
+| **出院准备度引擎 (`discharge-readiness-engine`)** | 出院前检查报告、出院带药医嘱、费用记录 | 闭环完整性核对、带药交待与缺口标记 | 出院资料核对清单 | 医疗安全核对辅助 |
+| **只读医院数据桥 (`read-only-bridge`)** | 院内异构数据源（FHIR R4 / CDA） | 强制 `capabilities: ["read"]`，多租户隔离校验 | 六字段标准数据信封 | 只读接口，无写回权限 |
+| **前置机出口守卫 (`phi-exit-guard`)** | 原始病历自由文本与字段 | 正则与命名实体敏感信息假名化/擦除 | 脱敏后内存数据流 | 个人信息合规保护 |
+| **防篡改审计链 (`servers/audit`)** | 工具调用、提取事实、医师操作 | 本地 SHA-256 默克尔哈希链追加存证 | 不可篡改审计日志 | 质量可追溯性保证 |
 
-## 3. 降险架构 D1-D5（`SAMD-PATHWAY.md:63-71` 已锁进代码）
+---
 
-| 决策 | 内容 | 代码/文档落点 | 验证 |
-|---|---|---|---|
-| D1 判定确定性 | PASS/FLAG 由规则引擎产生；LLM仅实体抽取与条文定位，不生成结论句 | `prescription-review/SKILL.md:17` | 人工评审 + 19 rx用例 |
-| D2 输出封闭性 | 四态封闭；非PASS强制 signoff | `audit/src/tools.mjs:63-70` signoff | 审计链强制 |
-| D3 预期用途措辞 | “供药师复核参考…不出具用药建议” | README 合规声明 + 02措辞 | `compliance-lint.mjs` 禁止“审方系统”自称 |
-| D4 算法可解释 | 每条判定附六字段 + snapshot_hash | `drug-labels/src/tools.mjs:67-88` labelToHit | 抽取/编码均附 |
-| D5 生成式隔离 | 审方意见自动起草独立模块、默认关闭、不进判定链 | 预留，不在本版本 | 新功能准入红线 |
+## 3. 核心降险设计（D1–D5 生产硬门禁）
 
-## 4. 关键算法与公式
+1. **D1 判定确定性**：数值演变（肌酐 $\Delta$、出入量代数和、体温/血氧极值）完全由确定性算法计算，LLM 仅用于抽取病历原文实体和匹配 Span，无临床逻辑判定权；
+2. **D2 输出封闭性与失败关闭**：缺少就诊、租户、参考区间或出现跨患者污染时，系统强制 Fail-Closed（失败关闭），严禁虚构或拼接证据；
+3. **D3 预期用途法定约束**：全仓代码、注释与对外文书严格禁止自称“诊断系统”或“处方软件”，严格定位于“执业医师辅助信息整理工具”；
+4. **D4 证据可追溯性**：输出事实 100% 绑定原始病历 Span 偏移量或 FHIR 资源 ID，支持一键高亮原文回溯；
+5. **D5 权限只读隔离**：生产 MCP 配置与连接器坚决不提供任何 `create_resource` 或 `update_resource` 接口，阻断未经医师确认的系统自动写回。
 
-- 肾功能：Cockcroft-Gault（需 weightKg）+ CKD-EPI 2021（`drug-labels/src/calculators.mjs`），单位强制 μmol/L（88≠88mg/dL 拒绝，`check_interactions` 探针验证）
-- 相互作用：`check_interactions` 三态 `mention_found / class_signal_found / no_mention_in_corpus`，后者永不转“无相互作用”（`prescription-review/SKILL.md:60-64`）
-- 过敏/禁忌：`check_allergy` / `check_contraindication` 章节级筛查（禁忌/过敏/成分）
-- 编码校验：`validate_code` 裸类目→pending，版本缺失→unverifiable
+---
 
-## 5. 版本与追溯
+## 4. 关键算法与计算公式
 
-- 语料版本化：每条官方行携带 source_version/effective_date/snapshot_hash/ingested_at，缺失导入拒绝（`import-official.mjs:37-42`）
-- 软件版本：`VERSION-NAMING.md` 发布版本/完整版本区分重大/轻微更新
-- 需求追溯：53 REQ 自动生成 `TRACEABILITY.md`，compliance-lint 同步检查（`gen-dhf-trace.mjs`）
-
-## 6. 已知局限（诚实披露）
-
-- phiguard 不检测无标签裸姓名/住址等（`PRIVACY-SECURITY.md:39`）
-- SQLite 非 SQLCipher 全库加密（字段级 AES-GCM 已提供 `shared/crypto.mjs`）
-- 样例库仅 13 codes + 8 labels + 2 trials，覆盖极低，仅用于管线验证（`doctor.mjs` sample_counts）
+- **24h 液体平衡代数和**：$\text{Net Balance} = \sum \text{Total Intake (Oral + IV)} - \sum \text{Total Output (Urine + Drainage + Emesis)}$；
+- **体征极值与波动区间**：遍历窗口期内全部测量记录，提取 $T_{\max}, T_{\min}, \text{SpO}_{2\min}, \text{BP}_{\text{peak}}$，超出病区阈值者显式高亮；
+- **肾功能演变率**：$\Delta \text{Scr} = \text{Scr}_{\text{current}} - \text{Scr}_{\text{baseline}}$，结合 LIS 动态参考区间比对；
+- **原文 Span 精确匹配**：通过多模态子串定位器在原始病程文本中锁定 `[start_offset, end_offset]`，拒绝任何未在原文中出现的重写词句。

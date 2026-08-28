@@ -58,4 +58,4 @@ Trae 使用根目录 `.trae/mcp.json`、`.trae/rules/` 和 `.trae/skills/`；Wor
 - 尚无独立真实 EHR 验收、连续病例标注、医生 time-motion 或多中心证据；
 - 真实部署必须重新评估模型会话、身份体系、TLS、日志、遥测、租户隔离和数据处理边界。
 
-完整定位、架构和 P0-P4 发展路径见仓库根目录 [README](../../README.md)。
+完整定位与架构说明见仓库根目录 [README](../../README.md)。

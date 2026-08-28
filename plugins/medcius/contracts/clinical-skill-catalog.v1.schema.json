@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://medcius.org/schemas/clinical-skill-catalog.v1.schema.json",
+  "title": "MedciusClinicalSkillCatalog",
+  "description": "Schema for hospital-governed declarative clinical skill catalog with physician approval metadata and lifecycle control",
+  "type": "object",
+  "required": [
+    "catalog_id",
+    "hospital_scope",
+    "version",
+    "skills"
+  ],
+  "properties": {
+    "catalog_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "hospital_scope": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "last_updated": {
+      "type": "string"
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "skill_id",
+          "version",
+          "intended_use",
+          "risk_classification",
+          "prohibited_actions",
+          "required_permissions",
+          "approval_metadata",
+          "status"
+        ],
+        "properties": {
+          "skill_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "version": {
+            "type": "string"
+          },
+          "intended_use": {
+            "type": "string"
+          },
+          "trigger_points": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "risk_classification": {
+            "type": "string",
+            "enum": [
+              "Class I - Low Risk Assistive",
+              "Class II - Informational Clinical Support",
+              "Class III - High Risk Clinical Action"
+            ]
+          },
+          "prohibited_actions": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "required_permissions": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "approval_metadata": {
+            "type": "object",
+            "required": [
+              "approved_by",
+              "approval_role",
+              "committee",
+              "approval_date",
+              "content_hash"
+            ],
+            "properties": {
+              "approved_by": { "type": "string" },
+              "approval_role": { "type": "string" },
+              "committee": { "type": "string" },
+              "approval_date": { "type": "string" },
+              "content_hash": { "type": "string" }
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "candidate",
+              "approved",
+              "deprecated",
+              "quarantined"
+            ]
+          },
+          "rollback_target_version": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
