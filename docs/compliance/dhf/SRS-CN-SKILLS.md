@@ -1,6 +1,6 @@
 # 软件需求规格（SRS · 中国技能线）
 
-> **状态**：骨架 v1——系统级需求（ARCH 层）已具文，技能行为层需求由 `TRACEABILITY.md`（53 条，自动生成）承载。
+> **状态**：骨架 v1——系统级需求（ARCH 层）已具文，技能行为层需求由 `TRACEABILITY.md`（63 条，自动生成）承载。
 > **依据**：《医疗器械软件注册审查指导原则（2022 年修订版）》（器审中心通告 2022 年第 9 号）「软件需求规范文档」要求；GB/T 42062-2022 风险管理接口见同目录 `RISK-MANAGEMENT.md`。
 > **编号规则**：`ARCH-nn` = 系统级架构需求；`REQ-<用例id>` = 技能行为层需求（见追溯矩阵）。每条需求的验证列指向可执行证据。
 
@@ -32,10 +32,11 @@
 | ARCH-08 | **覆盖诚实性**：`not_in_corpus` / `no_mention_in_corpus` 不得表述为"全国不存在/无相互作用"；输出必须携带覆盖免责声明与原文摘录 | 用例组 `rx-*` G3 分支、`nmpa-and-trials.json` | china-skills README |
 | ARCH-09 | **样例隔离**：`data_class=sample` 的命中必须在输出中标注且不满足 G2；样例数据不计入任何注册资料 | 用例 `prescription-review.json` 样例陷阱 | packs/README |
 | ARCH-10 | **可追溯输出**：编码/药品信息输出附六字段出处（code_system/code_version/effective_date/retrieved_at/source/validation_status），未知如实标 unknown，不得据此给 valid | 用例 `nhsa-coding-04`、`-01` | nhsa-coding SKILL |
+| ARCH-11 | **病案要素质量核对确定性**：病案首页/结算清单要素核对只输出必填要素缺口、代数不一致（住院天数、费用合计）与确定性合法性冲突（离院方式值域、死亡文书一致性、性别/年龄-诊断章节），每条发现尽量绑定原文 span；不得输出编码修改建议、不得做 DRG/DIP 入组预测、不得判定医保违规或计算报销金额 | `tests/test-nhsa-record-quality.mjs`；用例组 `rq-*`（10 例）；契约 `contracts/china-record-quality-report.v1.schema.json` | 国卫办医发〔2016〕24 号；《医疗保障基金结算清单填写规范》 |
 
 ## 3. 技能行为层需求
 
-由 `TRACEABILITY.md` 全量承载（当前 53 条 REQ / 110 must / 64 must_not 断言），按技能分布：
+由 `TRACEABILITY.md` 全量承载（当前 63 条 REQ / 140 must / 83 must_not 断言），按技能分布：
 
 | 技能 | REQ 数 | 行为层风险焦点 |
 |---|---|---|
@@ -44,6 +45,7 @@
 | nmpa-drugs + trials | 9 | 文号格式、无库不编造、默示许可不冒充登记 |
 | nhsa-policy | 7 | 目录≠报销、L3/L4 出处纪律、省际差异 |
 | nhsa-coding | 6 | 裸类目、特异性 .8/.9、体系混用、不确定诊断 |
+| nhsa-record-quality | 10 | 必填要素缺口（主诊断/离院方式/出入院日期）、住院天数与费用代数、离院方式值域、死亡文书一致性、人群-诊断章节冲突、限定支付范围关键词≠结算判定 |
 
 维护纪律：用例增删必须重跑生成器并随同一提交更新矩阵；删用例 = 删需求，须单独走变更评审。
 
@@ -65,7 +67,7 @@ MCP 工具面以 `mcp.json` / `.mcp.json` 为契约源（7 个本地 stdio serve
 | MNT-02 | 规则/SKILL/提示词改动 → 必跑 `run-evals.mjs` 回归 + 追溯矩阵再生成 | ✅ 流程已成文（本文件 §3 + 生成器 + compliance-lint 同步检查） |
 | MNT-03 | 每次发布将版本 tag 与语料 snapshot 哈希写入审计链 | ◐ 机制已有（audit record_event），发布流程待固化 |
 | MNT-04 | 合规红线与 DHF 一致性由机器检查守护（边界措辞、结构锚点、追溯同步、交叉引用） | ✅ `plugins/medcius/scripts/compliance-lint.mjs`，已接入 plugin-validate CI |
-| MNT-05 | 确定性评测基线可复现且零 fail 为发布前置条件 | ✅ 基线已记录：`dhf/EVAL-BASELINE.md`（2026-08-23，27 pass / 0 fail / 26 skip） |
+| MNT-05 | 确定性评测基线可复现且零 fail 为发布前置条件 | ✅ 基线已记录：`dhf/EVAL-BASELINE.md`（2026-08-23：27 pass / 0 fail / 26 skip；2026-08-30 R2：37 pass / 0 fail / 26 skip） |
 
 ## 7. 未决事项
 

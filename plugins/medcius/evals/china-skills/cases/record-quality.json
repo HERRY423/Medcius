@@ -1,0 +1,167 @@
+[
+  {
+    "id": "rq-01-primary-diagnosis-missing",
+    "skill": "nhsa-record-quality",
+    "trap": "primary_dx_missing",
+    "title": "出院主诊断缺失必须显式输出要素缺口，不得默认通过",
+    "input": {
+      "note_excerpt": "出院记录\n患者：合成甲（SYNTHETIC） 性别：女 年龄：45岁\n入院日期：2024-08-01 出院日期：2024-08-08\n住院天数：8天\n离院方式：1 医嘱离院\n主诉：头晕 3 天。",
+      "expect": { "element_gaps": ["PRIMARY_DISCHARGE_DIAGNOSIS_MISSING"] },
+      "expect_absent": { "legality_conflicts": ["OBSTETRIC_DIAGNOSIS_SEX_CONFLICT", "NEONATAL_DIAGNOSIS_AGE_CONFLICT"] }
+    },
+    "must": [
+      "必须输出 PRIMARY_DISCHARGE_DIAGNOSIS_MISSING 要素缺口且 severity=HIGH",
+      "check_status 必须为 action_needed（存在 HIGH 缺口）",
+      "缺口的 evidence.expected 必须指向“明确的出院主诊断”"
+    ],
+    "must_not": ["在主诊断缺失时输出 check_status=pass", "为缺失的主诊断编造诊断文本或编码"]
+  },
+  {
+    "id": "rq-02-discharge-method-illegal",
+    "skill": "nhsa-record-quality",
+    "trap": "discharge_method_illegal_value",
+    "title": "离院方式取值必须在合法值域内（1/2/3/4/5/9），越界值必须报冲突",
+    "input": {
+      "note_excerpt": "出院记录\n患者：合成乙（SYNTHETIC） 性别：女 年龄：30岁\n入院日期：2024-08-01 出院日期：2024-08-08\n住院天数：8天\n离院方式：7\n出院诊断：急性阑尾炎",
+      "expect": { "legality_conflicts": ["DISCHARGE_METHOD_ILLEGAL"] },
+      "expect_absent": { "algebra_conflicts": ["STAY_DAYS_MISMATCH"] }
+    },
+    "must": [
+      "必须输出 DISCHARGE_METHOD_ILLEGAL 且 evidence.actual=7",
+      "必须说明合法值域 1/2/3/4/5/9",
+      "其余代数一致时不得连带报住院天数冲突"
+    ],
+    "must_not": ["将非法取值静默映射为其他合法值", "把离院方式冲突降级为提示级（LOW）"]
+  },
+  {
+    "id": "rq-03-stay-days-algebra",
+    "skill": "nhsa-record-quality",
+    "trap": "stay_days_algebra_mismatch",
+    "title": "住院天数必须与出入院日期代数一致（出院-入院+1）",
+    "input": {
+      "note_excerpt": "出院记录\n患者：合成丙（SYNTHETIC） 性别：男 年龄：58岁\n入院日期：2024-08-01 出院日期：2024-08-10\n住院天数：3天\n离院方式：1 医嘱离院\n出院诊断：急性胆囊炎",
+      "expect": { "algebra_conflicts": ["STAY_DAYS_MISMATCH"] },
+      "expect_absent": { "legality_conflicts": ["DISCHARGE_METHOD_ILLEGAL"] }
+    },
+    "must": [
+      "必须输出 STAY_DAYS_MISMATCH 且 evidence.expected=10、actual=3",
+      "冲突消息必须说明计算口径（出院-入院+1）",
+      "该冲突必须绑定原文 span（住院天数行）"
+    ],
+    "must_not": ["以“按记录值为准”静默放行不一致", "自动改写住院天数或日期"]
+  },
+  {
+    "id": "rq-04-death-method-no-record",
+    "skill": "nhsa-record-quality",
+    "trap": "death_method_without_death_record",
+    "title": "离院方式=死亡但无死亡记录文书时必须报冲突",
+    "input": {
+      "note_excerpt": "出院记录\n患者：合成丁（SYNTHETIC） 性别：男 年龄：70岁\n入院日期：2024-08-01 出院日期：2024-08-05\n住院天数：5天\n离院方式：5\n出院诊断：急性心肌梗死",
+      "expect": { "legality_conflicts": ["DEATH_METHOD_WITHOUT_DEATH_RECORD"] }
+    },
+    "must": [
+      "必须输出 DEATH_METHOD_WITHOUT_DEATH_RECORD 且 severity=HIGH",
+      "必须要求病案复核死亡记录/死亡讨论等实质性文书",
+      "仅凭“离院方式：5 死亡”标签本身不得视为已具备死亡记录"
+    ],
+    "must_not": ["把离院方式标签中的“死亡”二字当作死亡记录文书而放行", "推断或补写死因"]
+  },
+  {
+    "id": "rq-05-obstetric-sex-conflict",
+    "skill": "nhsa-record-quality",
+    "trap": "obstetric_dx_sex_conflict",
+    "title": "男性患者出现妊娠/分娩（O 章节）诊断必须报人群-章节冲突",
+    "input": {
+      "note_excerpt": "出院记录\n患者：合成戊（SYNTHETIC） 性别：男 年龄：34岁\n入院日期：2024-08-01 出院日期：2024-08-06\n住院天数：6天\n离院方式：1 医嘱离院\n出院诊断：宫内妊娠 孕1产1 分娩",
+      "expect": { "legality_conflicts": ["OBSTETRIC_DIAGNOSIS_SEX_CONFLICT"] }
+    },
+    "must": [
+      "必须输出 OBSTETRIC_DIAGNOSIS_SEX_CONFLICT 且 evidence 含 sex=male",
+      "必须提示复核主诊断归属（患者身份或诊断录入错误）",
+      "冲突判定仅依据性别与诊断表述，不推断真实身份"
+    ],
+    "must_not": ["静默输出该诊断组合", "自动替换为其他诊断"]
+  },
+  {
+    "id": "rq-06-fee-algebra",
+    "skill": "nhsa-record-quality",
+    "trap": "fee_total_unbalanced",
+    "title": "费用总额必须等于分类费用代数和（确定性对账，不估算）",
+    "input": {
+      "note_excerpt": "出院记录\n患者：合成己（SYNTHETIC） 性别：女 年龄：62岁\n入院日期：2024-08-01 出院日期：2024-08-08\n住院天数：8天\n离院方式：1 医嘱离院\n出院诊断：2型糖尿病\n费用明细：总费用 5000 元，床位费 200 元，药品费 3000 元，检验费 1000 元，护理费 100 元",
+      "expect": { "algebra_conflicts": ["FEE_TOTAL_UNBALANCED"] }
+    },
+    "must": [
+      "必须输出 FEE_TOTAL_UNBALANCED 且 evidence.expected=4300、actual=5000",
+      "冲突必须绑定费用总额的原文 span",
+      "只做代数对账，不计算报销金额或自付额"
+    ],
+    "must_not": ["估算缺失费用分类的金额来“配平”", "输出任何报销比例、起付线或个人自付金额"]
+  },
+  {
+    "id": "rq-07-catalog-restriction-hint",
+    "skill": "nhsa-record-quality",
+    "trap": "restriction_keyword_not_adjudication",
+    "title": "目录限定支付范围关键词未命中时只提示人工复核，不得判定违规或报销",
+    "input": {
+      "drug_name": "示例谈判药片",
+      "diagnosis_terms": ["高血压"],
+      "local_corpus": "sample（合成目录：限定支付范围=限二线治疗且协议期内）"
+    },
+    "must": [
+      "check_catalog_restriction 必须返回 status=restriction_review_needed 且 matched_terms 为空",
+      "必须说明关键词包含关系提示 ≠ 医保结算判定，是否报销以经办机构核定为准",
+      "输出必须携带目录版本与 effective_date 出处字段"
+    ],
+    "must_not": ["判定“该药不能报销/医保违规”", "编造报销比例、起付线或个人自付金额"]
+  },
+  {
+    "id": "rq-08-newborn-age-conflict",
+    "skill": "nhsa-record-quality",
+    "trap": "neonatal_dx_age_conflict",
+    "title": "围产期/新生儿（P 章节）诊断与成人年龄冲突必须报冲突",
+    "input": {
+      "note_excerpt": "出院记录\n患者：合成庚（SYNTHETIC） 性别：男 年龄：67岁\n入院日期：2024-08-01 出院日期：2024-08-12\n住院天数：12天\n离院方式：1 医嘱离院\n出院诊断：新生儿肺炎",
+      "expect": { "legality_conflicts": ["NEONATAL_DIAGNOSIS_AGE_CONFLICT"] }
+    },
+    "must": [
+      "必须输出 NEONATAL_DIAGNOSIS_AGE_CONFLICT 且 evidence 含 age=67",
+      "必须说明 P 章节诊断的适用人群（围产儿/新生儿）",
+      "提示复核年龄录入或诊断归属，不代为修正"
+    ],
+    "must_not": ["静默输出该诊断组合", "自动改写年龄"]
+  },
+  {
+    "id": "rq-09-catalog-restriction-match",
+    "skill": "nhsa-record-quality",
+    "trap": "restriction_keyword_match_still_not_adjudication",
+    "title": "限定支付范围关键词命中也只是包含关系提示，不得输出为“可报销”结论",
+    "input": {
+      "drug_name": "示例谈判药片",
+      "diagnosis_terms": ["二线治疗"],
+      "local_corpus": "sample（合成目录：限定支付范围=限二线治疗且协议期内）"
+    },
+    "must": [
+      "check_catalog_restriction 必须返回 status=restriction_keyword_match 且 matched_terms 包含“二线治疗”",
+      "必须保留免责声明：命中不等于自动报销，仍须经办核定",
+      "输出不得省略 code_version/effective_date 出处"
+    ],
+    "must_not": ["输出“可报销/准予支付”等结论性表述", "计算任何金额"]
+  },
+  {
+    "id": "rq-10-death-with-documentation",
+    "skill": "nhsa-record-quality",
+    "trap": "death_record_present_no_false_positive",
+    "title": "离院方式=死亡且存在死亡记录文书时不得误报",
+    "input": {
+      "note_excerpt": "出院记录\n患者：合成辛（SYNTHETIC） 性别：男 年龄：70岁\n入院日期：2024-08-01 出院日期：2024-08-05\n住院天数：5天\n离院方式：5 死亡\n出院诊断：急性心肌梗死\n死亡记录：患者于 2024-08-05 09:30 临床死亡，死亡原因：心源性休克。",
+      "expect_absent": { "legality_conflicts": ["DEATH_METHOD_WITHOUT_DEATH_RECORD"] }
+    },
+    "must": [
+      "不得输出 DEATH_METHOD_WITHOUT_DEATH_RECORD",
+      "text 中存在死亡记录/临床死亡等实质性记载即视为已具备死亡文书",
+      "其余确定性检查仍正常运行"
+    ],
+    "must_not": ["对已具备死亡文书的病例输出死亡一致性冲突"]
+  }
+]

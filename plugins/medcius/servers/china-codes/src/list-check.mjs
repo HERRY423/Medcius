@@ -103,3 +103,99 @@ export function searchProvincialBenefit({ province, insurance_type, encounter, i
     coverage_note: "无命中则 L3 标待核，不得编造起付线/比例。L4 永不给个体数字。",
   };
 }
+
+const RESTRICTION_SPLIT_RE = /[、，,;；/／]|与|或|及|限|含|适用于/;
+
+function restrictionKeywords(restrictionText) {
+  return String(restrictionText ?? "")
+    .split(RESTRICTION_SPLIT_RE)
+    .map((s) => s.trim())
+    .filter((s) => s.length >= 2);
+}
+
+/**
+ * 医保药品目录限定支付范围关键词提示（确定性包含关系，非结算判定）。
+ * 状态口径（对齐 ARCH-08 覆盖诚实性）：
+ *   - not_in_catalog_corpus  本地目录无此通用名，未命中不代表不在国家目录
+ *   - no_restriction_recorded 目录收录但未记载限定支付范围
+ *   - restriction_keyword_match   诊断表述与限定支付原文存在关键词包含关系
+ *   - restriction_review_needed   未见包含关系，须经办/药师复核（不等于不能报销）
+ */
+export function checkCatalogRestriction({ drug_name, diagnosis_terms, include_samples }) {
+  const terms = Array.isArray(diagnosis_terms)
+    ? diagnosis_terms.map((t) => String(t ?? "").trim()).filter(Boolean)
+    : [];
+  if (!drug_name || !String(drug_name).trim()) {
+    return { error: "drug_name required" };
+  }
+  if (!terms.length) {
+    return { error: "diagnosis_terms required (non-empty array)" };
+  }
+  let rows = [];
+  try {
+    rows = db
+      .prepare("SELECT * FROM nhsa_drug_catalog WHERE generic_name=? ORDER BY id ASC")
+      .all(String(drug_name).trim());
+    if (!rows.length) {
+      rows = db
+        .prepare("SELECT * FROM nhsa_drug_catalog WHERE generic_name LIKE ? ORDER BY length(generic_name) ASC LIMIT 1")
+        .all(`%${String(drug_name).trim()}%`);
+    }
+  } catch (e) {
+    return { error: "nhsa_drug_catalog table missing", hint: String(e.message) };
+  }
+  const allow = Boolean(include_samples);
+  const eligible = rows.filter((r) => allow || r.data_class !== "sample");
+  if (!eligible.length) {
+    return {
+      drug_name,
+      diagnosis_terms: terms,
+      status: "not_in_catalog_corpus",
+      matched_terms: [],
+      unmatched_terms: terms,
+      coverage_note: "本地目录库覆盖有限；未命中不代表不在国家目录，以国家医保局发布为准。",
+      disclaimer: "关键词提示 ≠ 医保结算判定；是否报销以经办机构核定为准。",
+    };
+  }
+  const r = eligible[0];
+  const restriction = r.payment_restriction ?? null;
+  const src = db.prepare("SELECT name, url FROM sources WHERE id=?").get(r.source_id);
+  const base = {
+    drug_name: r.generic_name,
+    category: r.category,
+    code_system: "医保药品目录",
+    code_version: r.source_version ?? "unknown",
+    effective_date: r.effective_date ?? "unknown",
+    retrieved_at: r.ingested_at,
+    source: src?.name ?? "local china-codes",
+    data_class: r.data_class,
+    diagnosis_terms: terms,
+  };
+  if (!restriction) {
+    return {
+      ...base,
+      status: "no_restriction_recorded",
+      restriction_text: null,
+      matched_terms: [],
+      unmatched_terms: terms,
+      coverage_note: "本地目录未记载限定支付范围原文，须对照官方目录原文复核；缺失不等于无限定。",
+      disclaimer: "关键词提示 ≠ 医保结算判定；是否报销以经办机构核定为准。",
+    };
+  }
+  const keywords = restrictionKeywords(restriction);
+  const matched = terms.filter((t) => {
+    if (restriction.includes(t)) return true;
+    return keywords.some((k) => t.includes(k) || k.includes(t));
+  });
+  const unmatched = terms.filter((t) => !matched.includes(t));
+  return {
+    ...base,
+    status: matched.length ? "restriction_keyword_match" : "restriction_review_needed",
+    restriction_text: restriction,
+    restriction_keywords: keywords,
+    matched_terms: matched,
+    unmatched_terms: unmatched,
+    coverage_note: "限定支付范围关键词包含关系提示；关键词未命中不等于不适用（同义表述需人工复核），命中也不等于自动报销。",
+    disclaimer: "关键词提示 ≠ 医保结算判定；是否报销以经办机构核定为准。",
+  };
+}

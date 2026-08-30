@@ -106,7 +106,10 @@ Medcius Agent Plugin
 | `lib/consult-preparation-engine.mjs` | 专科会诊前资料包整理引擎 |
 | `lib/discharge-readiness-engine.mjs` | 出院准备度与资料完整性核对引擎 |
 | `lib/patient-affordability-context.mjs` | 来源绑定的患者费用负担、覆盖/估算与援助转介状态；不计算自付额或自动改药 |
+| `lib/nhsa-record-quality-engine.mjs` | 病案首页/医保结算清单要素质量确定性核对：必填要素缺口、住院天数与费用代数一致性、离院方式值域、性别/年龄-诊断章节冲突；不做 DRG/DIP 分组、不改编码、不判定医保违规 |
+| `lib/settlement-from-note.mjs` | 出院记录 → 结算清单栏 + 编码六字段出处 + 清单机检 + 病案要素质量核对；不做分组器 |
 | `contracts/patient-financial-access-record.v1.schema.json` | 费用负担与可获得性输入记录的机器可检查契约 |
+| `contracts/china-record-quality-report.v1.schema.json` | 病案要素质量核对报告的机器可检查契约 |
 | `lib/idp-jwks-verifier.mjs` | 企业级 IdP / OIDC / JWKS 动态公钥验签与多租户隔离中间件 |
 | `lib/mtls-gateway-guard.mjs` | 院内前置机 mTLS 双向认证守卫与零信任只读安全信封 |
 | `lib/clinical-skill-catalog.mjs` + `rule-packs/catalogs/` | 临床技能目录全生命周期治理引擎（专家审批、哈希签名、一键熔断与回滚） |

@@ -57,6 +57,33 @@
 - 临床性能结论的唯一合法来源仍是多中心 Shadow Mode 双药师盲标研究与后续注册临床评价；
 - 重评触发条件：SKILL 规则、门控语义或输出模板任何变更后，R1 需全量重跑（对应 MNT-02）。
 
+## 确定性基线重跑 · R2（2026-08-30，nhsa-record-quality 扩展）
+
+### 运行记录
+
+| 项 | 值 |
+|---|---|
+| 命令 | `node scripts/run-evals.mjs --with-corpus`（含 `--grade`） |
+| 日期 | 2026-08-30 |
+| 用例总数 | 63（6 文件：cne=12 / rx=19 / nhsa-coding=6 / nhsa-policy=7 / nmpa+trials=9 / **rq=10**） |
+| 断言总数 | must 140 + must_not 83 = **223** |
+| 确定性判等结果 | **pass 37 / fail 0 / skip 26** |
+| pass_rate_graded | 37/37 = 100% |
+| pass_rate_all | 37/63 ≈ 58.7%（skip 为需 Agent 的协议题） |
+
+### 本轮变更
+
+1. 新增 `nhsa-record-quality` 技能线（`lib/nhsa-record-quality-engine.mjs`）10 例（`rq-01`…`rq-10`）：必填要素缺口、住院天数/费用代数一致性、离院方式值域与死亡文书一致性、性别/年龄-诊断章节冲突、目录限定支付范围关键词提示（关键词包含 ≠ 结算判定）；
+2. `grade.mjs` 的 `engineering_pass` 口径由 `pass === 27` 调整为 `pass >= 27`（向后兼容的阈值放宽，fail=0 纪律不变）；
+3. `--with-corpus` 探针新增 `rq_conflicts`、`restriction_review` 两项；
+4. DHF 同步：`TRACEABILITY.md` 再生成（63 REQ / 140 must / 83 must_not），`SRS-CN-SKILLS.md` 新增 ARCH-11 与 §3 技能行。
+
+### 解读纪律（与 R1 完全一致，防误用）
+
+- 本基线证明用例良构、本地判分器与语料探针工作正常、需求集可机器验证；
+- `pass_rate_graded=100%` ≠ 病案核对准确率 100%；真实表现只能来自真实病案上的病案/编码人员复核研究；
+- 质量核对引擎的确定性检查（代数、值域、章节冲突）是数据质量工具，不是 DRG/DIP 分组器，不得用于结算金额预测或违规判定。
+
 ## Batch01 合成管线基准（2026-08-24 冻结）
 
 - 命令：`node plugins/medcius/evals/clinical-validation/scripts/init-batch01.mjs --full-300`（生成 300 行合成 gold+pred → `run.mjs --gold gold/batch01.jsonl --pred pred/batch01.jsonl --out reports/batch01.md`）
