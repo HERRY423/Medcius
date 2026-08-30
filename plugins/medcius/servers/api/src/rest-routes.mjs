@@ -125,7 +125,7 @@ export async function routeRequest(req, res, body) {
 
     return sendJson(200, {
       status: "ok",
-      version: "0.2.0-pilot",
+      version: "0.3.0-pilot",
       product: "Medcius Inpatient Pre-Round Evolution Summary Plugin",
       profile: isDemoProfile ? "demo" : (process.env.MEDCIUS_PROFILE || (isProduction ? "production" : "development")),
       governance_stage: govStage,

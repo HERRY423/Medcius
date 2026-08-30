@@ -4,7 +4,7 @@ Medcius 是面向一线临床医生的 **Agent 插件**。它安装到 Codex、T
 
 Medcius 不是独立临床软件或医院信息平台，也不是自主诊疗的临床 Agent。宿主 Agent 负责对话和任务编排，Medcius 负责受约束的能力与工具，医院系统提供原始事实，医生核对证据并作出最终决定。
 
-当前版本为 **`0.2.0-pilot` 工程试点版**，不具备真实临床有效性或生产医院部署证明。
+当前版本为 **`0.3.0-pilot` 工程试点版**，不具备真实临床有效性或生产医院部署证明。
 
 ## 插件生产面
 
@@ -19,6 +19,8 @@ Medcius 不是独立临床软件或医院信息平台，也不是自主诊疗的
 | `servers/audit` | 本地防篡改检测用哈希链审计 |
 | `lib/patient-evolution-engine.mjs` | 首个参考工作流“查房前患者变化摘要” |
 | `lib/patient-affordability-context.mjs` | 出院场景的来源绑定费用负担/医疗可获得性核对；不推断患者自付额 |
+| `lib/nhsa-record-quality-engine.mjs` | 病案首页/医保结算清单要素质量确定性核对（必填要素缺口、住院天数/费用代数、离院方式值域、性别/年龄-诊断章节冲突）；不输出编码建议、不做分组、不判定医保违规 |
+| `lib/settlement-from-note.mjs` | 出院记录 → 结算清单栏 + 编码六字段出处 + 清单机检 + 要素质量核对；不做 DRG/DIP 分组器 |
 | `lib/high-risk-followup-tracker.mjs` | 高风险检查检验阶段与未闭环状态追踪 |
 | `lib/specialty-rule-pack.mjs`、`rule-packs/` | 专科病区规则包校验、版本、审批和回滚元数据 |
 | `lib/read-only-hospital-data-bridge.mjs` | NIS/LIS/PACS/HIS/EMR 异构来源只读桥接与上下文绑定 |
