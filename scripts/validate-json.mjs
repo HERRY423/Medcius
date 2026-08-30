@@ -11,6 +11,9 @@ const files = [
   "plugins/medcius/rule-packs/specialties/cardiology-inpatient-sandbox.json",
   "plugins/medcius/contracts/patient-financial-access-record.v1.schema.json",
   "plugins/medcius/contracts/causal-evolution-report.v1.schema.json",
+  "plugins/medcius/contracts/china-record-quality-report.v1.schema.json",
+  "plugins/medcius/contracts/drg-dip-reconciliation.v1.schema.json",
+  "plugins/medcius/packs/official-sources.json",
 ];
 
 let ok = true;

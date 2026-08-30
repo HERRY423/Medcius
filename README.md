@@ -6,7 +6,7 @@ Medcius 为 Codex、Trae、WorkBuddy/CodeBuddy 或医院自建 Agent 增加受�
 
 Medcius 不是一套独立临床软件或平台，也不是一个能够自主诊疗的“临床智能体”。它不负责替代宿主 Agent 的对话与编排，不拥有患者主数据，不独立决定下一步临床行动，也不绕过医生执行 EHR 写回。
 
-当前版本为 **`0.2.0-pilot` 工程试点版**。已有代码和合成验证不能替代真实 EHR 验收、临床事实准确性、人因效率、安全性或监管证据。
+当前版本为 **`0.6.0-pilot` 工程试点版**。已有代码和合成验证不能替代真实 EHR 验收、临床事实准确性、人因效率、安全性或监管证据。
 
 ## 定位
 
@@ -101,12 +101,20 @@ Medcius Agent Plugin
 | `skills/clinical-note-extract` | 带原文 span 和断言状态的病历事实抽取 |
 | `skills/doc-extract` | 文档与附件提取 |
 | `lib/hospital-agent-adapter.mjs` | 面向 Codex、Trae、WorkBuddy 与医院自建 Agent 的宿主无关适配内核 |
+| `lib/clinician-directory-auth.mjs` | 医院目录身份适配（LDAP/AD/统一身份插槽 + 确定性角色映射 + 失败锁定 + 会话吊销，无隐式特权） |
+| `lib/ca-signature-adapter.mjs` | CA 电子签名适配层（内置 ECDSA P-256 + 医院 CA SDK 插槽；签名记录可验签、防篡改、零 PHI） |
 | `lib/patient-evolution-engine.mjs` | 查房前患者变化整理引擎 |
 | `lib/shift-handover-engine.mjs` | 临床交接班 SBAR 结构化整理引擎 |
 | `lib/consult-preparation-engine.mjs` | 专科会诊前资料包整理引擎 |
 | `lib/discharge-readiness-engine.mjs` | 出院准备度与资料完整性核对引擎 |
 | `lib/patient-affordability-context.mjs` | 来源绑定的患者费用负担、覆盖/估算与援助转介状态；不计算自付额或自动改药 |
+| `lib/nhsa-record-quality-engine.mjs` | 病案首页/医保结算清单要素质量确定性核对：必填要素缺口、住院天数与费用代数一致性、离院方式值域、性别/年龄-诊断章节冲突；不做 DRG/DIP 分组、不改编码、不判定医保违规 |
+| `lib/settlement-from-note.mjs` | 出院记录 → 结算清单栏 + 编码六字段出处 + 清单机检 + 病案要素质量核对；不做分组器 |
 | `contracts/patient-financial-access-record.v1.schema.json` | 费用负担与可获得性输入记录的机器可检查契约 |
+| `contracts/china-record-quality-report.v1.schema.json` | 病案要素质量核对报告的机器可检查契约 |
+| `contracts/drg-dip-reconciliation.v1.schema.json` | DRG/DIP 要素质量×医院分组器对账契约（不做分组器） |
+| `packs/official-sources.json` + `scripts/fetch-official-corpus.mjs` + `scripts/corpus-freshness.mjs` | 官方语料供应链：来源登记表、拉取/暂存校验（永不自动导入）、新鲜度 SLA 监控 |
+| `plugins/medcius/scripts/gen-classification-pack.mjs` + `scripts/qms-internal-audit.mjs` | 分类界定材料包就绪门（R04→R05）与可执行 QMS 内审（R09 落地） |
 | `lib/idp-jwks-verifier.mjs` | 企业级 IdP / OIDC / JWKS 动态公钥验签与多租户隔离中间件 |
 | `lib/mtls-gateway-guard.mjs` | 院内前置机 mTLS 双向认证守卫与零信任只读安全信封 |
 | `lib/clinical-skill-catalog.mjs` + `rule-packs/catalogs/` | 临床技能目录全生命周期治理引擎（专家审批、哈希签名、一键熔断与回滚） |
@@ -115,15 +123,16 @@ Medcius Agent Plugin
 | `lib/high-risk-followup-tracker.mjs` | 高风险检查检验从开立、采集、结果到医生确认的阶段追踪；不自动处置 |
 | `lib/specialty-rule-pack.mjs` + `rule-packs/` | 专科病区规则包加载、版本哈希、审批元数据与生产环境失败关闭 |
 | `lib/read-only-hospital-data-bridge.mjs` | 院内异构接口只读桥；逐源绑定租户、患者、就诊和来源哈希 |
-| `lib/connectors/` | 真实系统 FHIR R4 与 CDA 文档通道只读连接器及 PHI 出口守卫 |
+| `lib/connectors/` | 真实系统四条只读接入路径连接器（P1 FHIR R4、P2 CDA 文档、P3 视图库/中间库、P4 HL7 v2 消息订阅）及 PHI 出口守卫 |
 | `evals/shadow-mode/` | 真实世界多病区连续病例影子研究（Shadow Study）协议引擎与 Wilson CI 统计 |
+| `evals/real-world-noise/` | 真实病历脏数据鲁棒性基准（噪声模型 + 确定性下限）与真实脱敏病历接入量具（fail-closed） |
 | `evals/time-motion/` | 临床医生 Time-Motion 与人因认知负荷（NASA-TLX）自动化统计分析器 |
 | `evals/physician-annotation/` | 独立医生双盲标注、Kappa 一致性评测与仲裁体系 |
 | `servers/fhir` | SMART on FHIR R4 连接器；Codex、Trae、WorkBuddy 适配入口强制只读 |
 | `servers/documents` | 本地文档提取与来源处理 |
 | `servers/phiguard` | PHI 扫描、脱敏与假名化支持 |
 | `servers/audit` | 本地防篡改检测用哈希链审计 |
-| `servers/api` | 参考侧边栏、REST 与 CDS Hooks 适配 |
+| `servers/api` | 参考侧边栏、医生端内网工作台（`/workstation`，治理阶梯感知）、REST 与 CDS Hooks 适配 |
 
 部分上游遗留能力仍需从正式插件包中继续拆分。处方、编码、临床试验、管理驾驶舱和多 Agent 模块不得因为存在于仓库中就被视为 Medcius 核心能力。
 

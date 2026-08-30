@@ -7,6 +7,7 @@ import { HANDLERS as auditHandlers } from "../../audit/src/tools.mjs";
 import { extractAuthContext, authorizeRequest, ROLES, generateToken } from "./auth-middleware.mjs";
 import { globalGovernance } from "../../../lib/governance-mode.mjs";
 import { createRateLimiter, createBruteForceGuard, clientKey } from "./security-hardening.mjs";
+import { workstationHandler } from "./workstation-routes.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -125,7 +126,7 @@ export async function routeRequest(req, res, body) {
 
     return sendJson(200, {
       status: "ok",
-      version: "0.2.0-pilot",
+      version: "0.6.0-pilot",
       product: "Medcius Inpatient Pre-Round Evolution Summary Plugin",
       profile: isDemoProfile ? "demo" : (process.env.MEDCIUS_PROFILE || (isProduction ? "production" : "development")),
       governance_stage: govStage,
@@ -276,10 +277,20 @@ export async function routeRequest(req, res, body) {
     });
   }
 
+  // ----------------------------------------------------
+  // Doctor Workstation (医生端内网工作台 · 缺口三): UI, directory login,
+  // governance-aware workflow reports, CA signature signoff.
+  // ----------------------------------------------------
+  if (pathname === "/workstation" || pathname.startsWith("/workstation/")) {
+    const handled = await workstationHandler(req, res, { pathname, method, body, auth, url, sendJson, sendHtml, guardedAuthorize });
+    if (handled !== false) return;
+  }
+
   // 404 Fallback
   const referenceWorkflowRoutes = [
     "GET  /",
     "GET  /sidebar",
+    "GET  /workstation",
     "GET  /health",
     "GET  /cds-services",
     "POST /cds-services/medcius-patient-evolution",
@@ -287,6 +298,11 @@ export async function routeRequest(req, res, body) {
     "POST /api/v1/patient/progress-note-draft",
     "GET  /api/v1/audit/verify",
     "POST /api/v1/auth/token",
+    "POST /workstation/login",
+    "GET  /workstation/session",
+    "POST /workstation/evolution",
+    "POST /workstation/record-quality",
+    "POST /workstation/signoff",
   ];
   return sendJson(404, {
     error: `Route not found: ${method} ${pathname}`,
