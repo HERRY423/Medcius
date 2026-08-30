@@ -16,7 +16,8 @@
 | nhsa-policy | `nhsa-policy.json` | 7 | 11 | 7 |
 | nmpa-drugs | `nmpa-and-trials.json` | 9 | 17 | 10 |
 | prescription-review | `prescription-review.json` | 19 | 39 | 21 |
-| **合计** | 5 文件 | **53** | **110** | **64** |
+| nhsa-record-quality | `record-quality.json` | 10 | 30 | 19 |
+| **合计** | 6 文件 | **63** | **140** | **83** |
 
 ## 矩阵
 
@@ -75,6 +76,16 @@
 | REQ-prescription-17-cross-allergy | prescription-review | `penicillin_cephalosporin_cross` | 青霉素过敏 + 头孢须交叉过敏 FLAG | 2 | 1 | `prescription-17-cross-allergy` |
 | REQ-prescription-18-tcm-fan | prescription-review | `eighteen_clashes` | 甘草+海藻走十八反表 | 2 | 1 | `prescription-18-tcm-fan` |
 | REQ-prescription-19-morphine-limit | prescription-review | `controlled_days` | 吗啡门诊超量须 over_limit | 2 | 1 | `prescription-19-morphine-limit` |
+| REQ-rq-01-primary-diagnosis-missing | nhsa-record-quality | `primary_dx_missing` | 出院主诊断缺失必须显式输出要素缺口，不得默认通过 | 3 | 2 | `rq-01-primary-diagnosis-missing` |
+| REQ-rq-02-discharge-method-illegal | nhsa-record-quality | `discharge_method_illegal_value` | 离院方式取值必须在合法值域内（1/2/3/4/5/9），越界值必须报冲突 | 3 | 2 | `rq-02-discharge-method-illegal` |
+| REQ-rq-03-stay-days-algebra | nhsa-record-quality | `stay_days_algebra_mismatch` | 住院天数必须与出入院日期代数一致（出院-入院+1） | 3 | 2 | `rq-03-stay-days-algebra` |
+| REQ-rq-04-death-method-no-record | nhsa-record-quality | `death_method_without_death_record` | 离院方式=死亡但无死亡记录文书时必须报冲突 | 3 | 2 | `rq-04-death-method-no-record` |
+| REQ-rq-05-obstetric-sex-conflict | nhsa-record-quality | `obstetric_dx_sex_conflict` | 男性患者出现妊娠/分娩（O 章节）诊断必须报人群-章节冲突 | 3 | 2 | `rq-05-obstetric-sex-conflict` |
+| REQ-rq-06-fee-algebra | nhsa-record-quality | `fee_total_unbalanced` | 费用总额必须等于分类费用代数和（确定性对账，不估算） | 3 | 2 | `rq-06-fee-algebra` |
+| REQ-rq-07-catalog-restriction-hint | nhsa-record-quality | `restriction_keyword_not_adjudication` | 目录限定支付范围关键词未命中时只提示人工复核，不得判定违规或报销 | 3 | 2 | `rq-07-catalog-restriction-hint` |
+| REQ-rq-08-newborn-age-conflict | nhsa-record-quality | `neonatal_dx_age_conflict` | 围产期/新生儿（P 章节）诊断与成人年龄冲突必须报冲突 | 3 | 2 | `rq-08-newborn-age-conflict` |
+| REQ-rq-09-catalog-restriction-match | nhsa-record-quality | `restriction_keyword_match_still_not_adjudication` | 限定支付范围关键词命中也只是包含关系提示，不得输出为“可报销”结论 | 3 | 2 | `rq-09-catalog-restriction-match` |
+| REQ-rq-10-death-with-documentation | nhsa-record-quality | `death_record_present_no_false_positive` | 离院方式=死亡且存在死亡记录文书时不得误报 | 3 | 1 | `rq-10-death-with-documentation` |
 
 ## 使用纪律（变更控制）
 

@@ -100,4 +100,30 @@ export const TOOLS = [
       required: ["province"],
     },
   },
+  {
+    name: "check_record_quality",
+    description: "病案首页/结算清单要素质量核对（确定性）：必填要素缺口、住院天数与费用代数一致性、离院方式取值、性别/年龄-诊断章节冲突、待查主诊断/肿瘤病理/损伤外部原因提示。不是 DRG/DIP 分组器，不输出编码修改建议，不判定医保违规。",
+    inputSchema: {
+      $schema: "http://json-schema.org/draft-07/schema#",
+      type: "object",
+      properties: {
+        note_text: { description: "出院记录/病案首页/结算清单文本（须脱敏或院内授权边界内）", type: "string", minLength: 1 },
+      },
+      required: ["note_text"],
+    },
+  },
+  {
+    name: "check_catalog_restriction",
+    description: "医保药品目录限定支付范围关键词提示：比对待用诊断表述与目录限定支付原文的包含关系。关键词包含关系提示 ≠ 医保结算判定；是否报销以经办机构为准。",
+    inputSchema: {
+      $schema: "http://json-schema.org/draft-07/schema#",
+      type: "object",
+      properties: {
+        drug_name: { description: "通用名（须与目录导入名一致，可先 search_drug_catalog）", type: "string", minLength: 1 },
+        diagnosis_terms: { description: "拟对照的诊断表述列表", type: "array", items: { type: "string", minLength: 1 }, minItems: 1 },
+        include_samples: { type: "boolean" },
+      },
+      required: ["drug_name", "diagnosis_terms"],
+    },
+  },
 ];

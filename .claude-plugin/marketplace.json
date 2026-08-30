@@ -5,7 +5,7 @@
     "email": "z1326434525@gmail.com"
   },
   "metadata": {
-    "version": "0.2.0-pilot",
+    "version": "0.4.0-pilot",
     "description": "Medcius — 面向一线临床医生的 Agent 插件，为宿主 Agent 提供受约束的临床技能、只读工具、PHI 防护、证据追溯与审计。"
   },
   "plugins": [

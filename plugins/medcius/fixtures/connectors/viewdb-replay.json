@@ -1,0 +1,31 @@
+{
+  "_comment": "Synthetic replay fixture for the P3 view-database read-only connector PoC (R26). Every table name, column, row and value is fabricated for regression/replay only; no real patient data may ever enter this file. The replay `query` executor asserts the connector only ever issues a single parameterized SELECT against the whitelisted views.",
+  "source_version": "synthetic-viewdb-replay-v1",
+  "tables": {
+    "patient": "vw_medcius_patient_synth",
+    "encounter": "vw_medcius_encounter_synth",
+    "lis": "vw_medcius_lis_synth",
+    "his": "vw_medcius_orders_synth"
+  },
+  "columns": {
+    "patient": ["patient_id", "name", "gender", "birth_date"],
+    "encounter": ["encounter_id", "status", "encounter_class", "admission_time", "discharge_time"],
+    "lis": ["id", "order_id", "item_code", "item_name", "result_value", "unit", "status", "sample_time", "reference_range", "is_critical", "abnormal_flag"],
+    "his": ["id", "drug_name", "dosage", "route", "frequency", "order_time", "order_status"]
+  },
+  "rows": {
+    "vw_medcius_patient_synth": [
+      { "tenant_id": "sandbox-hospital", "patient_id": "patient-synthetic-1", "encounter_id": "encounter-synthetic-1", "id": "patient-synthetic-1", "name": "张三（合成）", "gender": "male", "birth_date": "1958-05-12" }
+    ],
+    "vw_medcius_encounter_synth": [
+      { "tenant_id": "sandbox-hospital", "patient_id": "patient-synthetic-1", "encounter_id": "encounter-synthetic-1", "id": "encounter-synthetic-1", "status": "in-progress", "encounter_class": "住院", "admission_time": "2026-08-20 08:00:00", "discharge_time": null }
+    ],
+    "vw_medcius_lis_synth": [
+      { "tenant_id": "sandbox-hospital", "patient_id": "patient-synthetic-1", "encounter_id": "encounter-synthetic-1", "id": "lis-synth-1", "order_id": "ord-k-synth-1", "item_code": "2823-3", "item_name": "血钾测定", "result_value": 2.4, "unit": "mmol/L", "status": "final", "sample_time": "2026-08-25 06:00:00", "reference_range": "3.5-5.3", "is_critical": 1, "abnormal_flag": "LL" },
+      { "tenant_id": "sandbox-hospital", "patient_id": "patient-synthetic-1", "encounter_id": "encounter-synthetic-1", "id": "lis-synth-2", "order_id": "ord-scr-synth-1", "item_code": "2160-0", "item_name": "血肌酐", "result_value": 88, "unit": "umol/L", "status": "final", "sample_time": "2026-08-25 06:00:00", "reference_range": "57-97", "is_critical": 0, "abnormal_flag": null }
+    ],
+    "vw_medcius_orders_synth": [
+      { "tenant_id": "sandbox-hospital", "patient_id": "patient-synthetic-1", "encounter_id": "encounter-synthetic-1", "id": "ord-synth-1", "drug_name": "注射用头孢曲松钠（合成）", "dosage": "2g", "route": "静脉滴注", "frequency": "qd", "order_time": "2026-08-25 07:30:00", "order_status": "active" }
+    ]
+  }
+}
