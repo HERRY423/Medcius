@@ -55,6 +55,7 @@ const steps = [
   { name: "42. Doctor Workstation: Directory Auth, Governance-Gated Reports & CA Signoff", cmd: "node", args: ["tests/test-doctor-workstation.mjs"] },
   { name: "43. Corpus Supply Chain: Official-Source Registry & Freshness SLA (informational)", cmd: "node", args: ["scripts/corpus-freshness.mjs"] },
   { name: "44. Corpus Supply Chain & Regulatory Readiness: Fetch Pipeline, Reconciliation, Classification Gate, Executable Audit", cmd: "node", args: ["tests/test-corpus-supply-chain.mjs"] },
+  { name: "45. Runtime Product Form: Container Discipline, Deployer, Resident Probe, LLM Config Management", cmd: "node", args: ["tests/test-deployment-runtime.mjs"] },
 ];
 
 console.log("================================================================================");

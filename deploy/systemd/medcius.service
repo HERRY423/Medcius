@@ -1,0 +1,29 @@
+[Unit]
+Description=Medcius 前置机服务 (Doctor Workstation + REST/CDS Hooks + Workstation UI)
+Documentation=file:///opt/medcius/current/deploy/DEPLOYMENT.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=medcius
+Group=medcius
+WorkingDirectory=/opt/medcius/current
+EnvironmentFile=/opt/medcius/medcius.env
+ExecStart=/usr/bin/node scripts/serve.mjs
+Restart=on-failure
+RestartSec=5
+
+# —— 加固基线（fail-closed 部署纪律）——
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/medcius/data /opt/medcius/backups
+RestrictSUIDSGID=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+MemoryDenyWriteExecute=false
+
+[Install]
+WantedBy=multi-user.target
