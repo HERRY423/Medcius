@@ -1,0 +1,15 @@
+{
+  "_comment": "Synthetic replay fixture for the P4 HL7 v2 message subscription read-only connector PoC (R26). Segments, identifiers, names and ID numbers are all fabricated; the PID deliberately carries raw-looking identifiers/phone so tests can prove the PHI exit guard tokenizes them before the envelope is released. The third OBX is deliberately malformed (no code/value) to exercise the parse_warnings path. No real patient data may ever enter this file.",
+  "source_version": "synthetic-hl7v2-replay-v1",
+  "messages": {
+    "adt": [
+      "MSH|^~\\&|HIS_SYNTH|SYNTH_HOSP|MEDCIUS|SYNTH_HOSP|20260825080000||ADT^A01^ADT_A01|MSG0001|P|2.5\rEVN|A01|20260825080000\rPID|1||patient-synthetic-1^^^SYNTH_HOSP^MR||张三（合成）||19580512|M|||建国路1号（合成）||13900001111|||S\rPV1|1|I|ICU^01^床||||8021^林德明^主治||||||||||||encounter-synthetic-1|||||||||||||||||||||||||20260820080000"
+    ],
+    "oru": [
+      "MSH|^~\\&|LIS_SYNTH|SYNTH_HOSP|MEDCIUS|SYNTH_HOSP|20260825060000||ORU^R01^ORU_R01|MSG0002|P|2.5\rPID|1||patient-synthetic-1^^^SYNTH_HOSP^MR\rOBR|1|ord-k-synth-1||2823-3^血钾测定^L|||20260825060000\rOBX|1|NM|2823-3^血钾^L|1|2.4|mmol/L|3.5-5.3|LL|||F|||20260825060000\rOBR|2|ord-scr-synth-1||2160-0^血肌酐^L|||20260825060000\rOBX|2|NM|2160-0^血肌酐^L|1|88|umol/L|57-97|N|||F|||20260825060000\rOBX|3|NM||1||umol/L"
+    ],
+    "rde": [
+      "MSH|^~\\&|CPOE_SYNTH|SYNTH_HOSP|MEDCIUS|SYNTH_HOSP|20260825073000||RDE^O11^RDE_O11|MSG0003|P|2.5\rPID|1||patient-synthetic-1^^^SYNTH_HOSP^MR\rORC|NW|ord-synth-1|||||||20260825073000|||8021^林德明^主治\rRXE|qid^每日一次|C03SYNTH01^注射用头孢曲松钠（合成）|20260825073000||2||g\rRXR|1|IV^静脉滴注"
+    ]
+  }
+}

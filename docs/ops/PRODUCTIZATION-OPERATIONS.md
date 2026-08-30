@@ -16,8 +16,12 @@
 |---|---|---|---|
 | 插件包 | `plugins/medcius/`（skills、lib、packs、rule-packs） | 宿主无关目录包 | 通过各宿主 marketplace / 目录分发；宿主适配见 `scripts/validate-host-adapters.mjs` 覆盖范围 |
 | MCP servers | audit / phiguard / china-codes / drug-labels / documents 等 | 本地进程（stdio） | 只读工具面；manifest 永不含 `create_resource`/`update_resource` |
-| API 服务 | `plugins/medcius/servers/api`（REST + CDS Hooks 2.0） | `node scripts/serve.mjs --port 8080` | 院内 Agent 平台消费的标准触发面 |
-| 连接器 PoC | `plugins/medcius/lib/connectors/`（P1 FHIR R4 / P2 CDA + PHI 出口守卫） | 库模块，随工作流进程运行 | 只读；真实院端凭据由部署注入 |
+| API 服务 | `plugins/medcius/servers/api`（REST + CDS Hooks 2.0 + 医生端工作台） | `node scripts/serve.mjs --port 8080` | 院内 Agent 平台与医生工作站消费的标准触发面；工作台见 `integrations/doctor-workstation/README.md` |
+| 容器交付 | `Dockerfile` + `docker-compose.yml`（sandbox/hospital 双 profile） | `docker compose --profile hospital up -d` | 非 root、版本钉死基镜像、HEALTHCHECK；数据/密钥/TLS/规则包全部挂载注入 |
+| 部署器 | `scripts/deploy.mjs`（status/install/upgrade/backup/rollback） | `deploy/DEPLOYMENT.md` | 确定性布局 releases/data/backups；升级先备份（sha256 清单）、回滚先校验，损坏即中止 |
+| 常驻探针 | `scripts/resident-probe.mjs`（§6.2 规则确定性子集） | `--once` / `--daemon --metrics-out` | audit_chain_broken=P1、health_down 阶梯升级、corpus_missing=P2、latency=P3；Prometheus `medcius_probe_*` 输出 |
+| LLM 推理路径配置 | `lib/llm-inference-config.mjs` | 部署配置校验（digest 钉住） | A/B 档合法、C 档全托管在校验层直接拒绝；client 仅暴露 extract()（D1 结构性限制）；模型/提示词版本随每次抽取落出处 |
+| 连接器 PoC | `plugins/medcius/lib/connectors/`（P1 FHIR R4 / P2 CDA / P3 视图库 / P4 HL7 v2 + PHI 出口守卫） | 库模块，随工作流进程运行 | 只读；真实院端凭据由部署注入（P3 为白名单视图 + 参数化 SELECT，P4 为集成引擎旁路订阅，均无写路径） |
 | 知识包 | `packs/hospital-knowledge-pack.json`、官方语料导入产物 | 版本化文件 + snapshot hash | 更新走 §5 变更管理 |
 
 版本命名遵循 `docs/compliance/dhf/VERSION-NAMING.md`；发布物 tag 与语料 snapshot hash 必须能互相追溯（R11 冻结申报版本的同一机制）。
@@ -70,7 +74,7 @@
 | 全量质量门禁 | `node scripts/run-all-checks.mjs`（30 步，含性能基线第 29 步与安全加固第 30 步） | 每次变更 + CI |
 | 性能基线对比 | `plugins/medcius/evals/performance-baseline/reports/performance-baseline.md` 与上一发布版报告对比 | 每次发布 |
 
-[待落地] 院内常驻探针：对 API `/health` 类端点与审计链 verify 的定时巡检，接入院方监控平台。传输边缘限流/锁定状态为进程内存态，多实例部署时上移至 mTLS 网关（`docs/compliance/SECURITY-ARCHITECTURE.md` §6）。
+院内常驻探针**已落地**：`scripts/resident-probe.mjs`（规则确定性可单测，`--once` 供 CI/巡检、`--daemon --metrics-out` 供常驻，Prometheus `medcius_probe_*` 供院方监控平台采集）。传输边缘限流/锁定状态为进程内存态，多实例部署时上移至 mTLS 网关（`docs/compliance/SECURITY-ARCHITECTURE.md` §6）。
 
 ### 6.2 关键监控项与告警阈值
 
@@ -91,7 +95,7 @@
 ## 7. 备份恢复与密钥轮换
 
 - 备份对象：审计库（append-only）、知识包与语料 snapshot、配置清单。**不备份原文病历数据**——系统内本就不应存在可落盘的原文。
-- 审计库备份每日一次；恢复演练每半年一次 [待落地：纳入院方灾备体系]。
+- 审计库备份每日一次；`deploy.mjs backup/rollback` 已提供带 sha256 清单的备份/校验回滚原语（恢复演练每半年一次 [待落地：纳入院方灾备体系]）。
 - 密钥轮换（`CLAUDE_MEDCIUS_PHI_SALT`）：轮换会切换假名化盐域，导致新旧 token 不可关联。因此轮换必须与治理委员会同步、选择无进行中标注研究的窗口，并在审计链记录新旧盐域指纹（`salt_fingerprint`）。加密密钥轮换按密钥管理系统的常规双信封流程执行。
 
 ## 8. 事件响应

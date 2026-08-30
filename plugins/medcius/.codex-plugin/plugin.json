@@ -1,6 +1,6 @@
 {
   "name": "medcius",
-  "version": "0.2.0-pilot",
+  "version": "0.7.0-pilot",
   "description": "A bounded Agent plugin for frontline clinicians, providing read-only clinical data tools, evidence-bound workflow skills, PHI protection, and audit support. It is not a standalone clinical platform or an autonomous clinical Agent.",
   "author": {
     "name": "Medcius Clinical Intelligence Team",

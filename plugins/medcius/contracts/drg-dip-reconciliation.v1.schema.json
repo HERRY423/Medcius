@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://medcius.local/schemas/drg-dip-reconciliation.v1.schema.json",
+  "title": "Medcius DRG/DIP Reconciliation Report",
+  "description": "Deterministic reconciliation view joining Medcius record-quality findings with the hospital's own DRG/DIP grouper output. Not a grouper, not a payment prediction, not a violation adjudication.",
+  "type": "object",
+  "required": ["schema_version", "status", "encounter", "elements", "hospital_grouping_echo", "data_quality_risks", "reconciliation", "boundary"],
+  "properties": {
+    "schema_version": { "const": "medcius.drg-dip-reconciliation.v1" },
+    "status": { "enum": ["clean", "elements_incomplete", "grouping_blocked"] },
+    "encounter": {
+      "type": "object",
+      "properties": {
+        "patient_id": { "type": ["string", "null"] },
+        "encounter_id": { "type": ["string", "null"] },
+        "admission_date": { "type": ["string", "null"] },
+        "discharge_date": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "elements": {
+      "type": "object",
+      "required": ["complete", "finding_count", "high_severity_count"],
+      "properties": {
+        "complete": { "type": "boolean" },
+        "finding_count": { "type": "integer", "minimum": 0 },
+        "high_severity_count": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "hospital_grouping_echo": {
+      "type": "object",
+      "required": ["scheme", "code", "note"],
+      "properties": {
+        "scheme": { "enum": ["drg", "dip"] },
+        "code": { "type": "string", "minLength": 1 },
+        "code_system": { "type": ["string", "null"] },
+        "version": { "type": ["string", "null"] },
+        "weight_or_score": { "type": ["number", "null"] },
+        "source": { "type": ["string", "null"] },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "data_quality_risks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["finding_code", "pool", "severity", "payment_risk", "note"],
+        "properties": {
+          "finding_code": { "type": "string", "minLength": 1 },
+          "pool": { "enum": ["element_gaps", "algebra_conflicts", "legality_conflicts"] },
+          "severity": { "enum": ["HIGH", "MEDIUM", "LOW"] },
+          "payment_risk": { "type": "string", "minLength": 1 },
+          "note": { "type": "string" },
+          "evidence": { "type": "object" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "reconciliation": {
+      "type": "object",
+      "required": ["quality_gate", "grouping_affected"],
+      "properties": {
+        "quality_gate": { "enum": ["pass", "action_needed"] },
+        "recommended_owner": { "type": ["string", "null"] },
+        "grouping_affected": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "boundary": {
+      "type": "object",
+      "required": ["is_drg_dip_grouper", "predicts_payment", "adjudicates_violation", "note"],
+      "properties": {
+        "is_drg_dip_grouper": { "const": false },
+        "predicts_payment": { "const": false },
+        "adjudicates_violation": { "const": false },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "digest": { "type": ["string", "null"] }
+  },
+  "additionalProperties": true
+}
