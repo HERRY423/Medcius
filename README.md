@@ -6,7 +6,7 @@ Medcius 为 Codex、Trae、WorkBuddy/CodeBuddy 或医院自建 Agent 增加受�
 
 Medcius 不是一套独立临床软件或平台，也不是一个能够自主诊疗的“临床智能体”。它不负责替代宿主 Agent 的对话与编排，不拥有患者主数据，不独立决定下一步临床行动，也不绕过医生执行 EHR 写回。
 
-当前版本为 **`0.4.0-pilot` 工程试点版**。已有代码和合成验证不能替代真实 EHR 验收、临床事实准确性、人因效率、安全性或监管证据。
+当前版本为 **`0.5.0-pilot` 工程试点版**。已有代码和合成验证不能替代真实 EHR 验收、临床事实准确性、人因效率、安全性或监管证据。
 
 ## 定位
 
@@ -101,6 +101,8 @@ Medcius Agent Plugin
 | `skills/clinical-note-extract` | 带原文 span 和断言状态的病历事实抽取 |
 | `skills/doc-extract` | 文档与附件提取 |
 | `lib/hospital-agent-adapter.mjs` | 面向 Codex、Trae、WorkBuddy 与医院自建 Agent 的宿主无关适配内核 |
+| `lib/clinician-directory-auth.mjs` | 医院目录身份适配（LDAP/AD/统一身份插槽 + 确定性角色映射 + 失败锁定 + 会话吊销，无隐式特权） |
+| `lib/ca-signature-adapter.mjs` | CA 电子签名适配层（内置 ECDSA P-256 + 医院 CA SDK 插槽；签名记录可验签、防篡改、零 PHI） |
 | `lib/patient-evolution-engine.mjs` | 查房前患者变化整理引擎 |
 | `lib/shift-handover-engine.mjs` | 临床交接班 SBAR 结构化整理引擎 |
 | `lib/consult-preparation-engine.mjs` | 专科会诊前资料包整理引擎 |
@@ -127,7 +129,7 @@ Medcius Agent Plugin
 | `servers/documents` | 本地文档提取与来源处理 |
 | `servers/phiguard` | PHI 扫描、脱敏与假名化支持 |
 | `servers/audit` | 本地防篡改检测用哈希链审计 |
-| `servers/api` | 参考侧边栏、REST 与 CDS Hooks 适配 |
+| `servers/api` | 参考侧边栏、医生端内网工作台（`/workstation`，治理阶梯感知）、REST 与 CDS Hooks 适配 |
 
 部分上游遗留能力仍需从正式插件包中继续拆分。处方、编码、临床试验、管理驾驶舱和多 Agent 模块不得因为存在于仓库中就被视为 Medcius 核心能力。
 

@@ -16,7 +16,7 @@
 |---|---|---|---|
 | 插件包 | `plugins/medcius/`（skills、lib、packs、rule-packs） | 宿主无关目录包 | 通过各宿主 marketplace / 目录分发；宿主适配见 `scripts/validate-host-adapters.mjs` 覆盖范围 |
 | MCP servers | audit / phiguard / china-codes / drug-labels / documents 等 | 本地进程（stdio） | 只读工具面；manifest 永不含 `create_resource`/`update_resource` |
-| API 服务 | `plugins/medcius/servers/api`（REST + CDS Hooks 2.0） | `node scripts/serve.mjs --port 8080` | 院内 Agent 平台消费的标准触发面 |
+| API 服务 | `plugins/medcius/servers/api`（REST + CDS Hooks 2.0 + 医生端工作台） | `node scripts/serve.mjs --port 8080` | 院内 Agent 平台与医生工作站消费的标准触发面；工作台见 `integrations/doctor-workstation/README.md` |
 | 连接器 PoC | `plugins/medcius/lib/connectors/`（P1 FHIR R4 / P2 CDA / P3 视图库 / P4 HL7 v2 + PHI 出口守卫） | 库模块，随工作流进程运行 | 只读；真实院端凭据由部署注入（P3 为白名单视图 + 参数化 SELECT，P4 为集成引擎旁路订阅，均无写路径） |
 | 知识包 | `packs/hospital-knowledge-pack.json`、官方语料导入产物 | 版本化文件 + snapshot hash | 更新走 §5 变更管理 |
 

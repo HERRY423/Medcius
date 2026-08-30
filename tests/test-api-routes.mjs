@@ -30,7 +30,7 @@ try {
   assert.equal(healthRes.status, 200);
   const healthJson = await healthRes.json();
   assert.equal(healthJson.status, "ok");
-  assert.equal(healthJson.version, "0.4.0-pilot");
+  assert.equal(healthJson.version, "0.5.0-pilot");
   assert.ok(healthJson.production_gate);
   console.log(`✓ /health responded 200 OK (version: ${healthJson.version})`);
 

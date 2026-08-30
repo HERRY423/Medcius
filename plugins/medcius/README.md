@@ -4,7 +4,7 @@ Medcius 是面向一线临床医生的 **Agent 插件**。它安装到 Codex、T
 
 Medcius 不是独立临床软件或医院信息平台，也不是自主诊疗的临床 Agent。宿主 Agent 负责对话和任务编排，Medcius 负责受约束的能力与工具，医院系统提供原始事实，医生核对证据并作出最终决定。
 
-当前版本为 **`0.4.0-pilot` 工程试点版**，不具备真实临床有效性或生产医院部署证明。
+当前版本为 **`0.5.0-pilot` 工程试点版**，不具备真实临床有效性或生产医院部署证明。
 
 ## 插件生产面
 
@@ -24,7 +24,8 @@ Medcius 不是独立临床软件或医院信息平台，也不是自主诊疗的
 | `lib/high-risk-followup-tracker.mjs` | 高风险检查检验阶段与未闭环状态追踪 |
 | `lib/specialty-rule-pack.mjs`、`rule-packs/` | 专科病区规则包校验、版本、审批和回滚元数据 |
 | `lib/read-only-hospital-data-bridge.mjs` | NIS/LIS/PACS/HIS/EMR 异构来源只读桥接与上下文绑定 |
-| `servers/api` | 参考侧边栏、REST 与 CDS Hooks 适配器 |
+| `servers/api` | 参考侧边栏、医生端内网工作台（`/workstation`，目录登录 + 治理阶梯感知 + CA 签核）、REST 与 CDS Hooks 适配器 |
+| `lib/clinician-directory-auth.mjs`、`lib/ca-signature-adapter.mjs` | 医院目录身份适配与 CA 电子签名适配层（无隐式特权、签名防篡改、零 PHI 入审计链） |
 
 “查房前患者变化摘要”用于证明插件内核如何支撑一个真实临床工作流，但不再代表 Medcius 的全部产品边界。后续工作流必须以独立技能包扩展，并分别定义用户、触发时点、权限、证据、失败行为和验证方案。
 
