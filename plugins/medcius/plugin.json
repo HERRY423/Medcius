@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "medcius",
-  "version": "0.2.0-pilot",
+  "version": "0.5.0-pilot",
   "description": "面向一线临床医生的 Agent 插件，为宿主 Agent 提供受约束的临床工作流技能、只读临床数据工具、PHI 防护、证据追溯和审计能力。不是独立临床平台，也不是自主诊疗 Agent。",
   "author": {
     "name": "Medcius Clinical Intelligence Team",

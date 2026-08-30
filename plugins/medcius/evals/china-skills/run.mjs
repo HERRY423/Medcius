@@ -65,6 +65,15 @@ async function probeCorpus() {
     try { probes.codes_bare = CH.validate_code({code:"J45"}).validation_status ?? "error"; } catch (e) { probes.codes_bare = `error: ${e.message}`; }
     try { probes.codes_valid = CH.validate_code({code:"J45.900"}).validation_status ?? "error"; } catch (e) { probes.codes_valid = `error: ${e.message}`; }
     try {
+      const rq = CH.check_record_quality({ note_text: "出院记录\n性别：男 年龄：67岁\n入院日期：2024-08-01 出院日期：2024-08-10\n住院天数：3天\n离院方式：7\n出院诊断：新生儿肺炎" });
+      const legal = (rq.legality_conflicts ?? []).map((f) => f.code);
+      probes.rq_conflicts = legal.includes("DISCHARGE_METHOD_ILLEGAL") && legal.includes("NEONATAL_DIAGNOSIS_AGE_CONFLICT") && (rq.algebra_conflicts ?? []).some((f) => f.code === "STAY_DAYS_MISMATCH") ? "ok" : "incomplete";
+    } catch (e) { probes.rq_conflicts = `error: ${e.message}`; }
+    try {
+      const cr = CH.check_catalog_restriction({ drug_name: "示例谈判药片", diagnosis_terms: ["高血压"], include_samples: true });
+      probes.restriction_review = cr.status === "restriction_review_needed" && (cr.matched_terms ?? []).length === 0 ? "ok" : `unexpected:${cr.status}`;
+    } catch (e) { probes.restriction_review = `error: ${e.message}`; }
+    try {
       const trPath = existsSync(join(__dirname, "../../../../experimental/servers/china-trials/src/tools.mjs"))
         ? "../../../../experimental/servers/china-trials/src/tools.mjs"
         : "../../servers/china-trials/src/tools.mjs";
@@ -204,6 +213,8 @@ if (withCorpus) {
       ["approval_fmt","ok"],
       ["codes_bare","pending"],
       ["codes_valid","valid"],
+      ["rq_conflicts","ok"],
+      ["restriction_review","ok"],
       ["trials_fmt","ok"],
       ["phi_scan","ok"],
       ["phi_redact","ok"],

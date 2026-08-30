@@ -20,6 +20,7 @@ const ROLE_PERMISSIONS = {
     "note:extract",
     "cds:hook",
     "audit:verify",
+    "workstation:signoff",
   ]),
   [ROLES.PHARMACIST]: new Set([
     "round:summary",
@@ -27,6 +28,7 @@ const ROLE_PERMISSIONS = {
     "audit:signoff",
     "audit:query",
     "audit:verify",
+    "workstation:signoff",
   ]),
   [ROLES.AUDITOR]: new Set([
     "audit:query",
@@ -43,6 +45,7 @@ const ROLE_PERMISSIONS = {
     "audit:query",
     "audit:verify",
     "audit:export",
+    "workstation:signoff",
   ]),
   [ROLES.SYSTEM]: new Set([
     "coding:resolve",

@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Medcius 医生工作台（内网独立版）</title>
+<style>
+  :root { --bg:#f5f7fa; --card:#fff; --line:#e3e8ef; --ink:#1f2937; --muted:#6b7280; --blue:#1d4ed8; --red:#b91c1c; --green:#047857; --amber:#92400e; --banner:#fef3c7; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif; background:var(--bg); color:var(--ink); }
+  header { background:#0f172a; color:#fff; padding:10px 20px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  header h1 { font-size:16px; margin:0; font-weight:600; }
+  .badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:12px; border:1px solid rgba(255,255,255,.35); }
+  .badge.warn { background:#fbbf24; color:#78350f; border-color:#fbbf24; }
+  .badge.ok { background:#34d399; color:#064e3b; border-color:#34d399; }
+  main { display:flex; min-height:calc(100vh - 54px); }
+  nav { width:190px; background:var(--card); border-right:1px solid var(--line); padding:12px 0; }
+  nav button { display:block; width:100%; text-align:left; padding:11px 18px; background:none; border:none; border-left:3px solid transparent; cursor:pointer; font-size:14px; color:var(--ink); }
+  nav button.active { border-left-color:var(--blue); background:#eff6ff; color:var(--blue); font-weight:600; }
+  .content { flex:1; padding:18px 22px; max-width:1100px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin-bottom:14px; }
+  .card h2 { margin:0 0 10px; font-size:15px; }
+  .banner { background:var(--banner); border:1px solid #fcd34d; color:#78350f; border-radius:8px; padding:9px 14px; font-size:13px; margin-bottom:14px; }
+  .error { background:#fef2f2; border:1px solid #fecaca; color:var(--red); border-radius:8px; padding:9px 14px; font-size:13px; margin:10px 0; white-space:pre-wrap; }
+  label { display:block; font-size:12px; color:var(--muted); margin:8px 0 3px; }
+  input, textarea, select { width:100%; padding:7px 10px; border:1px solid var(--line); border-radius:6px; font-size:13px; font-family:inherit; }
+  textarea { min-height:70px; }
+  button.primary { background:var(--blue); color:#fff; border:none; border-radius:6px; padding:8px 18px; font-size:13px; cursor:pointer; margin-top:10px; }
+  button.ghost { background:none; border:1px solid var(--line); border-radius:6px; padding:7px 14px; font-size:13px; cursor:pointer; margin-top:10px; }
+  .row { display:flex; gap:12px; flex-wrap:wrap; } .row > div { flex:1; min-width:150px; }
+  .digest { font-family:monospace; font-size:12px; background:#0f172a; color:#a5f3fc; padding:6px 10px; border-radius:6px; word-break:break-all; }
+  table.tree { border-collapse:collapse; width:100%; font-size:12.5px; }
+  table.tree td { border:1px solid var(--line); padding:4px 8px; vertical-align:top; }
+  table.tree td.k { width:240px; color:var(--muted); background:#fafbfc; }
+  .tag { display:inline-block; padding:1px 8px; border-radius:4px; font-size:11px; margin-right:4px; }
+  .tag.null { background:#fee2e2; color:#991b1b; }
+  .tag.ok { background:#d1fae5; color:#065f46; }
+  .tag.warn { background:#fef3c7; color:#92400e; }
+  .tag.high { background:#fecaca; color:#7f1d1d; font-weight:700; }
+  .hidden { display:none; }
+  .muted { color:var(--muted); font-size:12px; }
+  code.inline { background:#eef2f7; padding:1px 6px; border-radius:4px; font-size:12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Medcius 医生工作台</h1>
+  <span class="badge" id="stage-badge">治理阶段加载中…</span>
+  <span class="muted" id="clinician-info" style="color:#cbd5e1;"></span>
+  <span style="flex:1"></span>
+  <button class="ghost" style="margin:0;color:#e2e8f0;border-color:#334155;" onclick="logout()">退出</button>
+</header>
+<div id="research-banner" class="hidden" style="padding:0 22px;">
+  <div class="banner" style="border-radius:0;">🔬 <b>研究参考模式</b>：当前治理阶段（Level ≤2）输出仅供回顾性研究 / 静默比对，禁止临床投放与签核。投放能力将在建议模式（Level 3）后按医院治理决议开启。</div>
+</div>
+
+<!-- 登录视图 -->
+<div class="content" id="view-login">
+  <div class="card" style="max-width:430px;margin:60px auto;">
+    <h2>医院目录身份登录</h2>
+    <p class="muted">使用医院工号登录（LDAP/AD/统一身份经目录适配器对接；连续失败将锁定）。</p>
+    <label>租户 / 院区</label><input id="login-tenant" value="default">
+    <label>工号</label><input id="login-user" autocomplete="off">
+    <label>密码</label><input id="login-pass" type="password">
+    <button class="primary" style="width:100%;" onclick="login()">登录</button>
+    <div id="login-error"></div>
+    <p class="muted" style="margin-top:12px;">无目录配置时返回 <code class="inline">WORKSTATION_DIRECTORY_NOT_CONFIGURED</code>——由信息科按 <code class="inline">integrations/doctor-workstation/README.md</code> 注入目录适配器。</p>
+  </div>
+</div>
+
+<!-- 工作台 -->
+<main id="view-app" class="hidden">
+  <nav>
+    <button data-tab="evolution" class="active">查房前变化摘要</button>
+    <button data-tab="shift-handover">交接班 (SBAR)</button>
+    <button data-tab="consult-preparation">会诊前资料包</button>
+    <button data-tab="discharge-readiness">出院核对</button>
+    <button data-tab="record-quality">病案/清单质量核对</button>
+    <button data-tab="signoff">签核与验签</button>
+  </nav>
+  <div class="content">
+    <div class="card">
+      <h2>数据来源</h2>
+      <div class="row">
+        <div><label>患者 ID</label><input id="ctx-patient" placeholder="如 patient-synthetic-1"></div>
+        <div><label>就诊 ID</label><input id="ctx-encounter" placeholder="如 encounter-synthetic-1"></div>
+        <div style="max-width:170px;"><label>演示病区（仅非生产）</label>
+          <select id="ctx-demo"><option value="">不使用</option><option value="demo">合成心内病区</option></select>
+        </div>
+      </div>
+      <label>显式数据覆盖（JSON，可选——直连患者时由医院集成平台注入）</label>
+      <textarea id="ctx-feeds" placeholder='{"patient":{...},"notes":[...],"lis":[...],"his_orders":[...],"pacs":[...],"allergies":[]}'></textarea>
+    </div>
+    <div class="card" id="panel-evolution">
+      <h2>查房前患者变化与未闭环核对摘要</h2>
+      <div class="row">
+        <div style="max-width:160px;"><label>时间窗</label>
+          <select id="evo-window"><option>24h</option><option>72h</option></select>
+        </div>
+      </div>
+      <button class="primary" onclick="runWorkflow('evolution', { time_window: val('evo-window') })">生成摘要</button>
+    </div>
+    <div class="card hidden" id="panel-shift-handover">
+      <h2>交接班 SBAR 整理</h2>
+      <div class="row">
+        <div style="max-width:220px;"><label>班次</label>
+          <select id="sh-type"><option value="morning_to_evening">白班→夜班</option><option value="evening_to_night">晚班→夜班</option><option value="night_to_morning">夜班→白班</option></select>
+        </div>
+      </div>
+      <button class="primary" onclick="runWorkflow('shift-handover', { shift_type: val('sh-type') })">生成交接班单</button>
+    </div>
+    <div class="card hidden" id="panel-consult-preparation">
+      <h2>专科会诊前资料包</h2>
+      <div class="row">
+        <div><label>目标科室</label><input id="cs-dept" placeholder="如 心内科"></div>
+        <div><label>会诊目的</label><input id="cs-purpose" placeholder="如 术前评估"></div>
+      </div>
+      <button class="primary" onclick="runWorkflow('consult-preparation', { consult_request: { department: val('cs-dept'), purpose: val('cs-purpose') } })">生成资料包</button>
+    </div>
+    <div class="card hidden" id="panel-discharge-readiness">
+      <h2>出院资料完整性与安全核对</h2>
+      <label>出院带药（JSON 数组，可选）</label>
+      <textarea id="dr-meds" placeholder='[{"drug_name":"阿司匹林肠溶片","route":"po"}]'></textarea>
+      <button class="primary" onclick="runWorkflow('discharge-readiness', { dischargeMedications: tryParse(val('dr-meds')) || [] })">执行核对</button>
+    </div>
+    <div class="card hidden" id="panel-record-quality">
+      <h2>病案首页 / 医保结算清单要素质量核对</h2>
+      <p class="muted">确定性核对：必填要素缺口、住院天数/费用代数、离院方式值域、性别/年龄-诊断章节冲突。不做分组、不改编码、不判定违规。</p>
+      <label>病历文本（脱敏）</label>
+      <textarea id="rq-text" style="min-height:140px;" placeholder="出院记录
+性别：男 年龄：67岁
+入院日期：2024-08-01 出院日期：2024-08-10
+住院天数：3天
+离院方式：1 医嘱离院
+出院诊断：急性胆囊炎"></textarea>
+      <button class="primary" onclick="runRecordQuality()">执行核对</button>
+    </div>
+    <div class="card hidden" id="panel-signoff">
+      <h2>报告签核与验签（Level ≥3 可用）</h2>
+      <div id="signoff-current" class="muted">尚无待签核报告——先在左侧生成一份报告。</div>
+      <label>签核备注（可选）</label><input id="signoff-note" placeholder="如：已核对全部证据 span">
+      <button class="primary" onclick="signoff()">确认签核（绑定报告摘要）</button>
+      <div id="signoff-result"></div>
+      <hr style="border:none;border-top:1px solid var(--line);margin:14px 0;">
+      <h2>验签</h2>
+      <label>签名记录（JSON）</label>
+      <textarea id="verify-record" placeholder='{"schema_version":"medcius.clinician-signature-record.v1", ...}'></textarea>
+      <label>原始报告（JSON，可选——用于篡改检测）</label>
+      <textarea id="verify-payload"></textarea>
+      <button class="ghost" onclick="verifySignoff()">验签</button>
+      <div id="verify-result"></div>
+    </div>
+    <div class="card hidden" id="report-card">
+      <h2>报告（证据优先）</h2>
+      <div id="report-error"></div>
+      <div id="report-body"></div>
+      <div style="margin-top:10px;"><span class="muted">报告摘要（签核绑定此摘要）：</span> <div class="digest" id="report-digest"></div></div>
+      <button class="ghost" onclick="jumpSignoff()">去签核 →</button>
+    </div>
+  </div>
+</main>
+<script>
+let token = sessionStorage.getItem("medcius_ws_token") || null;
+let currentReport = null;
+
+const val = (id) => document.getElementById(id).value.trim();
+const tryParse = (s) => { try { return s ? JSON.parse(s) : null; } catch { return null; } };
+
+function headers() { return { "Content-Type": "application/json", Authorization: `Bearer ${token}` }; }
+
+async function api(path, body, method = "POST") {
+  const res = await fetch(path, { method, headers: headers(), body: body ? JSON.stringify(body) : undefined });
+  const data = await res.json().catch(() => ({ error: "HTTP " + res.status }));
+  return { ok: res.ok, status: res.status, data };
+}
+
+function showErr(elId, data) {
+  const el = document.getElementById(elId);
+  el.textContent = `⚠ ${data.code ?? ""} ${data.error ?? "请求失败"}`;
+}
+
+async function login() {
+  const { ok, data } = await api("/workstation/login", {
+    username: val("login-user"), password: document.getElementById("login-pass").value, tenant_id: val("login-tenant") || "default",
+  });
+  if (!ok) return showErr("login-error", data);
+  token = data.token;
+  sessionStorage.setItem("medcius_ws_token", token);
+  await enterApp();
+}
+
+async function logout() {
+  await api("/workstation/logout", {}, "POST");
+  token = null; sessionStorage.removeItem("medcius_ws_token");
+  location.reload();
+}
+
+async function enterApp() {
+  document.getElementById("view-login").classList.add("hidden");
+  document.getElementById("view-app").classList.remove("hidden");
+  const { ok, data } = await api("/workstation/session", null, "GET");
+  if (!ok) return showErr("login-error", data);
+  const badge = document.getElementById("stage-badge");
+  badge.textContent = `治理：${data.governance.stage_name} (L${data.governance.stage_level})`;
+  badge.className = "badge " + (data.governance.stage_level >= 3 ? "ok" : "warn");
+  document.getElementById("research-banner").classList.toggle("hidden", data.governance.stage_level >= 3);
+  document.getElementById("clinician-info").textContent =
+    `${data.clinician.id}（${(data.clinician.roles ?? []).join("/")}）· 租户 ${data.clinician.tenant_id}`;
+  document.querySelectorAll("nav button").forEach((b) => b.addEventListener("click", () => {
+    document.querySelectorAll("nav button").forEach((x) => x.classList.remove("active"));
+    b.classList.add("active");
+    ["evolution","shift-handover","consult-preparation","discharge-readiness","record-quality","signoff"].forEach((t) =>
+      document.getElementById("panel-" + t).classList.toggle("hidden", t !== b.dataset.tab));
+  }));
+}
+
+function contextBody(extra = {}) {
+  const demo = val("ctx-demo");
+  const feeds = tryParse(val("ctx-feeds"));
+  return {
+    ...extra,
+    ...(demo ? { demo_ward: true, bed: val("ctx-patient") || undefined } : {
+      patient_id: val("ctx-patient"), encounter_id: val("ctx-encounter"), ...(feeds ?? {}),
+      patient: feeds?.patient,
+    }),
+  };
+}
+
+async function runWorkflow(name, extra = {}) {
+  renderReport(await api(`/workstation/${name}`, contextBody(extra)), name);
+}
+
+async function runRecordQuality() {
+  renderReport(await api("/workstation/record-quality", { note_text: document.getElementById("rq-text").value }), "record-quality");
+}
+
+function jumpSignoff() {
+  document.querySelector('[data-tab="signoff"]').click();
+}
+
+async function signoff() {
+  const el = document.getElementById("signoff-result");
+  if (!currentReport) { el.innerHTML = '<div class="error">无待签核报告</div>'; return; }
+  const { ok, data } = await api("/workstation/signoff", {
+    workflow: currentReport.workflow, payload: currentReport.payload, payload_digest: currentReport.payload_digest,
+    signer_note: val("signoff-note"),
+  });
+  if (!ok) { el.innerHTML = `<div class="error">⚠ ${data.code ?? ""} ${data.error ?? ""}</div>`; return; }
+  el.innerHTML = `<div class="card" style="background:#f0fdf4;border-color:#a7f3d0;">
+    <b style="color:var(--green);">✔ 签核完成</b> <span class="tag ok">${data.provider}</span>
+    <div class="muted">签名记录已生成（可复制到验签面板）：</div>
+    <textarea style="min-height:120px;font-family:monospace;font-size:11px;">${JSON.stringify(data, null, 2)}</textarea>
+    ${data.boundary ? `<div class="muted">${data.boundary.note}</div>` : ""}</div>`;
+}
+
+async function verifySignoff() {
+  const record = tryParse(val("verify-record"));
+  const payload = tryParse(val("verify-payload"));
+  const el = document.getElementById("verify-result");
+  if (!record) { el.innerHTML = '<div class="error">签名记录 JSON 无效</div>'; return; }
+  const { ok, data } = await api("/workstation/signoff/verify", { signature_record: record, payload: payload ?? null });
+  el.innerHTML = ok
+    ? `<div class="card" style="background:${data.valid ? "#f0fdf4" : "#fef2f2"};">
+        <b style="color:${data.valid ? "var(--green)" : "var(--red)"};">${data.valid ? "✔ 验签通过" : "✘ 验签失败"}</b>
+        <div class="muted">${data.reason ?? ""}</div></div>`
+    : `<div class="error">⚠ ${data.error ?? ""}</div>`;
+}
+
+// ---- 证据优先渲染：显式 null / 缺口 / 严重度标签 ----
+function tagFor(key, value) {
+  if (value === null) return '<span class="tag null">NULL</span>';
+  if (key === "severity") return `<span class="tag ${value === "HIGH" ? "high" : "warn"}">${value}</span>`;
+  if (key === "check_status" || key === "status" || key === "exact" || key === "is_ready")
+    return `<span class="tag ${String(value).includes("pass") || value === true || String(value).includes("ready") ? "ok" : "warn"}">${String(value)}</span>`;
+  if (key === "ok") return value ? '<span class="tag ok">通过</span>' : '<span class="tag high">不通过</span>';
+  return "";
+}
+
+function renderTree(value, key = "", depth = 0) {
+  if (value === null) return `<span class="tag null">NULL / 未提及</span>`;
+  if (Array.isArray(value)) {
+    if (!value.length) return '<span class="muted">[]（当前输入范围内未识别到项目 ≠ 不存在）</span>';
+    return `<table class="tree">${value.map((item, i) => `<tr><td class="k">${i}</td><td>${renderTree(item, "", depth + 1)}</td></tr>`).join("")}</table>`;
+  }
+  if (typeof value === "object") {
+    return `<table class="tree">${Object.entries(value).map(([k, v]) =>
+      `<tr><td class="k">${k} ${tagFor(k, v)}</td><td>${renderTree(v, k, depth + 1)}</td></tr>`).join("")}</table>`;
+  }
+  return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+}
+
+function renderReport({ ok, data }, workflow) {
+  const card = document.getElementById("report-card");
+  card.classList.remove("hidden");
+  card.scrollIntoView({ behavior: "smooth" });
+  const errEl = document.getElementById("report-error");
+  if (!ok) {
+    errEl.innerHTML = `<div class="error">⚠ ${data.code ?? ""} ${data.error ?? ""}</div>`;
+    document.getElementById("report-body").innerHTML = "";
+    document.getElementById("report-digest").textContent = "—";
+    currentReport = null;
+    return;
+  }
+  errEl.innerHTML = "";
+  currentReport = data;
+  document.getElementById("report-body").innerHTML = renderTree(data.payload);
+  document.getElementById("report-digest").textContent = `${data.workflow} · ${data.payload_digest}`;
+  document.getElementById("signoff-current").innerHTML =
+    `待签核：<code class="inline">${data.workflow}</code>，摘要 <code class="inline">${data.payload_digest.slice(0, 24)}…</code>`;
+}
+
+if (token) {
+  api("/workstation/session", null, "GET").then(({ ok }) => { if (ok) enterApp(); else { token = null; sessionStorage.clear(); } });
+}
+</script>
+</body>
+</html>
