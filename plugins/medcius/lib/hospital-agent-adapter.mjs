@@ -126,7 +126,7 @@ export class HospitalAgentAdapter {
       success: true,
       host_info: {
         host_type: host,
-        adapter_version: "0.5.0-pilot",
+        adapter_version: "0.6.0-pilot",
         workflow: "patient-evolution-summary",
       },
       context: {
@@ -231,7 +231,7 @@ export class HospitalAgentAdapter {
       success: true,
       host_info: {
         host_type: host,
-        adapter_version: "0.5.0-pilot",
+        adapter_version: "0.6.0-pilot",
         workflow: "shift-handover",
       },
       context: {
@@ -303,7 +303,7 @@ export class HospitalAgentAdapter {
       success: true,
       host_info: {
         host_type: host,
-        adapter_version: "0.5.0-pilot",
+        adapter_version: "0.6.0-pilot",
         workflow: "consult-preparation",
       },
       context: {
@@ -371,7 +371,7 @@ export class HospitalAgentAdapter {
       success: true,
       host_info: {
         host_type: host,
-        adapter_version: "0.5.0-pilot",
+        adapter_version: "0.6.0-pilot",
         workflow: "discharge-readiness-check",
       },
       context: {

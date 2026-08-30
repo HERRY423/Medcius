@@ -6,7 +6,7 @@ Medcius 为 Codex、Trae、WorkBuddy/CodeBuddy 或医院自建 Agent 增加受�
 
 Medcius 不是一套独立临床软件或平台，也不是一个能够自主诊疗的“临床智能体”。它不负责替代宿主 Agent 的对话与编排，不拥有患者主数据，不独立决定下一步临床行动，也不绕过医生执行 EHR 写回。
 
-当前版本为 **`0.5.0-pilot` 工程试点版**。已有代码和合成验证不能替代真实 EHR 验收、临床事实准确性、人因效率、安全性或监管证据。
+当前版本为 **`0.6.0-pilot` 工程试点版**。已有代码和合成验证不能替代真实 EHR 验收、临床事实准确性、人因效率、安全性或监管证据。
 
 ## 定位
 
@@ -112,6 +112,9 @@ Medcius Agent Plugin
 | `lib/settlement-from-note.mjs` | 出院记录 → 结算清单栏 + 编码六字段出处 + 清单机检 + 病案要素质量核对；不做分组器 |
 | `contracts/patient-financial-access-record.v1.schema.json` | 费用负担与可获得性输入记录的机器可检查契约 |
 | `contracts/china-record-quality-report.v1.schema.json` | 病案要素质量核对报告的机器可检查契约 |
+| `contracts/drg-dip-reconciliation.v1.schema.json` | DRG/DIP 要素质量×医院分组器对账契约（不做分组器） |
+| `packs/official-sources.json` + `scripts/fetch-official-corpus.mjs` + `scripts/corpus-freshness.mjs` | 官方语料供应链：来源登记表、拉取/暂存校验（永不自动导入）、新鲜度 SLA 监控 |
+| `plugins/medcius/scripts/gen-classification-pack.mjs` + `scripts/qms-internal-audit.mjs` | 分类界定材料包就绪门（R04→R05）与可执行 QMS 内审（R09 落地） |
 | `lib/idp-jwks-verifier.mjs` | 企业级 IdP / OIDC / JWKS 动态公钥验签与多租户隔离中间件 |
 | `lib/mtls-gateway-guard.mjs` | 院内前置机 mTLS 双向认证守卫与零信任只读安全信封 |
 | `lib/clinical-skill-catalog.mjs` + `rule-packs/catalogs/` | 临床技能目录全生命周期治理引擎（专家审批、哈希签名、一键熔断与回滚） |

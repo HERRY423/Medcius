@@ -53,6 +53,8 @@ const steps = [
   { name: "40. Real-World Noise Robustness Benchmark & Desensitized-Data Ingest Gate", cmd: "node", args: ["plugins/medcius/evals/real-world-noise/run-noise-benchmark.mjs"] },
   { name: "41. Noise Benchmark & Real-Data Ingest Channel Unit Tests", cmd: "node", args: ["tests/test-noise-benchmark.mjs"] },
   { name: "42. Doctor Workstation: Directory Auth, Governance-Gated Reports & CA Signoff", cmd: "node", args: ["tests/test-doctor-workstation.mjs"] },
+  { name: "43. Corpus Supply Chain: Official-Source Registry & Freshness SLA (informational)", cmd: "node", args: ["scripts/corpus-freshness.mjs"] },
+  { name: "44. Corpus Supply Chain & Regulatory Readiness: Fetch Pipeline, Reconciliation, Classification Gate, Executable Audit", cmd: "node", args: ["tests/test-corpus-supply-chain.mjs"] },
 ];
 
 console.log("================================================================================");
