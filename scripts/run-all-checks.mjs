@@ -49,6 +49,9 @@ const steps = [
   { name: "36. Cross-Hospital Migration & Heterogeneous Dialect Tests", cmd: "node", args: ["tests/test-cross-hospital-migration.mjs"] },
   { name: "37. Multi-Department Real-World Shadow Study & Time-Motion Analyzer", cmd: "node", args: ["plugins/medcius/evals/shadow-mode/real-world-study-protocol.mjs"] },
   { name: "38. Workflow Pack: NHSA Record Quality & Settlement-List Element Checks", cmd: "node", args: ["tests/test-nhsa-record-quality.mjs"] },
+  { name: "39. Real-Data Channels: P3 View-DB / P4 HL7 v2 Read-Only Connectors & PHI Exit Guard", cmd: "node", args: ["tests/test-real-data-channels.mjs"] },
+  { name: "40. Real-World Noise Robustness Benchmark & Desensitized-Data Ingest Gate", cmd: "node", args: ["plugins/medcius/evals/real-world-noise/run-noise-benchmark.mjs"] },
+  { name: "41. Noise Benchmark & Real-Data Ingest Channel Unit Tests", cmd: "node", args: ["tests/test-noise-benchmark.mjs"] },
 ];
 
 console.log("================================================================================");

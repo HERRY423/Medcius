@@ -84,6 +84,10 @@
 - `pass_rate_graded=100%` ≠ 病案核对准确率 100%；真实表现只能来自真实病案上的病案/编码人员复核研究；
 - 质量核对引擎的确定性检查（代数、值域、章节冲突）是数据质量工具，不是 DRG/DIP 分组器，不得用于结算金额预测或违规判定。
 
+## 真实病历脏数据鲁棒性基线（2026-08-30，缺口二量具）
+
+`evals/real-world-noise/run-noise-benchmark.mjs`（CI 第 40 步）对确定性解析层 `parse-cn-note` 施加 7 类结构化噪声（非标标题/空白混乱/段落乱序/OCR 混淆/缩写方言/扫描伪影/叠加），clean 基线 100% 硬门 + combined 全字段保持率 **70.0%**（下限绊线 65%，只许上调）。基准驱动了真实的解析层加固（非标标题归一、行内标题切分、扫描伪影容忍：heading_variants 7%→100%，combined 0%→70%）。缩写方言 73.3% 为确定性解析的**结构性边界**（词典推断有极性翻转风险），显式留给 LLM 抽取层——这正是真实脱敏病历量具 `ingest-real-data.mjs`（同评分引擎，fail-closed 脱敏门）落地后要测的数字。噪声模拟鲁棒性 ≠ 真实世界证据。
+
 ## Batch01 合成管线基准（2026-08-24 冻结）
 
 - 命令：`node plugins/medcius/evals/clinical-validation/scripts/init-batch01.mjs --full-300`（生成 300 行合成 gold+pred → `run.mjs --gold gold/batch01.jsonl --pred pred/batch01.jsonl --out reports/batch01.md`）

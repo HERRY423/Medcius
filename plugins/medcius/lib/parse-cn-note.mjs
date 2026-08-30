@@ -6,19 +6,64 @@
 const UNCERTAIN = /疑似|待查|排除|拟诊|待排/;
 const FAMILY = /母亲|父亲|父母|兄|弟|姐|妹|家族/;
 const DENY_ALLERGY = /否认.{0,12}过敏/;
-const NONE_PROC = /^(无|无手术|未见|未实施)[。.\s]*$/;
+// 手术栏以“无/未”开头即未实施；允许扫描伪影跟在后面（页码/水印/分隔线）。
+const NONE_PROC = /^(无|无手术|未见|未实施)(?![a-zA-Z\u4e00-\u9fa5])/;
 
-const HEADING_RE =
-  /^(入院诊断|出院诊断|出院主诊断|门诊诊断|初步诊断|术前诊断|术后诊断|诊断|手术及操作|手术操作|手术名称|过敏史|体格检查|既往史|家族史|主诉|现病史|诊疗经过|手术经过|病程记录|护理记录|辅助检查|检验结果|出院医嘱|处理|病理诊断|病理检查|病理|费用明细|费用结算|医疗收费)\s*[：:]/m;
+const HEADING_NAMES =
+  "入院诊断|出院诊断|出院主诊断|门诊诊断|初步诊断|术前诊断|术中诊断|术后诊断|诊断|手术及操作|手术操作|手术名称|过敏史|体格检查|既往史|家族史|主诉|现病史|诊疗经过|手术经过|病程记录|护理记录|辅助检查|检验结果|出院医嘱|处理|病理诊断|病理检查|病理|费用明细|费用结算|医疗收费";
+
+const HEADING_RE = new RegExp(`^(?:${HEADING_NAMES})\\s*[：:]`, "m");
+
+// 非标标题 → 规范标题（真实导出/粘贴病历最常见的方言；确定性归一，不做任何推断）。
+const SECTION_ALIASES = {
+  出院时诊断: "出院诊断",
+  "诊断（出院）": "出院诊断",
+  入院时诊断: "入院诊断",
+  药物过敏史: "过敏史",
+  查体: "体格检查",
+  PE: "体格检查",
+  出院处理: "出院医嘱",
+  手术及操作名称: "手术及操作",
+  手术操作名称: "手术操作",
+  "手术/操作": "手术及操作",
+};
+
+const ALIAS_HEADINGS_RE = new RegExp(
+  `^(?:${Object.keys(SECTION_ALIASES).map((alias) => alias.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")).join("|")})\\s*[：:]`,
+  "m",
+);
+
+/**
+ * Normalize structural dialects BEFORE section splitting:
+ *   1. 【标题】 bracket headings → 标题：
+ *   2. mid-line headings (merged by lost newlines / full-width spaces) → line start
+ * Deterministic, text-level only.
+ */
+export function normalizeNoteStructure(text) {
+  let src = String(text ?? "").replace(/\r\n/g, "\n");
+  src = src.replace(new RegExp(`^【(${HEADING_NAMES})】\\s*[：:]?`, "gm"), "$1：");
+  src = src.replace(new RegExp(`^【(${Object.keys(SECTION_ALIASES).join("|")})】\\s*[：:]?`, "gm"), "$1：");
+  src = src.replace(
+    new RegExp(`([ \\t　\\u3000])((?:${HEADING_NAMES}|${Object.keys(SECTION_ALIASES).join("|")})\\s*[：:])`, "g"),
+    "\n$2",
+  );
+  return src;
+}
 
 /** @param {string} text */
 export function splitSections(text) {
-  const src = String(text ?? "").replace(/\r\n/g, "\n");
+  const src = normalizeNoteStructure(text);
   const out = {};
   const re = new RegExp(HEADING_RE.source, "gm");
+  const aliasRe = new RegExp(ALIAS_HEADINGS_RE.source, "gm");
   const hits = [];
   let m;
-  while ((m = re.exec(src))) hits.push({ name: m[1], start: m.index, headEnd: m.index + m[0].length });
+  while ((m = re.exec(src))) hits.push({ name: m[0].replace(/[：:\s]+$/, ""), start: m.index, headEnd: m.index + m[0].length });
+  while ((m = aliasRe.exec(src))) {
+    const name = SECTION_ALIASES[m[0].replace(/[：:\s]+$/, "")];
+    if (name) hits.push({ name, start: m.index, headEnd: m.index + m[0].length });
+  }
+  hits.sort((a, b) => a.start - b.start);
   for (let i = 0; i < hits.length; i++) {
     const end = i + 1 < hits.length ? hits[i + 1].start : src.length;
     out[hits[i].name] = src.slice(hits[i].headEnd, end).trim();

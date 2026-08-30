@@ -1,4 +1,4 @@
-# medcius plugin — conventions (v0.3.0-pilot)
+# medcius plugin — conventions (v0.4.0-pilot)
 
 - **Product boundary**: Medcius is an **Agent plugin for frontline clinicians**. It extends a host Agent with bounded clinical workflow skills, read-only data tools, provenance, PHI protection, and audit contracts. It is not a standalone clinical platform and not an autonomous clinical Agent. The inpatient pre-round patient-evolution summary (`patient-evolution-engine.mjs` + `fhir` + `clinical-note-extract`) is the first reference workflow, not the whole product boundary. Medcius does **not** make diagnostic decisions, formulate treatment plans, or autonomously write back to the EHR.
 

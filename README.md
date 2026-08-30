@@ -6,7 +6,7 @@ Medcius 为 Codex、Trae、WorkBuddy/CodeBuddy 或医院自建 Agent 增加受�
 
 Medcius 不是一套独立临床软件或平台，也不是一个能够自主诊疗的“临床智能体”。它不负责替代宿主 Agent 的对话与编排，不拥有患者主数据，不独立决定下一步临床行动，也不绕过医生执行 EHR 写回。
 
-当前版本为 **`0.3.0-pilot` 工程试点版**。已有代码和合成验证不能替代真实 EHR 验收、临床事实准确性、人因效率、安全性或监管证据。
+当前版本为 **`0.4.0-pilot` 工程试点版**。已有代码和合成验证不能替代真实 EHR 验收、临床事实准确性、人因效率、安全性或监管证据。
 
 ## 定位
 
@@ -118,8 +118,9 @@ Medcius Agent Plugin
 | `lib/high-risk-followup-tracker.mjs` | 高风险检查检验从开立、采集、结果到医生确认的阶段追踪；不自动处置 |
 | `lib/specialty-rule-pack.mjs` + `rule-packs/` | 专科病区规则包加载、版本哈希、审批元数据与生产环境失败关闭 |
 | `lib/read-only-hospital-data-bridge.mjs` | 院内异构接口只读桥；逐源绑定租户、患者、就诊和来源哈希 |
-| `lib/connectors/` | 真实系统 FHIR R4 与 CDA 文档通道只读连接器及 PHI 出口守卫 |
+| `lib/connectors/` | 真实系统四条只读接入路径连接器（P1 FHIR R4、P2 CDA 文档、P3 视图库/中间库、P4 HL7 v2 消息订阅）及 PHI 出口守卫 |
 | `evals/shadow-mode/` | 真实世界多病区连续病例影子研究（Shadow Study）协议引擎与 Wilson CI 统计 |
+| `evals/real-world-noise/` | 真实病历脏数据鲁棒性基准（噪声模型 + 确定性下限）与真实脱敏病历接入量具（fail-closed） |
 | `evals/time-motion/` | 临床医生 Time-Motion 与人因认知负荷（NASA-TLX）自动化统计分析器 |
 | `evals/physician-annotation/` | 独立医生双盲标注、Kappa 一致性评测与仲裁体系 |
 | `servers/fhir` | SMART on FHIR R4 连接器；Codex、Trae、WorkBuddy 适配入口强制只读 |

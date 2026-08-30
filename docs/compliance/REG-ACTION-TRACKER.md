@@ -63,7 +63,7 @@
 
 | ID | 动作 | 依赖 | 负责角色 | 预估历时 | 状态 | 验收证据 |
 |---|---|---|---|---|---|---|
-| R26 | 真实连接器 PoC 选型与实现（P1 FHIR R4 / P2 CDA 文档通道优先），遵守只读桥契约：`capabilities:["read"]`、六字段信封、fail-closed | — | 工程负责人 | 2–4 周 | ✅ | **PoC 骨架与多方言迁移测试闭环**：P1 `fhir-r4-connector.mjs` + P2 `cda-document-connector.mjs`；合成回放与负向用例全绿；`tests/test-cross-hospital-migration.mjs` 验证通过 |
+| R26 | 真实连接器 PoC 选型与实现（P1 FHIR R4 / P2 CDA 文档通道优先），遵守只读桥契约：`capabilities:["read"]`、六字段信封、fail-closed | — | 工程负责人 | 2–4 周 | ✅ | **四路径 PoC 骨架与多方言迁移测试闭环**：P1 `fhir-r4-connector.mjs` + P2 `cda-document-connector.mjs` + P3 `viewdb-connector.mjs`（白名单参数化 SELECT、租户/患者强制作用域）+ P4 `hl7v2-connector.mjs`（ADT/ORU/RDE 确定性解析、报文级失败关闭）；合成回放与负向用例全绿（CI 第 27/39 步）；`tests/test-cross-hospital-migration.mjs` 验证通过。真实院端联调仍待合作医院环境 |
 | R27 | 院内部署拓扑与数据不出院架构备忘录（三档 LLM 供应链定位 + mTLS 前置网关 + 密钥轮换） | R19, R20 | 工程+法务 | 2–4 周 | ✅ | **部署拓扑成文并完成测试**：`docs/ops/PRODUCTIZATION-OPERATIONS.md` §3 + `tests/test-enterprise-deployment.mjs` 落地三档 LLM 拓扑、前置机 mTLS 证书网关与 IdP JWKS 动态验签 |
 | R28 | PHI Guard 前移至连接器出口（出口即假名化），原文仅存于院内进程内存瞬时态 | R26 | 工程负责人 | 1–2 周 | ✅ | **出口守卫已实现并纳入 CI**：`lib/connectors/phi-exit-guard.mjs`（假名化模式 + assert 阻断模式，盐策略 ≥8 字符）；`tests/test-real-connectors.mjs` Test 6–8 证明原始证件号/电话/标注姓名不出连接器进程 |
 | R29 | Shadow Mode 真实数据证据链 SOP 定稿：伦理批件前置、去标识化协议、双盲标注入组条件 | R15, R18 | 医学事务+法务 | 2–4 周 | ✅ | **IRB 伦理申报框架与脱敏 SOP 定稿**：[`docs/compliance/IRB-PROTOCOL-FRAMEWORK.md`](file:///c:/Medcius/docs/compliance/IRB-PROTOCOL-FRAMEWORK.md) 明确豁免知情同意依据与质控停止线 |
@@ -85,7 +85,7 @@
 | 生产门闩与三级合规通行证分类 (engineering/synthetic/clinical) | 防误用与证据分层 | ✅ 已实现：硬门闩 6/6 PASS，禁止工程测试冒充临床证据 |
 | 独立临床医生双盲标注与仲裁评测体系 | 临床评价工具链 | ✅ 已实现 (`evals/physician-annotation/`，Kappa=1.00，零严重漏报，零虚构证据) |
 | 宿主无关插件内核与多宿主适配体系 | 架构中立与安全信封 | ✅ 已实现 (`lib/hospital-agent-adapter.mjs` 适配 Codex、Trae、WorkBuddy 与自建 Agent) |
-| 真实系统接入连接器 PoC（P1 FHIR R4 / P2 CDA）+ PHI 出口守卫 | 真实 EHR/HIS 接入（R26/R28 工程部分） | ✅ 已实现 (`lib/connectors/` + `fixtures/connectors/` 合成回放 + `tests/test-real-connectors.mjs` 9/9 PASS，CI 第 27 步) |
+| 真实系统接入连接器 PoC（P1 FHIR R4 / P2 CDA / P3 视图库 / P4 HL7 v2）+ PHI 出口守卫 | 真实 EHR/HIS 接入（R26/R28 工程部分） | ✅ 已实现 (`lib/connectors/` 四条路径 + `fixtures/connectors/` 合成回放 + `tests/test-real-connectors.mjs` 与 `tests/test-real-data-channels.mjs` 全绿，CI 第 27/39 步) |
 | 产品化与运维基线文档 | 部署拓扑 / 变更管理 / 监控审计 / 事件响应（R27 文书部分） | ✅ 已成文 (`docs/ops/PRODUCTIZATION-OPERATIONS.md` v1.0) |
 | 公开参考验证层（public_reference_validation） | 临床评价支撑材料 / 工程一致性（R17 前置） | ✅ 已实现 (`evals/public-reference-validation/`：版本化公开事实包 + 确定性引擎 + Wilson CI 报告) |
 | 性能基线套件与预算门禁 | 工程架构 / 回归监测（CI 第 29 步） | ✅ 已实现 (`evals/performance-baseline/bench.mjs`：5 条关键路径基准 + 预算门禁) |
