@@ -1,8 +1,9 @@
 /**
- * Weld extract → NHSA coding → 结算清单栏 + 六字段出处 + 清单机检.
+ * Weld extract → NHSA coding → 结算清单栏 + 六字段出处 + 清单机检 + 病案要素质量核对.
  * Not a DRG/DIP grouper.
  */
 import { parseCnNote, parseDemographics, parseLabs } from "./parse-cn-note.mjs";
+import { buildRecordQualityReport } from "./nhsa-record-quality-engine.mjs";
 
 function terms(f) {
   if (!f?.value) return [];
@@ -91,6 +92,12 @@ export function settlementFromNote(text, CC) {
     手术及操作: items.filter((i) => i.role === "procedure"),
   };
 
+  const record_quality = buildRecordQualityReport(text, {
+    diagnosis_codes: items
+      .filter((i) => i.kind === "diagnosis" && i.provenance.code)
+      .map((i) => ({ code: i.provenance.code, kind: "diagnosis" })),
+  });
+
   return {
     note_type: extracted.note_type,
     demographics: demo,
@@ -100,6 +107,7 @@ export function settlementFromNote(text, CC) {
     halt: official ? null : "official 编码库为空：清单可出栏，validation_status 不得为 valid",
     settlement_list: list,
     list_check: listCheck,
+    record_quality,
     grouping: {
       implemented: false,
       note: "本插件不做 DRG/DIP 分组器。分组以医院当期分组器与费率表为准。",

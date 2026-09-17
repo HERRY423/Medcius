@@ -1,5 +1,6 @@
 import { db, DATA } from "./db.mjs";
-import { checkSettlementList, searchProvincialBenefit } from "./list-check.mjs";
+import { checkSettlementList, searchProvincialBenefit, checkCatalogRestriction } from "./list-check.mjs";
+import { buildRecordQualityReport } from "../../../lib/nhsa-record-quality-engine.mjs";
 
 function latestHash(codeId) {
   const r = db.prepare("SELECT snapshot_hash FROM code_snapshots WHERE code_id=? ORDER BY captured_at DESC, id DESC LIMIT 1").get(codeId);
@@ -101,5 +102,14 @@ export const HANDLERS = {
   },
   search_provincial_benefit(a) {
     return searchProvincialBenefit(a);
+  },
+  check_record_quality(a) {
+    if (typeof a?.note_text !== "string" || !a.note_text.trim()) {
+      return { error: "note_text required (non-empty string)" };
+    }
+    return buildRecordQualityReport(a.note_text);
+  },
+  check_catalog_restriction(a) {
+    return checkCatalogRestriction(a);
   },
 };

@@ -20,7 +20,7 @@
 
 | # | 缺口 | 状态（v1.0） |
 |---|---|---|
-| 1 | **没有真实协议连接器**：当前桥接测试全部基于内存 fixture；FHIR server 为 experimental 且仅面向沙箱（`servers/fhir/README.md`）。国内 HIS 主流形态（HL7 v2 消息流、CDA 文档、集成平台/视图库中间表）均无适配器。 | **部分关闭**：P1 FHIR R4 连接器（`lib/connectors/fhir-r4-connector.mjs`）与 P2 CDA 文档通道（`lib/connectors/cda-document-connector.mjs`）PoC 已落地并通过合成回放 + 负向用例；P3 视图库 / P4 HL7 v2 仍未实现，真实院端联调待合作医院环境 |
+| 1 | **没有真实协议连接器**：当前桥接测试全部基于内存 fixture；FHIR server 为 experimental 且仅面向沙箱（`servers/fhir/README.md`）。国内 HIS 主流形态（HL7 v2 消息流、CDA 文档、集成平台/视图库中间表）均无适配器。 | **大部分关闭**：P1 FHIR R4（`lib/connectors/fhir-r4-connector.mjs`）、P2 CDA 文档通道（`lib/connectors/cda-document-connector.mjs`）、P3 视图库/中间库（`lib/connectors/viewdb-connector.mjs`，白名单标识符 + 强制参数化 SELECT + 租户/患者强制 WHERE）、P4 HL7 v2 消息订阅（`lib/connectors/hl7v2-connector.mjs`，ADT/ORU/RDE 确定性解析）四条路径 PoC 全部落地并通过合成回放 + 负向用例；真实院端联调待合作医院环境 |
 | 2 | **院内部署拓扑未成文**：mTLS 双向认证、前置机/院内网关、密钥轮换仍停留在 `PRIVACY-SECURITY.md` 的「目标」列。 | **部分关闭**：部署拓扑、分区与密钥轮换基线已写入 `docs/ops/PRODUCTIZATION-OPERATIONS.md` §3；mTLS 证书体系落地待院方网络评审 |
 | 3 | **R18/R19 未启动**：个保法 PIA 与医院合作协议数据条款模板均为 ⬜，而它们阻塞一切真实患者数据进入管线。 | 未关闭（阻塞不变） |
 | 4 | **Shadow Mode 真实数据的注册证据链未定义**：静默试点产生的真实数据如何合法地支撑 Phase 3 临床评价（伦理、去标识化、与合成 batch01 的区隔）没有成文 SOP。 | 未关闭（R29 待启动） |
@@ -34,8 +34,8 @@
 |---|---|---|---|---|
 | **P1 FHIR R4 只读** | 已建集成平台/互联网医院或评级 4 级以上院区 | 医院 FHIR 端点（SMART on FHIR / OIDC） | 沿用 `.mcp.json` 只读 FHIR server；禁止 write 工具指向生产 EHR | 高（标准最全） |
 | **P2 CDA/文档通道** | 电子病历评级达标院区的出院记录、病历文档 | `doc-extract` 支持的 CDA/XML/PDF/DOCX | 文档原文 span 必须保留供 `clinical-note-extract` 绑定 | 高（覆盖面最广） |
-| **P3 视图库/中间库** | 多数存量 HIS：信息科提供只读视图 | 集成平台视图库、中间库只读账号 | SQL 只读角色、白名单字段、行级租户过滤；禁止直连生产库 | 中（需信息科配合） |
-| **P4 HL7 v2 消息订阅** | 有集成引擎（ADT/ORU/RDE^O11）的院区 | 消息队列/引擎旁路订阅 | 仅消费不回发 ACK 之外的任何报文；消息体先过 PHI Guard 再落盘 | 中低（解析成本高） |
+| **P3 视图库/中间库** | 多数存量 HIS：信息科提供只读视图 | 集成平台视图库、中间库只读账号 | SQL 只读角色、白名单字段、行级租户过滤；禁止直连生产库 | 中（需信息科配合）——PoC 已落地（`viewdb-connector.mjs`，CI 第 39 步） |
+| **P4 HL7 v2 消息订阅** | 有集成引擎（ADT/ORU/RDE^O11）的院区 | 消息队列/引擎旁路订阅 | 仅消费不回发 ACK 之外的任何报文；消息体先过 PHI Guard 再落盘 | 中低（解析成本高）——PoC 已落地（`hl7v2-connector.mjs`，CI 第 39 步） |
 
 **统一规则**：无论哪条路径，连接器都只允许 `capabilities: ["read"]`；暴露 `create/update/delete/patch/write` 任一方法的连接器在初始化即被拒绝（现有负向用例已覆盖）。**Codex manifest 永不添加 `create_resource` / `update_resource`**（AGENTS.md 红线，不可为真实接入让步）。
 
@@ -46,7 +46,7 @@
 1. **出口即脱敏**：PHI Guard 从「模型上下文前」前移到「连接器出口」——原始姓名/证件号在离开连接器进程前完成假名化，院内网关层即时假名化（与 `evals/shadow-mode/shadow-protocol.md` 的承诺一致）。原文仅在院内进程内存中瞬时存在。**实现**：`lib/connectors/phi-exit-guard.mjs`（`withPhiExitGuard(connector, { salt })`，假名化 + assert 双模式，fail-closed）。
 2. **来源必要性矩阵**：`requiredKinds` 按 workflow 显式声明（查房摘要 = patient/encounter/lis/his），必要来源失败整体 fail-closed，非必要来源降级为 `unavailable_sources` 并在输出中显式列出——此行为已有，需为每条真实路径补配置文件而非硬编码。
 3. **快照与重放**：每次真实拉取的信封（含 payload SHA-256、source_version、fetched_at）落审计链事件，支持事后以同 hash 合成 fixture 回放回归——真实数据本身不进 git，只进院内审计库。**回放 fixture**：`fixtures/connectors/fhir-r4-replay.json` 与 `cda-replay.json`（全合成）。
-4. **验收方式**：每条真实连接器必须附带①合成回放 fixture（结构与真实报文同构、内容全合成）②针对 `tests/test-clinical-closure.mjs` 风格的负向用例（写方法拒绝、上下文缺失 fail-closed、PHI 泄漏阻断）。**已验收**：`tests/test-real-connectors.mjs` 9 用例全绿并纳入 `run-all-checks.mjs` 第 27 步。
+4. **验收方式**：每条真实连接器必须附带①合成回放 fixture（结构与真实报文同构、内容全合成）②针对 `tests/test-clinical-closure.mjs` 风格的负向用例（写方法拒绝、上下文缺失 fail-closed、PHI 泄漏阻断）。**已验收**：`tests/test-real-connectors.mjs`（P1/P2）与 `tests/test-real-data-channels.mjs`（P3/P4，含 SQL 注入拒绝、报文级失败关闭、PHI 出口守卫）全绿，分别纳入 `run-all-checks.mjs` 第 27 / 39 步。
 
 ### 2.3 写回边界（不变式，重申）
 

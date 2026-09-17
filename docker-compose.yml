@@ -1,0 +1,50 @@
+# Medcius 前置机编排（缺口六）
+# 用法：
+#   沙箱评估（无 TLS、无真实数据）:  docker compose up medcius-sandbox
+#   医院生产（TLS + 密钥注入）:      docker compose --profile hospital up medcius
+# 纪律：密钥与数据只经挂载/env 注入，不进镜像层；C 档全托管 LLM 拓扑在配置校验层直接拒绝。
+
+services:
+  medcius-sandbox:
+    image: medcius:0.7.0-pilot
+    build: .
+    profiles: ["sandbox"]
+    ports:
+      - "8080:8080"
+    environment:
+      NODE_ENV: development
+      MEDCIUS_PROFILE: demo
+      MEDCIUS_ALLOW_ANONYMOUS: "true"
+      MEDCIUS_LLM_TOPOLOGY: "A"
+      MEDCIUS_LLM_ENDPOINT: "http://host.docker.internal:11434/v1"
+      MEDCIUS_LLM_MODEL_ID: "local-model"
+      MEDCIUS_LLM_MODEL_VERSION: "dev"
+      MEDCIUS_LLM_PROMPT_PACK_VERSION: "dev"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  medcius:
+    image: medcius:0.7.0-pilot
+    build: .
+    profiles: ["hospital"]
+    restart: unless-stopped
+    ports:
+      - "8443:8443"
+    env_file:
+      - ./deploy/medcius.env        # 由 deploy/medcius.env.template 复制后经密钥管理系统填充
+    volumes:
+      - /opt/medcius/data:/opt/medcius/data          # 审计链 + 语料库（append-only，院内留存）
+      - /opt/medcius/backups:/opt/medcius/backups
+      - /opt/medcius/tls:/opt/medcius/tls:ro         # 院方签发证书（TLS 强制）
+      - /opt/medcius/rules:/opt/medcius/rules:ro     # 院内审批规则包（具名/版本化）
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('https://127.0.0.1:8443/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start-period: 20s
+      retries: 3
+    # 加固声明：容器内非 root（见 Dockerfile USER）；只读文件系统可按需追加
+    # read_only: true（数据目录已外置挂载）

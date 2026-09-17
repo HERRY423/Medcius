@@ -1,0 +1,1366 @@
+{
+  "generated_at": "deterministic-replay",
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "noise_floor": 0.65,
+  "case_count": 10,
+  "results": {
+    "clean": {
+      "notes_exact": 30,
+      "fields_passed": 72,
+      "fields_total": 72,
+      "per_note": {
+        "01-allergy-negation#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "02-family-history#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "03-uncertain-admission#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "04-admission-vs-discharge#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "05-prior-vs-current-procedure#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "06-planned-procedure#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "07-negative-physical-exam#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "08-prophylaxis-not-diagnosis#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "09-lab-not-complication#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "10-rule-out-mi#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "01-allergy-negation#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "02-family-history#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "03-uncertain-admission#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "04-admission-vs-discharge#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "05-prior-vs-current-procedure#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "06-planned-procedure#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "07-negative-physical-exam#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "08-prophylaxis-not-diagnosis#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "09-lab-not-complication#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "10-rule-out-mi#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "01-allergy-negation#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "02-family-history#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "03-uncertain-admission#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "04-admission-vs-discharge#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "05-prior-vs-current-procedure#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "06-planned-procedure#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "07-negative-physical-exam#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "08-prophylaxis-not-diagnosis#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "09-lab-not-complication#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "10-rule-out-mi#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        }
+      },
+      "note_exact_rate": {
+        "point": 1,
+        "low": 0.8864870159728182,
+        "high": 1,
+        "str": "100.0% [88.6%~100.0%]"
+      },
+      "field_rate": 1
+    },
+    "heading_variants": {
+      "notes_exact": 30,
+      "fields_passed": 72,
+      "fields_total": 72,
+      "per_note": {
+        "01-allergy-negation#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "02-family-history#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "03-uncertain-admission#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "04-admission-vs-discharge#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "05-prior-vs-current-procedure#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "06-planned-procedure#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "07-negative-physical-exam#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "08-prophylaxis-not-diagnosis#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "09-lab-not-complication#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "10-rule-out-mi#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "01-allergy-negation#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "02-family-history#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "03-uncertain-admission#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "04-admission-vs-discharge#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "05-prior-vs-current-procedure#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "06-planned-procedure#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "07-negative-physical-exam#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "08-prophylaxis-not-diagnosis#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "09-lab-not-complication#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "10-rule-out-mi#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "01-allergy-negation#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "02-family-history#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "03-uncertain-admission#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "04-admission-vs-discharge#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "05-prior-vs-current-procedure#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "06-planned-procedure#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "07-negative-physical-exam#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "08-prophylaxis-not-diagnosis#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "09-lab-not-complication#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "10-rule-out-mi#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        }
+      },
+      "note_exact_rate": {
+        "point": 1,
+        "low": 0.8864870159728182,
+        "high": 1,
+        "str": "100.0% [88.6%~100.0%]"
+      },
+      "field_rate": 1
+    },
+    "whitespace_chaos": {
+      "notes_exact": 29,
+      "fields_passed": 71,
+      "fields_total": 72,
+      "per_note": {
+        "01-allergy-negation#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "02-family-history#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "03-uncertain-admission#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "04-admission-vs-discharge#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "05-prior-vs-current-procedure#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "06-planned-procedure#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "07-negative-physical-exam#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "08-prophylaxis-not-diagnosis#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "09-lab-not-complication#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "10-rule-out-mi#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "01-allergy-negation#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "02-family-history#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "03-uncertain-admission#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "04-admission-vs-discharge#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "05-prior-vs-current-procedure#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "06-planned-procedure#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "07-negative-physical-exam#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "08-prophylaxis-not-diagnosis#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "09-lab-not-complication#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "10-rule-out-mi#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "01-allergy-negation#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "02-family-history#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "03-uncertain-admission#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "04-admission-vs-discharge#s3": {
+          "exact": false,
+          "field_rate": 0.75,
+          "failures": [
+            "discharge_diagnosis_other missing 高血压"
+          ]
+        },
+        "05-prior-vs-current-procedure#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "06-planned-procedure#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "07-negative-physical-exam#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "08-prophylaxis-not-diagnosis#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "09-lab-not-complication#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "10-rule-out-mi#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        }
+      },
+      "note_exact_rate": {
+        "point": 0.9666666666666667,
+        "low": 0.8332964888157486,
+        "high": 0.9940913927588815,
+        "str": "96.7% [83.3%~99.4%]"
+      },
+      "field_rate": 0.9861111111111112
+    },
+    "section_reorder": {
+      "notes_exact": 30,
+      "fields_passed": 72,
+      "fields_total": 72,
+      "per_note": {
+        "01-allergy-negation#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "02-family-history#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "03-uncertain-admission#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "04-admission-vs-discharge#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "05-prior-vs-current-procedure#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "06-planned-procedure#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "07-negative-physical-exam#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "08-prophylaxis-not-diagnosis#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "09-lab-not-complication#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "10-rule-out-mi#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "01-allergy-negation#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "02-family-history#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "03-uncertain-admission#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "04-admission-vs-discharge#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "05-prior-vs-current-procedure#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "06-planned-procedure#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "07-negative-physical-exam#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "08-prophylaxis-not-diagnosis#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "09-lab-not-complication#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "10-rule-out-mi#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "01-allergy-negation#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "02-family-history#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "03-uncertain-admission#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "04-admission-vs-discharge#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "05-prior-vs-current-procedure#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "06-planned-procedure#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "07-negative-physical-exam#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "08-prophylaxis-not-diagnosis#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "09-lab-not-complication#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "10-rule-out-mi#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        }
+      },
+      "note_exact_rate": {
+        "point": 1,
+        "low": 0.8864870159728182,
+        "high": 1,
+        "str": "100.0% [88.6%~100.0%]"
+      },
+      "field_rate": 1
+    },
+    "ocr_confusion": {
+      "notes_exact": 30,
+      "fields_passed": 72,
+      "fields_total": 72,
+      "per_note": {
+        "01-allergy-negation#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "02-family-history#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "03-uncertain-admission#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "04-admission-vs-discharge#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "05-prior-vs-current-procedure#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "06-planned-procedure#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "07-negative-physical-exam#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "08-prophylaxis-not-diagnosis#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "09-lab-not-complication#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "10-rule-out-mi#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "01-allergy-negation#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "02-family-history#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "03-uncertain-admission#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "04-admission-vs-discharge#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "05-prior-vs-current-procedure#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "06-planned-procedure#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "07-negative-physical-exam#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "08-prophylaxis-not-diagnosis#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "09-lab-not-complication#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "10-rule-out-mi#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "01-allergy-negation#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "02-family-history#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "03-uncertain-admission#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "04-admission-vs-discharge#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "05-prior-vs-current-procedure#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "06-planned-procedure#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "07-negative-physical-exam#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "08-prophylaxis-not-diagnosis#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "09-lab-not-complication#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "10-rule-out-mi#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        }
+      },
+      "note_exact_rate": {
+        "point": 1,
+        "low": 0.8864870159728182,
+        "high": 1,
+        "str": "100.0% [88.6%~100.0%]"
+      },
+      "field_rate": 1
+    },
+    "abbreviation_dialect": {
+      "notes_exact": 22,
+      "fields_passed": 64,
+      "fields_total": 72,
+      "per_note": {
+        "01-allergy-negation#s1": {
+          "exact": false,
+          "field_rate": 0.75,
+          "failures": [
+            "procedures missing 腹腔镜胆囊切除"
+          ]
+        },
+        "02-family-history#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "03-uncertain-admission#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "04-admission-vs-discharge#s1": {
+          "exact": false,
+          "field_rate": 0.75,
+          "failures": [
+            "admission_diagnosis missing 急性阑尾炎"
+          ]
+        },
+        "05-prior-vs-current-procedure#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "06-planned-procedure#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "07-negative-physical-exam#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "08-prophylaxis-not-diagnosis#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "09-lab-not-complication#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "10-rule-out-mi#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "01-allergy-negation#s2": {
+          "exact": false,
+          "field_rate": 0.75,
+          "failures": [
+            "procedures missing 腹腔镜胆囊切除"
+          ]
+        },
+        "02-family-history#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "03-uncertain-admission#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "04-admission-vs-discharge#s2": {
+          "exact": false,
+          "field_rate": 0.75,
+          "failures": [
+            "admission_diagnosis missing 急性阑尾炎"
+          ]
+        },
+        "05-prior-vs-current-procedure#s2": {
+          "exact": false,
+          "field_rate": 0,
+          "failures": [
+            "procedures missing 腹腔镜胆囊切除"
+          ]
+        },
+        "06-planned-procedure#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "07-negative-physical-exam#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "08-prophylaxis-not-diagnosis#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "09-lab-not-complication#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "10-rule-out-mi#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "01-allergy-negation#s3": {
+          "exact": false,
+          "field_rate": 0.75,
+          "failures": [
+            "procedures missing 腹腔镜胆囊切除"
+          ]
+        },
+        "02-family-history#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "03-uncertain-admission#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "04-admission-vs-discharge#s3": {
+          "exact": false,
+          "field_rate": 0.75,
+          "failures": [
+            "admission_diagnosis missing 急性阑尾炎"
+          ]
+        },
+        "05-prior-vs-current-procedure#s3": {
+          "exact": false,
+          "field_rate": 0,
+          "failures": [
+            "procedures missing 腹腔镜胆囊切除"
+          ]
+        },
+        "06-planned-procedure#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "07-negative-physical-exam#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "08-prophylaxis-not-diagnosis#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "09-lab-not-complication#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "10-rule-out-mi#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        }
+      },
+      "note_exact_rate": {
+        "point": 0.7333333333333333,
+        "low": 0.5555207595907147,
+        "high": 0.8581731811966001,
+        "str": "73.3% [55.6%~85.8%]"
+      },
+      "field_rate": 0.8888888888888888
+    },
+    "scan_artifacts": {
+      "notes_exact": 30,
+      "fields_passed": 72,
+      "fields_total": 72,
+      "per_note": {
+        "01-allergy-negation#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "02-family-history#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "03-uncertain-admission#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "04-admission-vs-discharge#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "05-prior-vs-current-procedure#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "06-planned-procedure#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "07-negative-physical-exam#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "08-prophylaxis-not-diagnosis#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "09-lab-not-complication#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "10-rule-out-mi#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "01-allergy-negation#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "02-family-history#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "03-uncertain-admission#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "04-admission-vs-discharge#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "05-prior-vs-current-procedure#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "06-planned-procedure#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "07-negative-physical-exam#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "08-prophylaxis-not-diagnosis#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "09-lab-not-complication#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "10-rule-out-mi#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "01-allergy-negation#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "02-family-history#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "03-uncertain-admission#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "04-admission-vs-discharge#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "05-prior-vs-current-procedure#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "06-planned-procedure#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "07-negative-physical-exam#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "08-prophylaxis-not-diagnosis#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "09-lab-not-complication#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "10-rule-out-mi#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        }
+      },
+      "note_exact_rate": {
+        "point": 1,
+        "low": 0.8864870159728182,
+        "high": 1,
+        "str": "100.0% [88.6%~100.0%]"
+      },
+      "field_rate": 1
+    },
+    "combined": {
+      "notes_exact": 20,
+      "fields_passed": 59,
+      "fields_total": 72,
+      "per_note": {
+        "01-allergy-negation#s1": {
+          "exact": false,
+          "field_rate": 0.5,
+          "failures": [
+            "admission_diagnosis missing 急性胆囊炎",
+            "admission_diagnosis.presence=undefined want present",
+            "procedures missing 腹腔镜胆囊切除"
+          ]
+        },
+        "02-family-history#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "03-uncertain-admission#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "04-admission-vs-discharge#s1": {
+          "exact": false,
+          "field_rate": 0.75,
+          "failures": [
+            "admission_diagnosis missing 急性阑尾炎"
+          ]
+        },
+        "05-prior-vs-current-procedure#s1": {
+          "exact": false,
+          "field_rate": 0,
+          "failures": [
+            "procedures missing 腹腔镜胆囊切除"
+          ]
+        },
+        "06-planned-procedure#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "07-negative-physical-exam#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "08-prophylaxis-not-diagnosis#s1": {
+          "exact": false,
+          "field_rate": 0.5,
+          "failures": [
+            "procedures missing 人工股骨头置换"
+          ]
+        },
+        "09-lab-not-complication#s1": {
+          "exact": false,
+          "field_rate": 0.5,
+          "failures": [
+            "admission_diagnosis missing 2 型糖尿病"
+          ]
+        },
+        "10-rule-out-mi#s1": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "01-allergy-negation#s2": {
+          "exact": false,
+          "field_rate": 0.75,
+          "failures": [
+            "procedures missing 腹腔镜胆囊切除"
+          ]
+        },
+        "02-family-history#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "03-uncertain-admission#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "04-admission-vs-discharge#s2": {
+          "exact": false,
+          "field_rate": 0.5,
+          "failures": [
+            "admission_diagnosis missing 急性阑尾炎",
+            "discharge_diagnosis_other missing 高血压"
+          ]
+        },
+        "05-prior-vs-current-procedure#s2": {
+          "exact": false,
+          "field_rate": 0,
+          "failures": [
+            "procedures missing 腹腔镜胆囊切除"
+          ]
+        },
+        "06-planned-procedure#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "07-negative-physical-exam#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "08-prophylaxis-not-diagnosis#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "09-lab-not-complication#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "10-rule-out-mi#s2": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "01-allergy-negation#s3": {
+          "exact": false,
+          "field_rate": 0.75,
+          "failures": [
+            "procedures missing 腹腔镜胆囊切除"
+          ]
+        },
+        "02-family-history#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "03-uncertain-admission#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "04-admission-vs-discharge#s3": {
+          "exact": false,
+          "field_rate": 0.5,
+          "failures": [
+            "admission_diagnosis missing 急性阑尾炎",
+            "discharge_diagnosis_other missing 高血压"
+          ]
+        },
+        "05-prior-vs-current-procedure#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "06-planned-procedure#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "07-negative-physical-exam#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "08-prophylaxis-not-diagnosis#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "09-lab-not-complication#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        },
+        "10-rule-out-mi#s3": {
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
+        }
+      },
+      "note_exact_rate": {
+        "point": 0.6666666666666666,
+        "low": 0.4878008769260288,
+        "high": 0.8076947950649104,
+        "str": "66.7% [48.8%~80.8%]"
+      },
+      "field_rate": 0.8194444444444444
+    }
+  }
+}

@@ -7,6 +7,7 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseCnNote } from "../../lib/parse-cn-note.mjs";
+import { buildRecordQualityReport } from "../../lib/nhsa-record-quality-engine.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PLUGIN = join(__dirname, "../..");
@@ -194,6 +195,49 @@ async function gradeOne(c, tools) {
     if (c.id === "prescription-02-g3-no-query") {
       return skip(c, "needs_agent: protocol gate, no tool call when query_done=false");
     }
+    if (c.id.startsWith("rq-") && c.id !== "rq-07-catalog-restriction-hint" && c.id !== "rq-09-catalog-restriction-match") {
+      const r = buildRecordQualityReport(c.input.note_excerpt, { diagnosis_codes: c.input.diagnosis_codes ?? [] });
+      const got = {
+        element_gaps: r.element_gaps.map((f) => f.code),
+        algebra_conflicts: r.algebra_conflicts.map((f) => f.code),
+        legality_conflicts: r.legality_conflicts.map((f) => f.code),
+        advisory_hints: r.advisory_hints.map((f) => f.code),
+      };
+      const detail = { check_status: r.check_status, got };
+      let ok = true;
+      for (const [pool, expected] of Object.entries(c.input.expect ?? {})) {
+        const missing = (expected ?? []).filter((code) => !(got[pool] ?? []).includes(code));
+        if (missing.length) { ok = false; (detail.missing ??= {})[pool] = missing; }
+      }
+      for (const [pool, banned] of Object.entries(c.input.expect_absent ?? {})) {
+        const leaked = (banned ?? []).filter((code) => (got[pool] ?? []).includes(code));
+        if (leaked.length) { ok = false; (detail.leaked ??= {})[pool] = leaked; }
+      }
+      if (r.boundary?.is_drg_dip_grouper !== false || r.boundary?.outputs_coding_suggestions !== false) {
+        ok = false;
+        detail.boundary = "boundary flags violated";
+      }
+      return done(c, ok, detail);
+    }
+    if (c.id === "rq-07-catalog-restriction-hint" || c.id === "rq-09-catalog-restriction-match") {
+      const v = CC.check_catalog_restriction({
+        drug_name: c.input.drug_name,
+        diagnosis_terms: c.input.diagnosis_terms,
+        include_samples: true,
+      });
+      const serialized = JSON.stringify(v ?? {});
+      let ok;
+      if (c.id === "rq-07-catalog-restriction-hint") {
+        ok = v?.status === "restriction_review_needed"
+          && (v.matched_terms ?? []).length === 0
+          && !/不能报销|医保违规|不予支付/.test(serialized);
+      } else {
+        ok = v?.status === "restriction_keyword_match"
+          && (v.matched_terms ?? []).includes("二线治疗")
+          && !/可报销|准予支付/.test(serialized);
+      }
+      return done(c, ok, v);
+    }
     return skip(c, "needs_agent");
   } catch (e) {
     return done(c, false, { error: String(e.message ?? e) });
@@ -263,12 +307,12 @@ const summary = {
   total: scored.length,
   pass_rate_graded: graded ? pass / graded : 0,
   pass_rate_all: scored.length ? pass / scored.length : 0,
-  engineering_pass: fail === 0 && pass === 27,
+  engineering_pass: fail === 0 && pass >= 27,
   synthetic_validation_pass: fail === 0,
   clinical_evidence_pass: false, // Deterministic grader is synthetic test, NEVER clinical evidence
 };
 process.stdout.write(`${JSON.stringify({ summary, items: scored.map((s) => ({ id: s.id, verdict: s.verdict })) }, null, 2)}\n`);
 if (fail > 0 || pass < 27) {
-  console.error(`\n[CRITICAL] Grader failed: ${fail} failures, only ${pass}/27 required deterministic cases passed.`);
+  console.error(`\n[CRITICAL] Grader failed: ${fail} failures, only ${pass} deterministic cases passed (minimum 27 required).`);
   process.exit(1);
 }

@@ -9,9 +9,10 @@ plugins/medcius/evals/china-skills/
   cases/
     nhsa-coding.json            # 6：裸类目/.8≠.9/CCHI/版本未知/本地库停机/不确定诊断
     nhsa-policy.json            # 7：在目录≠报销/L3无出处/L4禁给数/省目录误解/限定范围/跨省/谈判药过期
-    prescription-review.json    # 14：G1/G2/G3、样例、妊娠、重复用药、肾功能
-    nmpa-and-trials.json        # 批准文号格式/无库不编文号/CTR 查库/默示许可不得冒充登记
-    clinical-note-extract.json  # 10：过敏否定/家族史/疑似入院/入院≠出院/既往手术/拟行手术/阴性体征/预防≠诊断/化验≠并发症/排除心梗
+    prescription-review.json    # 19：G1/G2/G3、样例、妊娠、重复用药、肾功能
+    nmpa-and-trials.json        # 9：批准文号格式/无库不编文号/CTR 查库/默示许可不得冒充登记
+    clinical-note-extract.json  # 12：过敏否定/家族史/疑似入院/入院≠出院/既往手术/拟行手术/阴性体征/预防≠诊断/化验≠并发症/排除心梗/门诊/肾功能单位
+    record-quality.json         # 10：主诊断缺失/离院方式值域/住院天数代数/死亡文书一致性/性别-产科冲突/费用代数/限定支付关键词≠判定/年龄-新生儿冲突/关键词命中≠可报销/死亡文书不误报
   run.mjs                       # 运行器（本目录）
   results/                      # Agent 自评结果落盘（gitignore，可选）
 ```

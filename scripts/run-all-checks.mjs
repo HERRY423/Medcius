@@ -50,6 +50,14 @@ const steps = [
   { name: "37. Multi-Department Real-World Shadow Study & Time-Motion Analyzer", cmd: "node", args: ["plugins/medcius/evals/shadow-mode/real-world-study-protocol.mjs"] },
   { name: "38. P0 Clinical Landing: HIS Embed, Frozen Skills, View Library, Silent Pilot, Stopwatch", cmd: "node", args: ["tests/test-p0-clinical-landing.mjs"] },
   { name: "39. Evaluation Findings Rectification: Claim Verifier, Lab NLP, LIS/NIS & PHI (F-01 to F-14)", cmd: "node", args: ["tests/test-core-findings-rectification.mjs"] },
+  { name: "40. Workflow Pack: NHSA Record Quality & Settlement-List Element Checks", cmd: "node", args: ["tests/test-nhsa-record-quality.mjs"] },
+  { name: "41. Real-Data Channels: P3 View-DB / P4 HL7 v2 Read-Only Connectors & PHI Exit Guard", cmd: "node", args: ["tests/test-real-data-channels.mjs"] },
+  { name: "42. Real-World Noise Robustness Benchmark & Desensitized-Data Ingest Gate", cmd: "node", args: ["plugins/medcius/evals/real-world-noise/run-noise-benchmark.mjs"] },
+  { name: "43. Noise Benchmark & Real-Data Ingest Channel Unit Tests", cmd: "node", args: ["tests/test-noise-benchmark.mjs"] },
+  { name: "44. Doctor Workstation: Directory Auth, Governance-Gated Reports & CA Signoff", cmd: "node", args: ["tests/test-doctor-workstation.mjs"] },
+  { name: "45. Corpus Supply Chain: Official-Source Registry & Freshness SLA (informational)", cmd: "node", args: ["scripts/corpus-freshness.mjs"] },
+  { name: "46. Corpus Supply Chain & Regulatory Readiness: Fetch Pipeline, Reconciliation, Classification Gate, Executable Audit", cmd: "node", args: ["tests/test-corpus-supply-chain.mjs"] },
+  { name: "47. Runtime Product Form: Container Discipline, Deployer, Resident Probe, LLM Config Management", cmd: "node", args: ["tests/test-deployment-runtime.mjs"] },
 ];
 
 console.log("================================================================================");

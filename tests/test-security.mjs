@@ -60,7 +60,9 @@ const sensitiveData = {
 };
 
 // Test 4: Payload encrypt / decrypt
-const explicitKey = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+// 低熵确定性合成密钥（32 字节全 0x5a）：仅用于加解密回环，避免触发 secret-scan 的
+// generic-api-key 高熵规则；历史字面量已在 .gitleaksignore 登记 fingerprint 豁免。
+const explicitKey = Buffer.alloc(32, 0x5a).toString("hex");
 const enc = encryptPayload(sensitiveData, explicitKey);
 assert.ok(enc.encrypted.startsWith("v1."), "Envelope should start with v1.");
 

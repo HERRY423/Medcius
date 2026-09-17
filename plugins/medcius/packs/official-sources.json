@@ -1,0 +1,90 @@
+{
+  "_discipline": "官方语料来源登记表（缺口四：知识供应链）。医院数据专员按本表定期拉取并经 import-official.mjs 显式导入；本仓库永不自动 ingest 官方数据、永不分发官方语料文件。fetch-official-corpus.mjs 只做拉取/校验/暂存，导入始终是显式人工动作（对应 H01 生产门闩）。",
+  "_provenance_rule": "任何 official 行必须有 source_version + effective_date + 来源渠道记录（ARCH-03）；缺任一字段导入器拒绝。",
+  "sources": [
+    {
+      "id": "nhsa_icd10_diagnosis_codes",
+      "name": "国家医保局 医保版ICD-10 诊断编码库",
+      "authority": "国家医疗保障局",
+      "basis": "医疗保障信息业务编码标准（医保发〔2019〕55 号 及后续维护公告）",
+      "channel": "国家医保局 政务服务网 医疗保障信息业务编码标准数据库查询/下载页",
+      "channel_url": "https://code.nhsa.gov.cn/",
+      "update_cycle_days": 90,
+      "format": "csv-templates/codes",
+      "columns_template": "plugins/medcius/packs/templates/codes.csv",
+      "import_command": "node plugins/medcius/scripts/import-official.mjs --kind codes --file <staged.csv> --source '国家医保局编码库' --version <版本> --effective-date <生效日期>",
+      "target": "china-codes:nhsa_codes(code_type=diagnosis)",
+      "notes": "下载页数据为公开公示数据；导出后必须保留下载日期与页面版本说明。"
+    },
+    {
+      "id": "nhsa_procedure_codes",
+      "name": "国家医保局 医保版手术操作分类编码库（ICD-9-CM-3 基础）",
+      "authority": "国家医疗保障局",
+      "basis": "医疗保障信息业务编码标准（同上）",
+      "channel": "同上编码标准数据库",
+      "channel_url": "https://code.nhsa.gov.cn/",
+      "update_cycle_days": 90,
+      "format": "csv-templates/codes",
+      "columns_template": "plugins/medcius/packs/templates/codes.csv",
+      "import_command": "node plugins/medcius/scripts/import-official.mjs --kind codes --file <staged.csv> --source '国家医保局编码库' --version <版本> --effective-date <生效日期>",
+      "target": "china-codes:nhsa_codes(code_type=procedure)",
+      "notes": "与诊断编码同一渠道；注意 CCHI（收费立项）不得导入本库。"
+    },
+    {
+      "id": "nhsa_drug_catalog",
+      "name": "国家医保药品目录（西药/中成药/谈判药，含限定支付范围）",
+      "authority": "国家医疗保障局（人社部移交后历次版）",
+      "basis": "国家基本医疗保险、工伤保险和生育保险药品目录（最新版通知及调整名单）",
+      "channel": "国家医保局官网 政策文件/公示公告 附件",
+      "channel_url": "https://www.nhsa.gov.cn/",
+      "update_cycle_days": 365,
+      "format": "csv-templates/catalog",
+      "columns_template": "plugins/medcius/packs/templates/catalog.csv",
+      "import_command": "node plugins/medcius/scripts/import-official.mjs --kind catalog --file <staged.csv> --source '国家医保药品目录' --version <版本年份> --effective-date <生效日期>",
+      "target": "china-codes:nhsa_drug_catalog",
+      "notes": "限定支付范围原文必须保留原文列，不得摘要改写（check_catalog_restriction 依赖原文做关键词提示）。"
+    },
+    {
+      "id": "nhsa_medical_service_items",
+      "name": "医疗服务项目目录（诊疗项目，含价格构成）",
+      "authority": "国家医疗保障局 / 各省医保局",
+      "basis": "医疗服务项目目录（国家基线 + 省级增补/定价）",
+      "channel": "国家医保局及属地省医保局官网",
+      "channel_url": "https://www.nhsa.gov.cn/",
+      "update_cycle_days": 365,
+      "format": "external-only",
+      "columns_template": null,
+      "import_command": null,
+      "target": "暂未建表（2026-08 评估：诊疗项目目录结构差异大，待医院真实结算场景确认字段后建 nhsa_service_items 表）",
+      "notes": "当前仅登记来源与周期作为知识供应链盘点；建表前不做导入。"
+    },
+    {
+      "id": "nmpa_drug_labels",
+      "name": "药品说明书（NMPA 核准）",
+      "authority": "国家药品监督管理局",
+      "basis": "药品说明书和标签管理规定（局令第 24 号）及历次核准公告",
+      "channel": "NMPA 官网数据查询 / 药品说明书数据库（或采购授权数据库）",
+      "channel_url": "https://www.nmpa.gov.cn/",
+      "update_cycle_days": 180,
+      "format": "csv-templates/labels",
+      "columns_template": "plugins/medcius/servers/drug-labels/assets/PACK.md",
+      "import_command": "node plugins/medcius/scripts/import-official.mjs --kind labels --file <staged.csv> --source 'NMPA/医院药学部' --version <版本> --effective-date <生效日期>",
+      "target": "drug-labels",
+      "notes": "获取路径与授权决策见 packs/CORPUS-SOURCING-DECISION.md；未获授权前不得转售/再分发数据库内容。"
+    },
+    {
+      "id": "provincial_benefits_l3",
+      "name": "省级医保待遇（起付线/比例/门诊慢特病，L3 摘录）",
+      "authority": "各省医疗保障局",
+      "basis": "属地医保待遇政策文件",
+      "channel": "属地省医保局官网政策文件",
+      "channel_url": "https://www.nhsa.gov.cn/",
+      "update_cycle_days": 180,
+      "format": "json-benefits",
+      "columns_template": "plugins/medcius/packs/README.md",
+      "import_command": "随 codes JSON 包 benefits 数组导入（见 packs/README.md）",
+      "target": "china-codes:provincial_benefits",
+      "notes": "L3 仅摘录级；L4 个体待遇永不入库（禁给个体金额）。"
+    }
+  ]
+}

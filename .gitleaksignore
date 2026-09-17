@@ -1,0 +1,8 @@
+# gitleaks 历史/合成豁免清单（每行一条指纹；# 开头为注释）
+#
+# 1) tests/test-security.mjs:61 — AES-256-GCM 加解密回环测试的显式密钥。
+#    值为 "0123456789abcdef" 重复 4 遍的确定性合成模式，不是真实凭据；
+#    引入于 1828a2e（feat: release Phase 1 architecture）。历史提交无法重写，
+#    故按 gitleaks 官方方式登记 fingerprint 豁免；该行本身也已改为低熵合成值，
+#    未来不再触发 generic-api-key 规则。
+1828a2ed5d1a09b482ba8418ec2343c89ba4153c:tests/test-security.mjs:generic-api-key:61

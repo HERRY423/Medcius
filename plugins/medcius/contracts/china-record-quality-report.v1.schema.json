@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://medcius.local/schemas/china-record-quality-report.v1.schema.json",
+  "title": "Medcius NHSA Record Quality Report",
+  "description": "Deterministic data-quality findings over a Chinese clinical record / NHSA settlement-list text. It is not a DRG/DIP grouping result, not a coding suggestion, not a reimbursement adjudication, and not a medical-record final audit.",
+  "type": "object",
+  "required": ["schema_version", "check_status", "summary", "element_gaps", "algebra_conflicts", "legality_conflicts", "advisory_hints", "boundary"],
+  "properties": {
+    "schema_version": { "const": "medcius.nhsa-record-quality-report.v1" },
+    "check_status": { "enum": ["pass", "incomplete", "action_needed"] },
+    "summary": {
+      "type": "object",
+      "required": ["element_gap_count", "algebra_conflict_count", "legality_conflict_count", "advisory_hint_count", "rule_pack"],
+      "properties": {
+        "element_gap_count": { "type": "integer", "minimum": 0 },
+        "algebra_conflict_count": { "type": "integer", "minimum": 0 },
+        "legality_conflict_count": { "type": "integer", "minimum": 0 },
+        "advisory_hint_count": { "type": "integer", "minimum": 0 },
+        "rule_pack": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "element_gaps": { "$ref": "#/$defs/findings" },
+    "algebra_conflicts": { "$ref": "#/$defs/findings" },
+    "legality_conflicts": { "$ref": "#/$defs/findings" },
+    "advisory_hints": { "$ref": "#/$defs/findings" },
+    "parsed_context": {
+      "type": "object",
+      "properties": {
+        "note_type": { "type": ["string", "null"] },
+        "sex": { "type": ["string", "null"], "enum": ["male", "female", null] },
+        "age": { "type": ["number", "null"] },
+        "admission_date": { "type": ["string", "null"] },
+        "discharge_date": { "type": ["string", "null"] },
+        "recorded_stay_days": { "type": ["number", "null"] },
+        "computed_stay_days": { "type": ["number", "null"] },
+        "discharge_method": { "type": ["number", "null"], "enum": [1, 2, 3, 4, 5, 9, null] },
+        "fee_total": { "type": ["number", "null"] },
+        "fee_sum": { "type": ["number", "null"] },
+        "diagnosis_code_count": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "boundary": {
+      "type": "object",
+      "required": ["is_drg_dip_grouper", "outputs_coding_suggestions", "adjudicates_reimbursement", "affects_clinical_care", "note"],
+      "properties": {
+        "is_drg_dip_grouper": { "const": false },
+        "outputs_coding_suggestions": { "const": false },
+        "adjudicates_reimbursement": { "const": false },
+        "affects_clinical_care": { "const": false },
+        "note": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "disclaimer": { "type": "string" }
+  },
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "required": ["code", "severity", "message", "evidence"],
+      "properties": {
+        "code": {
+          "enum": [
+            "PRIMARY_DISCHARGE_DIAGNOSIS_MISSING",
+            "DISCHARGE_METHOD_MISSING",
+            "ENCOUNTER_DATE_MISSING",
+            "RECORDED_STAY_DAYS_MISSING",
+            "PROCEDURE_WITHOUT_SUPPORTING_DIAGNOSIS",
+            "STAY_DAYS_MISMATCH",
+            "FEE_TOTAL_UNBALANCED",
+            "DISCHARGE_METHOD_ILLEGAL",
+            "DEATH_METHOD_WITHOUT_DEATH_RECORD",
+            "DISCHARGE_BEFORE_ADMISSION",
+            "OBSTETRIC_DIAGNOSIS_SEX_CONFLICT",
+            "NEONATAL_DIAGNOSIS_AGE_CONFLICT",
+            "UNCERTAIN_PRIMARY_DIAGNOSIS",
+            "TUMOR_PATHOLOGY_HINT",
+            "EXTERNAL_CAUSE_HINT"
+          ]
+        },
+        "severity": { "enum": ["HIGH", "MEDIUM", "LOW"] },
+        "message": { "type": "string", "minLength": 1 },
+        "evidence": {
+          "type": "object",
+          "required": ["section", "span", "expected", "actual"],
+          "properties": {
+            "section": { "type": ["string", "null"] },
+            "span": { "type": ["string", "null"] },
+            "expected": {},
+            "actual": {}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } }
+  },
+  "additionalProperties": true
+}

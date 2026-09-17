@@ -43,3 +43,24 @@ JSON 包同样可用：`--file pack.json`（形状与各 server 的 ingest 契�
 **catalog.csv：** `通用名|药品名称|generic_name`，`甲乙类|类别|category`（甲类/乙类/谈判），`限定支付范围|payment_restriction`
 
 **labels.csv：** `通用名|generic_name`，`批准文号|approval_number`，`适应症`，`用法用量`，`禁忌`，`药物相互作用`，`source_version`，`effective_date`
+
+---
+
+## 官方语料供应链（2026-08-30，缺口四）
+
+来源、周期与导入路径统一登记在 `official-sources.json`（机器可校验）：
+
+```bash
+# 1) 校验并查看来源登记表（CI 第 43 门联动）
+node scripts/fetch-official-corpus.mjs --list
+
+# 2) 拉取到暂存区（含 sha256 + provenance sidecar；永不自动导入）
+node scripts/fetch-official-corpus.mjs --fetch nhsa_icd10_diagnosis_codes --out staging/
+
+# 3) 数据专员核对后按登记表 import_command 显式导入（source_version/effective_date 必填）
+node scripts/corpus-freshness.mjs                # 新鲜度 SLA 报告（informational）
+node scripts/corpus-freshness.mjs --require-fresh  # 院内部署硬门（overdue/empty 阻断）
+```
+
+纪律：拉取件 `provenance_status=raw_staged_unverified`，fetcher 不编造 source_version/effective_date；获取路径决策见 `CORPUS-SOURCING-DECISION.md`。
+

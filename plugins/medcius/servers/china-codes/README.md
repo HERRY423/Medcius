@@ -17,6 +17,10 @@
 | `validate_code` | `nhsa_codes/validate_code` | 校验编码完整性与版本可结算性 |
 | `search_drug_catalog` | `nhsa_drug_catalog/get_drug_catalog` | 检索药品目录（类别、支付限制） |
 | `corpus_status` | — | 库健康度、来源、版本快照审计 |
+| `check_settlement_list` | — | 结算清单机检：主诊断资格、性别限制、手术-诊断关键词匹配；不是 DRG 分组器 |
+| `search_provincial_benefit` | — | L3 省级待遇摘录（起付线/比例为来源摘录，不给个体金额） |
+| `check_record_quality` | — | 病案首页/结算清单要素质量核对（确定性）：必填要素缺口、住院天数/费用代数一致性、离院方式值域、性别/年龄-诊断章节冲突；不输出编码建议、不做分组、不判定医保违规 |
+| `check_catalog_restriction` | `nhsa_drug_catalog/get_drug_catalog` | 医保目录限定支付范围关键词提示；关键词包含关系 ≠ 医保结算判定，是否报销以经办机构核定为准 |
 
 所有返回均含 `code_system/code_version/effective_date/retrieved_at/source/validation_status` 六字段；版本缺失时 `validation_status` 永远不为 `valid`。
 
