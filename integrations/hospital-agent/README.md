@@ -59,9 +59,9 @@ console.log(result.summary.blocks);
 ### 2. REST API / CDS Hooks 接入
 
 医院 Agent 亦可通过本地/专网部署的 `plugins/medcius/servers/api` 接口：
-- `GET /api/v1/patient/evolution-summary?time_window=24h&patient_id=pat-001&encounter_id=enc-001`
+- `POST /api/v1/patient/evolution-summary` (JSON Body: `{ time_window, patient_id, encounter_id, ... }`)
 - `POST /api/v1/patient/progress-note-draft`
-- `POST /cds-services/medcius-patient-evolution` (CDS Hooks 2.0 `patient-view` 钩子)
+- `POST /cds-services/medcius-patient-evolution` (CDS Hooks 2.0 `patient-view` 钩子，需 Bearer Token 鉴权)
 
 ## 生产安全与合规要求
 

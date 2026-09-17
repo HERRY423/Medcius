@@ -67,10 +67,11 @@ Medcius 以“小而可验证的独立技能包”分步扩展，每个技能包
 
 ```text
 一线临床医生
-  │  提出任务 / 授权 / 核对证据 / 最终确认
+  │  打开 HIS 患者页（静默试点不弹窗）/ 授权 / 核对证据 / 最终确认
   ▼
-宿主 Agent
-  Codex · Trae · WorkBuddy/CodeBuddy · 医院自建 Agent
+临床入口（P0）
+  HIS 患者页内嵌 · 院内 SSO
+  （Codex · Trae · WorkBuddy 仅工程回放）
   │  按需加载技能并调用工具
   ▼
 Medcius Agent Plugin
@@ -162,9 +163,9 @@ Medcius Agent Plugin
 |---|---|---|
 | 插件工程 | 已有 Codex、Trae、WorkBuddy/CodeBuddy 适配与自动化检查 | 可安装、可发现、工具边界可测试 |
 | 合成验证 | 已有合成病例和参考工作流评测 | 可验证软件契约和失败路径 |
-| 真实 EHR 接入 | 具备真实连接器 PoC (FHIR/CDA) 与 mTLS 网关，待院端现场联调 | 不能声称已在真实生产医院完成上线验收 |
+| 真实 EHR 接入 | P1 FHIR / P2 CDA PoC + **P3 视图库只读连接器**；一线入口改为 HIS 内嵌/院内 SSO | 仍无院端生产联调；Codex 不是临床入口 |
 | 临床事实准确性 | 方案已定稿 (IRB/影子研究/双盲标注)，待真实入组数据 | 不能声称减少遗漏或提高准确率 |
-| 医生效率与人因 | 已建立 Time-Motion 与 NASA-TLX 测量引擎与基准 | 不能声称已在真实对照组中验证 |
+| 医生效率与人因 | 秒表协议已预注册「非劣 + 均节省 ≥90 秒」；合成 79% 被硬阻断为非临床证据 | 不能声称已在真实对照组中验证 |
 | 临床安全、泛化与监管 | 门禁严格阻断 (`clinical_evidence_pass: 🔒 BLOCKED`) | 不能声称临床就绪或规模化可用 |
 
 任何 `engineering_pass` 或 `synthetic_validation_pass` 都不能升级为 `clinical_evidence_pass`。

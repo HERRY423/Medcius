@@ -5,6 +5,7 @@
 import { splitSections, extractConTextAssertion } from "./parse-cn-note.mjs";
 import { HospitalDataAdapter, calculateEgfrCkdEpi } from "./hospital-data-adapter.mjs";
 import { trackHighRiskFollowup } from "./high-risk-followup-tracker.mjs";
+import { PostHocClaimVerifier } from "./post-hoc-verifier.mjs";
 
 export const ITEM_CATEGORIES = {
   FACT: "FACT",           // 【原文事实】
@@ -78,7 +79,7 @@ export class PatientEvolutionEngine {
     let nextItemId = 1;
     const genId = (prefix) => `${prefix}-${String(nextItemId++).padStart(3, "0")}`;
 
-    // 0. Multi-Source Normalization
+    // 0. Multi-Source Normalization (F-04, F-05, F-06)
     let normalizedVitals = null;
     let normalizedFluids = null;
     if (nursingFeed && nursingFeed.length > 0) {
@@ -89,10 +90,14 @@ export class PatientEvolutionEngine {
 
     let combinedObservations = [...observations];
     let topCriticalValues = [];
+    let adapterDataGaps = [];
     if (lisFeed && lisFeed.length > 0) {
       const lisResult = HospitalDataAdapter.normalizeLisFeed(lisFeed, { rulePack });
       combinedObservations.push(...lisResult.observations);
       topCriticalValues.push(...lisResult.critical_values);
+      if (lisResult.data_gaps?.length > 0) {
+        adapterDataGaps.push(...lisResult.data_gaps);
+      }
     }
 
     let combinedReports = [...diagnosticReports];
@@ -568,6 +573,25 @@ export class PatientEvolutionEngine {
       });
     }
 
+    // Check Multi-Source Adapter Data Gaps (F-04, F-06)
+    if (adapterDataGaps && adapterDataGaps.length > 0) {
+      for (const adGap of adapterDataGaps) {
+        gaps.push({
+          id: genId("GAP-DATA"),
+          category: ITEM_CATEGORIES.DATA_GAP,
+          tag: CATEGORY_LABELS[ITEM_CATEGORIES.DATA_GAP],
+          gap_type: "ADAPTER_DATA_QUALITY_GAP",
+          severity: "HIGH",
+          title: "多源数据质量或单位不兼容缺口",
+          summary: `【资料不足】${adGap.reason}`,
+          clinical_action_needed: "核实原始检验报告单的采样时间及检测单位",
+          source_type: "HospitalDataAdapter",
+          source_id: `gap-ad-${adGap.code || "unknown"}`,
+          span: null,
+        });
+      }
+    }
+
     // Check Specialty Rule Pack
     if (!rulePack) {
       gaps.push({
@@ -650,10 +674,15 @@ export class PatientEvolutionEngine {
   static generateProgressNoteDraft({
     summaryData = {},
     selectedItemIds = [],
-    doctorId = "DOC-8021",
-    doctorName = "住院医师",
+    doctorId = null,
+    doctorName = null,
     customAdditions = "",
   }) {
+    if (!doctorId || typeof doctorId !== "string" || !doctorId.trim()) {
+      throw new Error("INVALID_DOCTOR_CONTEXT: Missing required doctorId for progress note draft generation under fail-closed audit contract.");
+    }
+    const resolvedDoctorName = (doctorName && typeof doctorName === "string" && doctorName.trim()) || doctorId;
+
     const allItems = summaryData.selectable_items || [];
     const selectedSet = new Set(selectedItemIds);
     const chosen = allItems.filter((i) => selectedSet.has(i.id));
@@ -674,8 +703,11 @@ export class PatientEvolutionEngine {
     const lines = [];
     const dateStr = new Date().toISOString().replace("T", " ").slice(0, 16);
     lines.push(`【日常查房记录 - 病情演变摘要】`);
-    lines.push(`记录时间：${dateStr}    查房医师：${doctorName} (${doctorId})`);
-    lines.push(`患者姓名：${summaryData.patient?.name || '患者'}  床号：${summaryData.patient?.bed_number || '床位'}  主诊断：${summaryData.patient?.primary_diagnosis || '冠心病'}`);
+    lines.push(`记录时间：${dateStr}    查房医师：${resolvedDoctorName} (${doctorId})`);
+    const pName = summaryData.patient?.name || "未录入姓名";
+    const pBed = summaryData.patient?.bed_number || "未分配床位";
+    const pDiag = summaryData.patient?.primary_diagnosis || "未明确主诊断（待主管医师评估补充）";
+    lines.push(`患者姓名：${pName}  床号：${pBed}  主诊断：${pDiag}`);
     if (summaryData.patient?.egfr) {
       lines.push(`肾功能估算：eGFR ${summaryData.patient.egfr} mL/min/1.73m² (CKD-EPI 2021)`);
     }
@@ -684,17 +716,17 @@ export class PatientEvolutionEngine {
     // Section 0: Structured Multi-Source Alignment
     if (alignItems.length > 0) {
       lines.push("【多源跨系统临床对齐 (NIS/LIS/PACS/HIS)】");
-      alignItems.forEach((i) => lines.push(`  • ${i.summary}`));
+      alignItems.forEach((i) => lines.push(`  • ${i.summary} [^${i.id}]`));
       lines.push("");
     }
 
     // Section 1: Vitals & Symptoms
     lines.push("一、今日病情变化与症状演变");
     if (vitalsItem) {
-      lines.push(`  • ${vitalsItem.summary}`);
+      lines.push(`  • ${vitalsItem.summary} [^${vitalsItem.id}]`);
     }
     if (symItems.length > 0) {
-      symItems.forEach((i) => lines.push(`  • ${i.summary}`));
+      symItems.forEach((i) => lines.push(`  • ${i.summary} [^${i.id}]`));
     }
     if (!vitalsItem && symItems.length === 0) {
       lines.push("  • 暂无选中症状演变记录");
@@ -704,10 +736,10 @@ export class PatientEvolutionEngine {
     // Section 2: Abnormal Labs & Imaging
     lines.push("二、主要异常检验及指标趋势");
     if (labItems.length > 0) {
-      labItems.forEach((i) => lines.push(`  • [检验] ${i.summary}`));
+      labItems.forEach((i) => lines.push(`  • [检验] ${i.summary} [^${i.id}]`));
     }
     if (pacsItems.length > 0) {
-      pacsItems.forEach((i) => lines.push(`  • [影像] ${i.summary}`));
+      pacsItems.forEach((i) => lines.push(`  • [影像] ${i.summary} [^${i.id}]`));
     }
     if (labItems.length === 0 && pacsItems.length === 0) {
       lines.push("  • 暂无选中异常检验或影像");
@@ -717,13 +749,13 @@ export class PatientEvolutionEngine {
     // Section 3: Medication Changes
     lines.push("三、今日医嘱与用药方案调整");
     if (medAdd.length > 0) {
-      medAdd.forEach((i) => lines.push(`  • [新增] ${i.summary}`));
+      medAdd.forEach((i) => lines.push(`  • [新增] ${i.summary} [^${i.id}]`));
     }
     if (medDisc.length > 0) {
-      medDisc.forEach((i) => lines.push(`  • [停用] ${i.summary}`));
+      medDisc.forEach((i) => lines.push(`  • [停用] ${i.summary} [^${i.id}]`));
     }
     if (medAdj.length > 0) {
-      medAdj.forEach((i) => lines.push(`  • [调量] ${i.summary}`));
+      medAdj.forEach((i) => lines.push(`  • [调量] ${i.summary} [^${i.id}]`));
     }
     if (medAdd.length === 0 && medDisc.length === 0 && medAdj.length === 0) {
       lines.push("  • 维持既有诊疗方案，暂无选中药物调整");
@@ -733,13 +765,13 @@ export class PatientEvolutionEngine {
     // Section 4: Pending & Rules
     lines.push("四、今日待办检查与追踪事项");
     if (repItems.length > 0) {
-      repItems.forEach((i) => lines.push(`  • [待出报告] ${i.summary}`));
+      repItems.forEach((i) => lines.push(`  • [待出报告] ${i.summary} [^${i.id}]`));
     }
     if (ordItems.length > 0) {
-      ordItems.forEach((i) => lines.push(`  • [待办事项] ${i.summary}`));
+      ordItems.forEach((i) => lines.push(`  • [待办事项] ${i.summary} [^${i.id}]`));
     }
     if (ruleItems.length > 0) {
-      ruleItems.forEach((i) => lines.push(`  • [临床提醒] ${i.summary}`));
+      ruleItems.forEach((i) => lines.push(`  • [临床提醒] ${i.summary} [^${i.id}]`));
     }
     if (repItems.length === 0 && ordItems.length === 0 && ruleItems.length === 0) {
       lines.push("  • 无待办事项");
@@ -749,7 +781,7 @@ export class PatientEvolutionEngine {
     // Section 5: Data Gaps
     if (gapItems.length > 0) {
       lines.push("五、已知临床资料缺口提示");
-      gapItems.forEach((i) => lines.push(`  • [资料缺口] ${i.summary} (需在今日查房处置)`));
+      gapItems.forEach((i) => lines.push(`  • [资料缺口] ${i.summary} (需在今日查房处置) [^${i.id}]`));
       lines.push("");
     }
 
@@ -760,15 +792,33 @@ export class PatientEvolutionEngine {
       lines.push("");
     }
 
-    lines.push(`医师签名：${doctorName} (电子验证签名 SHA-256)`);
+    lines.push(`医师签名：${resolvedDoctorName}（查房记录草稿，待医师确认签署）`);
+
+    const draftText = lines.join("\n");
+    const verificationReport = PostHocClaimVerifier.verifyClaims({
+      narrativeText: draftText,
+      verifiableItems: chosen,
+    });
 
     return {
-      draft_text: lines.join("\n"),
+      draft_text: draftText,
       selected_count: chosen.length,
       doctor_id: doctorId,
-      doctor_name: doctorName,
+      doctor_name: resolvedDoctorName,
       generated_at: new Date().toISOString(),
-      doctor: { id: doctorId, name: doctorName },
+      doctor: { id: doctorId, name: resolvedDoctorName },
+      verification_report: verificationReport,
     };
+  }
+
+  /**
+   * Deterministically verify narrative claims against grounded items (F-01).
+   */
+  static verifyProgressNoteDraft(draftText = "", availableItems = [], options = {}) {
+    return PostHocClaimVerifier.verifyClaims({
+      narrativeText: draftText,
+      verifiableItems: availableItems,
+      options,
+    });
   }
 }

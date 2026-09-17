@@ -8,6 +8,9 @@ import { extractAuthContext, authorizeRequest, ROLES, generateToken } from "./au
 import { globalGovernance } from "../../../lib/governance-mode.mjs";
 import { createRateLimiter, createBruteForceGuard, clientKey } from "./security-hardening.mjs";
 import { workstationHandler } from "./workstation-routes.mjs";
+import { executeHisEmbedPreRound } from "../../../lib/his-embed-adapter.mjs";
+import { isClinicalLandingEnabled, isLiveHospitalDataEnabled } from "../../../lib/clinical-landing-policy.mjs";
+import { loadSiteActivationFromEnv } from "../../../lib/site-activation-gate.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -79,12 +82,30 @@ export async function routeRequest(req, res, body) {
   // REFERENCE WORKFLOW UI: Inpatient Pre-Round EHR Sidebar (HTML)
   // ----------------------------------------------------
   if (method === "GET" && (pathname === "/" || pathname === "/sidebar" || pathname === "/preround" || pathname === "/index.html")) {
+    if (isClinicalLandingEnabled()) {
+      return sendJson(403, {
+        error: "P0_CLINICIAN_SURFACE_SUPPRESSED: doctor-facing sidebar is disabled on the clinical landing surface; use /his/embed silent pilot",
+      });
+    }
     const sidebarPath = join(__dirname, "ui", "preround-sidebar.html");
     if (existsSync(sidebarPath)) {
       const html = readFileSync(sidebarPath, "utf8");
       return sendHtml(200, html);
     }
     return sendJson(404, { error: "Sidebar UI not found" });
+  }
+
+  if (method === "GET" && (pathname === "/his/embed" || pathname === "/his-embed")) {
+    const embedPath = join(__dirname, "ui", "his-embed.html");
+    if (!existsSync(embedPath)) return sendJson(404, { error: "HIS embed UI not found" });
+    const html = readFileSync(embedPath, "utf8");
+    const ancestors = process.env.MEDCIUS_HIS_FRAME_ANCESTORS || "'self'";
+    res.writeHead(200, {
+      "Content-Type": "text/html; charset=utf-8",
+      "Content-Security-Policy": `frame-ancestors ${ancestors}`,
+      "Access-Control-Allow-Origin": corsOrigin,
+    });
+    return res.end(html);
   }
 
   // ----------------------------------------------------
@@ -152,6 +173,9 @@ export async function routeRequest(req, res, body) {
   // CDS Hooks 2.0: Hook Execution Endpoint
   // ----------------------------------------------------
   if (method === "POST" && pathname.startsWith("/cds-services/")) {
+    const authCheck = guardedAuthorize("cds:hook");
+    if (!authCheck.allowed) return sendJson(authCheck.status, { error: authCheck.error });
+
     const serviceId = pathname.replace("/cds-services/", "");
     try {
       const response = await handleCdsHookRequest(serviceId, body);
@@ -185,18 +209,29 @@ export async function routeRequest(req, res, body) {
   // ----------------------------------------------------
   // REFERENCE WORKFLOW: Inpatient Pre-Round Patient Evolution Summary (No Demo Fallback)
   // ----------------------------------------------------
-  if ((method === "GET" || method === "POST") && pathname === "/api/v1/patient/evolution-summary") {
+  if (method === "GET" && pathname === "/api/v1/patient/evolution-summary") {
+    return sendJson(405, {
+      error: "METHOD_NOT_ALLOWED: GET queries carrying patient_id or PHI parameters in URL query strings are prohibited. Use POST with JSON request body.",
+    });
+  }
+
+  if (method === "POST" && pathname === "/api/v1/patient/evolution-summary") {
     const authCheck = guardedAuthorize("round:summary");
     if (!authCheck.allowed) return sendJson(authCheck.status, { error: authCheck.error });
+    if (isClinicalLandingEnabled()) {
+      return sendJson(403, {
+        error: "P0_CLINICIAN_SURFACE_SUPPRESSED: evolution-summary clinician payload is disabled on the clinical landing surface; use /api/v1/his/embed/silent-capture",
+      });
+    }
 
-    const timeWindow = url.searchParams.get("time_window") || body?.time_window || "24h";
-    const patientId = url.searchParams.get("patient_id") || body?.patient_id || body?.patient?.id;
-    const encounterId = url.searchParams.get("encounter_id") || body?.encounter_id || body?.encounter?.id;
+    const timeWindow = body?.time_window || "24h";
+    const patientId = body?.patient_id || body?.patient?.id;
+    const encounterId = body?.encounter_id || body?.encounter?.id;
 
     // Strict Fail-Closed: patient context & encounter_id are mandatory
     if (!patientId && !body?.patient) {
       return sendJson(400, {
-        error: "INVALID_PATIENT_CONTEXT: Missing required patient context or patient_id parameter.",
+        error: "INVALID_PATIENT_CONTEXT: Missing required patient context or patient_id parameter in request body.",
       });
     }
     if (!encounterId) {
@@ -205,13 +240,22 @@ export async function routeRequest(req, res, body) {
       });
     }
 
-    const patientObj = body?.patient || {
+    const patientObj = body?.patient ? {
+      id: body.patient.id || patientId,
+      name: body.patient.name || null,
+      gender: body.patient.gender || body.patient.sex_cn || null,
+      age: body.patient.age ?? null,
+      bed_number: body.patient.bed_number || null,
+      primary_diagnosis: body.patient.primary_diagnosis || body.patient.diagnosis || null,
+      egfr: body.patient.egfr ?? null,
+    } : {
       id: patientId,
-      name: `患者_${patientId}`,
-      gender: "未知",
+      name: null,
+      gender: null,
       age: null,
-      bed_number: "未分配床位",
-      primary_diagnosis: "待录入主诊断",
+      bed_number: null,
+      primary_diagnosis: null,
+      egfr: null,
     };
 
     try {
@@ -238,9 +282,46 @@ export async function routeRequest(req, res, body) {
   // ----------------------------------------------------
   // REFERENCE WORKFLOW: Insert Selected Summary into Progress Note Draft
   // ----------------------------------------------------
+  if (method === "POST" && pathname === "/api/v1/his/embed/silent-capture") {
+    const authCheck = guardedAuthorize("round:summary");
+    if (!authCheck.allowed) return sendJson(authCheck.status, { error: authCheck.error });
+    try {
+      const siteActivation = isLiveHospitalDataEnabled() ? loadSiteActivationFromEnv() : null;
+      const capture = await executeHisEmbedPreRound({
+        host: body?.host === "hospital_sso" ? "hospital_sso" : "his_embed",
+        message: body,
+        context: body?.context,
+        dataFeeds: body?.dataFeeds,
+        governance: globalGovernance,
+        siteActivation,
+        auditAppend: async (event) => {
+          auditHandlers.record_event({
+            actor: "his-embed",
+            action: event.event_type,
+            subject_ref: `Encounter/${event.encounter_id}`,
+            payload: {
+              item_count: event.item_count,
+              governance_stage: event.governance_stage,
+              envelope_sha256: event.envelope_sha256,
+            },
+            tenant_id: event.tenant_id,
+          });
+        },
+      });
+      return sendJson(200, capture);
+    } catch (err) {
+      return sendJson(400, { error: err.message, silent: true, cards: [] });
+    }
+  }
+
   if (method === "POST" && pathname === "/api/v1/patient/progress-note-draft") {
     const authCheck = guardedAuthorize("round:draft_generate");
     if (!authCheck.allowed) return sendJson(authCheck.status, { error: authCheck.error });
+    if (isClinicalLandingEnabled()) {
+      return sendJson(403, {
+        error: "P0_DRAFT_SUPPRESSED_SILENT_PILOT: clinician-facing progress-note draft is disabled on the clinical landing surface",
+      });
+    }
 
     if (!body?.summaryData || !Array.isArray(body?.selectedItemIds)) {
       return sendJson(400, {
@@ -248,12 +329,20 @@ export async function routeRequest(req, res, body) {
       });
     }
 
+    const resolvedDoctorId = (auth.user && auth.user !== "anonymous") ? auth.user : (body?.doctorId && String(body.doctorId).trim());
+    if (!resolvedDoctorId) {
+      return sendJson(400, {
+        error: "INVALID_DOCTOR_CONTEXT: Missing required doctorId or authenticated physician context under fail-closed audit policy.",
+      });
+    }
+    const resolvedDoctorName = body?.doctorName || auth.payload?.name || resolvedDoctorId;
+
     try {
       const draft = PatientEvolutionEngine.generateProgressNoteDraft({
         summaryData: body.summaryData,
         selectedItemIds: body.selectedItemIds,
-        doctorId: auth.user || body?.doctorId || "DOC-8021",
-        doctorName: body?.doctorName || "查房医师",
+        doctorId: resolvedDoctorId,
+        doctorName: resolvedDoctorName,
         customAdditions: body?.customAdditions || "",
       });
       return sendJson(200, draft);
@@ -291,10 +380,12 @@ export async function routeRequest(req, res, body) {
     "GET  /",
     "GET  /sidebar",
     "GET  /workstation",
+    "GET  /his/embed",
+    "POST /api/v1/his/embed/silent-capture",
     "GET  /health",
     "GET  /cds-services",
     "POST /cds-services/medcius-patient-evolution",
-    "GET  /api/v1/patient/evolution-summary",
+    "POST /api/v1/patient/evolution-summary",
     "POST /api/v1/patient/progress-note-draft",
     "GET  /api/v1/audit/verify",
     "POST /api/v1/auth/token",

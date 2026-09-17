@@ -1,4 +1,4 @@
-﻿// Enhanced PHI Guard (增强型隐式 PHI 脱敏与医学专有名词保护引擎)
+// Enhanced PHI Guard (增强型隐式 PHI 脱敏与医学专有名词保护引擎)
 import { createHmac } from "node:crypto";
 
 const MEDICAL_EPONYMS_WHITELIST = [
@@ -65,7 +65,7 @@ export class EnhancedPhiGuard {
       return token;
     });
 
-    // 6. Scan Caregiver / Relative Names
+    // 6. Scan Caregiver / Relative Names (Labeled & Contextual)
     const relReg = /(?:(?:陪护人|家属|联系人|儿子|女儿|妻子|丈夫|爱人|母亲|父亲|配偶|亲属|监护人)+(?:姓名)?[:：\s]*)([\u4e00-\u9fa5]{2,4})/g;
     result = result.replace(relReg, (full, name) => {
       const token = mode === "PSEUDONYMIZE" ? this.generateToken(name, "RELATIVE", salt) : "[REDACTED_RELATIVE]";
@@ -73,9 +73,24 @@ export class EnhancedPhiGuard {
       return full.replace(name, token);
     });
 
-    // 7. Scan Patient Names
+    // Contextual Caregiver (e.g. 由其子张某某送入 / 家属李某某诉)
+    const relCtxReg = /(?:由其|陪同人|家属)\s*([\u4e00-\u9fa5]{2,4})(?=(?:陪同|送入|代诉|诉称|签署|知情))/g;
+    result = result.replace(relCtxReg, (full, name) => {
+      const token = mode === "PSEUDONYMIZE" ? this.generateToken(name, "RELATIVE", salt) : "[REDACTED_RELATIVE]";
+      detectedEntities.push({ type: "RELATIVE", replacement: token });
+      return full.replace(name, token);
+    });
+
+    // 7. Scan Patient Names (Labeled & Contextual e.g. 患者李建国诉 / 患儿王小明今日)
     const patReg = /(?:患者|病人|姓名|名字|姓氏)[:：\s]*([\u4e00-\u9fa5]{2,4})/g;
     result = result.replace(patReg, (full, name) => {
+      const token = mode === "PSEUDONYMIZE" ? this.generateToken(name, "PATIENT_NAME", salt) : "[REDACTED_NAME]";
+      detectedEntities.push({ type: "PATIENT_NAME", replacement: token });
+      return full.replace(name, token);
+    });
+
+    const patCtxReg = /(?:患者|病人|患儿)\s*([\u4e00-\u9fa5]{2,4})(?=(?:诉|因|于|今日|昨日|既往|出现|入急诊|入院|出院|行|转入))/g;
+    result = result.replace(patCtxReg, (full, name) => {
       const token = mode === "PSEUDONYMIZE" ? this.generateToken(name, "PATIENT_NAME", salt) : "[REDACTED_NAME]";
       detectedEntities.push({ type: "PATIENT_NAME", replacement: token });
       return full.replace(name, token);

@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { ReadOnlyHospitalDataBridge } from "../plugins/medcius/lib/read-only-hospital-data-bridge.mjs";
 import { createFhirR4Connectors } from "../plugins/medcius/lib/connectors/fhir-r4-connector.mjs";
 import { createCdaDocumentConnector } from "../plugins/medcius/lib/connectors/cda-document-connector.mjs";
+import { createViewLibraryConnectors } from "../plugins/medcius/lib/connectors/view-library-connector.mjs";
 import { PatientEvolutionEngine } from "../plugins/medcius/lib/patient-evolution-engine.mjs";
 
 console.log("================================================================================");
@@ -16,6 +17,7 @@ console.log("===================================================================
 
 const fhirFixture = JSON.parse(readFileSync(fileURLToPath(new URL("../plugins/medcius/fixtures/connectors/fhir-r4-replay.json", import.meta.url)), "utf8"));
 const cdaFixture = JSON.parse(readFileSync(fileURLToPath(new URL("../plugins/medcius/fixtures/connectors/cda-replay.json", import.meta.url)), "utf8"));
+const viewLibraryFixture = JSON.parse(readFileSync(fileURLToPath(new URL("../plugins/medcius/fixtures/connectors/view-library-replay.json", import.meta.url)), "utf8"));
 
 function replayFetch(routes) {
   return async (url, init) => {
@@ -127,15 +129,84 @@ assert.ok(summaryBeta.blocks.what_changed);
 console.log("  ✓ Hospital Beta: CDA document bridge extracted and normalized successfully.");
 
 
-// --- Scenario 3: Zero-Code Migration & Contract Invariance ---
-console.log("\n▶ [Scenario 3] Contract Invariance & Schema Uniformity Check...");
+// --- Scenario 3: Hospital Gamma (View-Library / Intermediate-Table Pipeline) ---
+console.log("\n▶ [Scenario 3] Hospital Gamma (View-Library Read-Only Views Pipeline)...");
+
+const contextGamma = {
+  tenant_id: "hospital-gamma",
+  doctor_id: "doc-gamma-1",
+  patient_id: "patient-synthetic-1",
+  encounter_id: "encounter-synthetic-1",
+  time_window: "24h",
+};
+
+function replayViewFetch(routes) {
+  return async (url, init) => {
+    if (String(init?.method).toUpperCase() !== "GET") {
+      throw new Error(`REPLAY_FORBIDDEN_METHOD: ${init.method}`);
+    }
+    const parsed = new URL(url);
+    const payload = routes[parsed.pathname];
+    if (!payload) return { ok: false, status: 404, json: async () => ({}) };
+    return { ok: true, status: 200, json: async () => payload };
+  };
+}
+
+const gammaConnectors = createViewLibraryConnectors({
+  baseUrl: "https://views.hospital-gamma.local/",
+  fetchImpl: replayViewFetch(viewLibraryFixture.routes),
+  sourceVersion: viewLibraryFixture.source_version,
+});
+
+const bridgeGamma = new ReadOnlyHospitalDataBridge({
+  requiredKinds: ["patient", "encounter", "nis", "lis", "his"],
+  connectors: gammaConnectors,
+});
+
+const gammaSnapshot = await bridgeGamma.readPatientSnapshot(contextGamma);
+assert.equal(gammaSnapshot.context.tenant_id, "hospital-gamma");
+assert.ok(gammaSnapshot.dataFeeds.nis.length >= 1);
+assert.ok(gammaSnapshot.dataFeeds.lis.length >= 2);
+assert.ok(gammaSnapshot.dataFeeds.his_orders.length >= 1);
+
+const summaryGamma = PatientEvolutionEngine.analyzePatientEvolution({
+  patient: { id: contextGamma.patient_id, name: "患者-Gamma", bed_number: "Card-12" },
+  timeWindow: "24h",
+  notes: [{ id: "N-G-01", text: "患者胸闷气促较前缓解，复查血钾偏低，已处理。", timestamp: "2026-08-27T08:00:00Z" }],
+  observations: gammaSnapshot.dataFeeds.lis.map((r) => ({
+    id: r.id,
+    code: r.test_name || r.code,
+    value: r.result_value,
+    unit: r.unit,
+    effectiveDateTime: r.sample_time || "2026-08-27T08:00:00Z",
+    referenceRange: { low: 57, high: 111 },
+  })),
+  medications: gammaSnapshot.dataFeeds.his_orders.map((r) => ({
+    id: r.id,
+    drug_name: r.drug_name,
+    status: r.status,
+    authored_on: r.authored_on,
+  })),
+  diagnosticReports: [],
+  orders: [],
+  allergies: [],
+});
+
+assert.ok(summaryGamma.blocks.what_changed);
+console.log("  ✓ Hospital Gamma: view-library bridge extracted and normalized successfully.");
+
+
+// --- Scenario 4: Zero-Code Migration & Contract Invariance ---
+console.log("\n▶ [Scenario 4] Contract Invariance & Schema Uniformity Check...");
 
 const alphaKeys = Object.keys(summaryAlpha.blocks).sort();
 const betaKeys = Object.keys(summaryBeta.blocks).sort();
+const gammaKeys = Object.keys(summaryGamma.blocks).sort();
 assert.deepEqual(alphaKeys, betaKeys, "Output contract blocks must be strictly invariant across hospitals");
+assert.deepEqual(alphaKeys, gammaKeys, "View-library pipeline must emit identical contract blocks");
 assert.equal(summaryAlpha.contract_version, summaryBeta.contract_version);
 
-console.log(`  ✓ Both hospital architectures emit identical contract blocks: [${alphaKeys.join(", ")}]`);
+console.log(`  ✓ Three hospital architectures emit identical contract blocks: [${alphaKeys.join(", ")}]`);
 console.log("  ✓ Zero code modifications required in core clinical workflow engine for cross-hospital migration.");
 
 console.log("\n================================================================================");

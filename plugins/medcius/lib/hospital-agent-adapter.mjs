@@ -12,13 +12,22 @@ import { StagedDraftService } from "./staged-draft-service.mjs";
 import { ClinicalSkillCatalog } from "./clinical-skill-catalog.mjs";
 import { containsRawPhi, redactText } from "../servers/phiguard/src/lib.mjs";
 import { canonicalJson, sha256Hex } from "../servers/shared/crypto.mjs";
+import {
+  CLINICAL_SURFACES,
+  ENGINEERING_SURFACES,
+  assertClinicalHostAllowed,
+  assertSkillInvocable,
+  resolveClinicalLanding,
+} from "./clinical-landing-policy.mjs";
 
 export const HOST_TYPES = {
-  CODEX: "codex",
-  TRAE: "trae",
-  WORKBUDDY: "workbuddy",
+  CODEX: ENGINEERING_SURFACES.CODEX,
+  TRAE: ENGINEERING_SURFACES.TRAE,
+  WORKBUDDY: ENGINEERING_SURFACES.WORKBUDDY,
   HOSPITAL_CUSTOM_AGENT: "hospital_custom_agent",
   CDS_HOOKS_ADAPTER: "cds_hooks_adapter",
+  HIS_EMBED: CLINICAL_SURFACES.HIS_EMBED,
+  HOSPITAL_SSO: CLINICAL_SURFACES.HOSPITAL_SSO,
 };
 
 export class HospitalAgentAdapter {
@@ -59,6 +68,12 @@ export class HospitalAgentAdapter {
    */
   static executePreRoundWorkflow({ host = HOST_TYPES.HOSPITAL_CUSTOM_AGENT, context, dataFeeds }) {
     this.validateContextEnvelope(context);
+    assertSkillInvocable({
+      skillId: "patient-evolution-summary",
+      host,
+      clinicalLanding: context?.clinical_landing,
+    });
+    assertClinicalHostAllowed(host, { clinicalLanding: context?.clinical_landing });
 
     const { tenant_id, doctor_id, doctor_name, patient_id, encounter_id, time_window = "24h" } = context;
     const { patient, notes = [], nis = [], lis = [], pacs = [], his_orders = [], allergies = null } = dataFeeds || {};
@@ -72,7 +87,7 @@ export class HospitalAgentAdapter {
     const nisNormalized = HospitalDataAdapter.normalizeNisFeed(nis, { rulePack });
     const lisNormalized = HospitalDataAdapter.normalizeLisFeed(lis, { rulePack });
     const pacsNormalized = HospitalDataAdapter.normalizePacsFeed(pacs);
-    const hisNormalized = HospitalDataAdapter.normalizeHisOrders(his_orders, { rulePack });
+    const hisNormalized = HospitalDataAdapter.normalizeHisOrders(his_orders, { rulePack, now: Date.now() });
 
     const mergedObservations = [...(lisNormalized.observations || []), ...(nisNormalized.fhir_observations || [])];
 
@@ -189,6 +204,11 @@ export class HospitalAgentAdapter {
    */
   static executeShiftHandoverWorkflow({ host = HOST_TYPES.HOSPITAL_CUSTOM_AGENT, context, dataFeeds, shiftType = SHIFT_TYPES.MORNING_TO_EVENING }) {
     this.validateContextEnvelope(context);
+    assertSkillInvocable({
+      skillId: "shift-handover",
+      host,
+      clinicalLanding: context?.clinical_landing,
+    });
 
     const { tenant_id, doctor_id, doctor_name, patient_id, encounter_id } = context;
     const { patient, encounter = {}, notes = [], nis = [], lis = [], pacs = [], his_orders = [], allergies = null } = dataFeeds || {};
@@ -258,6 +278,11 @@ export class HospitalAgentAdapter {
    */
   static executeConsultPrepWorkflow({ host = HOST_TYPES.HOSPITAL_CUSTOM_AGENT, context, dataFeeds, consultRequest = {} }) {
     this.validateContextEnvelope(context);
+    assertSkillInvocable({
+      skillId: "consult-preparation",
+      host,
+      clinicalLanding: context?.clinical_landing,
+    });
 
     if (!consultRequest.department) {
       throw new Error("FAIL_CLOSED: Missing target department (consultRequest.department is required)");
@@ -330,6 +355,11 @@ export class HospitalAgentAdapter {
    */
   static executeDischargeReadinessWorkflow({ host = HOST_TYPES.HOSPITAL_CUSTOM_AGENT, context, dataFeeds, dischargeMedications = [] }) {
     this.validateContextEnvelope(context);
+    assertSkillInvocable({
+      skillId: "discharge-readiness-check",
+      host,
+      clinicalLanding: context?.clinical_landing,
+    });
 
     const { tenant_id, doctor_id, doctor_name, patient_id, encounter_id } = context;
     const { patient, encounter = {}, notes = [], pacs = [], his_orders = [], allergies = null, financial_access = [] } = dataFeeds || {};
@@ -417,6 +447,12 @@ export class HospitalAgentAdapter {
       }
     }
 
+    assertSkillInvocable({
+      skillId,
+      host,
+      clinicalLanding: context?.clinical_landing || mode === "clinical_landing",
+    });
+
     // 2. Strict Intent Routing Dispatch
     switch (skillId) {
       case "patient-evolution-summary": {
@@ -469,6 +505,9 @@ export class HospitalAgentAdapter {
    */
   static generateProgressNoteDraft({ context, summaryData, selectedItemIds, customNotes = "" }) {
     this.validateContextEnvelope(context);
+    if (resolveClinicalLanding({ host: context?.host, clinicalLanding: context?.clinical_landing })) {
+      throw new Error("P0_DRAFT_SUPPRESSED_SILENT_PILOT: clinician-facing progress-note draft is disabled on the clinical landing surface");
+    }
 
     const draft = PatientEvolutionEngine.generateProgressNoteDraft({
       summaryData,

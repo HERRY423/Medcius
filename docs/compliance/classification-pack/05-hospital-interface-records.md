@@ -13,22 +13,26 @@ Medcius 仅向医院系统注册并请求只读权限，核心支持两种医院
 ┌─────────────────────────────────────────────────────────────┐
 │               医院信息系统接口 (EHR / LIS / PACS)            │
 └──────────────────────────────┬──────────────────────────────┘
-                               │
-            ┌──────────────────┴──────────────────┐
-            ▼                                     ▼
-┌────────────────────────┐           ┌────────────────────────┐
-│ P1 通道: SMART on FHIR │           │ P2 通道: CDA / HL7 文档│
-│ (Patient/Observation/  │           │ (病程/出院记录 Narrative│
-│  MedicationRequest)    │           │  XML 结构化文本流)     │
-└───────────┬────────────┘           └───────────┬────────────┘
-            │                                     │
-            └──────────────────┬──────────────────┘
-                               ▼
+                                │
+             ┌──────────────────┼──────────────────┐
+             ▼                  ▼                  ▼
+┌────────────────────────┐ ┌──────────────┐ ┌────────────────────────┐
+│ P1 通道: SMART on FHIR │ │ P2 通道: CDA │ │ P3 通道: 只读视图库    │
+│ (Patient/Observation/  │ │ /HL7 文档    │ │ (v_medcius_* 视图,    │
+│  MedicationRequest/    │ │ (病程/出院   │ │  NIS/LIS/HIS/PACS)    │
+│  DiagnosticReport)     │ │  记录文本流) │ │ P4 通道: HL7v2 订阅   │
+└───────────┬────────────┘ └──────┬───────┘ │ (ADT/ORU/RDE 只消费)  │
+            │                     │         └───────────┬────────────┘
+            └─────────────┬───────┴─────────────────────┘
+                          ▼
         ┌─────────────────────────────────────────────┐
         │ 六字段只读信封: source_system, tenant_id,    │
         │ patient_id, encounter_id, fetched_at, records│
+        │ + 出口即假名化 (PHI Guard) + payload SHA-256 │
         └─────────────────────────────────────────────┘
 ```
+
+四条通道统一约束：只发 GET（P4 只消费不回发 ACK 之外任何报文）、视图名/报文类型白名单、明文 http 拒绝（非 loopback）、瞬时 5xx 最多重试一次、站点激活（IRB + 协议哈希 + 只读账号）缺一即 fail-closed。
 
 ---
 
@@ -92,6 +96,39 @@ Medcius 仅向医院系统注册并请求只读权限，核心支持两种医院
   </component>
 </ClinicalDocument>
 ```
+
+---
+
+## 4. P3 视图库字段清单（只读视图，只列最小必要字段）
+
+| 视图 | 映射目标 | 字段 |
+|---|---|---|
+| `v_medcius_patient` | patient | id / name / gender / age / birth_date / bed_number |
+| `v_medcius_encounter` | encounter | id / status / class / period_start / period_end |
+| `v_medcius_nis_vitals` | nis | temperature / systolic_bp / diastolic_bp / heart_rate / spo2 / oral_intake_ml / iv_intake_ml / urine_output_ml / drain_output_ml / timestamp |
+| `v_medcius_lis_results` | lis | test_code / test_name / result_value / unit / status / sample_time / ref_low / ref_high / interpretation / is_critical |
+| `v_medcius_his_orders` | his | drug_name / dosage / route / frequency / authored_on / status / change_type |
+| `v_medcius_pacs_reports`（可选） | pacs | name / modality / status(final/preliminary) / ordered_at / impression |
+| `v_medcius_notes`（可选） | notes | title / content_type / text |
+
+视图名必须匹配 `v_medcius_[a-z0-9_]+`，未知列在连接器内按字段白名单剥离后才进入信封。
+
+## 5. P4 HL7v2 订阅报文样例（只消费：ADT/ORU/RDE）
+
+```text
+MSH|^~\&|HIS|HOSP-001|MEDCIUS|HOSP-001|20260825060000||ADT^A01|MSG-SYNTH-001|P|2.5
+PID|1||patient-synthetic-1^^^HOSP-001||合成张三^测试||19580512|M
+PV1|1|I|CARDIO^02^01||||||||||||||||encounter-synthetic-1
+
+MSH|^~\&|LIS|HOSP-001|MEDCIUS|HOSP-001|20260825060000||ORU^R01|MSG-SYNTH-002|P|2.5
+OBR|1|ord-k-synth-1||2823-3^血钾测定
+OBX|1|NM|2823-3^血钾测定||2.4|mmol/L|3.5-5.3|LL|||F|||20260825060000
+
+MSH|^~\&|HIS|HOSP-001|MEDCIUS|HOSP-001|20260820093000||RDE^O11|MSG-SYNTH-003|P|2.5
+RXO|1|^注射用头孢曲松钠^||2^g||||静脉滴注
+```
+
+OBX 判读 `LL/HH/CR` 映射 `is_critical=true`；PID 与上下文患者不一致即 fail-closed；非 ADT/ORU/RDE 类型拒绝消费；连接器不产生 ACK，不持有 socket 写路径。
 
 ---
 

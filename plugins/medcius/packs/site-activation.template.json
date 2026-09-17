@@ -1,0 +1,15 @@
+{
+  "_comment": "First-hospital silent-pilot site activation template. Fill in hospital values; never put passwords or tokens in this file. Live data requires MEDCIUS_LIVE_HOSPITAL_DATA=1 plus this packet.",
+  "hospital_id": "HOSP-EXAMPLE-001",
+  "tenant_id": "tenant-example",
+  "ward_id": "cardio-ward-2",
+  "irb_protocol_id": "IRB-YYYY-NNN",
+  "data_agreement_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "clinical_surface": "his_embed",
+  "governance_stage": "silent_pilot",
+  "readonly_account": {
+    "username": "medcius_readonly",
+    "capabilities": ["read"],
+    "system": "view_library"
+  }
+}

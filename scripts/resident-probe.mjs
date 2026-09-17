@@ -187,7 +187,12 @@ const metricsOut = flag("metrics-out");
 
 const cycle = await runCycle({ target, latencyBudgetMs, stateFile, metricsOut });
 if (once) {
-  process.exit(cycle.ok ? 0 : 2);
+  try {
+    const dbModule = await import(pathToFileURL(join(REPO, "plugins/medcius/servers/audit/src/db.mjs")).href);
+    if (dbModule?.db?.close) dbModule.db.close();
+  } catch {}
+  process.exitCode = cycle.ok ? 0 : 2;
+  return;
 }
 // daemon loop
 for (;;) {

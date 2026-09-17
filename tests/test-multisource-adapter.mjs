@@ -78,7 +78,27 @@ assert.equal(nisResult.fluid_balance.drain_24h_ml, 200, "Total drain must be 150
 assert.equal(nisResult.fluid_balance.net_balance_ml, 950, "Net balance must be +950ml");
 assert.equal(nisResult.fluid_balance.net_balance_label, "+950 ml");
 
-console.log("✓ NIS normalization accurately parsed vitals (Tmax 38.6℃, BP 145/88) and 24h fluid balance (+950ml)");
+// Verification of Issue 4: Anti-double counting when itemized + aggregate intake coexist
+const doubleCountCheck = HospitalDataAdapter.normalizeNisFeed([
+  {
+    id: "nis-double-check",
+    oral_intake_ml: 500,
+    iv_intake_ml: 1000,
+    intake_ml: 1500, // Aggregate field provided alongside itemized breakdown
+    urine_output_ml: 800,
+  },
+]);
+assert.equal(doubleCountCheck.fluid_balance.intake_total_ml, 1500, "Must not double count 500+1000 and 1500 into 3000ml");
+
+// Verification of Issue 5: Authentic paired BP measurements (no cross-measurement synthetic pairing)
+const crossBpCheck = HospitalDataAdapter.normalizeNisFeed([
+  { id: "nis-bp-1", systolic_bp: 180, diastolic_bp: 70 }, // Isolated systolic hypertension
+  { id: "nis-bp-2", systolic_bp: 130, diastolic_bp: 100 }, // High peripheral resistance
+]);
+assert.equal(crossBpCheck.vitals_summary.bp_max, "180/70 mmHg", "bp_max must come from the actual peak reading, not cross-paired '180/100 mmHg'");
+assert.equal(crossBpCheck.vitals_summary.bp_min, "130/100 mmHg", "bp_min must come from the actual nadir reading, not cross-paired '130/70 mmHg'");
+
+console.log("✓ NIS normalization accurately parsed vitals (Tmax 38.6℃, BP 145/88), 24h fluid balance (+950ml), and verified anti-double count & coupled BP pairing");
 
 // ----------------------------------------------------
 // Test 3: LIS (Lab System) & Critical Value Interception

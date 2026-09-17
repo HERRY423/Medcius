@@ -3,6 +3,29 @@
 // Security & Governance: Fail-closed on missing data, zero synthetic fallback on real requests.
 
 import { PatientEvolutionEngine } from "../../../lib/patient-evolution-engine.mjs";
+import { globalGovernance } from "../../../lib/governance-mode.mjs";
+import { CLINICAL_LANDING_SKILL } from "../../../lib/clinical-landing-policy.mjs";
+
+function medciusExtension(governance, extra = {}) {
+  const stage = governance.getCurrentStage();
+  return {
+    medcius: {
+      skill_id: CLINICAL_LANDING_SKILL,
+      governance_stage: stage.id,
+      clinician_display: stage.allows_live_alerts ? "cards" : "suppressed_silent_pilot",
+      writeback: false,
+      ...extra,
+    },
+  };
+}
+
+function failClosedResponse(governance, failClosed) {
+  const extension = medciusExtension(governance, { fail_closed: failClosed });
+  if (extension.medcius.clinician_display === "cards") {
+    return { cards: [failClosed], extension };
+  }
+  return { cards: [], extension };
+}
 
 export const CDS_SERVICES = [
   {
@@ -157,45 +180,37 @@ function parseFhirOrders(context, prefetch) {
 }
 
 /** Handle incoming CDS Hook request */
-export async function handleCdsHookRequest(serviceId, requestBody) {
+export async function handleCdsHookRequest(serviceId, requestBody, { governance = globalGovernance } = {}) {
   const { hook, user, context, prefetch } = requestBody || {};
 
   // 1. Fail-Closed: Validate user / practitioner context (HL7 CDS Hooks required context.userId)
   const userId = context?.userId || user || requestBody?.userId;
   if (!userId || String(userId).trim() === "") {
-    return {
-      cards: [
-        {
-          uuid: `card-err-user-${Date.now()}`,
-          summary: "Medcius: 未检出操作医师身份上下文 (Missing userId)",
-          detail: "HL7 CDS Hooks patient-view 标准要求传入当前登录医师标识 (context.userId)。系统已按合规要求安全关闭。",
-          indicator: "warning",
-          source: {
-            label: "Medcius 患者变化摘要插件",
-            url: "https://github.com/HERRY423/Medcius",
-          },
-        },
-      ],
-    };
+    return failClosedResponse(governance, {
+      uuid: `card-err-user-${Date.now()}`,
+      summary: "Medcius: 未检出操作医师身份上下文 (Missing userId)",
+      detail: "HL7 CDS Hooks patient-view 标准要求传入当前登录医师标识 (context.userId)。系统已按合规要求安全关闭。",
+      indicator: "warning",
+      source: {
+        label: "Medcius 患者变化摘要插件",
+        url: "https://github.com/HERRY423/Medcius",
+      },
+    });
   }
 
   // 2. Fail-Closed: Validate patient context presence
   const patient = parseFhirPatient(context, prefetch);
   if (!patient || !patient.id || patient.id === "UNKNOWN-PATIENT" || String(patient.id).trim() === "") {
-    return {
-      cards: [
-        {
-          uuid: `card-err-pat-${Date.now()}`,
-          summary: "Medcius: 未检出有效患者上下文 (Missing patientId)",
-          detail: "未提供有效的 Patient ID 或 FHIR Patient 资源。请在 EHR 患者病历界面中打开查房插件。",
-          indicator: "info",
-          source: {
-            label: "Medcius 患者变化摘要插件",
-            url: "https://github.com/HERRY423/Medcius",
-          },
-        },
-      ],
-    };
+    return failClosedResponse(governance, {
+      uuid: `card-err-pat-${Date.now()}`,
+      summary: "Medcius: 未检出有效患者上下文 (Missing patientId)",
+      detail: "未提供有效的 Patient ID 或 FHIR Patient 资源。请在 EHR 患者病历界面中打开查房插件。",
+      indicator: "info",
+      source: {
+        label: "Medcius 患者变化摘要插件",
+        url: "https://github.com/HERRY423/Medcius",
+      },
+    });
   }
 
   // Parse real clinical entities without injecting synthetic records
@@ -265,5 +280,11 @@ export async function handleCdsHookRequest(serviceId, requestBody) {
     },
   ];
 
-  return { cards };
+  const extension = medciusExtension(governance, {
+    computed_item_count: summary.total_items_count || totalChanges,
+  });
+  if (extension.medcius.clinician_display !== "cards") {
+    return { cards: [], extension };
+  }
+  return { cards, extension };
 }

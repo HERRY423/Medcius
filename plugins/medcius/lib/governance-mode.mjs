@@ -3,6 +3,7 @@
 // Prohibits arbitrary env jumps, enforces sequential milestone validation, and requires signed evidence.
 
 import { canonicalJson, sha256Hex } from "../servers/shared/crypto.mjs";
+import { HOSPITAL_MAX_GOVERNANCE_LEVEL, isClinicalLandingEnabled } from "./clinical-landing-policy.mjs";
 
 export const GOVERNANCE_STAGES = {
   RETROSPECTIVE_STUDY: {
@@ -55,6 +56,16 @@ export class GovernanceStateManager {
       );
     }
 
+    if (isClinicalLandingEnabled()) {
+      const landingStageId = envStage || initialStage;
+      const landingStage = Object.values(GOVERNANCE_STAGES).find((s) => s.id === landingStageId);
+      if (landingStage && landingStage.level > HOSPITAL_MAX_GOVERNANCE_LEVEL) {
+        throw new Error(
+          `P0_GOVERNANCE_CAP: clinical landing cannot start at [${landingStageId}]. Maximum is silent_pilot (Level ${HOSPITAL_MAX_GOVERNANCE_LEVEL}).`,
+        );
+      }
+    }
+
     this.currentStageId = initialStage;
     this.history = [
       {
@@ -89,6 +100,12 @@ export class GovernanceStateManager {
 
     if (target.level > current.level + 1) {
       throw new Error(`跨级发布被严格禁止 (Prohibited from skipping stages: cannot jump from Level ${current.level} [${current.name_cn}] directly to Level ${target.level} [${target.name_cn}]). 必须依次完成阶段演进。`);
+    }
+
+    if (isClinicalLandingEnabled() && target.level > HOSPITAL_MAX_GOVERNANCE_LEVEL) {
+      throw new Error(
+        `P0_GOVERNANCE_CAP: clinical landing cannot advance to ${target.name_cn} (Level ${target.level}). Doctor-facing alerts and writeback stay prohibited until the silent-pilot evidence packet is complete.`,
+      );
     }
 
     // Check prerequisites
@@ -145,6 +162,26 @@ export class GovernanceStateManager {
       throw err;
     }
     return true;
+  }
+
+  /**
+   * Silent-pilot and retrospective study must not pop clinician-facing cards.
+   */
+  assertLiveAlertsAllowed() {
+    const current = this.getCurrentStage();
+    if (!current.allows_live_alerts) {
+      const err = new Error(
+        `【发布门禁拦截】当前处于「${current.name_cn}」(Level ${current.level})，严禁向医生弹出临床提示卡片。静默试点仅允许旁路计算与审计落盘。`,
+      );
+      err.code = "GOVERNANCE_STAGE_LIVE_ALERTS_BLOCKED";
+      err.current_stage = current;
+      throw err;
+    }
+    return true;
+  }
+
+  clinicianDisplay() {
+    return this.getCurrentStage().allows_live_alerts ? "cards" : "suppressed_silent_pilot";
   }
 }
 

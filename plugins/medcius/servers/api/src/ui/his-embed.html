@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Medcius HIS 内嵌 · 静默试点</title>
+  <style>
+    body { font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; background: #0d1117; color: #c9d1d9; margin: 0; padding: 16px; font-size: 13px; }
+    .panel { border: 1px solid #30363d; border-radius: 8px; background: #161b22; padding: 16px; }
+    h1 { font-size: 15px; margin: 0 0 8px; color: #fff; }
+    .muted { color: #8b949e; line-height: 1.5; }
+    .tag { display: inline-block; background: #d2992222; color: #e3b341; border-radius: 4px; padding: 2px 8px; font-weight: 600; font-size: 11px; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <div class="tag">SILENT PILOT · 不对临床医生弹窗</div>
+    <h1>HIS 患者页内嵌入口</h1>
+    <p class="muted" id="status">等待医院 HIS 通过 postMessage 下发患者上下文。静默试点只做旁路计算与审计落盘，不向医师展示摘要、不生成病程草稿、不写回。</p>
+  </div>
+  <script>
+    const allowedRaw = (window.location.search.match(/[?&]origin=([^&]+)/) || [])[1];
+    const allowed = allowedRaw ? decodeURIComponent(allowedRaw) : "";
+    function ack(detail) {
+      const target = window.parent === window ? null : window.parent;
+      if (!target || !allowed) return;
+      target.postMessage({ type: "medcius:silent-ack", detail }, allowed);
+    }
+    if (!allowed) {
+      document.getElementById("status").textContent = "缺少 HIS parent origin（?origin=），已 fail-closed，拒绝 postMessage *。";
+    }
+    window.addEventListener("message", async (event) => {
+      if (!allowed || event.origin !== allowed) return;
+      const data = event.data || {};
+      if (data.type !== "his:patient-context") return;
+      try {
+        const payload = data.payload || data;
+        const sso = payload.sso_token || payload.ssoToken || data.sso_token;
+        const headers = { "Content-Type": "application/json" };
+        if (sso) {
+          headers.Authorization = "Bearer " + sso;
+          headers["X-Hospital-Token"] = sso;
+        }
+        const response = await fetch("/api/v1/his/embed/silent-capture", {
+          method: "POST",
+          headers,
+          body: JSON.stringify(data),
+        });
+        const json = await response.json();
+        document.getElementById("status").textContent = json.shadow
+          ? "静默捕获已记录。本窗不向临床医生展示摘要。"
+          : (json.error || "静默捕获失败，已 fail-closed。");
+        ack({ ok: response.ok, silent: true, cards: [] });
+      } catch (error) {
+        document.getElementById("status").textContent = "静默捕获失败，已 fail-closed。";
+        ack({ ok: false, silent: true, cards: [] });
+      }
+    });
+    ack({ ready: true, silent: true });
+  </script>
+</body>
+</html>

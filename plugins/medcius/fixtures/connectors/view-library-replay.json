@@ -1,0 +1,110 @@
+{
+  "_comment": "Synthetic replay fixture for the P3 view-library connector. Fabricated values only; no real patient data.",
+  "source_version": "synthetic-view-library-replay-v1",
+  "routes": {
+    "/views/v_medcius_patient": [
+      {
+        "id": "patient-synthetic-1",
+        "name": "张三（合成）",
+        "gender": "男",
+        "age": 67,
+        "bed_number": "01床",
+        "birth_date": "1958-05-12"
+      }
+    ],
+    "/views/v_medcius_encounter": [
+      {
+        "id": "encounter-synthetic-1",
+        "status": "in-progress",
+        "class": "inpatient",
+        "period_start": "2026-08-20T08:00:00Z"
+      }
+    ],
+    "/views/v_medcius_nis_vitals": [
+      {
+        "id": "nis-synth-1",
+        "patient_id": "patient-synthetic-1",
+        "encounter_id": "encounter-synthetic-1",
+        "temperature": 37.8,
+        "systolic_bp": 152,
+        "diastolic_bp": 88,
+        "heart_rate": 92,
+        "spo2": 95,
+        "oral_intake_ml": 600,
+        "iv_intake_ml": 1000,
+        "urine_output_ml": 900,
+        "drain_output_ml": 80,
+        "recorded_at": "2026-08-25T06:00:00Z"
+      }
+    ],
+    "/views/v_medcius_lis_results": [
+      {
+        "id": "lis-k-synth-1",
+        "patient_id": "patient-synthetic-1",
+        "encounter_id": "encounter-synthetic-1",
+        "test_code": "2823-3",
+        "test_name": "血钾测定",
+        "result_value": 2.4,
+        "unit": "mmol/L",
+        "status": "final",
+        "sample_time": "2026-08-25T06:00:00Z",
+        "reference_range_text": "3.5 - 5.3 mmol/L",
+        "ref_low": 3.5,
+        "ref_high": 5.3,
+        "interpretation": "LL",
+        "is_critical": true
+      },
+      {
+        "id": "lis-na-synth-1",
+        "patient_id": "patient-synthetic-1",
+        "encounter_id": "encounter-synthetic-1",
+        "test_code": "2951-2",
+        "test_name": "血钠测定",
+        "result_value": 139,
+        "unit": "mmol/L",
+        "status": "final",
+        "sample_time": "2026-08-25T06:00:00Z",
+        "reference_range_text": "135 - 145 mmol/L",
+        "ref_low": 135,
+        "ref_high": 145
+      }
+    ],
+    "/views/v_medcius_his_orders": [
+      {
+        "id": "his-med-synth-1",
+        "patient_id": "patient-synthetic-1",
+        "encounter_id": "encounter-synthetic-1",
+        "is_medication": true,
+        "drug_name": "注射用头孢曲松钠（合成）",
+        "dosage": "2g",
+        "route": "静脉滴注",
+        "frequency": "qd",
+        "authored_on": "2026-08-20T09:30:00Z",
+        "status": "active",
+        "change_type": "active"
+      }
+    ],
+    "/views/v_medcius_pacs_reports": [
+      {
+        "id": "pacs-synth-1",
+        "patient_id": "patient-synthetic-1",
+        "encounter_id": "encounter-synthetic-1",
+        "name": "胸部CT平扫（合成）",
+        "modality": "CT",
+        "status": "preliminary",
+        "ordered_at": "2026-08-25T07:00:00Z",
+        "impression": "双肺纹理增粗，待出正式报告。"
+      }
+    ],
+    "/views/v_medcius_notes": [
+      {
+        "id": "note-synth-1",
+        "patient_id": "patient-synthetic-1",
+        "encounter_id": "encounter-synthetic-1",
+        "title": "病程记录（合成）",
+        "content_type": "text/plain",
+        "text": "患者胸闷气促较前缓解，复查血钾 2.4 mmol/L，已处理。"
+      }
+    ]
+  }
+}

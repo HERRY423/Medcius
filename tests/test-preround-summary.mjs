@@ -185,8 +185,30 @@ assert.ok(draft.draft_text.includes("四、今日待办检查与追踪事项"));
 assert.ok(draft.draft_text.includes("五、已知临床资料缺口提示"));
 assert.ok(draft.draft_text.includes("林德明 (主任医师)"));
 assert.ok(draft.draft_text.includes("低盐低脂饮食"));
+assert.ok(!draft.draft_text.includes("电子验证签名 SHA-256"), "Must not claim fake SHA-256 digital signature");
+assert.ok(draft.draft_text.includes("查房记录草稿，待医师确认签署"));
 
-console.log("✓ Structured daily progress note draft generated with physician sign-off attribution");
+// Verification of Issue 1: Zero diagnosis fabrication (no default '冠心病')
+const draftWithoutDiag = PatientEvolutionEngine.generateProgressNoteDraft({
+  summaryData: {
+    ...summary,
+    patient: { id: "P-NODIAG", name: "张三", bed_number: "12床", primary_diagnosis: null },
+  },
+  selectedItemIds: [],
+  doctorId: "DOC-8021",
+  doctorName: "林德明 (主任医师)",
+});
+assert.ok(!draftWithoutDiag.draft_text.includes("冠心病"), "Must NOT hallucinate '冠心病' when diagnosis is absent");
+assert.ok(draftWithoutDiag.draft_text.includes("未明确主诊断"), "Must explicitly note unconfirmed primary diagnosis");
+
+// Verification of Issue 3: Fail-closed on missing doctor context
+assert.throws(
+  () => PatientEvolutionEngine.generateProgressNoteDraft({ summaryData: summary }),
+  /INVALID_DOCTOR_CONTEXT/,
+  "Must fail-closed when doctorId is omitted",
+);
+
+console.log("✓ Structured daily progress note draft generated with honest draft disclaimer and zero fake diagnosis");
 
 // ----------------------------------------------------
 // Test 3: Live API & CDS Hooks Integration
@@ -222,10 +244,16 @@ try {
   assert.ok(html.includes("插入查房记录"));
   console.log("  ✓ EHR Sidebar HTML UI served correctly with 4 dedicated blocks");
 
-  // Test 3b: GET /api/v1/patient/evolution-summary
-  console.log("  [3b] GET /api/v1/patient/evolution-summary...");
-  const resSummary = await fetch(`${baseUrl}/api/v1/patient/evolution-summary?time_window=24h&patient_id=IP-2026-90812&encounter_id=ENC-2026-01`, {
+  // Test 3b: POST /api/v1/patient/evolution-summary
+  console.log("  [3b] POST /api/v1/patient/evolution-summary...");
+  const resSummary = await fetch(`${baseUrl}/api/v1/patient/evolution-summary`, {
+    method: "POST",
     headers: authHeaders,
+    body: JSON.stringify({
+      time_window: "24h",
+      patient_id: "IP-2026-90812",
+      encounter_id: "ENC-2026-01",
+    }),
   });
   assert.equal(resSummary.status, 200);
   const sumJson = await resSummary.json();
@@ -266,8 +294,9 @@ try {
   });
   assert.equal(resHookEmpty.status, 200);
   const hookEmptyJson = await resHookEmpty.json();
-  assert.ok(hookEmptyJson.cards[0].summary.includes("未检出有效患者上下文"));
-  console.log("  ✓ CDS Hook properly failed-closed when patient context was absent");
+  assert.equal(hookEmptyJson.cards.length, 0, "Silent-pilot must not pop clinician cards");
+  assert.ok(String(hookEmptyJson.extension?.medcius?.fail_closed?.summary || "").includes("未检出有效患者上下文"));
+  console.log("  ✓ CDS Hook properly failed-closed when patient context was absent (silent)");
 
   console.log("\nALL INPATIENT PRE-ROUND EVOLUTION SUMMARY TESTS PASSED!");
 } finally {

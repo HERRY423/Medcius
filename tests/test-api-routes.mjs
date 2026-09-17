@@ -72,12 +72,19 @@ try {
   assert.equal(hookRes.status, 200);
   const hookJson = await hookRes.json();
   assert.ok(Array.isArray(hookJson.cards));
-  console.log(`✓ CDS Hook returned card: ${hookJson.cards[0]?.summary}`);
+  assert.equal(hookJson.cards.length, 0, "Silent-pilot CDS must not pop clinician cards");
+  console.log(`✓ CDS Hook silent capture: ${hookJson.extension?.medcius?.clinician_display}`);
 
-  // Test 5: GET /api/v1/patient/evolution-summary
-  console.log("\n[Test 5] GET /api/v1/patient/evolution-summary...");
-  const sumRes = await fetch(`${baseUrl}/api/v1/patient/evolution-summary?time_window=24h&patient_id=P-1001&encounter_id=ENC-1001`, {
+  // Test 5: POST /api/v1/patient/evolution-summary (POST mandatory for PHI safety)
+  console.log("\n[Test 5] POST /api/v1/patient/evolution-summary...");
+  const sumRes = await fetch(`${baseUrl}/api/v1/patient/evolution-summary`, {
+    method: "POST",
     headers: authHeaders,
+    body: JSON.stringify({
+      time_window: "24h",
+      patient_id: "P-1001",
+      encounter_id: "ENC-1001",
+    }),
   });
   assert.equal(sumRes.status, 200);
   const sumJson = await sumRes.json();
@@ -86,6 +93,15 @@ try {
   assert.ok(sumJson.blocks.data_gaps);
   assert.ok(sumJson.blocks.evidence);
   console.log(`✓ /api/v1/patient/evolution-summary returned ${sumJson.total_items_count} items`);
+
+  // Test 5b: GET /api/v1/patient/evolution-summary must be rejected with HTTP 405 (PHI protection)
+  console.log("\n[Test 5b] Verifying GET on evolution-summary is rejected (PHI in URL prevention)...");
+  const getBlocked = await fetch(`${baseUrl}/api/v1/patient/evolution-summary?patient_id=P-1001&encounter_id=ENC-1001`, {
+    method: "GET",
+    headers: authHeaders,
+  });
+  assert.equal(getBlocked.status, 405, "GET method carrying PHI in query string must be blocked with 405");
+  console.log("✓ GET /api/v1/patient/evolution-summary properly rejected with HTTP 405");
 
   // Test 6: POST /api/v1/patient/progress-note-draft
   console.log("\n[Test 6] POST /api/v1/patient/progress-note-draft...");

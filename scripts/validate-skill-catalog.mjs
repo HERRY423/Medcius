@@ -21,18 +21,25 @@ assert.ok(existsSync(catalogPath), "Catalog file must exist");
 const catalogEngine = new ClinicalSkillCatalog();
 catalogEngine.loadCatalog(catalogPath);
 
-const requiredSkills = [
-  "patient-evolution-summary",
+const landingCheck = catalogEngine.isSkillApproved("patient-evolution-summary", "production");
+assert.ok(landingCheck.isEligible, `patient-evolution-summary must be approved for production: ${landingCheck.reason}`);
+assert.ok(landingCheck.skill.approval_metadata.approved_by, "Landing skill must have named physician approval");
+console.log(`  ✓ Skill 'patient-evolution-summary' [v${landingCheck.skill.version}]: Approved by ${landingCheck.skill.approval_metadata.approved_by}`);
+
+const frozenSkills = [
   "shift-handover",
   "consult-preparation",
   "discharge-readiness-check",
 ];
-
-for (const skillId of requiredSkills) {
-  const check = catalogEngine.isSkillApproved(skillId, "production");
-  assert.ok(check.isEligible, `Skill ${skillId} must be approved for production: ${check.reason}`);
-  assert.ok(check.skill.approval_metadata.approved_by, `Skill ${skillId} must have named physician approval`);
-  console.log(`  ✓ Skill '${skillId}' [v${check.skill.version}]: Approved by ${check.skill.approval_metadata.approved_by} (${check.skill.approval_metadata.committee})`);
+for (const skillId of frozenSkills) {
+  const skill = catalogEngine.getSkill(skillId);
+  assert.ok(skill, `Frozen skill ${skillId} must remain in the catalog`);
+  assert.equal(skill.status, "frozen", `Skill ${skillId} must be P0-frozen`);
+  const prodCheck = catalogEngine.isSkillApproved(skillId, "production");
+  assert.equal(prodCheck.isEligible, false, `Frozen skill ${skillId} must not be production-eligible`);
+  const landingMode = catalogEngine.isSkillApproved(skillId, "clinical_landing");
+  assert.equal(landingMode.isEligible, false, `Frozen skill ${skillId} must not run in clinical_landing mode`);
+  console.log(`  ✓ Skill '${skillId}' is P0-frozen and ineligible for clinical landing`);
 }
 
 // Test Fail-Closed behavior for unapproved/quarantined skill
