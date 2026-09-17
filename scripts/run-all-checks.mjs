@@ -48,6 +48,8 @@ const steps = [
   { name: "35. Enterprise Deployment: IdP JWKS & mTLS Gateway Tests", cmd: "node", args: ["tests/test-enterprise-deployment.mjs"] },
   { name: "36. Cross-Hospital Migration & Heterogeneous Dialect Tests", cmd: "node", args: ["tests/test-cross-hospital-migration.mjs"] },
   { name: "37. Multi-Department Real-World Shadow Study & Time-Motion Analyzer", cmd: "node", args: ["plugins/medcius/evals/shadow-mode/real-world-study-protocol.mjs"] },
+  { name: "38. P0 Clinical Landing: HIS Embed, Frozen Skills, View Library, Silent Pilot, Stopwatch", cmd: "node", args: ["tests/test-p0-clinical-landing.mjs"] },
+  { name: "39. Evaluation Findings Rectification: Claim Verifier, Lab NLP, LIS/NIS & PHI (F-01 to F-14)", cmd: "node", args: ["tests/test-core-findings-rectification.mjs"] },
 ];
 
 console.log("================================================================================");

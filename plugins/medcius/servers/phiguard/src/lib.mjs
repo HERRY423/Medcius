@@ -105,9 +105,13 @@ export function scanText(text) {
 export function containsRawPhi(text) {
   RE_ID18.lastIndex = 0;
   RE_PHONE.lastIndex = 0;
+  RE_FIXED_PHONE.lastIndex = 0;
+  RE_EMAIL.lastIndex = 0;
   RE_BANK_CARD.lastIndex = 0;
   if (RE_ID18.test(text)) return { hit: true, type: "id_card" };
   if (RE_PHONE.test(text)) return { hit: true, type: "phone_cn_mobile" };
+  if (RE_FIXED_PHONE.test(text)) return { hit: true, type: "phone_cn_fixed" };
+  if (RE_EMAIL.test(text)) return { hit: true, type: "email" };
   if (RE_BANK_CARD.test(text)) return { hit: true, type: "bank_card" };
   return { hit: false };
 }

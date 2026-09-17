@@ -18,11 +18,19 @@ console.log("===================================================================
 console.log(" Medcius Repository Architecture Convergence & Quarantine Linter");
 console.log("================================================================================\n");
 
-const ALLOWED_PRODUCTION_WORKFLOW_SKILLS = new Set([
+const CLINICAL_LANDING_WORKFLOW_SKILLS = new Set([
   "patient-evolution-summary",
+]);
+
+const FROZEN_WORKFLOW_SKILLS = new Set([
   "shift-handover",
   "consult-preparation",
   "discharge-readiness-check",
+]);
+
+const ALLOWED_PRODUCTION_WORKFLOW_SKILLS = new Set([
+  ...CLINICAL_LANDING_WORKFLOW_SKILLS,
+  ...FROZEN_WORKFLOW_SKILLS,
 ]);
 
 const ALLOWED_PRODUCTION_DATA_SKILLS = new Set([
@@ -64,11 +72,11 @@ if (existsSync(traeSkillsDir)) {
   const traeSkills = readdirSync(traeSkillsDir, { withFileTypes: true })
     .filter((d) => d.isDirectory())
     .map((d) => d.name);
-  for (const wfSkill of ALLOWED_PRODUCTION_WORKFLOW_SKILLS) {
+  for (const wfSkill of CLINICAL_LANDING_WORKFLOW_SKILLS) {
     const prefixedName = `medcius-${wfSkill}`;
-    assert.ok(traeSkills.includes(prefixedName) || traeSkills.includes(wfSkill), `Trae must include ${wfSkill}`);
+    assert.ok(traeSkills.includes(prefixedName) || traeSkills.includes(wfSkill), `Trae must include clinical landing skill ${wfSkill}`);
   }
-  console.log("  ✓ Trae skills manifest strictly aligned.");
+  console.log("  ✓ Trae skills manifest includes the P0 clinical landing skill.");
 }
 
 const codebuddySkillsDir = join(repoRoot, ".codebuddy/skills");
@@ -76,11 +84,11 @@ if (existsSync(codebuddySkillsDir)) {
   const codebuddySkills = readdirSync(codebuddySkillsDir, { withFileTypes: true })
     .filter((d) => d.isDirectory())
     .map((d) => d.name);
-  for (const wfSkill of ALLOWED_PRODUCTION_WORKFLOW_SKILLS) {
+  for (const wfSkill of CLINICAL_LANDING_WORKFLOW_SKILLS) {
     const prefixedName = `medcius-${wfSkill}`;
-    assert.ok(codebuddySkills.includes(prefixedName) || codebuddySkills.includes(wfSkill), `CodeBuddy must include ${wfSkill}`);
+    assert.ok(codebuddySkills.includes(prefixedName) || codebuddySkills.includes(wfSkill), `CodeBuddy must include clinical landing skill ${wfSkill}`);
   }
-  console.log("  ✓ CodeBuddy skills manifest strictly aligned.");
+  console.log("  ✓ CodeBuddy skills manifest includes the P0 clinical landing skill.");
 }
 
 // 3. Scan production MCP configs for write methods or disallowed keywords

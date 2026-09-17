@@ -66,9 +66,16 @@ export class ClinicalSkillCatalog {
       return { isEligible: false, reason: `Skill '${skillId}' is quarantined due to safety or regulatory reasons` };
     }
 
-    // 3. Check deprecated status
+    // 3. Check deprecated / P0 frozen status
     if (skill.status === "deprecated") {
       return { isEligible: false, reason: `Skill '${skillId}' is deprecated` };
+    }
+    if (skill.status === "frozen") {
+      return { isEligible: false, reason: `Skill '${skillId}' is P0-frozen and cannot run on the clinical landing surface` };
+    }
+
+    if (mode === "clinical_landing" && skillId !== "patient-evolution-summary") {
+      return { isEligible: false, reason: `Skill '${skillId}' is outside the P0 clinical landing allowlist` };
     }
 
     // 4. Production Hard Gate: In production, must be explicitly 'approved' with named physician sign-off

@@ -3,6 +3,8 @@ name: shift-handover
 description: 临床交接班与夜间值班重点整理技能。基于 SBAR (Situation-Background-Assessment-Recommendation) 模型，将病区患者现状、夜间监护极值、危急值报警、引流异常、待复查检验与应急预案整理为结构化交接班卡片。只读整理、不做自主医疗决策、不代开医嘱。当用户提出"交接班"、"交班记录"、"夜间交班"、"shift handover"、"patient handoff"时使用。
 ---
 
+> **P0-FROZEN（临床落地冻结）**：本技能保留工程与合成测试路径，**禁止**在 HIS 内嵌、院内 SSO 或 `MEDCIUS_CLINICAL_LANDING=1` 下调用。一线临床只启用 `patient-evolution-summary`。
+
 # Clinical Shift Handover (临床交接班准备技能)
 
 临床交接班准备技能是 Medcius 面向住院总医师、值班医师与病区护理人员的结构化工作流技能包。它利用 SBAR 与 I-PASS 临床模型，自动梳理患者关键现状、背景历程、夜间重点评估项目及待办预案，防止交接班信息断层。

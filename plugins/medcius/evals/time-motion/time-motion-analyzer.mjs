@@ -4,8 +4,10 @@
 
 import { writeFileSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import assert from "node:assert/strict";
+import { classifyEvidenceReport } from "../../lib/clinical-landing-policy.mjs";
+import { evaluateStopwatchProtocol } from "./stopwatch-protocol.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -14,7 +16,7 @@ export class TimeMotionAnalyzer {
    * Evaluates a cohort of clinician observational sessions
    * @param {Array<Object>} sessions - array of paired session data
    */
-  static analyzeCohort(sessions) {
+  static analyzeCohort(sessions, { dataClass = "synthetic", irbProtocolId = null } = {}) {
     if (!sessions || sessions.length === 0) {
       throw new Error("No session data provided for time-motion analysis");
     }
@@ -56,8 +58,19 @@ export class TimeMotionAnalyzer {
     // Non-inferiority check: Medcius omissions <= Manual omissions (Margin delta <= 0.0)
     const isNonInferior = medciusOmissions <= manualOmissions;
 
+    const evidence = classifyEvidenceReport({
+      dataClass,
+      irbProtocolId,
+      observerIds: sessions.map((s) => s.observer_id || s.physician).filter(Boolean),
+      stopwatchRecords: sessions,
+    });
+
     return {
       sample_size: n,
+      evidence: {
+        ...evidence,
+        clinical_evidence_pass: false,
+      },
       time_metrics: {
         avg_manual_seconds: avgManualSec,
         avg_medcius_seconds: avgMedciusSec,
@@ -111,12 +124,16 @@ const sampleObservationSessions = [
   },
 ];
 
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (isMain) {
 console.log("================================================================================");
 console.log(" Medcius Clinician Time-Motion & Human Factors Statistical Analyzer");
 console.log(" Protocol: Paired Observation Sessions (Hands-on Time, Clicks & NASA-TLX)");
+console.log(" Notice: SYNTHETIC PROTOCOL — clinical_evidence_pass remains BLOCKED");
 console.log("================================================================================\n");
 
-const results = TimeMotionAnalyzer.analyzeCohort(sampleObservationSessions);
+const results = TimeMotionAnalyzer.analyzeCohort(sampleObservationSessions, { dataClass: "synthetic" });
 
 console.log(`[Analyzed ${results.sample_size} Physician Sessions]`);
 console.log(`  • 单病案平均查房准备耗时: 手工翻阅 ${results.time_metrics.avg_manual_seconds}s  →  Medcius 辅助 ${results.time_metrics.avg_medcius_seconds}s (节省 ${results.time_metrics.time_saved_percentage}%)`);
@@ -133,6 +150,7 @@ const reportMarkdown = `# 临床医生查房前工作流 Time-Motion 与人因�
 > 1. 数据来源：配对医生观察会话分析模型；
 > 2. 状态分类：属于 **\`engineering_pass: 🟢 PASS\`** 与 **\`synthetic_validation_pass: 🟢 PASS\`**；
 > 3. 正式临床监管报告需在完成 IRB 伦理批件后由第三方观察员现场秒表测定，当前 **\`clinical_evidence_pass: 🔒 BLOCKED\`**。
+> 4. 下表百分比是合成管线输出，**禁止**作为一线提效宣称；预注册临床终点是秒表均节省 ≥ 90 秒且安全非劣。
 
 ---
 
@@ -161,6 +179,17 @@ writeFileSync(reportFilePath, reportMarkdown, "utf8");
 
 console.log(`\n✓ Time-Motion Statistical Report generated at: ${reportFilePath}`);
 
-assert.ok(results.time_metrics.time_saved_percentage >= 70.0, "Time saved percentage must be >= 70.0%");
-assert.ok(results.safety_non_inferiority.is_non_inferior, "Must satisfy safety non-inferiority margin");
-console.log("🎉 TIME-MOTION STATISTICAL ANALYZER COMPLETED SUCCESSFULLY!\n");
+assert.equal(results.evidence.clinical_evidence_pass, false, "synthetic time-motion must not claim clinical evidence");
+const stopwatch = evaluateStopwatchProtocol({
+  data_class: "synthetic",
+  records: sampleObservationSessions.map((session) => ({
+    observer_id: session.physician,
+    control_seconds: session.manual.duration_seconds,
+    intervention_seconds: session.medcius.duration_seconds,
+    control_omissions: session.manual.critical_omissions,
+    intervention_omissions: session.medcius.critical_omissions,
+  })),
+});
+assert.equal(stopwatch.evidence.clinical_evidence_pass, false, "in-silico 79%-class deltas cannot pass clinical evidence");
+console.log("🎉 TIME-MOTION STATISTICAL ANALYZER COMPLETED SUCCESSFULLY (synthetic, clinical evidence blocked)!\n");
+}

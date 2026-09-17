@@ -10,6 +10,8 @@
 // (AGENTS.md red line — this connector does not soften that boundary).
 
 const DEFAULT_TIMEOUT_MS = 10000;
+const MAX_BUNDLE_PAGES = 3;
+const TRANSIENT_STATUSES = new Set([502, 503, 504, 429]);
 
 function assertReadOnlyMethod(method) {
   if (String(method).toUpperCase() !== "GET") {
@@ -17,30 +19,89 @@ function assertReadOnlyMethod(method) {
   }
 }
 
+/**
+ * Plaintext-PHI guard: production FHIR endpoints must speak TLS.
+ * Loopback / *.local sandbox hosts stay allowed for synthetic replay.
+ */
+export function assertHttpsBaseUrl(baseUrl) {
+  let parsed;
+  try {
+    parsed = new URL(baseUrl);
+  } catch {
+    throw new Error("CONNECTOR_BASE_URL_INVALID");
+  }
+  const host = parsed.hostname.toLowerCase();
+  const isLoopback = host === "localhost" || host === "127.0.0.1" || host === "::1" || host.endsWith(".local");
+  if (parsed.protocol === "http:" && !isLoopback) {
+    throw new Error(`CONNECTOR_HTTP_PLAINTEXT_REJECTED: refusing plaintext http for '${host}'; use https or a loopback sandbox`);
+  }
+  return true;
+}
+
 async function fetchFhirJson({ baseUrl, path, query = {}, fetchImpl, headers = {}, timeoutMs = DEFAULT_TIMEOUT_MS }) {
   assertReadOnlyMethod("GET");
+  assertHttpsBaseUrl(baseUrl);
   const base = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
   const url = new URL(path.replace(/^\//, ""), base);
   for (const [key, value] of Object.entries(query)) {
     if (value != null && value !== "") url.searchParams.set(key, String(value));
   }
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  let response;
-  try {
-    response = await fetchImpl(url.toString(), {
-      method: "GET",
-      headers: { accept: "application/fhir+json", ...headers },
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timer);
-  }
-  if (!response.ok) {
+  let lastError = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    let response;
+    try {
+      response = await fetchImpl(url.toString(), {
+        method: "GET",
+        headers: { accept: "application/fhir+json", ...headers },
+        signal: controller.signal,
+      });
+    } catch (error) {
+      clearTimeout(timer);
+      if (error?.name === "AbortError") {
+        throw new Error(`CONNECTOR_FHIR_TIMEOUT: GET ${url.pathname} exceeded ${timeoutMs}ms`);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
+    if (response.ok) return response.json();
+    // Transient 5xx/429: one bounded retry, then fail closed. 4xx fails immediately.
+    if (TRANSIENT_STATUSES.has(response.status) && attempt === 0) {
+      lastError = new Error(`CONNECTOR_FHIR_HTTP_ERROR: GET ${url.pathname} responded ${response.status}`);
+      continue;
+    }
     throw new Error(`CONNECTOR_FHIR_HTTP_ERROR: GET ${url.pathname} responded ${response.status}`);
   }
-  return response.json();
+  throw lastError;
+}
+
+/** Fetch a FHIR search Bundle, following `link.relation=next` up to MAX_BUNDLE_PAGES. */
+async function fetchFhirBundlePages(settings, path, query) {
+  const pages = [];
+  let nextPath = path;
+  let nextQuery = query;
+  for (let page = 0; page < MAX_BUNDLE_PAGES; page++) {
+    const payload = await fetchFhirJson({ ...settings, path: nextPath, query: nextQuery });
+    pages.push(payload);
+    const nextLink = payload?.resourceType === "Bundle"
+      ? (payload.link || []).find((entry) => entry?.relation === "next" && typeof entry?.url === "string")
+      : null;
+    if (!nextLink) break;
+    try {
+      const nextUrl = new URL(nextLink.url, settings.baseUrl.endsWith("/") ? settings.baseUrl : `${settings.baseUrl}/`);
+      const basePath = new URL(settings.baseUrl.endsWith("/") ? settings.baseUrl : `${settings.baseUrl}/`).pathname;
+      nextPath = nextUrl.pathname.startsWith(basePath)
+        ? nextUrl.pathname.slice(basePath.length)
+        : nextUrl.pathname.replace(/^\//, "");
+      nextQuery = Object.fromEntries(nextUrl.searchParams.entries());
+    } catch {
+      break;
+    }
+  }
+  return pages;
 }
 
 /** Normalize a FHIR reply that may be a single resource or a Bundle. */
@@ -111,6 +172,10 @@ function mapObservation(resource, context) {
     .flatMap((entry) => entry.coding || [])
     .find((coding) => CRITICAL_INTERPRETATION_CODES.has(String(coding.code || "").toUpperCase()));
   const referenceRange = (resource.referenceRange || [])[0];
+  // Preserve numeric bounds: downstream engines judge 高/低 from these.
+  // Text-only ranges degrade to 趋势呈现, so both forms travel together.
+  const refLow = referenceRange?.low?.value ?? null;
+  const refHigh = referenceRange?.high?.value ?? null;
   return stamp(context, {
     id: resource.id,
     order_id: resource.basedOn?.[0]?.reference?.replace(/^.*\//, "") || null,
@@ -121,6 +186,9 @@ function mapObservation(resource, context) {
     status: resource.status || null,
     sample_time: resource.effectiveDateTime || resource.effectiveInstant || null,
     reference_range_text: referenceRange?.text || null,
+    referenceRange: resource.referenceRange || null,
+    ref_low: refLow,
+    ref_high: refHigh,
     is_critical: Boolean(interpretation),
   });
 }
@@ -146,6 +214,101 @@ function mapMedicationRequest(resource, context) {
   });
 }
 
+function mapDiagnosticReport(resource, context) {
+  return stamp(context, {
+    id: resource.id,
+    name: resource.code?.text || resource.code?.coding?.[0]?.display || "影像/检查报告",
+    modality: resource.category?.[0]?.coding?.[0]?.display || resource.category?.[0]?.text || "影像检查",
+    status: resource.status === "final" ? "final" : "preliminary",
+    ordered_at: resource.effectiveDateTime || resource.issued || null,
+    impression: resource.conclusion || (resource.conclusionCode || []).map((entry) => entry?.text).filter(Boolean).join("；") || "",
+    code: resource.code?.coding?.[0]?.code || null,
+    order_id: resource.basedOn?.[0]?.reference?.replace(/^.*\//, "") || null,
+    resulted_at: resource.issued || null,
+  });
+}
+
+function mapDocumentReference(resource, context) {
+  const attachment = resource.content?.[0]?.attachment || {};
+  return stamp(context, {
+    id: resource.id,
+    document_id: resource.id,
+    title: resource.description || resource.type?.text || "病程记录",
+    content_type: attachment.contentType || "text/plain",
+    text: typeof attachment.data === "string" ? attachment.data : (resource.description || ""),
+    source_format: "fhir-documentreference",
+  });
+}
+
+/** Collect Observation resources across paginated Bundle pages. */
+async function collectObservations(settings, context, query) {
+  const pages = await fetchFhirBundlePages(settings, "Observation", query);
+  return pages.flatMap(resourcesOf)
+    .filter((resource) => resource.resourceType === "Observation")
+    .map((resource) => mapObservation(resource, context));
+}
+
+/** Collect MedicationRequest resources across paginated Bundle pages. */
+async function collectMedicationRequests(settings, context, query) {
+  const pages = await fetchFhirBundlePages(settings, "MedicationRequest", query);
+  return pages.flatMap(resourcesOf)
+    .filter((resource) => resource.resourceType === "MedicationRequest")
+    .map((resource) => mapMedicationRequest(resource, context));
+}
+
+const EXTRA_KIND_BUILDERS = {
+  // NIS 体征：复用 Observation vital-signs 类别，走同一参考区间保留逻辑。
+  nis: (settings, sourceVersion) => ({
+    id: "fhir-r4-nis",
+    kind: "nis",
+    capabilities: ["read"],
+    async readPatient(context) {
+      const pages = await fetchFhirBundlePages(settings, "Observation", {
+        patient: context.patient_id, encounter: context.encounter_id, category: "vital-signs", _count: 200,
+      });
+      const records = pages.flatMap(resourcesOf)
+        .filter((resource) => resource.resourceType === "Observation")
+        .map((resource) => {
+          const mapped = mapObservation(resource, context);
+          const code = String(resource.code?.coding?.[0]?.code || "");
+          const vitalMap = { "8310-5": "temperature", "8480-6": "systolic_bp", "8462-4": "diastolic_bp", "8867-4": "heart_rate", "2708-6": "spo2" };
+          return { ...mapped, vital_code: vitalMap[code] || code, timestamp: mapped.sample_time };
+        });
+      return buildEnvelope("fhir-r4-nis", "nis", context, records, sourceVersion);
+    },
+  }),
+  // PACS 影像：DiagnosticReport 最终/初步状态直通未闭环追踪。
+  pacs: (settings, sourceVersion) => ({
+    id: "fhir-r4-pacs",
+    kind: "pacs",
+    capabilities: ["read"],
+    async readPatient(context) {
+      const pages = await fetchFhirBundlePages(settings, "DiagnosticReport", {
+        patient: context.patient_id, encounter: context.encounter_id, _count: 100,
+      });
+      const records = pages.flatMap(resourcesOf)
+        .filter((resource) => resource.resourceType === "DiagnosticReport")
+        .map((resource) => mapDiagnosticReport(resource, context));
+      return buildEnvelope("fhir-r4-pacs", "pacs", context, records, sourceVersion);
+    },
+  }),
+  // 病程文本：DocumentReference content 解码后供 span 绑定（大文本截断并标记）。
+  notes: (settings, sourceVersion) => ({
+    id: "fhir-r4-notes",
+    kind: "notes",
+    capabilities: ["read"],
+    async readPatient(context) {
+      const pages = await fetchFhirBundlePages(settings, "DocumentReference", {
+        patient: context.patient_id, encounter: context.encounter_id, _count: 100,
+      });
+      const records = pages.flatMap(resourcesOf)
+        .filter((resource) => resource.resourceType === "DocumentReference")
+        .map((resource) => mapDocumentReference(resource, context));
+      return buildEnvelope("fhir-r4-notes", "notes", context, records, sourceVersion);
+    },
+  }),
+};
+
 /**
  * Create the four read-only FHIR R4 connectors consumed by
  * ReadOnlyHospitalDataBridge. `fetchImpl` defaults to global fetch; tests and
@@ -157,6 +320,8 @@ function mapMedicationRequest(resource, context) {
  * @param {Object<string,string>} [options.headers] - e.g. SMART/OIDC bearer token injected by deployment.
  * @param {string} [options.sourceVersion]
  * @param {number} [options.timeoutMs]
+ * @param {string[]} [options.extraKinds] - opt-in: subset of ['nis','pacs','notes'].
+ *   Default [] keeps the P0 four-connector surface unchanged.
  */
 export function createFhirR4Connectors({
   baseUrl,
@@ -164,12 +329,14 @@ export function createFhirR4Connectors({
   headers = {},
   sourceVersion = null,
   timeoutMs = DEFAULT_TIMEOUT_MS,
+  extraKinds = [],
 } = {}) {
   if (!baseUrl || typeof baseUrl !== "string") throw new Error("CONNECTOR_BASE_URL_REQUIRED");
   if (typeof fetchImpl !== "function") throw new Error("CONNECTOR_FETCH_IMPL_REQUIRED");
+  assertHttpsBaseUrl(baseUrl);
   const settings = { baseUrl, fetchImpl, headers, timeoutMs };
 
-  return [
+  const connectors = [
     {
       id: "fhir-r4-patient",
       kind: "patient",
@@ -193,14 +360,9 @@ export function createFhirR4Connectors({
       kind: "lis",
       capabilities: ["read"],
       async readPatient(context) {
-        const payload = await fetchFhirJson({
-          ...settings,
-          path: "Observation",
-          query: { patient: context.patient_id, encounter: context.encounter_id, category: "laboratory", _count: 200 },
+        const records = await collectObservations(settings, context, {
+          patient: context.patient_id, encounter: context.encounter_id, category: "laboratory", _count: 200,
         });
-        const records = resourcesOf(payload)
-          .filter((resource) => resource.resourceType === "Observation")
-          .map((resource) => mapObservation(resource, context));
         return buildEnvelope("fhir-r4-lis", "lis", context, records, sourceVersion);
       },
     },
@@ -209,17 +371,22 @@ export function createFhirR4Connectors({
       kind: "his",
       capabilities: ["read"],
       async readPatient(context) {
-        const payload = await fetchFhirJson({
-          ...settings,
-          path: "MedicationRequest",
-          query: { patient: context.patient_id, encounter: context.encounter_id, _count: 200 },
+        const records = await collectMedicationRequests(settings, context, {
+          patient: context.patient_id, encounter: context.encounter_id, _count: 200,
         });
-        const records = resourcesOf(payload)
-          .filter((resource) => resource.resourceType === "MedicationRequest")
-          .map((resource) => mapMedicationRequest(resource, context));
         return buildEnvelope("fhir-r4-his", "his", context, records, sourceVersion);
       },
     },
   ];
+
+  for (const kind of extraKinds) {
+    const builder = EXTRA_KIND_BUILDERS[kind];
+    if (!builder) throw new Error(`CONNECTOR_FHIR_EXTRA_KIND_UNKNOWN: '${kind}' (expected nis | pacs | notes)`);
+    if (connectors.some((entry) => entry.kind === kind)) {
+      throw new Error(`CONNECTOR_FHIR_EXTRA_KIND_DUPLICATE: '${kind}'`);
+    }
+    connectors.push(builder(settings, sourceVersion));
+  }
+  return connectors;
 }
 

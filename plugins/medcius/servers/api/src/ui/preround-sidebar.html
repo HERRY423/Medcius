@@ -481,6 +481,7 @@
     async function fetchSummary() {
       const urlParams = new URLSearchParams(window.location.search);
       const patId = urlParams.get('patient_id');
+      const encId = urlParams.get('encounter_id') || (patId ? `ENC-${patId}` : null);
       
       if (!patId) {
         renderFailClosedState('未在 URL 参数或 EHR 上下文中检出有效 patient_id');
@@ -488,7 +489,18 @@
       }
 
       try {
-        const res = await fetch(`/api/v1/patient/evolution-summary?time_window=${currentWindow}&patient_id=${encodeURIComponent(patId)}`);
+        const res = await fetch('/api/v1/patient/evolution-summary', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            time_window: currentWindow,
+            patient_id: patId,
+            encounter_id: encId,
+            patient: { id: patId, encounter_id: encId },
+          }),
+        });
         if (!res.ok) {
           const errBody = await res.json().catch(() => ({}));
           throw new Error(errBody.error || `HTTP ${res.status}`);

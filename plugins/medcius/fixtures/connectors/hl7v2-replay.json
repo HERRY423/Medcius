@@ -1,0 +1,7 @@
+{
+  "_comment": "Synthetic replay fixture for the P4 HL7v2 read-only subscription connector. All identifiers are fabricated (same synthetic patient/encounter as the FHIR/view-library fixtures). No real patient data may ever enter this file. Messages use \\r-equivalent newlines; the parser accepts CR/LF/CRLF.",
+  "source_version": "synthetic-hl7v2-replay-v1",
+  "adt": "MSH|^~\\&|HIS|HOSP-001|MEDCIUS|HOSP-001|20260825060000||ADT^A01|MSG-SYNTH-001|P|2.5\nEVN||20260825060000\nPID|1||patient-synthetic-1^^^HOSP-001||合成张三^测试||19580512|M\nPV1|1|I|CARDIO^02^01||||||||||||||||encounter-synthetic-1",
+  "oru": "MSH|^~\\&|LIS|HOSP-001|MEDCIUS|HOSP-001|20260825060000||ORU^R01|MSG-SYNTH-002|P|2.5\nPID|1||patient-synthetic-1^^^HOSP-001\nOBR|1|ord-k-synth-1||2823-3^血钾测定\nOBX|1|NM|2823-3^血钾测定||2.4|mmol/L|3.5-5.3|LL|||F|||20260825060000\nOBR|2|ord-na-synth-1||2951-2^血钠测定\nOBX|1|NM|2951-2^血钠测定||139|mmol/L|135-145||||F|||20260825060000",
+  "rde": "MSH|^~\\&|HIS|HOSP-001|MEDCIUS|HOSP-001|20260820093000||RDE^O11|MSG-SYNTH-003|P|2.5\nPID|1||patient-synthetic-1^^^HOSP-001\nRXO|1|^注射用头孢曲松钠（合成）^||2^g||||静脉滴注\nRXE|1|^注射用头孢曲松钠（合成）^|2^g||静脉滴注"
+}

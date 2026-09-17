@@ -3,8 +3,86 @@
 // Outputs: Standardized FHIR R4 Bundles & Normalized Clinical Feeds for PatientEvolutionEngine
 
 import { loadSpecialtyRulePack } from "./specialty-rule-pack.mjs";
+import { sha256Hex } from "../servers/shared/crypto.mjs";
 
 const LEGACY_SANDBOX_RULE_PACK = loadSpecialtyRulePack("cardiology-inpatient-sandbox");
+
+/**
+ * Normalized comparison helper for clinical lab values (F-06).
+ * Handles standard unit conversions (e.g. glucose mmol/L <-> mg/dL, creatinine umol/L <-> mg/dL, Hb g/L <-> g/dL).
+ * Returns { comparableValue, compatible, error }
+ */
+export function normalizeLabUnit(val, fromUnit = "", targetUnit = "", testCode = "") {
+  if (typeof val !== "number" || isNaN(val)) {
+    return { comparableValue: null, compatible: false, error: "NON_NUMERIC_VALUE" };
+  }
+  const cleanFrom = String(fromUnit || "").trim().toLowerCase().replace(/\s+/g, "");
+  const cleanTarget = String(targetUnit || "").trim().toLowerCase().replace(/\s+/g, "");
+
+  if (!cleanFrom || !cleanTarget || cleanFrom === cleanTarget) {
+    return { comparableValue: val, compatible: true };
+  }
+
+  const code = String(testCode || "").toLowerCase();
+
+  // Glucose: mmol/L <-> mg/dL (1 mmol/L = 18.018 mg/dL)
+  if (code === "glu" || code.includes("glucose") || code.includes("血糖")) {
+    if ((cleanFrom === "mg/dl" || cleanFrom === "mg/100ml") && cleanTarget === "mmol/l") {
+      return { comparableValue: Math.round((val / 18.018) * 100) / 100, compatible: true };
+    }
+    if (cleanFrom === "mmol/l" && (cleanTarget === "mg/dl" || cleanTarget === "mg/100ml")) {
+      return { comparableValue: Math.round(val * 18.018 * 10) / 10, compatible: true };
+    }
+  }
+
+  // Creatinine: umol/L <-> mg/dL (1 mg/dL = 88.4 umol/L)
+  if (code === "scr" || code.includes("creatinine") || code.includes("肌酐")) {
+    if ((cleanFrom === "mg/dl" || cleanFrom === "mg/100ml") && (cleanTarget.includes("mol/l") || cleanTarget === "umol_l")) {
+      return { comparableValue: Math.round(val * 88.4 * 10) / 10, compatible: true };
+    }
+    if ((cleanFrom.includes("mol/l") || cleanFrom === "umol_l") && (cleanTarget === "mg/dl" || cleanTarget === "mg/100ml")) {
+      return { comparableValue: Math.round((val / 88.4) * 100) / 100, compatible: true };
+    }
+  }
+
+  // Hemoglobin: g/L <-> g/dL (1 g/dL = 10 g/L)
+  if (code === "hgb" || code === "hb" || code.includes("hemoglobin") || code.includes("血红蛋白")) {
+    if (cleanFrom === "g/dl" && cleanTarget === "g/l") {
+      return { comparableValue: val * 10, compatible: true };
+    }
+    if (cleanFrom === "g/l" && cleanTarget === "g/dl") {
+      return { comparableValue: val / 10, compatible: true };
+    }
+  }
+
+  // Calcium: mmol/L <-> mg/dL (1 mmol/L = 4.0 mg/dL)
+  if (code === "ca" || code.includes("calcium") || code.includes("钙")) {
+    if (cleanFrom === "mg/dl" && cleanTarget === "mmol/l") {
+      return { comparableValue: val / 4.0, compatible: true };
+    }
+    if (cleanFrom === "mmol/l" && cleanTarget === "mg/dl") {
+      return { comparableValue: val * 4.0, compatible: true };
+    }
+  }
+
+  // Equivalent units
+  if (
+    (cleanFrom === "umol/l" && cleanTarget === "μmol/l") ||
+    (cleanFrom === "μmol/l" && cleanTarget === "umol/l") ||
+    (cleanFrom === "umol_l" && cleanTarget === "umol/l") ||
+    (cleanFrom === "mmol/l" && cleanTarget === "meq/l") ||
+    (cleanFrom === "meq/l" && cleanTarget === "mmol/l")
+  ) {
+    return { comparableValue: val, compatible: true };
+  }
+
+  // Incompatible units -> Fail closed for threshold comparison
+  return {
+    comparableValue: null,
+    compatible: false,
+    error: `UNIT_MISMATCH: Cannot reliably compare unit '${fromUnit}' with threshold unit '${targetUnit}' for '${testCode}'`,
+  };
+}
 
 /**
  * Compatibility export for synthetic fixtures only. Runtime normalization does
@@ -48,18 +126,20 @@ export function calculateEgfrCkdEpi(scr, age, gender) {
 export class HospitalDataAdapter {
   /**
    * 1. Normalize NIS (Nursing Info System) Vital Signs and 24h Fluid Balance
+   * Enhanced: supports explicit cutoffTime/now window filtering (F-05) and deterministic hashing IDs (F-14).
    */
-  static normalizeNisFeed(nisFeed = [], { rulePack = null } = {}) {
+  static normalizeNisFeed(nisFeed = [], { rulePack = null, cutoffTime = null, now = null } = {}) {
     if (!Array.isArray(nisFeed) || nisFeed.length === 0) {
-      return { vitals_summary: null, fluid_balance: null, fhir_observations: [] };
+      return { vitals_summary: null, fluid_balance: null, fhir_observations: [], discarded_outside_window_count: 0 };
     }
+
+    const cutoffMs = cutoffTime != null ? (typeof cutoffTime === "number" ? cutoffTime : new Date(cutoffTime).getTime()) : null;
+    const nowMs = now != null ? (typeof now === "number" ? now : new Date(now).getTime()) : null;
 
     let tMax = -Infinity;
     let tMin = Infinity;
-    let bpSystolicMax = -Infinity;
-    let bpSystolicMin = Infinity;
-    let bpDiastolicMax = -Infinity;
-    let bpDiastolicMin = Infinity;
+    let peakBpReading = null; // { s, d, timestamp }
+    let nadirBpReading = null; // { s, d, timestamp }
     let spo2Min = Infinity;
     let hrSum = 0;
     let hrCount = 0;
@@ -70,32 +150,48 @@ export class HospitalDataAdapter {
     let drainTotal = 0;
     let stoolCount = 0;
     const drainDetails = [];
-
     const fhirObservations = [];
+    let discardedCount = 0;
 
     for (const record of nisFeed) {
+      // Time-window filtering (F-05)
+      if (cutoffMs != null) {
+        const rTime = record.timestamp ? new Date(record.timestamp).getTime() : null;
+        if (rTime == null || isNaN(rTime) || rTime < cutoffMs || (nowMs != null && rTime > nowMs)) {
+          discardedCount++;
+          continue;
+        }
+      }
+
       // Temperature (°C)
       if (record.temperature != null) {
         const t = Number(record.temperature);
         if (t > tMax) tMax = t;
         if (t < tMin) tMin = t;
+        const detTempId = record.id || `obs-nis-temp-${sha256Hex(`nis:temp:${record.timestamp || ''}:${t}`).slice(0, 10)}`;
         fhirObservations.push({
           resourceType: "Observation",
-          id: `obs-nis-temp-${record.id || Date.now()}`,
+          id: detTempId,
           code: { coding: [{ system: "http://loinc.org", code: "8310-5", display: "Body temperature" }] },
           valueQuantity: { value: t, unit: "°C" },
           effectiveDateTime: record.timestamp,
         });
       }
 
-      // Blood Pressure (mmHg)
+      // Blood Pressure (mmHg) - Track authentic paired readings from the same measurement event
       if (record.systolic_bp != null && record.diastolic_bp != null) {
         const s = Number(record.systolic_bp);
         const d = Number(record.diastolic_bp);
-        if (s > bpSystolicMax) bpSystolicMax = s;
-        if (s < bpSystolicMin) bpSystolicMin = s;
-        if (d > bpDiastolicMax) bpDiastolicMax = d;
-        if (d < bpDiastolicMin) bpDiastolicMin = d;
+        if (!Number.isNaN(s) && !Number.isNaN(d)) {
+          // Track peak BP measurement (highest systolic, tie-breaker: diastolic)
+          if (!peakBpReading || s > peakBpReading.s || (s === peakBpReading.s && d > peakBpReading.d)) {
+            peakBpReading = { s, d, timestamp: record.timestamp };
+          }
+          // Track nadir BP measurement (lowest systolic, tie-breaker: diastolic)
+          if (!nadirBpReading || s < nadirBpReading.s || (s === nadirBpReading.s && d < nadirBpReading.d)) {
+            nadirBpReading = { s, d, timestamp: record.timestamp };
+          }
+        }
       }
 
       // Heart Rate / Pulse (bpm)
@@ -110,24 +206,37 @@ export class HospitalDataAdapter {
         if (sp < spo2Min) spo2Min = sp;
       }
 
-      // Fluid Intake (ml)
-      if (record.oral_intake_ml != null) intakeTotal += Number(record.oral_intake_ml);
-      if (record.iv_intake_ml != null) intakeTotal += Number(record.iv_intake_ml);
-      if (record.intake_ml != null) intakeTotal += Number(record.intake_ml);
+      // Fluid Intake (ml) - Mutually exclusive accumulation to prevent double counting
+      const hasOral = record.oral_intake_ml != null && !Number.isNaN(Number(record.oral_intake_ml));
+      const hasIv = record.iv_intake_ml != null && !Number.isNaN(Number(record.iv_intake_ml));
+      const hasTotalIntake = record.intake_ml != null && !Number.isNaN(Number(record.intake_ml));
 
-      // Fluid Output (ml)
-      if (record.urine_output_ml != null) {
+      if (hasOral || hasIv) {
+        intakeTotal += (hasOral ? Number(record.oral_intake_ml) : 0) + (hasIv ? Number(record.iv_intake_ml) : 0);
+      } else if (hasTotalIntake) {
+        intakeTotal += Number(record.intake_ml);
+      }
+
+      // Fluid Output (ml) - Prevent double counting of sub-items and total output
+      const hasUrine = record.urine_output_ml != null && !Number.isNaN(Number(record.urine_output_ml));
+      const hasDrain = record.drain_output_ml != null && !Number.isNaN(Number(record.drain_output_ml));
+      const hasTotalOutput = record.output_ml != null && !Number.isNaN(Number(record.output_ml));
+
+      if (hasUrine) {
         const u = Number(record.urine_output_ml);
         outputTotal += u;
         urineTotal += u;
       }
-      if (record.drain_output_ml != null) {
+      if (hasDrain) {
         const dr = Number(record.drain_output_ml);
         outputTotal += dr;
         drainTotal += dr;
         if (record.drain_name) {
           drainDetails.push({ name: record.drain_name, amount_ml: dr, description: record.drain_desc || "引流液" });
         }
+      }
+      if (!hasUrine && !hasDrain && hasTotalOutput) {
+        outputTotal += Number(record.output_ml);
       }
       if (record.stool_count != null) {
         stoolCount += Number(record.stool_count);
@@ -137,8 +246,8 @@ export class HospitalDataAdapter {
     const vitalsSummary = {
       t_max: tMax === -Infinity ? null : tMax,
       t_min: tMin === Infinity ? null : tMin,
-      bp_max: bpSystolicMax === -Infinity ? null : `${bpSystolicMax}/${bpDiastolicMax} mmHg`,
-      bp_min: bpSystolicMin === Infinity ? null : `${bpSystolicMin}/${bpDiastolicMin} mmHg`,
+      bp_max: peakBpReading ? `${peakBpReading.s}/${peakBpReading.d} mmHg` : null,
+      bp_min: nadirBpReading ? `${nadirBpReading.s}/${nadirBpReading.d} mmHg` : null,
       hr_avg: hrCount > 0 ? Math.round(hrSum / hrCount) : null,
       spo2_min: spo2Min === Infinity ? null : `${spo2Min}%`,
     };
@@ -166,40 +275,93 @@ export class HospitalDataAdapter {
       drain_details: drainDetails,
       status: fluidStatus,
       rule_pack_id: rulePack?.pack_id || null,
+      window_filtered: cutoffMs != null,
+      discarded_outside_window_count: discardedCount,
+      aggregation_window: cutoffMs != null ? {
+        cutoff_time: new Date(cutoffMs).toISOString(),
+        end_time: nowMs ? new Date(nowMs).toISOString() : null,
+      } : null,
     };
 
-    return { vitals_summary: vitalsSummary, fluid_balance: fluidBalance, fhir_observations: fhirObservations };
+    return {
+      vitals_summary: vitalsSummary,
+      fluid_balance: fluidBalance,
+      fhir_observations: fhirObservations,
+      discarded_outside_window_count: discardedCount,
+    };
   }
 
   /**
    * 2. Normalize LIS (Laboratory Info System) and Detect Critical Values
+   * Enhanced:
+   * - No new Date() fabrication when timestamp is missing (F-04)
+   * - Unit-aware critical value comparison with fail-closed DATA_GAP (F-06)
+   * - Deterministic ID generation (F-14)
    */
-  static normalizeLisFeed(lisFeed = [], { rulePack = null } = {}) {
-    if (!Array.isArray(lisFeed)) return { observations: [], critical_values: [] };
+  static normalizeLisFeed(lisFeed = [], { rulePack = null, cutoffTime = null, now = null } = {}) {
+    if (!Array.isArray(lisFeed)) return { observations: [], critical_values: [], data_gaps: [] };
 
     const observations = [];
     const criticalValues = [];
+    const dataGaps = [];
+
+    const cutoffMs = cutoffTime != null ? (typeof cutoffTime === "number" ? cutoffTime : new Date(cutoffTime).getTime()) : null;
+    const nowMs = now != null ? (typeof now === "number" ? now : new Date(now).getTime()) : null;
 
     for (const item of lisFeed) {
       const codeKey = (item.code || item.test_code || "").toLowerCase();
       const val = Number(item.value ?? item.result_value);
       const unit = item.unit || "";
       const reportName = item.report_name || item.test_name || "检验报告";
-      const sampleTime = item.effective_time || item.sample_time || new Date().toISOString();
+
+      // F-04: Do NOT fabricate timestamp with new Date(). Respect actual timestamp or mark missing.
+      const rawSampleTime = item.effective_time || item.sample_time || null;
+      const sampleTime = rawSampleTime;
+
+      // Check time window if cutoffTime is provided
+      if (cutoffMs != null) {
+        const sTimeMs = sampleTime ? new Date(sampleTime).getTime() : null;
+        if (sTimeMs == null || isNaN(sTimeMs) || sTimeMs < cutoffMs || (nowMs != null && sTimeMs > nowMs)) {
+          // If timestamp is absent, record data gap and exclude from recent window
+          if (sTimeMs == null || isNaN(sTimeMs)) {
+            dataGaps.push({
+              code: codeKey,
+              name: reportName,
+              value: val,
+              unit,
+              reason: "LIS_SAMPLE_TIME_MISSING: 采样时间缺失，依据安全契约禁止伪造时间，已记录资料缺口并排除于新近时间窗计算",
+            });
+          }
+          continue;
+        }
+      }
 
       let isCritical = false;
       let criticalReason = null;
 
-      // Context-conditioned rule check. With no explicit rule pack, only the
-      // source system's own critical flag is retained; no universal fallback.
+      // F-06: Unit-aware comparison with fail-closed safety
       const thresh = rulePack?.clinical_rules?.critical_values?.[codeKey];
       if (thresh && !isNaN(val)) {
-        if (thresh.low != null && val <= thresh.low) {
-          isCritical = true;
-          criticalReason = `低于危急值下限 (≤ ${thresh.low} ${thresh.unit}): ${thresh.danger_hint}`;
-        } else if (thresh.high != null && val >= thresh.high) {
-          isCritical = true;
-          criticalReason = `高于危急值上限 (≥ ${thresh.high} ${thresh.unit}): ${thresh.danger_hint}`;
+        const normResult = normalizeLabUnit(val, unit, thresh.unit, codeKey);
+        if (normResult.compatible && normResult.comparableValue != null) {
+          const compVal = normResult.comparableValue;
+          if (thresh.low != null && compVal <= thresh.low) {
+            isCritical = true;
+            criticalReason = `低于危急值下限 (≤ ${thresh.low} ${thresh.unit}): ${thresh.danger_hint}`;
+          } else if (thresh.high != null && compVal >= thresh.high) {
+            isCritical = true;
+            criticalReason = `高于危急值上限 (≥ ${thresh.high} ${thresh.unit}): ${thresh.danger_hint}`;
+          }
+        } else if (!normResult.compatible) {
+          // Incompatible units -> Fail closed: do not miscalculate critical threshold, generate DATA_GAP
+          dataGaps.push({
+            code: codeKey,
+            name: reportName,
+            value: val,
+            unit: unit,
+            expected_unit: thresh.unit,
+            reason: `CRITICAL_VALUE_UNIT_INCOMPATIBLE: ${normResult.error}. 数值未做盲目比对，已上报资料缺口`,
+          });
         }
       }
 
@@ -209,13 +371,17 @@ export class HospitalDataAdapter {
         if (!criticalReason) criticalReason = "LIS 实验室系统上报危急值警报";
       }
 
+      // F-14: Deterministic ID generation using content digest
+      const detId = item.id || `obs-lis-${sha256Hex(`${codeKey}:${val}:${unit}:${sampleTime || 'no-time'}`).slice(0, 12)}`;
+
       const obsObj = {
-        id: item.id || `obs-lis-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        id: detId,
         name: item.name || item.test_name || thresh?.name || item.code,
         code: codeKey || item.code,
         value: isNaN(val) ? item.value : val,
         unit: unit,
         effective_time: sampleTime,
+        timestamp_status: sampleTime ? "VALID" : "MISSING",
         report_name: reportName,
         referenceRange: item.referenceRange || (item.reference_range_text ? [{ text: item.reference_range_text }] : []),
         is_critical: isCritical,
@@ -248,7 +414,7 @@ export class HospitalDataAdapter {
       }
     }
 
-    return { observations, critical_values: criticalValues };
+    return { observations, critical_values: criticalValues, data_gaps: dataGaps };
   }
 
   /**
@@ -268,7 +434,7 @@ export class HospitalDataAdapter {
       const impression = item.impression || item.impression_text || item.findings || "";
 
       diagnosticReports.push({
-        id: item.id || `pacs-rep-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        id: item.id || `pacs-rep-${sha256Hex(`${modality}:${name}:${orderedAt}:${impression}`).slice(0, 12)}`,
         name: name,
         modality: modality,
         status: status,

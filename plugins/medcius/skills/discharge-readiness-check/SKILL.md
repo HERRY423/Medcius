@@ -3,6 +3,8 @@ name: discharge-readiness-check
 description: 出院资料核对与出院准备度完整性检查技能。在患者计划出院前，核对关键检查检验闭环、出院带药衔接、资料与随访安全缺口，并在有来源的数据范围内呈现患者报告的费用负担、正式覆盖核验、患者特定价格估算和援助转介状态。只读核对、不替代医生做出院决策、不代开出院医嘱、不猜测自付额或推荐替代治疗。当用户提出"出院核对"、"出院资料检查"、"出院准备度"、"费用负担核对"、"discharge check"、"discharge readiness"时使用。
 ---
 
+> **P0-FROZEN（临床落地冻结）**：本技能保留工程与合成测试路径，**禁止**在 HIS 内嵌、院内 SSO 或 `MEDCIUS_CLINICAL_LANDING=1` 下调用。一线临床只启用 `patient-evolution-summary`。
+
 # Inpatient Discharge Readiness & Completeness Check (出院资料核对技能)
 
 出院资料核对技能是保障患者出院安全、防范检查结果未闭环与出院带药断层的重要质控辅助工作流。

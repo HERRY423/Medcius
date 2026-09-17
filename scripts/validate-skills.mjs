@@ -43,6 +43,23 @@ for (const d of prodSkills.sort()) {
   console.log(`${status}${d} [CORE]`);
 }
 
+const frozenSkills = ["shift-handover", "consult-preparation", "discharge-readiness-check"];
+for (const d of frozenSkills) {
+  const p = join(skillsDir, d, "SKILL.md");
+  if (!existsSync(p)) {
+    console.log(`MISSING-FROZEN-SKILL ${d}`);
+    ok = false;
+    continue;
+  }
+  const text = readFileSync(p, "utf8");
+  if (!text.includes("P0-FROZEN")) {
+    console.log(`BAD ${d} missing P0-FROZEN marker`);
+    ok = false;
+  } else {
+    console.log(`OK ${d} [P0-FROZEN]`);
+  }
+}
+
 const expDir = "experimental/skills";
 if (existsSync(expDir)) {
   const expSkills = readdirSync(expDir, { withFileTypes: true })

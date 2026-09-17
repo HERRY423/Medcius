@@ -64,7 +64,7 @@
         "approval_date": "2026-08-26",
         "content_hash": "sha256:7c9e01bc6f31d044238bc1a2830dfb9271e62a0487b32091d8a9f23e4b7c1092"
       },
-      "status": "approved",
+      "status": "frozen",
       "rollback_target_version": "0.9.0"
     },
     {
@@ -93,7 +93,7 @@
         "approval_date": "2026-08-26",
         "content_hash": "sha256:b1a2830dfb9271e62a0487b32091d8a9f23e4b7c1092a83e01bc6f31d044238b"
       },
-      "status": "approved",
+      "status": "frozen",
       "rollback_target_version": "0.9.0"
     },
     {
@@ -123,7 +123,7 @@
         "approval_date": "2026-08-27",
         "content_hash": "sha256:dfb9271e62a0487b32091d8a9f23e4b7c1092a83e01bc6f31d044238bc1a2830"
       },
-      "status": "approved",
+      "status": "frozen",
       "rollback_target_version": "0.9.0"
     }
   ]

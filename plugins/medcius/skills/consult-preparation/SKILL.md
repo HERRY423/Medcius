@@ -3,6 +3,8 @@ name: consult-preparation
 description: 专科会诊与多学科协作 (MDT) 会诊前资料整理技能。围绕会诊核心诉求，结构化整合患者本专科诊疗历程、针对性检验时间轴、关键已出/未出影像报告及主要用药方案，形成高密度会诊前资料包。只读整理、不代写会诊意见、不做诊断推断。当用户提出"会诊准备"、"会诊资料整理"、"专科会诊"、"consult preparation"时使用。
 ---
 
+> **P0-FROZEN（临床落地冻结）**：本技能保留工程与合成测试路径，**禁止**在 HIS 内嵌、院内 SSO 或 `MEDCIUS_CLINICAL_LANDING=1` 下调用。一线临床只启用 `patient-evolution-summary`。
+
 # Specialist Consultation Preparation (专科会诊前资料整理技能)
 
 专科会诊前资料整理技能帮助申请医师与被邀专科医师在开展床旁会诊前，以极短时间获取紧扣会诊诉求的精炼临床资料包（Dossier），提升多学科协作沟通效率。

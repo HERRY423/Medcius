@@ -76,22 +76,28 @@ const baseUrl = `http://${host}:${port}`;
 try {
   // Test 4a: Unauthenticated call to evolution-summary -> Must return 401
   console.log("\n  [4a] Unauthenticated request rejection (401)...");
-  const unauthRes = await fetch(`${baseUrl}/api/v1/patient/evolution-summary?patient_id=IP-001`, {
-    method: "GET",
+  const unauthRes = await fetch(`${baseUrl}/api/v1/patient/evolution-summary`, {
+    method: "POST",
     headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ patient_id: "IP-001", encounter_id: "ENC-001" }),
   });
   assert.equal(unauthRes.status, 401, "Unauthenticated request must be rejected with 401");
   console.log("  ✓ Unauthenticated request rejected with HTTP 401");
 
   // Test 4b: Authenticated call with Bearer token & tenant header
   console.log("\n  [4b] Authenticated call with valid token & tenant header...");
-  const authRes = await fetch(`${baseUrl}/api/v1/patient/evolution-summary?time_window=24h&patient_id=IP-001&encounter_id=ENC-001`, {
-    method: "GET",
+  const authRes = await fetch(`${baseUrl}/api/v1/patient/evolution-summary`, {
+    method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${token}`,
       "X-Tenant-ID": "hospital_peking_union",
     },
+    body: JSON.stringify({
+      time_window: "24h",
+      patient_id: "IP-001",
+      encounter_id: "ENC-001",
+    }),
   });
   assert.equal(authRes.status, 200);
   const authJson = await authRes.json();
@@ -110,6 +116,19 @@ try {
   const auditJson = await auditRes.json();
   assert.equal(auditJson.chain_intact, true);
   console.log("  ✓ Audit verify succeeded");
+
+  // Test 4d: Unauthenticated CDS Hook execution -> Must return 401 (Issue 7 fix)
+  console.log("\n  [4d] Unauthenticated CDS Hook request rejection (401)...");
+  const unauthCdsRes = await fetch(`${baseUrl}/cds-services/medcius-patient-evolution`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      hook: "patient-view",
+      context: { patientId: "P-1001" },
+    }),
+  });
+  assert.equal(unauthCdsRes.status, 401, "Unauthenticated CDS hook call must be rejected with 401");
+  console.log("  ✓ Unauthenticated CDS Hook call rejected with HTTP 401");
 
   console.log("\nALL AUTH, RBAC, TENANT BINDING & PRODUCTION GATE TESTS PASSED!");
 } finally {
