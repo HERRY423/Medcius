@@ -4,11 +4,14 @@
 import assert from "node:assert/strict";
 import { PostHocClaimVerifier } from "../plugins/medcius/lib/post-hoc-verifier.mjs";
 import { parseLabs, extractConTextAssertion } from "../plugins/medcius/lib/parse-cn-note.mjs";
-import { HospitalDataAdapter, normalizeLabUnit } from "../plugins/medcius/lib/hospital-data-adapter.mjs";
+import { HospitalDataAdapter, normalizeLabUnit, calculateNews2 } from "../plugins/medcius/lib/hospital-data-adapter.mjs";
 import { containsRawPhi } from "../plugins/medcius/servers/phiguard/src/lib.mjs";
 import { EnhancedPhiGuard } from "../plugins/medcius/lib/enhanced-phi-guard.mjs";
 import { loadSpecialtyRulePack } from "../plugins/medcius/lib/specialty-rule-pack.mjs";
 import { PatientEvolutionEngine } from "../plugins/medcius/lib/patient-evolution-engine.mjs";
+import { DualTrackGatingEngine } from "../plugins/medcius/lib/causal-attribution-engine.mjs";
+import { CDS_SERVICES, handleCdsHookRequest } from "../plugins/medcius/servers/api/src/cds-hooks.mjs";
+import { SECONDARY_INTENDED_USES } from "../plugins/medcius/lib/clinical-landing-policy.mjs";
 
 console.log("================================================================================");
 console.log(" Testing Deep Rectification for Evaluation Findings (F-01 to F-14)");
@@ -319,6 +322,248 @@ assert.ok(!sanResult.sanitized.includes("李小军"), "Contextual relative name 
 assert.ok(sanResult.sanitized.includes("库欣"), "Medical eponym ‘库欣综合征’ MUST be protected from tokenization!");
 
 console.log("✓ F-08 PHI Guard successfully aligned quick-path and protected medical eponyms");
+
+// ----------------------------------------------------
+// 9. Test eGFR Unit Normalization (Last-Mile Resolution)
+// ----------------------------------------------------
+console.log("\n▶ [Test 09] Testing eGFR Unit Normalization & Incompatible Unit Isolation...");
+
+const testPatient = {
+  id: "P-MGDL",
+  name: "张伟",
+  age: 60,
+  gender: "male",
+};
+
+// Test 9a: mg/dL unit normalization (1.0 mg/dL = 88.4 umol/L)
+const evolutionMgDl = PatientEvolutionEngine.analyzePatientEvolution({
+  patient: testPatient,
+  observations: [
+    {
+      id: "scr-mgdl-1",
+      name: "肌酐",
+      code: "creatinine",
+      value: 1.0,
+      unit: "mg/dL",
+      effective_time: new Date().toISOString(),
+    },
+  ],
+  rulePack: sandboxRulePack,
+});
+
+assert.ok(evolutionMgDl.patient.egfr != null, "eGFR with 1.0 mg/dL must be calculated via unit normalization to umol/L");
+assert.ok(evolutionMgDl.patient.egfr > 70 && evolutionMgDl.patient.egfr < 100, `eGFR ${evolutionMgDl.patient.egfr} should be within normal range (~83-88)`);
+
+// Test 9b: Incompatible unit produces null eGFR and GAP-EGFR-UNIT
+const evolutionIncompat = PatientEvolutionEngine.analyzePatientEvolution({
+  patient: testPatient,
+  observations: [
+    {
+      id: "scr-incompat-1",
+      name: "肌酐",
+      code: "creatinine",
+      value: 90,
+      unit: "incompatible_unit",
+      effective_time: new Date().toISOString(),
+    },
+  ],
+  rulePack: sandboxRulePack,
+});
+
+assert.equal(evolutionIncompat.patient.egfr, null, "Incompatible creatinine unit must fail closed to null eGFR");
+const egfrGap = evolutionIncompat.blocks.data_gaps.find((g) => g.gap_type === "CREATININE_UNIT_INCOMPATIBLE");
+assert.ok(egfrGap, "Must emit CREATININE_UNIT_INCOMPATIBLE data gap");
+
+console.log("✓ Test 09 eGFR unit normalization correctly handled mg/dL and isolated incompatible units with data gap");
+
+// ----------------------------------------------------
+// 10. Test AKI Creatinine Stability Check (KDIGO Safety Guard)
+// ----------------------------------------------------
+console.log("\n▶ [Test 10] Testing KDIGO AKI Creatinine Non-Steady-State eGFR Block...");
+
+const evolutionAki = PatientEvolutionEngine.analyzePatientEvolution({
+  patient: testPatient,
+  observations: [
+    {
+      id: "scr-base-01",
+      name: "肌酐",
+      code: "creatinine",
+      value: 80,
+      unit: "umol/L",
+      effective_time: new Date(Date.now() - 3600 * 1000 * 20).toISOString(),
+    },
+    {
+      id: "scr-latest-01",
+      name: "肌酐",
+      code: "creatinine",
+      value: 135, // acute surge +55 umol/L (>= 26.5 umol/L and >= 50%)
+      unit: "umol/L",
+      effective_time: new Date().toISOString(),
+    },
+  ],
+  rulePack: sandboxRulePack,
+});
+
+assert.equal(evolutionAki.patient.egfr, null, "Static eGFR must be blocked during acute creatinine instability/AKI");
+const akiAlert = evolutionAki.blocks.high_risk_followup.items.find((r) => r.tracking_id.includes("aki:"));
+assert.ok(akiAlert, "Must emit KDIGO AKI risk alert in high_risk_followup");
+const akiGap = evolutionAki.blocks.data_gaps.find((g) => g.gap_type === "CREATININE_NON_STEADY_STATE");
+assert.ok(akiGap, "Must emit CREATININE_NON_STEADY_STATE data gap");
+
+console.log("✓ Test 10 KDIGO AKI creatinine surge correctly blocked eGFR and generated AKI risk alert");
+
+// ----------------------------------------------------
+// 11. Test NEWS2 Early Warning Score Calculation & Integration
+// ----------------------------------------------------
+console.log("\n▶ [Test 11] Testing NEWS2 Calculation, Single Red Trigger & Vitals Integration...");
+
+// 11a: Normal physiology
+const newsNormal = calculateNews2({
+  respiratory_rate: 16,
+  spo2: 98,
+  supplemental_oxygen: false,
+  sbp: 120,
+  heart_rate: 72,
+  temperature: 36.8,
+  consciousness: "A",
+});
+assert.equal(newsNormal.total_score, 0);
+assert.equal(newsNormal.risk_code, "LOW");
+assert.equal(newsNormal.has_single_red, false);
+
+// 11b: Single red parameter trigger (e.g. severe hypoxemia SpO2 <= 91% -> 3 pts)
+const newsSingleRed = calculateNews2({
+  respiratory_rate: 18,
+  spo2: 90, // 3 pts (red)
+  supplemental_oxygen: false,
+  sbp: 125,
+  heart_rate: 80,
+  temperature: 37.0,
+  consciousness: "A",
+});
+assert.equal(newsSingleRed.total_score, 3);
+assert.equal(newsSingleRed.has_single_red, true);
+assert.equal(newsSingleRed.risk_code, "LOW-MEDIUM");
+
+// 11c: High risk aggregate score (>= 7)
+const newsHighRisk = calculateNews2({
+  respiratory_rate: 28, // 3 pts
+  spo2: 91, // 3 pts
+  supplemental_oxygen: true, // 2 pts
+  sbp: 85, // 3 pts
+  heart_rate: 135, // 3 pts
+  temperature: 39.5, // 2 pts
+  consciousness: "V", // 3 pts
+});
+assert.ok(newsHighRisk.total_score >= 7, "High risk aggregate score should be >= 7");
+assert.equal(newsHighRisk.risk_code, "HIGH");
+assert.equal(newsHighRisk.has_single_red, true);
+
+// 11d: Integration into PatientEvolutionEngine
+const nisFeedWithNews = [
+  {
+    timestamp: new Date().toISOString(),
+    temperature: 39.2,
+    respiratory_rate: 26,
+    spo2: 92,
+    supplemental_oxygen: true,
+    systolic_bp: 88,
+    diastolic_bp: 55,
+    heart_rate: 125,
+  },
+];
+const evolutionNews = PatientEvolutionEngine.analyzePatientEvolution({
+  patient: testPatient,
+  nisFeed: nisFeedWithNews,
+  rulePack: sandboxRulePack,
+});
+
+assert.ok(evolutionNews.blocks.what_changed.vitals_and_fluids.summary.includes("NEWS2早期预警评分"), "Vitals summary must include NEWS2 score");
+const newsReminder = evolutionNews.blocks.rule_reminders.find((r) => r.id.includes("RULE-NEWS2"));
+assert.ok(newsReminder, "NEWS2 alert must be emitted in ruleReminders when score indicates high clinical deterioration risk");
+
+console.log("✓ Test 11 NEWS2 physiology calculation, single-red trigger, and vitals integration verified");
+
+// ----------------------------------------------------
+// 12. Test DualTrackGatingEngine RulePack Potassium & Deprecation
+// ----------------------------------------------------
+console.log("\n▶ [Test 12] Testing DualTrackGatingEngine RulePack Potassium & Normalization...");
+
+const customRulePackK = {
+  clinical_rules: {
+    critical_values: {
+      k: { low: 3.0, high: 6.0, unit: "mmol/L" },
+    },
+  },
+};
+
+// Obs with 6.1 mmol/L triggers critical hyperkalemia under custom 6.0 threshold
+const gateRes = DualTrackGatingEngine.evaluateHardRules(
+  [{ id: "k-obs-test", conceptName: "血钾", value: 6.1, unit: "mmol/L" }],
+  [],
+  { rulePack: customRulePackK }
+);
+assert.equal(gateRes.passed, false, "6.1 mmol/L must trigger critical violation when high threshold is 6.0");
+assert.equal(gateRes.violations[0].code, "CRITICAL_HYPERKALEMIA");
+
+console.log("✓ Test 12 DualTrackGatingEngine potassium threshold migrated to rulePack and evaluated properly");
+
+// ----------------------------------------------------
+// 13. Test CDS Hooks AllergyIntolerance Prefetch & Parsing
+// ----------------------------------------------------
+console.log("\n▶ [Test 13] Testing CDS Hooks AllergyIntolerance Prefetch & Parsing...");
+
+assert.ok(CDS_SERVICES[0].prefetch.allergies.includes("AllergyIntolerance"), "Prefetch must contain AllergyIntolerance query");
+
+const liveGovernance = {
+  getCurrentStage: () => ({ id: "stage-live-pilot", allows_live_alerts: true }),
+};
+
+const cdsResponse = await handleCdsHookRequest(
+  "medcius-patient-evolution",
+  {
+    hook: "patient-view",
+    user: "Practitioner/doc-888",
+    context: {
+      userId: "doc-888",
+      patientId: "pat-888",
+    },
+    prefetch: {
+      patient: { id: "pat-888", name: [{ text: "赵六" }], birthDate: "1965-05-12", gender: "male" },
+      allergies: {
+        resourceType: "Bundle",
+        entry: [
+          {
+            resource: {
+              resourceType: "AllergyIntolerance",
+              id: "alg-001",
+              code: { text: "阿莫西林" },
+              clinicalStatus: { coding: [{ code: "active" }] },
+            },
+          },
+        ],
+      },
+    },
+  },
+  { governance: liveGovernance }
+);
+
+assert.ok(cdsResponse.cards.length > 0, "CDS Hook response must return cards for authorized clinician under live alert governance");
+const cardSummaryText = cdsResponse.cards[0].detail;
+assert.ok(!cardSummaryText.includes("未见明确过敏史记录"), "Prefetched AllergyIntolerance must satisfy allergy history without GAP-ALLERGY");
+
+console.log("✓ Test 13 CDS Hooks AllergyIntolerance prefetch and parsing verified");
+
+// ----------------------------------------------------
+// 14. Test Secondary Intended Use Declarations
+// ----------------------------------------------------
+console.log("\n▶ [Test 14] Testing Secondary Intended Use Policy Boundaries...");
+
+assert.ok(Array.isArray(SECONDARY_INTENDED_USES), "SECONDARY_INTENDED_USES must be exported");
+assert.ok(SECONDARY_INTENDED_USES.includes("nhsa-record-quality"), "Must declare nhsa-record-quality as secondary");
+assert.ok(SECONDARY_INTENDED_USES.includes("settlement-check"), "Must declare settlement-check as secondary");
+
+console.log("✓ Test 14 Secondary Intended Use Policy Boundaries verified");
 
 console.log("\n================================================================================");
 console.log("🎉 ALL CORE FINDINGS RECTIFICATION TESTS PASSED (F-01 to F-14 VERIFIED)");

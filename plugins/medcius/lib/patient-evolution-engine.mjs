@@ -3,7 +3,7 @@
 // Dynamic eGFR (CKD-EPI), and Clinical Safety / Quality Control rules hardening.
 
 import { splitSections, extractConTextAssertion } from "./parse-cn-note.mjs";
-import { HospitalDataAdapter, calculateEgfrCkdEpi } from "./hospital-data-adapter.mjs";
+import { HospitalDataAdapter, calculateEgfrCkdEpi, normalizeLabUnit } from "./hospital-data-adapter.mjs";
 import { trackHighRiskFollowup } from "./high-risk-followup-tracker.mjs";
 import { PostHocClaimVerifier } from "./post-hoc-verifier.mjs";
 
@@ -36,6 +36,7 @@ export class PatientEvolutionEngine {
     orders = [],
     allergies = null,
     nursingFeed = [],
+    nisFeed = [],
     pacsFeed = [],
     lisFeed = [],
     rulePack = null,
@@ -82,8 +83,9 @@ export class PatientEvolutionEngine {
     // 0. Multi-Source Normalization (F-04, F-05, F-06)
     let normalizedVitals = null;
     let normalizedFluids = null;
-    if (nursingFeed && nursingFeed.length > 0) {
-      const nisResult = HospitalDataAdapter.normalizeNisFeed(nursingFeed, { rulePack });
+    const activeNis = (nursingFeed && nursingFeed.length > 0) ? nursingFeed : (nisFeed || []);
+    if (activeNis && activeNis.length > 0) {
+      const nisResult = HospitalDataAdapter.normalizeNisFeed(activeNis, { rulePack, cutoffTime, now: nowMs });
       normalizedVitals = nisResult.vitals_summary;
       normalizedFluids = nisResult.fluid_balance;
     }
@@ -120,6 +122,8 @@ export class PatientEvolutionEngine {
       rulePack,
       now: nowMs,
     });
+
+    const gaps = [];
 
     // 0b. Structured Multi-Source Cross-System Clinical Alignment
     const structuredAlignments = HospitalDataAdapter.alignMultiSourceTimeline({
@@ -164,8 +168,11 @@ export class PatientEvolutionEngine {
 
     // 1a. Nursing Vitals & 24h Fluid Balance Card
     if (normalizedVitals || normalizedFluids) {
+      const nText = normalizedVitals?.news2
+        ? `，NEWS2早期预警评分: ${normalizedVitals.news2.total_score}分 [${normalizedVitals.news2.risk_level}]${normalizedVitals.news2.has_single_red ? " (含单项极危红灯)" : ""}`
+        : "";
       const vText = normalizedVitals
-        ? `最高体温: ${normalizedVitals.t_max ? normalizedVitals.t_max + '℃' : '平稳'}，血压: ${normalizedVitals.bp_max || '平稳'}，心率: ${normalizedVitals.hr_avg || '平稳'} bpm`
+        ? `最高体温: ${normalizedVitals.t_max ? normalizedVitals.t_max + '℃' : '平稳'}，血压: ${normalizedVitals.bp_max || '平稳'}，心率: ${normalizedVitals.hr_avg || '平稳'} bpm${nText}`
         : "";
       const fText = normalizedFluids
         ? `24h总入量: ${normalizedFluids.intake_total_ml}ml，总出量: ${normalizedFluids.output_total_ml}ml (尿量 ${normalizedFluids.urine_24h_ml}ml)，净平衡: ${normalizedFluids.net_balance_label} [${normalizedFluids.status}]`
@@ -264,10 +271,92 @@ export class PatientEvolutionEngine {
         statusLabel = isCritical ? "🚨 危急值" : (isHigh ? "⚠️ 偏高" : (isLow ? "⚠️ 偏低" : "正常"));
       }
 
-      // Check eGFR if test is serum creatinine (Strict: require age & gender from patient context)
+      // Check eGFR if test is serum creatinine (Strict: require age, gender, compatible unit & steady-state)
       if (/(?:scr|肌酐|creatinine)/i.test(code) && !isNaN(latestVal)) {
         if (patient.age != null && patient.gender != null) {
-          patientEgfr = calculateEgfrCkdEpi(latestVal, patient.age, patient.gender);
+          const normLatest = normalizeLabUnit(latestVal, unit, "umol/L", "scr");
+          if (!normLatest.compatible || normLatest.comparableValue == null) {
+            patientEgfr = null;
+            gaps.push({
+              id: genId("GAP-EGFR-UNIT"),
+              category: ITEM_CATEGORIES.DATA_GAP,
+              tag: CATEGORY_LABELS[ITEM_CATEGORIES.DATA_GAP],
+              gap_type: "CREATININE_UNIT_INCOMPATIBLE",
+              severity: "MEDIUM",
+              title: "肌酐单位无法兼容归一化",
+              summary: `【资料不足】肌酐检测单位 (${unit || "未提供"}) 无法安全转换为 μmol/L，暂停 eGFR 估算以防临床误判。`,
+              clinical_action_needed: "核实检验报告原始单据并确认肌酐检测单位",
+              source_type: "AuditGap",
+              source_id: latest.id || "gap-egfr-unit",
+              span: latest.span || null,
+            });
+          } else {
+            // KDIGO AKI / Creatinine instability check:
+            // eGFR (CKD-EPI) assumes steady-state renal function. In rapidly changing creatinine,
+            // static eGFR is clinically invalid and dangerous.
+            let isAkiUnstable = false;
+            if (baseline != null) {
+              const baseVal = Number(baseline.value);
+              const normBase = normalizeLabUnit(baseVal, baseline.unit || unit, "umol/L", "scr");
+              if (normBase.compatible && normBase.comparableValue != null) {
+                const scrDelta = normLatest.comparableValue - normBase.comparableValue;
+                const scrPctRise = normBase.comparableValue > 0 ? scrDelta / normBase.comparableValue : 0;
+                // KDIGO: absolute increase >= 26.5 umol/L (0.3 mg/dL) or relative increase >= 50%
+                if (scrDelta >= 26.5 || scrPctRise >= 0.5) {
+                  isAkiUnstable = true;
+                  patientEgfr = null; // Block static eGFR calculation during acute surge
+                  highRiskFollowup.items.push({
+                    tracking_id: `aki:${latest.id || "obs-scr-aki"}`,
+                    rule_id: "KDIGO-AKI-CREATININE-SURGE",
+                    kind: "aki_surge",
+                    label: "急性肾损伤 (AKI) 风险预警 / 肌酐非稳态",
+                    code: code,
+                    stage: "reported",
+                    stage_timestamp: latest.effective_time || latest.timestamp || null,
+                    required_stages: ["reported", "reviewed"],
+                    gap: "followup_review_pending",
+                    overdue: true,
+                    due_minutes: 60,
+                    source_reported_high_risk: true,
+                    summary: `【危急预警】血肌酐较基线快速上升 (${normBase.comparableValue} → ${normLatest.comparableValue} μmol/L，增量 +${scrDelta.toFixed(1)} μmol/L / +${(scrPctRise * 100).toFixed(1)}%)，符合 KDIGO AKI 警示标准。血肌酐处于急性非稳态，CKD-EPI eGFR 估算已阻断以防误导。`,
+                    recommended_action: "密切监测尿量及容量状态，排查肾毒性药物与病因，切勿依赖静态 eGFR 调药",
+                    evidence: [
+                      {
+                        source_type: "observation",
+                        id: latest.id || null,
+                        title: latest.display_name || latest.name || "血肌酐",
+                        span: latest.span || null,
+                        timestamp: latest.effective_time || latest.timestamp || null,
+                      },
+                    ],
+                  });
+                  if (highRiskFollowup.counts) {
+                    highRiskFollowup.counts.total = highRiskFollowup.items.length;
+                    highRiskFollowup.counts.open += 1;
+                    highRiskFollowup.counts.overdue += 1;
+                  }
+                  highRiskFollowup.interpretation = "tracked_high_risk_items_present";
+                  gaps.push({
+                    id: genId("GAP-AKI-EGFR"),
+                    category: ITEM_CATEGORIES.DATA_GAP,
+                    tag: CATEGORY_LABELS[ITEM_CATEGORIES.DATA_GAP],
+                    gap_type: "CREATININE_NON_STEADY_STATE",
+                    severity: "HIGH",
+                    title: "血肌酐处于非稳态（疑似 AKI）",
+                    summary: "【资料不足】患者血肌酐急剧上升，非稳态下 CKD-EPI 方程失效，已阻断 eGFR 数值计算。",
+                    clinical_action_needed: "评估急性肾损伤病因，追踪复查肌酐及尿量，必要时评估内生肌酐清除率",
+                    source_type: "AuditGap",
+                    source_id: "gap-aki-egfr",
+                    span: null,
+                  });
+                }
+              }
+            }
+
+            if (!isAkiUnstable) {
+              patientEgfr = calculateEgfrCkdEpi(normLatest.comparableValue, patient.age, patient.gender);
+            }
+          }
         } else {
           patientEgfr = null; // Do NOT calculate with fake 65yo male
         }
@@ -507,10 +596,27 @@ export class PatientEvolutionEngine {
       }
     }
 
+    // NEWS2 Deterioration Alert
+    if (normalizedVitals?.news2) {
+      const news2 = normalizedVitals.news2;
+      if (news2.total_score >= 5 || news2.has_single_red || news2.risk_level === "HIGH" || news2.risk_level === "MEDIUM") {
+        ruleReminders.push({
+          id: genId("RULE-NEWS2"),
+          category: ITEM_CATEGORIES.RULE_ALERT,
+          tag: CATEGORY_LABELS[ITEM_CATEGORIES.RULE_ALERT],
+          title: `NEWS2 早期预警警示 (${news2.total_score}分 / ${news2.risk_level})`,
+          summary: `【NEWS2 预警】患者国家早期预警评分达到 ${news2.total_score}分 (${news2.risk_level}风险)${news2.has_single_red ? "，触发单项红灯(3分)极危异常" : ""}。${news2.trigger_explanation || "提示存在急性临床恶化风险，建议立即由负责医师评估或启动快速反应流程。"}`,
+          news2,
+          source_type: "EarlyWarningScore",
+          source_id: "news2-deterioration-alert",
+        });
+      }
+    }
+
     // ----------------------------------------------------
     // BLOCK 4: 「哪些资料不足」 (Critical Safety & Data Gaps)
     // ----------------------------------------------------
-    const gaps = [];
+    // (gaps initialized at top of analyzePatientEvolution to capture earlier extraction gaps)
 
     // Check Allergy History
     if (allergies == null || (Array.isArray(allergies) && allergies.length === 0)) {

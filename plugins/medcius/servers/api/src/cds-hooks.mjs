@@ -36,6 +36,7 @@ export const CDS_SERVICES = [
     prefetch: {
       patient: "Patient/{{context.patientId}}",
       conditions: "Condition?patient={{context.patientId}}&clinical-status=active",
+      allergies: "AllergyIntolerance?patient={{context.patientId}}&clinical-status=active",
       observations: "Observation?patient={{context.patientId}}&_sort=-date&_count=20",
       medications: "MedicationRequest?patient={{context.patientId}}&status=active",
       reports: "DiagnosticReport?patient={{context.patientId}}&_sort=-date&_count=10",
@@ -179,6 +180,47 @@ function parseFhirOrders(context, prefetch) {
   });
 }
 
+/** Extract allergies from FHIR AllergyIntolerance Bundle / Array */
+function parseFhirAllergies(context, prefetch) {
+  const rawList = [
+    ...(prefetch?.allergies?.entry ?? []),
+    ...(Array.isArray(prefetch?.allergies) ? prefetch.allergies : []),
+    ...(Array.isArray(context?.allergies) ? context.allergies : []),
+  ];
+
+  if (rawList.length === 0) {
+    if (context?.allergies != null && !Array.isArray(context.allergies)) {
+      return context.allergies;
+    }
+    if (prefetch?.allergies != null && !Array.isArray(prefetch.allergies) && !prefetch.allergies.entry) {
+      return prefetch.allergies;
+    }
+    return null;
+  }
+
+  return rawList.map((item) => {
+    const res = item.resource ?? item;
+    const allergenName =
+      res.code?.text ||
+      res.code?.coding?.[0]?.display ||
+      res.substance?.text ||
+      res.substance?.coding?.[0]?.display ||
+      res.allergen ||
+      res.name ||
+      "已知过敏原";
+    return {
+      id: res.id || null,
+      allergen: allergenName,
+      substance: allergenName,
+      criticality: res.criticality || "high",
+      clinical_status: res.clinicalStatus?.coding?.[0]?.code || res.clinical_status || "active",
+      verification_status: res.verificationStatus?.coding?.[0]?.code || res.verification_status || "confirmed",
+      reaction: res.reaction?.[0]?.manifestation?.[0]?.text || res.reaction_description || null,
+      span: res.span || null,
+    };
+  });
+}
+
 /** Handle incoming CDS Hook request */
 export async function handleCdsHookRequest(serviceId, requestBody, { governance = globalGovernance } = {}) {
   const { hook, user, context, prefetch } = requestBody || {};
@@ -219,7 +261,7 @@ export async function handleCdsHookRequest(serviceId, requestBody, { governance 
   const medications = parseFhirMedications(context, prefetch);
   const diagnosticReports = parseFhirReports(context, prefetch);
   const orders = parseFhirOrders(context, prefetch);
-  const allergies = context?.allergies || prefetch?.allergies || null;
+  const allergies = parseFhirAllergies(context, prefetch);
 
   const timeWindow = context?.time_window || "24h";
 

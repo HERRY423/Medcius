@@ -1,5 +1,6 @@
 /**
  * Weld extract → NHSA coding → 结算清单栏 + 六字段出处 + 清单机检 + 病案要素质量核对.
+ * 【次级独立意图 (Secondary Intended Use)】本模块与查房前临床演变摘要隔离，属于医保结算清单核对试验管线。
  * Not a DRG/DIP grouper.
  */
 import { parseCnNote, parseDemographics, parseLabs } from "./parse-cn-note.mjs";

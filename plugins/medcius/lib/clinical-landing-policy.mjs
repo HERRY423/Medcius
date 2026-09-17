@@ -17,6 +17,16 @@ export const FROZEN_WORKFLOW_SKILLS = Object.freeze([
   "discharge-readiness-check",
 ]);
 
+/**
+ * Sequestered secondary intended uses.
+ * Not permitted on frontline P0 clinical landing surfaces (HIS embed / Ward Pre-round).
+ * Subject to independent regulatory boundaries, validation suites, and governance approvals.
+ */
+export const SECONDARY_INTENDED_USES = Object.freeze([
+  "nhsa-record-quality",
+  "settlement-check",
+]);
+
 export const CLINICAL_SURFACES = Object.freeze({
   HIS_EMBED: "his_embed",
   HOSPITAL_SSO: "hospital_sso",

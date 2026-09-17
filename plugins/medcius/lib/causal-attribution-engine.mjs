@@ -4,6 +4,8 @@
 // 2. Dual-track rule gating & arbitration (Hard rule deterministic checks + LLM context synthesis)
 // 3. Strict Fail-Closed preservation for patient and time safety
 
+import { normalizeLabUnit } from "./hospital-data-adapter.mjs";
+
 export const THREE_STATE_EVALUATION = {
   NEGATIVE: "Negative",
   NOT_MENTIONED: "Not mentioned",
@@ -101,57 +103,77 @@ export class CausalAttributionEngine {
   }
 }
 
+/**
+ * @deprecated DualTrackGatingEngine is deprecated and retained only for legacy test harness compatibility.
+ * In production Medcius runtime, safety gatekeeping and threshold arbitration have been unified into
+ * patient-evolution-engine and hospital-data-adapter using rulePack-governed critical values and unit normalization.
+ */
 export class DualTrackGatingEngine {
   /**
    * Evaluates deterministic safety hard rules.
-   * Acts as the safety gatekeeper for critical values, antibiotic stewardship, and extreme deterioration.
+   * @deprecated Retained for legacy test harness; thresholds are now extracted from rulePack rather than hardcoded.
    */
   static evaluateHardRules(observations = [], medications = [], { rulePack = null } = {}) {
     const criticalViolations = [];
     const forcedAlerts = [];
 
+    // Dynamically retrieve potassium critical thresholds from rulePack with standard clinical fallbacks
+    const kRule = rulePack?.clinical_rules?.critical_values?.k || {
+      low: 2.8,
+      high: 6.2,
+      unit: "mmol/L",
+    };
+    const kTargetUnit = kRule.unit || "mmol/L";
+    const kHigh = Number(kRule.high ?? 6.2);
+    const kLow = Number(kRule.low ?? 2.8);
+
     for (const obs of observations) {
       const name = String(obs.conceptName || obs.code?.coding?.[0]?.display || "").toLowerCase();
       const code = obs.conceptCode || obs.code?.coding?.[0]?.code;
-      const val = typeof obs.value === "number" ? obs.value : parseFloat(obs.value);
+      const rawVal = typeof obs.value === "number" ? obs.value : parseFloat(obs.value);
 
-      if (!Number.isFinite(val)) continue;
+      if (!Number.isFinite(rawVal)) continue;
 
-      // 1. Potassium
+      // 1. Potassium (with unit normalization)
       if (name.includes("钾") || name.includes("potassium") || code === "2823-3") {
-        if (val >= 6.2) {
+        const obsUnit = obs.unit || "mmol/L";
+        const normK = normalizeLabUnit(rawVal, obsUnit, kTargetUnit, "k");
+        const val = normK.compatible && normK.comparableValue != null ? normK.comparableValue : rawVal;
+
+        if (val >= kHigh) {
           criticalViolations.push({
             code: "CRITICAL_HYPERKALEMIA",
             severity: "CRITICAL_BLOCK",
-            message: `重度高钾血症 (${val} mmol/L)，达到恶性室性心律失常危机阈值`,
+            message: `重度高钾血症 (${val} ${kTargetUnit})，达到恶性室性心律失常危机阈值`,
             requiredAction: "查房前强制置顶提醒：立即复查心电图并采取降钾干预",
             source_id: obs.id,
           });
-          forcedAlerts.push(`🔴 【危急值硬规则】重度高钾血症 (${val} mmol/L)`);
-        } else if (val <= 2.8) {
+          forcedAlerts.push(`🔴 【危急值硬规则】重度高钾血症 (${val} ${kTargetUnit})`);
+        } else if (val <= kLow) {
           criticalViolations.push({
             code: "CRITICAL_HYPOKALEMIA",
             severity: "CRITICAL_BLOCK",
-            message: `严重低钾血症 (${val} mmol/L)，存在室性早搏/尖端扭转型室速风险`,
+            message: `严重低钾血症 (${val} ${kTargetUnit})，存在室性早搏/尖端扭转型室速风险`,
             requiredAction: "查房前强制置顶提醒：急查补钾并监护心电",
             source_id: obs.id,
           });
-          forcedAlerts.push(`🔴 【危急值硬规则】严重低钾血症 (${val} mmol/L)`);
+          forcedAlerts.push(`🔴 【危急值硬规则】严重低钾血症 (${val} ${kTargetUnit})`);
         }
       }
 
       // 2. Creatinine Acute Surge
       if (name.includes("肌酐") || name.includes("creatinine") || code === "2160-0") {
+        const obsUnit = obs.unit || "umol/L";
         const highRef = obs.referenceRange?.high || (obs.referenceRange && typeof obs.referenceRange === "object" ? obs.referenceRange.high : 104);
-        if (highRef && val > highRef * 2.0) {
+        if (highRef && rawVal > highRef * 2.0) {
           criticalViolations.push({
             code: "CRITICAL_CREATININE_SURGE",
             severity: "CRITICAL_BLOCK",
-            message: `血肌酐大幅升高 (${val} umol/L)，超参考上限 2 倍以上`,
+            message: `血肌酐大幅升高 (${rawVal} ${obsUnit})，超参考上限 2 倍以上`,
             requiredAction: "查房演变首屏高亮置顶并提示排查肾损伤病因",
             source_id: obs.id,
           });
-          forcedAlerts.push(`🔴 【危急值硬规则】肌酐危急升高 (${val} umol/L)`);
+          forcedAlerts.push(`🔴 【危急值硬规则】肌酐危急升高 (${rawVal} ${obsUnit})`);
         }
       }
     }

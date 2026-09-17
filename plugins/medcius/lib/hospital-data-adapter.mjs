@@ -123,6 +123,171 @@ export function calculateEgfrCkdEpi(scr, age, gender) {
   return Math.round(egfr * 10) / 10;
 }
 
+/**
+ * Standard National Early Warning Score 2 (NEWS2) Calculator.
+ * Evaluates 6 core physiological parameters (respiration rate, SpO2, supplemental oxygen, systolic BP, heart rate, consciousness, temperature).
+ * @param {object} vitals
+ * @param {number|null} [vitals.respiration_rate] - Breaths per minute
+ * @param {number|null} [vitals.spo2] - Oxygen saturation percentage (Scale 1)
+ * @param {boolean|string|null} [vitals.supplemental_oxygen] - Whether receiving oxygen therapy
+ * @param {number|null} [vitals.systolic_bp] - Systolic blood pressure (mmHg)
+ * @param {number|null} [vitals.heart_rate] - Heart rate / pulse (bpm)
+ * @param {string|null} [vitals.consciousness] - Alert (A) vs Voice/Pain/Unresponsive (V/P/U)
+ * @param {number|null} [vitals.temperature] - Body temperature (°C)
+ * @returns {object} { score, risk_level, single_trigger_red, subscores, missing_parameters }
+ */
+export function calculateNews2({
+  respiration_rate = null,
+  respiratory_rate = null,
+  spo2 = null,
+  supplemental_oxygen = null,
+  systolic_bp = null,
+  sbp = null,
+  heart_rate = null,
+  hr = null,
+  consciousness = null,
+  temperature = null,
+  t = null,
+} = {}) {
+  const subscores = {};
+  const missing = [];
+  let totalScore = 0;
+  let singleRed = false;
+
+  const actualRr = respiration_rate ?? respiratory_rate;
+  const actualSbp = systolic_bp ?? sbp;
+  const actualHr = heart_rate ?? hr;
+  const actualTemp = temperature ?? t;
+
+  // 1. Respiration Rate (breaths/min)
+  if (actualRr != null && !isNaN(Number(actualRr))) {
+    const rr = Number(actualRr);
+    let s = 0;
+    if (rr <= 8) s = 3;
+    else if (rr <= 11) s = 1;
+    else if (rr <= 20) s = 0;
+    else if (rr <= 24) s = 2;
+    else s = 3;
+    subscores.respiration_rate = s;
+    totalScore += s;
+    if (s === 3) singleRed = true;
+  } else {
+    missing.push("respiration_rate");
+  }
+
+  // 2. Oxygen Saturation (SpO2, Scale 1)
+  if (spo2 != null && !isNaN(Number(spo2))) {
+    const sp = Number(spo2);
+    let s = 0;
+    if (sp <= 91) s = 3;
+    else if (sp <= 93) s = 2;
+    else if (sp <= 95) s = 1;
+    else s = 0;
+    subscores.spo2 = s;
+    totalScore += s;
+    if (s === 3) singleRed = true;
+  } else {
+    missing.push("spo2");
+  }
+
+  // 3. Supplemental Oxygen (Air vs Oxygen)
+  if (supplemental_oxygen != null) {
+    const isO2 = typeof supplemental_oxygen === "boolean"
+      ? supplemental_oxygen
+      : /(?:吸氧|面罩|鼻导管|oxygen|o2|文丘里|高流量)/i.test(String(supplemental_oxygen));
+    const s = isO2 ? 2 : 0;
+    subscores.supplemental_oxygen = s;
+    totalScore += s;
+  } else {
+    subscores.supplemental_oxygen = 0;
+  }
+
+  // 4. Systolic Blood Pressure (mmHg)
+  if (actualSbp != null && !isNaN(Number(actualSbp))) {
+    const bpVal = Number(actualSbp);
+    let s = 0;
+    if (bpVal <= 90) s = 3;
+    else if (bpVal <= 100) s = 2;
+    else if (bpVal <= 110) s = 1;
+    else if (bpVal <= 219) s = 0;
+    else s = 3;
+    subscores.systolic_bp = s;
+    totalScore += s;
+    if (s === 3) singleRed = true;
+  } else {
+    missing.push("systolic_bp");
+  }
+
+  // 5. Heart Rate (beats/min)
+  if (actualHr != null && !isNaN(Number(actualHr))) {
+    const hrVal = Number(actualHr);
+    let s = 0;
+    if (hrVal <= 40) s = 3;
+    else if (hrVal <= 50) s = 1;
+    else if (hrVal <= 90) s = 0;
+    else if (hrVal <= 110) s = 1;
+    else if (hrVal <= 130) s = 2;
+    else s = 3;
+    subscores.heart_rate = s;
+    totalScore += s;
+    if (s === 3) singleRed = true;
+  } else {
+    missing.push("heart_rate");
+  }
+
+  // 6. Consciousness (AVPU)
+  if (consciousness != null) {
+    const cStr = String(consciousness).trim().toUpperCase();
+    const isAltered = /^(?:V|P|U|昏迷|嗜睡|微弱|昏睡|躁动|谵妄)/i.test(cStr) || cStr === "VOICE" || cStr === "PAIN" || cStr === "UNRESPONSIVE";
+    const s = isAltered ? 3 : 0;
+    subscores.consciousness = s;
+    totalScore += s;
+    if (s === 3) singleRed = true;
+  } else {
+    subscores.consciousness = 0;
+  }
+
+  // 7. Temperature (°C)
+  if (actualTemp != null && !isNaN(Number(actualTemp))) {
+    const tVal = Number(actualTemp);
+    let s = 0;
+    if (tVal <= 35.0) s = 3;
+    else if (tVal <= 36.0) s = 1;
+    else if (tVal <= 38.0) s = 0;
+    else if (tVal <= 39.0) s = 1;
+    else s = 2;
+    subscores.temperature = s;
+    totalScore += s;
+    if (s === 3) singleRed = true;
+  } else {
+    missing.push("temperature");
+  }
+
+  // Risk Classification according to Royal College of Physicians NEWS2
+  let riskLevel = "低风险 (Low)";
+  let riskCode = "LOW";
+  if (totalScore >= 7) {
+    riskLevel = "高风险 (High)";
+    riskCode = "HIGH";
+  } else if (totalScore >= 5 || singleRed) {
+    riskLevel = singleRed ? "中等风险 (单项红色警示 3分)" : "中等风险 (Medium)";
+    riskCode = singleRed ? "LOW-MEDIUM" : "MEDIUM";
+  }
+
+  return {
+    score: totalScore,
+    total_score: totalScore,
+    risk_level: riskLevel,
+    risk_code: riskCode,
+    risk_category: riskLevel,
+    single_trigger_red: singleRed,
+    has_single_red: singleRed,
+    subscores,
+    components: subscores,
+    missing_parameters: missing,
+  };
+}
+
 export class HospitalDataAdapter {
   /**
    * 1. Normalize NIS (Nursing Info System) Vital Signs and 24h Fluid Balance
@@ -143,6 +308,9 @@ export class HospitalDataAdapter {
     let spo2Min = Infinity;
     let hrSum = 0;
     let hrCount = 0;
+    let rrMax = -Infinity;
+    let hasSupplementalO2 = null;
+    let hasAlteredConsciousness = false;
 
     let intakeTotal = 0;
     let outputTotal = 0;
@@ -206,6 +374,25 @@ export class HospitalDataAdapter {
         if (sp < spo2Min) spo2Min = sp;
       }
 
+      // Respiratory Rate (breaths/min)
+      if (record.respiratory_rate != null || record.rr != null) {
+        const rr = Number(record.respiratory_rate ?? record.rr);
+        if (!isNaN(rr) && rr > rrMax) rrMax = rr;
+      }
+
+      // Supplemental Oxygen
+      if (record.supplemental_oxygen != null || record.oxygen != null || record.o2 != null) {
+        hasSupplementalO2 = record.supplemental_oxygen ?? record.oxygen ?? record.o2;
+      }
+
+      // Consciousness / AVPU
+      if (record.consciousness != null || record.avpu != null) {
+        const cVal = String(record.consciousness ?? record.avpu);
+        if (/^(?:V|P|U|昏迷|嗜睡|微弱|昏睡|躁动|谵妄)/i.test(cVal)) {
+          hasAlteredConsciousness = true;
+        }
+      }
+
       // Fluid Intake (ml) - Mutually exclusive accumulation to prevent double counting
       const hasOral = record.oral_intake_ml != null && !Number.isNaN(Number(record.oral_intake_ml));
       const hasIv = record.iv_intake_ml != null && !Number.isNaN(Number(record.iv_intake_ml));
@@ -243,6 +430,16 @@ export class HospitalDataAdapter {
       }
     }
 
+    const news2 = calculateNews2({
+      temperature: tMax !== -Infinity ? tMax : null,
+      systolic_bp: peakBpReading?.s ?? nadirBpReading?.s ?? null,
+      heart_rate: hrCount > 0 ? Math.round(hrSum / hrCount) : null,
+      spo2: spo2Min !== Infinity ? spo2Min : null,
+      respiratory_rate: rrMax !== -Infinity ? rrMax : null,
+      supplemental_oxygen: hasSupplementalO2,
+      consciousness: hasAlteredConsciousness ? "altered" : "alert",
+    });
+
     const vitalsSummary = {
       t_max: tMax === -Infinity ? null : tMax,
       t_min: tMin === Infinity ? null : tMin,
@@ -250,6 +447,7 @@ export class HospitalDataAdapter {
       bp_min: nadirBpReading ? `${nadirBpReading.s}/${nadirBpReading.d} mmHg` : null,
       hr_avg: hrCount > 0 ? Math.round(hrSum / hrCount) : null,
       spo2_min: spo2Min === Infinity ? null : `${spo2Min}%`,
+      news2,
     };
 
     const netBalance = intakeTotal - outputTotal;
