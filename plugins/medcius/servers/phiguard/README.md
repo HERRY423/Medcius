@@ -8,7 +8,7 @@
 |---|---|
 | `scan` | 检测：18 位身份证（GB 11643 校验位）、手机号、邮箱、标签病历号（住院号/门诊号/病历号/登记号）、标签姓名（患者：/姓名：…） |
 | `redact` | `mode=mask`（保留首尾）或 `mode=hash`（`[type:sha8]`） |
-| `pseudonymize` | 稳定假名化 `[PSN:hmac8]`，同值同 token；盐：参数 > `CLAUDE_MEDCIUS_PHI_SALT` > ephemeral（重启即变，会警告） |
+| `pseudonymize` | 稳定假名化 `[PSN:hmac32]`（HMAC-SHA256 的 32 位十六进制摘要），同值同 token；盐：参数 > `CLAUDE_MEDCIUS_PHI_SALT` > ephemeral（重启即变，会警告） |
 | `status` | 盐来源、算法版本、覆盖与局限 |
 
 ## 已知局限（诚实边界）

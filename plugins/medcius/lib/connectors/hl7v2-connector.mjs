@@ -17,6 +17,9 @@
 //   - individual malformed OBX/RXE groups are skipped and surfaced in
 //     parse_warnings (graceful degrade inside a message), never silently.
 
+import { bindSourceOwnership } from "../clinical-boundary.mjs";
+import { hl7ResultStatus, sourceLifecycle } from "./source-lifecycle.mjs";
+
 function splitLines(raw) {
   return String(raw ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").filter((line) => line.trim());
 }
@@ -94,7 +97,7 @@ export function mapAdtEncounter(message) {
   const admit = message.get("PV1", 44);
   return {
     id: visitNumber,
-    status: message.messageType.includes("A01") ? "admitted" : message.messageType.includes("A03") ? "discharged" : "in-progress",
+    status: message.messageType.includes("A01") ? "admitted" : message.messageType.includes("A03") ? "discharged" : null,
     class: message.get("PV1", 2) || null,
     period_start: admit ? normalizeHl7Time(admit) : null,
     attending_doctor: xcnDisplayName(repeat0(message.get("PV1", 7, null)), message.encoding.compSep),
@@ -104,10 +107,11 @@ export function mapAdtEncounter(message) {
 
 function normalizeHl7Time(value) {
   // HL7 TS: YYYYMMDD[HHMMSS]; bridge contracts use ISO dates at minimum.
-  const m = /^(\d{4})(\d{2})(\d{2})(?:(\d{2})(\d{2})(\d{2})?)?/.exec(String(value));
+  const m = /^(\d{4})(\d{2})(\d{2})(?:(\d{2})(\d{2})(\d{2})?(?:\.(\d+))?)?([+-]\d{4})?$/.exec(String(value));
   if (!m) return null;
+  const zone = m[8] ? `${m[8].slice(0, 3)}:${m[8].slice(3)}` : "";
   return m[4] != null
-    ? `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6] ?? "00"}`
+    ? `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6] ?? "00"}${m[7] ? `.${m[7]}` : ""}${zone}`
     : `${m[1]}-${m[2]}-${m[3]}`;
 }
 
@@ -128,20 +132,33 @@ export function mapOruObservations(message) {
     const code = read(3, 0);
     const name = read(3, 1) || read(3, 0);
     const value = read(5);
-    if (!code || value == null) {
+    const status = read(11);
+    if (!code || (value == null && !["D", "W", "X", "U"].includes(String(status || "").toUpperCase()))) {
       warnings.push(`skipped_malformed_OBX#${i + 1}: code/value missing`);
       continue;
     }
     const flag = read(8);
+    const obr = segments.slice(0, i).reverse().find((seg) => seg.fields[0] === "OBR");
+    const orderId = repeat0(obr?.fields[3]) || repeat0(obr?.fields[2]) || null;
+    const statusChangedAt = normalizeHl7Time(obr?.fields[22]);
     records.push({
       id: `${message.controlId ?? "hl7"}-obx-${records.length + 1}`,
-      order_id: repeat0(segments.slice(0, i).reverse().find((seg) => seg.fields[0] === "OBR")?.fields[2]) || null,
+      source_record_id: read(21) || (orderId ? `${orderId}:${code}:${read(4) || read(1) || "1"}` : null),
+      version_id: message.controlId,
+      order_id: orderId,
       code,
       name,
       result_value: /^[\d.]+$/.test(value) ? Number(value) : value,
       unit: read(6),
-      status: read(11) || "final",
+      status,
+      source_status: status,
+      result_status: hl7ResultStatus(status),
       sample_time: normalizeHl7Time(read(14)),
+      event_time: normalizeHl7Time(read(14)),
+      recorded_at: null,
+      updated_at: statusChangedAt,
+      resulted_at: statusChangedAt,
+      message_timestamp: normalizeHl7Time(message.get("MSH", 7)),
       is_critical: CRITICAL_FLAGS.has(String(flag ?? "").toUpperCase()),
       reference_range_text: read(7) && /^[\d.\-至到\s]/.test(read(7)) ? read(7) : null,
     });
@@ -179,6 +196,11 @@ export function mapRdeMedicationOrders(message) {
     }
     const amount = read(5);
     const unit = read(7);
+    const orc = segments.slice(0, i).reverse().find((seg) => seg.fields[0] === "ORC");
+    const sourceStatus = orc?.fields[5] || null;
+    const orderControl = orc?.fields[1] || null;
+    const orderStatus = ({ SC: "active", IP: "active", CM: "completed", CA: "cancelled", DC: "stopped", HD: "on-hold", ER: "entered-in-error" })[sourceStatus] ?? null;
+    const orderTime = normalizeHl7Time(orc?.fields[9]);
     records.push({
       id: `${message.controlId ?? "hl7"}-rxe-${records.length + 1}`,
       is_medication: true,
@@ -187,8 +209,18 @@ export function mapRdeMedicationOrders(message) {
       dosage: [amount, unit].filter(Boolean).join("") || null,
       route,
       frequency: read(1, 0) || null,
-      authored_on: normalizeHl7Time(read(3)),
-      change_type: "active",
+      source_record_id: repeat0(orc?.fields[3]) || repeat0(orc?.fields[2]) || null,
+      version_id: message.controlId,
+      authored_on: orderControl === "NW" ? orderTime : null,
+      event_time: orderTime,
+      recorded_at: null,
+      updated_at: orderTime,
+      status: orderStatus,
+      source_status: sourceStatus,
+      source_order_control: orderControl,
+      change_type: orderStatus || (orderControl === "NW" ? "new" : null),
+      cancelled_at: orderStatus === "cancelled" ? orderTime : null,
+      message_timestamp: normalizeHl7Time(message.get("MSH", 7)),
     });
   }
   return { records, warnings };
@@ -242,6 +274,14 @@ export function parseHl7v2MessageType(message) {
   return `${kind}^${trigger}`;
 }
 
+function sourceIdentity(mshMessage) {
+  const pid = splitSegments(mshMessage).find((line) => line.startsWith("PID"));
+  const patientId = pid ? fieldsOf(pid, 3).split("^")[0] || null : null;
+  if (pid && !patientId) throw new Error("CONNECTOR_HL7V2_PID_ID_REQUIRED");
+  const encounter = parsePv1Encounter(mshMessage);
+  return { patientId, encounterId: encounter?.id || null };
+}
+
 function parsePid(mshMessage) {
   const pid = splitSegments(mshMessage).find((line) => line.startsWith("PID"));
   if (!pid) throw new Error("CONNECTOR_HL7V2_PID_REQUIRED");
@@ -263,74 +303,22 @@ function parsePv1Encounter(mshMessage) {
   if (!pv1) return null;
   return {
     id: fieldsOf(pv1, 19) || null,
-    class: fieldsOf(pv1, 2) || "inpatient",
-    status: "in-progress",
+    class: fieldsOf(pv1, 2) || null,
+    status: parseHl7v2MessageType(mshMessage) === "ADT^A01" ? "admitted" : null,
     bed_number: fieldsOf(pv1, 3).split("^").filter(Boolean).join("-") || null,
   };
 }
 
-const CRITICAL_OBX_FLAGS = new Set(["LL", "HH", "CR", "L", "H"]);
-
-function parseObrObx(mshMessage) {
-  const segments = splitSegments(mshMessage);
-  const results = [];
-  let currentOrderId = null;
-  for (const line of segments) {
-    if (line.startsWith("OBR")) {
-      currentOrderId = fieldsOf(line, 2) || fieldsOf(line, 3) || currentOrderId;
-      continue;
-    }
-    if (!line.startsWith("OBX")) continue;
-    const codeField = fieldsOf(line, 3).split("^");
-    const rawValue = fieldsOf(line, 5);
-    const unit = fieldsOf(line, 6).replace(/^[^A-Za-z\u4e00-\u9fa5/]*/, "").split("^")[0] || null;
-    const flag = fieldsOf(line, 8).toUpperCase();
-    const time = fieldsOf(line, 14) || null;
-    const numeric = rawValue !== "" && !Number.isNaN(Number(rawValue)) ? Number(rawValue) : rawValue;
-    results.push({
-      id: `hl7v2-obx-${results.length + 1}`,
-      order_id: currentOrderId,
-      code: codeField[0] || codeField[1] || null,
-      test_code: codeField[0] || null,
-      name: codeField[1] || codeField[0] || null,
-      test_name: codeField[1] || codeField[0] || null,
-      result_value: numeric,
-      unit,
-      status: "final",
-      sample_time: time,
-      interpretation: flag || null,
-      is_critical: CRITICAL_OBX_FLAGS.has(flag) && (flag === "LL" || flag === "HH" || flag === "CR"),
-    });
-  }
-  return results;
-}
-
-function parseRxeOrders(mshMessage) {
-  const segments = splitSegments(mshMessage);
-  const orders = [];
-  for (const line of segments) {
-    if (!line.startsWith("RXO") && !line.startsWith("RXE")) continue;
-    const drugField = fieldsOf(line, 2).split("^");
-    const doseField = fieldsOf(line, 3).split("^");
-    orders.push({
-      id: `hl7v2-rx-${orders.length + 1}`,
-      is_medication: true,
-      drug_name: drugField[1] || drugField[0] || null,
-      dosage: doseField.filter(Boolean).join("") || null,
-      route: fieldsOf(line, 6).split("^")[1] || fieldsOf(line, 6).split("^")[0] || null,
-      frequency: null,
-      authored_on: null,
-      status: "active",
-      change_type: "active",
-    });
-  }
-  return orders;
-}
-
-function stamp(context, record) {
-  if (!record.patient_id) record.patient_id = context.patient_id;
-  if (!record.encounter_id) record.encounter_id = context.encounter_id;
-  return record;
+function stamp(context, record, {
+  patientId = null,
+  encounterId = null,
+  requireEncounter = true,
+} = {}) {
+  return bindSourceOwnership(context, record, {
+    patient_id: record.patient_id || patientId || null,
+    encounter_id: record.encounter_id || encounterId || null,
+    tenant_id: record.tenant_id || null,
+  }, { requirePatient: true, requireEncounter, policy: "query_scoped" });
 }
 
 /**
@@ -356,7 +344,14 @@ export function createHl7v2Connectors({
         const message = parseHl7v2Message(raw);
         const extracted = predicate(message);
         if (extracted) {
-          records.push(...(extracted.records ?? [extracted.record]));
+          const patientId = repeat0(message.get("PID", 3));
+          const encounterId = repeat0(message.get("PV1", 19)) || repeat0(message.get("PID", 18));
+          const stamped = (extracted.records ?? [extracted.record]).filter(Boolean).map((record) => stamp(context, record, {
+            patientId,
+            encounterId,
+            requireEncounter: true,
+          }));
+          records.push(...stamped);
           warnings.push(...(extracted.warnings ?? []));
         }
       }
@@ -444,7 +439,7 @@ export function createHl7v2Connectors({
         if (messages.length !== 1) throw new Error("CONNECTOR_HL7V2_ADT_CARDINALITY: expected exactly one ADT message per snapshot");
         const parsed = parsePid(messages[0].raw);
         assertPatientMatch(parsed, context, "hl7v2-patient");
-        return buildEnvelope("hl7v2-patient", context, [stamp(context, parsed)], sourceVersion);
+        return buildEnvelope("hl7v2-patient", context, [stamp(context, parsed, { patientId: parsed.id, requireEncounter: false })], sourceVersion);
       },
     },
     {
@@ -454,13 +449,17 @@ export function createHl7v2Connectors({
       async readPatient(context) {
         const messages = await readMessages(context, new Set(["ADT^A01", "ADT^A08"]));
         if (messages.length !== 1) throw new Error("CONNECTOR_HL7V2_ADT_CARDINALITY: expected exactly one ADT message per snapshot");
-        parsePid(messages[0].raw);
-        const encounter = parsePv1Encounter(messages[0].raw) || { id: context.encounter_id };
-        if (!encounter.id) encounter.id = context.encounter_id;
-        if (encounter.id !== context.encounter_id) {
+        const pid = parsePid(messages[0].raw);
+        assertPatientMatch(pid, context, "hl7v2-encounter");
+        const encounter = parsePv1Encounter(messages[0].raw) || { id: null };
+        if (encounter.id && encounter.id !== context.encounter_id) {
           throw new Error(`BRIDGE_ENCOUNTER_MISMATCH: hl7v2-encounter PV1 '${encounter.id}' !== context '${context.encounter_id}'`);
         }
-        return buildEnvelope("hl7v2-encounter", context, [stamp(context, encounter)], sourceVersion);
+        return buildEnvelope("hl7v2-encounter", context, [stamp(context, encounter, {
+          patientId: pid.id,
+          encounterId: encounter.id,
+          requireEncounter: true,
+        })], sourceVersion);
       },
     },
     {
@@ -469,8 +468,18 @@ export function createHl7v2Connectors({
       capabilities: ["read"],
       async readPatient(context) {
         const messages = await readMessages(context, new Set(["ORU^R01"]));
-        const records = messages.flatMap(({ raw }) => parseObrObx(raw)).map((record) => stamp(context, record));
-        return buildEnvelope("hl7v2-lis", context, records, sourceVersion);
+        const warnings = [];
+        const records = messages.flatMap(({ raw, entry }) => {
+          const identity = sourceIdentity(raw);
+          const extracted = mapOruObservations(parseHl7v2Message(raw));
+          warnings.push(...extracted.warnings);
+          return extracted.records.map((record) => stamp(context, { ...sourceLifecycle(entry), ...record, recorded_at: entry.recorded_at ?? record.recorded_at, updated_at: entry.updated_at ?? record.updated_at, version_id: entry.version_id ?? record.version_id }, {
+            patientId: identity.patientId,
+            encounterId: identity.encounterId,
+            requireEncounter: true,
+          }));
+        });
+        return buildEnvelope("hl7v2-lis", context, records, sourceVersion, warnings);
       },
     },
     {
@@ -479,8 +488,18 @@ export function createHl7v2Connectors({
       capabilities: ["read"],
       async readPatient(context) {
         const messages = await readMessages(context, new Set(["RDE^O11"]));
-        const records = messages.flatMap(({ raw }) => parseRxeOrders(raw)).map((record) => stamp(context, record));
-        return buildEnvelope("hl7v2-his", context, records, sourceVersion);
+        const warnings = [];
+        const records = messages.flatMap(({ raw, entry }) => {
+          const identity = sourceIdentity(raw);
+          const extracted = mapRdeMedicationOrders(parseHl7v2Message(raw));
+          warnings.push(...extracted.warnings);
+          return extracted.records.map((record) => stamp(context, { ...sourceLifecycle(entry), ...record, recorded_at: entry.recorded_at ?? record.recorded_at, updated_at: entry.updated_at ?? record.updated_at, version_id: entry.version_id ?? record.version_id }, {
+            patientId: identity.patientId,
+            encounterId: identity.encounterId,
+            requireEncounter: true,
+          }));
+        });
+        return buildEnvelope("hl7v2-his", context, records, sourceVersion, warnings);
       },
     },
   ];

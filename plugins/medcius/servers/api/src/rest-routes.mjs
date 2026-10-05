@@ -3,7 +3,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PatientEvolutionEngine } from "../../../lib/patient-evolution-engine.mjs";
 import { CDS_SERVICES, handleCdsHookRequest } from "./cds-hooks.mjs";
-import { HANDLERS as auditHandlers } from "../../audit/src/tools.mjs";
+import { HANDLERS as auditHandlers, encodeAuditDigest, decodeAuditDigest, encodeAuditResearchReference } from "../../audit/src/tools.mjs";
 import { extractAuthContext, authorizeRequest, ROLES, generateToken } from "./auth-middleware.mjs";
 import { globalGovernance } from "../../../lib/governance-mode.mjs";
 import { createRateLimiter, createBruteForceGuard, clientKey } from "./security-hardening.mjs";
@@ -11,6 +11,8 @@ import { workstationHandler } from "./workstation-routes.mjs";
 import { executeHisEmbedPreRound } from "../../../lib/his-embed-adapter.mjs";
 import { isClinicalLandingEnabled, isLiveHospitalDataEnabled } from "../../../lib/clinical-landing-policy.mjs";
 import { loadSiteActivationFromEnv } from "../../../lib/site-activation-gate.mjs";
+import { isFormalHospitalPath, resolveAuthorizedHospitalSource } from "../../../lib/authorized-hospital-source.mjs";
+import { readFrozenResearchRecord, replayFrozenResearchRecord } from "../../../lib/silent-research-archive.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -22,6 +24,14 @@ const tokenBruteGuard = createBruteForceGuard({});
 export function resetTransportEdgeGuards() {
   apiRateLimiter.reset();
   tokenBruteGuard.reset();
+}
+
+function assertFrozenRecordAudited(record, tenantId) {
+  if (!auditHandlers.verify_chain({}).ok) throw new Error("FROZEN_RECORD_AUDIT_INTEGRITY_FAILED");
+  const matches = auditHandlers.query_events({ action: "his_embed_silent_capture", subject_ref: encodeAuditResearchReference(record.case_id), tenant_id: tenantId, limit: 1 });
+  const event = matches.events[0] ? auditHandlers.get_event({ event_id: matches.events[0].id }) : null;
+  if (!event || decodeAuditDigest(event.payload?.record_sha256) !== record.record_sha256 || decodeAuditDigest(event.payload?.output_sha256) !== record.output_sha256
+      || decodeAuditDigest(event.payload?.input_sha256) !== record.input_sha256) throw new Error("FROZEN_RECORD_AUDIT_ANCHOR_REQUIRED");
 }
 
 export async function routeRequest(req, res, body) {
@@ -147,7 +157,7 @@ export async function routeRequest(req, res, body) {
 
     return sendJson(200, {
       status: "ok",
-      version: "0.7.0-pilot",
+      version: "0.8.0-pilot",
       product: "Medcius Inpatient Pre-Round Evolution Summary Plugin",
       profile: isDemoProfile ? "demo" : (process.env.MEDCIUS_PROFILE || (isProduction ? "production" : "development")),
       governance_stage: govStage,
@@ -218,7 +228,7 @@ export async function routeRequest(req, res, body) {
   if (method === "POST" && pathname === "/api/v1/patient/evolution-summary") {
     const authCheck = guardedAuthorize("round:summary");
     if (!authCheck.allowed) return sendJson(authCheck.status, { error: authCheck.error });
-    if (isClinicalLandingEnabled()) {
+    if (isClinicalLandingEnabled() || isFormalHospitalPath(globalGovernance.getCurrentStage().id) || globalGovernance.getCurrentStage().id === "silent_pilot") {
       return sendJson(403, {
         error: "P0_CLINICIAN_SURFACE_SUPPRESSED: evolution-summary clinician payload is disabled on the clinical landing surface; use /api/v1/his/embed/silent-capture",
       });
@@ -287,22 +297,34 @@ export async function routeRequest(req, res, body) {
     if (!authCheck.allowed) return sendJson(authCheck.status, { error: authCheck.error });
     try {
       const siteActivation = isLiveHospitalDataEnabled() ? loadSiteActivationFromEnv() : null;
+      const stageId = globalGovernance.getCurrentStage().id;
+      const formal = isFormalHospitalPath(stageId, { useAuthorizedSource: body?.use_authorized_source === true });
+      if (formal && body?.dataFeeds) {
+        return sendJson(400, { error: "CALLER_FEEDS_FORBIDDEN", silent: true, cards: [] });
+      }
+      const bridge = formal ? resolveAuthorizedHospitalSource().bridge : null;
       const capture = await executeHisEmbedPreRound({
         host: body?.host === "hospital_sso" ? "hospital_sso" : "his_embed",
         message: body,
         context: body?.context,
-        dataFeeds: body?.dataFeeds,
+        dataFeeds: formal ? undefined : body?.dataFeeds,
+        bridge,
         governance: globalGovernance,
         siteActivation,
+        authContext: auth,
         auditAppend: async (event) => {
           auditHandlers.record_event({
             actor: "his-embed",
             action: event.event_type,
-            subject_ref: `Encounter/${event.encounter_id}`,
+            subject_ref: encodeAuditResearchReference(event.research_record_id),
             payload: {
               item_count: event.item_count,
               governance_stage: event.governance_stage,
-              envelope_sha256: event.envelope_sha256,
+              envelope_sha256: event.envelope_sha256 == null ? null : encodeAuditDigest(event.envelope_sha256),
+              research_record_id: encodeAuditResearchReference(event.research_record_id),
+              output_sha256: encodeAuditDigest(event.output_sha256),
+              input_sha256: encodeAuditDigest(event.input_sha256),
+              record_sha256: encodeAuditDigest(event.record_sha256),
             },
             tenant_id: event.tenant_id,
           });
@@ -310,14 +332,50 @@ export async function routeRequest(req, res, body) {
       });
       return sendJson(200, capture);
     } catch (err) {
-      return sendJson(400, { error: err.message, silent: true, cards: [] });
+      // Connector exception details may contain chart text, credentials or
+      // queries. Release only the bounded error code on this clinical path.
+      const errorCode = /^[A-Z][A-Z0-9_]+/.exec(String(err.message))?.[0] || "AUTHORIZED_CAPTURE_FAILED";
+      return sendJson(400, { error: errorCode, silent: true, cards: [] });
+    }
+  }
+
+  if (method === "GET" && pathname === "/api/v1/research/frozen-record") {
+    const authCheck = guardedAuthorize("research:read");
+    if (!authCheck.allowed) return sendJson(authCheck.status, { error: authCheck.error });
+    try {
+      const record = readFrozenResearchRecord(url.searchParams.get("case_id"), { tenantId: auth.tenantId });
+      if (!record) return sendJson(404, { error: "FROZEN_RECORD_NOT_FOUND" });
+      assertFrozenRecordAudited(record, auth.tenantId);
+      auditHandlers.record_event({ actor: `research:${auth.user}`, action: "research_record_read",
+        subject_ref: encodeAuditResearchReference(record.case_id), tenant_id: auth.tenantId,
+        payload: { case_id: encodeAuditResearchReference(record.case_id), record_sha256: encodeAuditDigest(record.record_sha256) } });
+      return sendJson(200, record);
+    } catch (err) {
+      return sendJson(400, { error: err.message });
+    }
+  }
+
+  if (method === "POST" && pathname === "/api/v1/research/frozen-record/replay") {
+    const authCheck = guardedAuthorize("research:replay");
+    if (!authCheck.allowed) return sendJson(authCheck.status, { error: authCheck.error });
+    try {
+      const record = readFrozenResearchRecord(body?.case_id, { tenantId: auth.tenantId });
+      if (!record) return sendJson(404, { error: "FROZEN_RECORD_NOT_FOUND" });
+      assertFrozenRecordAudited(record, auth.tenantId);
+      const replay = replayFrozenResearchRecord(body?.case_id, { tenantId: auth.tenantId });
+      auditHandlers.record_event({ actor: `research:${auth.user}`, action: "research_record_replay",
+        subject_ref: encodeAuditResearchReference(replay.case_id), tenant_id: auth.tenantId,
+        payload: { case_id: encodeAuditResearchReference(replay.case_id), record_sha256: encodeAuditDigest(replay.record_sha256), match: replay.match } });
+      return sendJson(200, replay);
+    } catch (err) {
+      return sendJson(400, { error: err.message });
     }
   }
 
   if (method === "POST" && pathname === "/api/v1/patient/progress-note-draft") {
     const authCheck = guardedAuthorize("round:draft_generate");
     if (!authCheck.allowed) return sendJson(authCheck.status, { error: authCheck.error });
-    if (isClinicalLandingEnabled()) {
+    if (isClinicalLandingEnabled() || isFormalHospitalPath(globalGovernance.getCurrentStage().id) || globalGovernance.getCurrentStage().id === "silent_pilot") {
       return sendJson(403, {
         error: "P0_DRAFT_SUPPRESSED_SILENT_PILOT: clinician-facing progress-note draft is disabled on the clinical landing surface",
       });
@@ -382,6 +440,8 @@ export async function routeRequest(req, res, body) {
     "GET  /workstation",
     "GET  /his/embed",
     "POST /api/v1/his/embed/silent-capture",
+    "GET  /api/v1/research/frozen-record",
+    "POST /api/v1/research/frozen-record/replay",
     "GET  /health",
     "GET  /cds-services",
     "POST /cds-services/medcius-patient-evolution",

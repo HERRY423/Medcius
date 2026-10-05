@@ -8,6 +8,8 @@
 // reads. Narrative text is flattened while preserving reading order so
 // clinical-note-extract can bind facts back to original spans.
 
+import { sourceLifecycle } from "./source-lifecycle.mjs";
+
 const ENTITY_MAP = {
   "&lt;": "<",
   "&gt;": ">",
@@ -90,12 +92,15 @@ export function createCdaDocumentConnector({
         const raw = await loadDocument(context, document);
         const text = flattenDocumentToText(raw);
         records.push({
+          ...sourceLifecycle(document),
           id: document.id,
           document_id: document.id,
           title: document.title || text.split("\n")[0],
           content_type: document.content_type || "application/hl7-cda+xml",
           text,
           source_format: "cda",
+          event_time: document.event_time ?? document.authored_at ?? null,
+          timestamp: document.event_time ?? document.authored_at ?? null,
         });
       }
       return buildEnvelope(id, context, records, sourceVersion);

@@ -6,7 +6,7 @@
 
 services:
   medcius-sandbox:
-    image: medcius:0.7.0-pilot
+    image: medcius:0.8.0-pilot
     build: .
     profiles: ["sandbox"]
     ports:
@@ -27,7 +27,7 @@ services:
       retries: 3
 
   medcius:
-    image: medcius:0.7.0-pilot
+    image: medcius:0.8.0-pilot
     build: .
     profiles: ["hospital"]
     restart: unless-stopped

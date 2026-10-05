@@ -6,6 +6,7 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { canonicalJson, sha256Hex } from "../../shared/crypto.mjs";
 
 const schemaSql = readFileSync(new URL("../schema.sql", import.meta.url), "utf8");
 
@@ -15,7 +16,7 @@ const PARENT =
 
 export const DATA = join(PARENT, "audit");
 export const DB_PATH = join(DATA, "audit.sqlite");
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 export const GENESIS = "GENESIS";
 
 mkdirSync(DATA, { recursive: true, mode: 0o700 });
@@ -32,21 +33,31 @@ try {
   tx(() => {
     const cur = db.prepare("PRAGMA user_version").get().user_version;
     const seeded = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='audit_events'").get();
-    if (cur !== SCHEMA_VERSION && !(cur === 0 && !seeded)) {
+    if (![1, SCHEMA_VERSION].includes(cur) && !(cur === 0 && !seeded)) {
       const msg = `schema version ${cur} != ${SCHEMA_VERSION} — audit stores are append-only; do NOT delete. Escalate instead.`;
       process.stderr.write(`mcp-server-audit: ${msg}\n`);
       throw new Error(msg);
     }
-    try { db.exec("ALTER TABLE audit_events ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'default'"); } catch {}
-    try { db.exec("ALTER TABLE audit_signoffs ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'default'"); } catch {}
-    try { db.exec("ALTER TABLE audit_signoffs ADD COLUMN signature TEXT"); } catch {}
-    try { db.exec("ALTER TABLE audit_signoffs ADD COLUMN signature_algorithm TEXT DEFAULT 'ECDSA_P256_SHA256'"); } catch {}
-    try { db.exec("ALTER TABLE audit_signoffs ADD COLUMN key_id TEXT"); } catch {}
-    try { db.exec("ALTER TABLE audit_signoffs ADD COLUMN signed_hash TEXT"); } catch {}
+    // Add columns only. Historical hashes/signatures are never rewritten or upgraded.
+    if (seeded) {
+      const additions = {
+        audit_events: { tenant_id: "TEXT NOT NULL DEFAULT 'default'", event_digest: "TEXT", chain_version: "INTEGER NOT NULL DEFAULT 1" },
+        audit_signoffs: {
+          tenant_id: "TEXT NOT NULL DEFAULT 'default'", signature: "TEXT", signature_algorithm: "TEXT DEFAULT 'ECDSA_P256_SHA256'",
+          key_id: "TEXT", signed_hash: "TEXT", reason_digest: "TEXT", event_digest: "TEXT", replay_id: "TEXT", envelope_hash: "TEXT",
+          envelope_json: "TEXT", signer_public_key: "TEXT", chain_version: "INTEGER NOT NULL DEFAULT 1", signoff_seq: "INTEGER", prev_hash: "TEXT", content_hash: "TEXT", chain_hash: "TEXT",
+        },
+      };
+      for (const [table, columns] of Object.entries(additions)) {
+        const present = new Set(db.prepare(`PRAGMA table_info(${table})`).all().map((row) => row.name));
+        for (const [name, definition] of Object.entries(columns)) if (!present.has(name)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`);
+      }
+    }
     db.exec(schemaSql);
   });
 } catch (e) {
-  if (!isBusy(e)) throw e;
+  // A timed-out schema transaction must not expose a partially initialized store.
+  throw e;
 }
 
 /** All statements in fn commit together or not at all. */
@@ -55,9 +66,19 @@ export function tx(fn) {
   try { const r = fn(); db.exec("COMMIT"); return r; } catch (e) { try { db.exec("ROLLBACK"); } catch {} throw e; }
 }
 
-/** Chain hash for one event: sha256(prev | seq | payload_hash | ts). */
+/** v1 used payload_hash; v2 passes the full canonical event/signoff digest. */
 export function chainHash(prevHash, seq, payloadHash, ts) {
   return createHashSha(prevHash, seq, payloadHash, ts);
+}
+
+export function eventDigest(row) {
+  return sha256Hex(canonicalJson({ schema: "medcius.audit-event.v2", id: row.id, seq: row.seq, tenant_id: row.tenant_id, ts: row.ts,
+    actor: row.actor, action: row.action, subject_ref: row.subject_ref, payload_hash: row.payload_hash, phi_guard: row.phi_guard }));
+}
+
+export function signoffDigest(row) {
+  const fields = ["id", "signoff_seq", "event_id", "tenant_id", "signer", "role", "decision", "reason", "signature", "signature_algorithm", "key_id", "signed_hash", "reason_digest", "event_digest", "replay_id", "envelope_hash", "envelope_json", "signer_public_key", "signed_at"];
+  return sha256Hex(canonicalJson({ schema: "medcius.audit-signoff.v2", ...Object.fromEntries(fields.map((key) => [key, row[key] ?? null])) }));
 }
 import { createHash } from "node:crypto";
 function createHashSha(prev, seq, ph, ts) {

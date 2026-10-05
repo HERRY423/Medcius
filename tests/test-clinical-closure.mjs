@@ -39,7 +39,7 @@ assert.equal(echoFollowup.stage, "preliminary");
 assert.equal(echoFollowup.gap, "PENDING_FINAL_RESULT");
 
 const acknowledged = trackHighRiskFollowup({
-  observations: [{ id: "obs-k-2", code: "k", name: "血钾", status: "final", is_critical: true, acknowledged_at: "2026-08-25T06:30:00Z" }],
+  observations: [{ id: "obs-k-2", code: "k", name: "血钾", status: "final", is_critical: true, resulted_at: "2026-08-25T06:00:00Z", acknowledged_at: "2026-08-25T06:30:00Z" }],
   now: "2026-08-25T07:00:00Z"
 });
 assert.equal(acknowledged.rule_status, "source_flags_only");
@@ -61,6 +61,7 @@ const context = {
   patient_id: "patient-synthetic-1",
   encounter_id: "encounter-synthetic-1",
   specialty_rule_pack_id: "cardiology-inpatient-sandbox",
+  as_of: "2026-08-25T07:00:00Z",
   time_window: "24h"
 };
 const fetchedAt = "2026-08-25T07:00:00Z";
@@ -78,7 +79,7 @@ const bridge = new ReadOnlyHospitalDataBridge({
   connectors: [
     { id: "emr-patient", kind: "patient", capabilities: ["read"], readPatient: async () => envelope("emr-patient", [{ id: context.patient_id, name: "Synthetic Patient", age: 60, gender: "male", patient_id: context.patient_id, encounter_id: context.encounter_id }]) },
     { id: "emr-encounter", kind: "encounter", capabilities: ["read"], readPatient: async () => envelope("emr-encounter", [{ id: context.encounter_id, status: "in-progress", patient_id: context.patient_id, encounter_id: context.encounter_id }]) },
-    { id: "lis-readonly", kind: "lis", capabilities: ["read"], readPatient: async () => envelope("lis-readonly", [{ id: "lis-k-bridge", order_id: "ord-k-bridge", code: "k", name: "Potassium", value: 2.5, unit: "mmol/L", status: "final", sample_time: "2026-08-25T06:00:00Z", is_critical: true, patient_id: context.patient_id, encounter_id: context.encounter_id }]) },
+    { id: "lis-readonly", kind: "lis", capabilities: ["read"], readPatient: async () => envelope("lis-readonly", [{ id: "lis-k-bridge", order_id: "ord-k-bridge", code: "k", name: "Potassium", value: 2.5, unit: "mmol/L", status: "final", sample_time: "2026-08-25T06:00:00Z", resulted_at: "2026-08-25T06:15:00Z", is_critical: true, patient_id: context.patient_id, encounter_id: context.encounter_id }]) },
     { id: "his-readonly", kind: "his", capabilities: ["read"], readPatient: async () => envelope("his-readonly", [{ id: "ord-k-bridge", title: "Repeat potassium", code: "k", order_type: "laboratory", priority: "stat", status: "active", authored_on: "2026-08-25T05:30:00Z", patient_id: context.patient_id, encounter_id: context.encounter_id }]) },
     { id: "financial-access-readonly", kind: "financial_access", capabilities: ["read"], readPatient: async () => envelope("financial-access-readonly", [{ id: "affordability-bridge", kind: "affordability_screen", category: "medication", status: "barrier_reported", recorded_at: "2026-08-25T06:30:00Z", patient_id: context.patient_id, encounter_id: context.encounter_id }]) }
   ]
@@ -105,6 +106,6 @@ const mismatchedBridge = new ReadOnlyHospitalDataBridge({
     readPatient: async () => ({ ...envelope("bad-patient", []), tenant_id: "wrong-tenant" })
   }]
 });
-await assert.rejects(() => mismatchedBridge.readPatientSnapshot(context), /BRIDGE_REQUIRED_SOURCE_UNAVAILABLE.*BRIDGE_TENANT_MISMATCH/);
+await assert.rejects(() => mismatchedBridge.readPatientSnapshot(context), /BRIDGE_IDENTITY_REJECTED.*BRIDGE_TENANT_MISMATCH/);
 
 console.log("✓ Clinical closure tracker, rule-pack fail-closed policy, and heterogeneous read-only bridge passed");

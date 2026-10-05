@@ -1,0 +1,31 @@
+{
+  "schema_version": "medcius.eval-summary.v1",
+  "execution_status": "COMPLETED",
+  "input_sha256": "6d2345424c2d535322ec414121a4a01697aa6fe4930536288d81e5cb45207264",
+  "data_source_verified": false,
+  "sample_size": 4,
+  "time_metrics": {
+    "avg_manual_seconds": 527.5,
+    "avg_medcius_seconds": 108.8,
+    "time_saved_seconds": 418.7,
+    "time_saved_percentage": 79.4
+  },
+  "safety_non_inferiority": {
+    "manual_omissions": 4,
+    "medcius_omissions": 0,
+    "is_non_inferior": null,
+    "descriptive_omission_comparison_pass": true,
+    "status": "NOT_EVALUATED"
+  },
+  "endpoints_met": false,
+  "descriptive_endpoints_met": true,
+  "pass_classification": {
+    "engineering_pass": true,
+    "synthetic_validation_pass": true,
+    "clinical_evidence_pass": false,
+    "blocked_reason": "CLINICAL_EVIDENCE_BLOCKED: synthetic, protocol-simulation, or incomplete stopwatch packets cannot be reported as clinical evidence.",
+    "data_class": "synthetic",
+    "data_source_verified": false,
+    "independent_review_pending": true
+  }
+}

@@ -36,6 +36,7 @@ const nursingFeed = [
 const lisFeed = [
   {
     id: "obs-k-crit",
+    sample_time: new Date().toISOString(),
     test_code: "k",
     test_name: "血清钾",
     result_value: 2.6, // Critical Low
@@ -45,6 +46,7 @@ const lisFeed = [
   },
   {
     id: "obs-scr-aki",
+    sample_time: new Date().toISOString(),
     test_code: "scr",
     test_name: "血清肌酐",
     result_value: 265,
@@ -58,6 +60,7 @@ const lisFeed = [
 const pacsFeed = [
   {
     id: "pacs-01",
+    study_time: new Date().toISOString(),
     modality: "CT",
     study_name: "胸部增强CT",
     report_status: "final",
@@ -70,6 +73,7 @@ const medications = [
   {
     id: "med-01",
     drug_name: "注射用美罗培南",
+    status: "active",
     dosage: "1.0g",
     route: "ivgtt",
     frequency: "q8h",

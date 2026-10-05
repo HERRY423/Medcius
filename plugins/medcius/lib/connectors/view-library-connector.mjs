@@ -4,6 +4,9 @@
 // issues INSERT/UPDATE/DELETE and never opens a SQL client of its own:
 // deployments inject queryView() or a GET-only fetchImpl.
 
+import { bindSourceOwnership } from "../clinical-boundary.mjs";
+import { SOURCE_LIFECYCLE_FIELDS, sourceLifecycle } from "./source-lifecycle.mjs";
+
 const DEFAULT_TIMEOUT_MS = 10000;
 const TRANSIENT_STATUSES = new Set([502, 503, 504, 429]);
 // Strict allowlist: deployment views must live under the v_medcius_ namespace
@@ -33,6 +36,7 @@ const FIELD_ALLOWLISTS = Object.freeze({
   pacs: new Set(["id", "report_id", "patient_id", "encounter_id", "tenant_id", "name", "study_name", "modality", "status", "report_status", "ordered_at", "study_time", "impression", "impression_text", "findings", "code", "study_code", "priority", "urgency", "order_id", "service_request_id", "based_on_id", "scheduled_time", "resulted_at", "issued", "acknowledged_at"]),
   notes: new Set(["id", "document_id", "patient_id", "encounter_id", "tenant_id", "title", "content_type", "text", "body", "narrative"]),
 });
+const LIFECYCLE_ALLOWLIST = new Set([...SOURCE_LIFECYCLE_FIELDS, "source_record_version", "version", "authored_at", "study_time", "order_status"]);
 
 function projectFields(kind, row) {
   const allowlist = FIELD_ALLOWLISTS[kind];
@@ -40,7 +44,7 @@ function projectFields(kind, row) {
   if (!allowlist) return {};
   const out = {};
   for (const [key, value] of Object.entries(row)) {
-    if (allowlist.has(key)) out[key] = value;
+    if (allowlist.has(key) || LIFECYCLE_ALLOWLIST.has(key)) out[key] = value;
   }
   return out;
 }
@@ -77,10 +81,18 @@ export function assertHttpsViewBaseUrl(baseUrl) {
   return true;
 }
 
-function stamp(context, record) {
-  if (!record.patient_id) record.patient_id = context.patient_id;
-  if (!record.encounter_id) record.encounter_id = context.encounter_id;
-  return record;
+function ownQueryRow(context, row, record, {
+  requireEncounter = true,
+  patientFromId = false,
+  encounterFromId = false,
+} = {}) {
+  const sourcePatient = row?.patient_id || (patientFromId ? (row?.id || null) : null);
+  const sourceEncounter = row?.encounter_id || (encounterFromId ? (row?.id || null) : null);
+  return bindSourceOwnership(context, { ...sourceLifecycle(row), ...record }, {
+    patient_id: sourcePatient || null,
+    encounter_id: sourceEncounter || null,
+    tenant_id: row?.tenant_id || null,
+  }, { requirePatient: true, requireEncounter, policy: "query_scoped" });
 }
 
 function buildEnvelope(connectorId, context, records, sourceVersion) {
@@ -97,11 +109,11 @@ function buildEnvelope(connectorId, context, records, sourceVersion) {
 
 function rowsOf(payload) {
   if (Array.isArray(payload)) return payload;
-  if (!payload || typeof payload !== "object") return [];
+  if (!payload || typeof payload !== "object") throw new Error("CONNECTOR_VIEW_LIBRARY_ROWS_REQUIRED");
   if (Array.isArray(payload.rows)) return payload.rows;
   if (Array.isArray(payload.records)) return payload.records;
   if (Array.isArray(payload.data)) return payload.data;
-  return [];
+  throw new Error("CONNECTOR_VIEW_LIBRARY_ROWS_REQUIRED");
 }
 
 async function fetchViewJson({ baseUrl, viewName, query = {}, fetchImpl, headers = {}, timeoutMs = DEFAULT_TIMEOUT_MS }) {
@@ -163,28 +175,28 @@ function makeQueryView({ queryView, baseUrl, fetchImpl, headers, timeoutMs }) {
 }
 
 function mapPatient(row, context) {
-  return stamp(context, {
-    id: row.id || row.patient_id || context.patient_id,
+  return ownQueryRow(context, row, {
+    id: row.id || row.patient_id || null,
     name: row.name || row.patient_name || null,
     gender: row.gender || row.sex || null,
     age: row.age != null ? Number(row.age) : null,
     birth_date: row.birth_date || row.birthDate || null,
     bed_number: row.bed_number || row.bed || null,
-  });
+  }, { requireEncounter: false, patientFromId: true });
 }
 
 function mapEncounter(row, context) {
-  return stamp(context, {
-    id: row.id || row.encounter_id || context.encounter_id,
-    status: row.status || "in-progress",
-    class: row.class || row.encounter_class || "inpatient",
+  return ownQueryRow(context, row, {
+    id: row.id || row.encounter_id || null,
+    status: row.status || null,
+    class: row.class || row.encounter_class || null,
     period_start: row.period_start || row.admit_time || null,
     period_end: row.period_end || row.discharge_time || null,
-  });
+  }, { requireEncounter: true, encounterFromId: true });
 }
 
 function mapNis(row, context) {
-  return stamp(context, {
+  return ownQueryRow(context, row, {
     id: row.id || null,
     temperature: row.temperature ?? row.temp_c ?? null,
     systolic_bp: row.systolic_bp ?? row.sbp ?? null,
@@ -195,14 +207,15 @@ function mapNis(row, context) {
     iv_intake_ml: row.iv_intake_ml ?? row.intake_iv_ml ?? null,
     urine_output_ml: row.urine_output_ml ?? row.urine_ml ?? null,
     drain_output_ml: row.drain_output_ml ?? row.drain_ml ?? null,
-    timestamp: row.timestamp || row.recorded_at || row.sample_time || null,
+    timestamp: row.timestamp || row.event_time || row.sample_time || null,
+    event_time: row.event_time || row.timestamp || row.sample_time || null,
   });
 }
 
 function mapLis(row, context) {
   const low = row.ref_low ?? row.reference_low ?? null;
   const high = row.ref_high ?? row.reference_high ?? null;
-  return stamp(context, {
+  return ownQueryRow(context, row, {
     id: row.id || row.result_id || null,
     order_id: row.order_id || null,
     code: row.test_code || row.code || null,
@@ -211,8 +224,9 @@ function mapLis(row, context) {
     test_name: row.test_name || row.name || null,
     result_value: row.result_value ?? row.value ?? null,
     unit: row.unit || null,
-    status: row.status || "final",
+    status: row.status || null,
     sample_time: row.sample_time || row.effective_time || null,
+    event_time: row.event_time || row.sample_time || row.effective_time || null,
     reference_range_text: row.reference_range_text || row.ref_text || null,
     referenceRange: (low != null || high != null)
       ? [{ low: low != null ? { value: Number(low), unit: row.unit } : undefined, high: high != null ? { value: Number(high), unit: row.unit } : undefined }]
@@ -223,7 +237,7 @@ function mapLis(row, context) {
 
 function mapHis(row, context) {
   const isMedication = row.is_medication === true || Boolean(row.drug_name);
-  return stamp(context, {
+  return ownQueryRow(context, row, {
     id: row.id || row.order_id || null,
     is_medication: isMedication,
     drug_name: row.drug_name || null,
@@ -231,9 +245,9 @@ function mapHis(row, context) {
     route: row.route || null,
     frequency: row.frequency || null,
     authored_on: row.authored_on || row.order_time || null,
-    change_type: row.change_type || row.status || null,
+    change_type: row.change_type || row.status || row.order_status || null,
     title: row.title || row.order_title || row.drug_name || null,
-    status: row.status || "active",
+    status: row.status || row.order_status || null,
     order_type: row.order_type || (isMedication ? "medication" : "order"),
   });
 }
@@ -261,13 +275,15 @@ function createKindConnector({ id, kind, viewName, mapRow, query, sourceVersion 
 }
 
 function mapPacs(row, context) {
-  const status = row.status || (row.report_status === "final" ? "final" : "preliminary");
-  return stamp(context, {
+  const status = row.status || row.report_status || null;
+  return ownQueryRow(context, row, {
     id: row.id || row.report_id || null,
     name: row.name || row.study_name || "影像检查",
     modality: row.modality || "影像检查",
     status,
-    ordered_at: row.ordered_at || row.study_time || null,
+    ordered_at: row.ordered_at || null,
+    study_time: row.study_time || null,
+    event_time: row.event_time || row.study_time || null,
     impression: row.impression || row.impression_text || row.findings || "",
     code: row.code || row.study_code || null,
     priority: row.priority || row.urgency || null,
@@ -280,13 +296,16 @@ function mapPacs(row, context) {
 
 function mapNotes(row, context) {
   const text = row.text || row.body || row.narrative || "";
-  return stamp(context, {
+  return ownQueryRow(context, row, {
     id: row.id || row.document_id || null,
     document_id: row.document_id || row.id || null,
     title: row.title || String(text).split("\n")[0] || "病程记录",
     content_type: row.content_type || "text/plain",
     text,
     source_format: "view-library",
+    status: row.status || null,
+    event_time: row.event_time || row.authored_at || null,
+    timestamp: row.event_time || row.authored_at || null,
   });
 }
 

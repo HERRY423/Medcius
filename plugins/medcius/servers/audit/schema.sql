@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS audit_events (
   subject_ref  TEXT    NOT NULL,                 -- PSEUDONYMIZED reference only (PHI guard enforces)
   payload_json TEXT    NOT NULL,                 -- canonical JSON; must be pre-redacted
   payload_hash TEXT    NOT NULL,                 -- sha256(canonicalJson(payload))
+  event_digest TEXT,                            -- v2 binds payload hash and all event metadata
+  chain_version INTEGER NOT NULL DEFAULT 1,       -- historical v1 rows remain explicitly legacy
   prev_hash    TEXT    NOT NULL,                 -- chain link ('GENESIS' for seq=1)
   chain_hash   TEXT    NOT NULL,                 -- sha256(prev|seq|payload_hash|ts)
   phi_guard    TEXT    NOT NULL DEFAULT 'enforced' CHECK (phi_guard = 'enforced')
@@ -42,10 +44,23 @@ CREATE TABLE IF NOT EXISTS audit_signoffs (
   signature_algorithm TEXT    DEFAULT 'ECDSA_P256_SHA256',
   key_id              TEXT,                              -- signer key identifier
   signed_hash         TEXT,                              -- hash of decision payload signed
+  reason_digest       TEXT,
+  event_digest        TEXT,
+  replay_id           TEXT,
+  envelope_hash       TEXT,
+  envelope_json       TEXT,
+  signer_public_key   TEXT,                     -- registered public key frozen at acceptance, never private key
+  chain_version       INTEGER NOT NULL DEFAULT 1,
+  signoff_seq         INTEGER,
+  prev_hash           TEXT,
+  content_hash        TEXT,
+  chain_hash          TEXT,
   signed_at           TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_signoffs_event  ON audit_signoffs(event_id);
 CREATE INDEX IF NOT EXISTS idx_signoffs_tenant ON audit_signoffs(tenant_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_signoffs_v2_seq ON audit_signoffs(signoff_seq) WHERE chain_version = 2;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_signoffs_v2_replay ON audit_signoffs(replay_id) WHERE chain_version = 2 AND replay_id IS NOT NULL;
 
 DROP TRIGGER IF EXISTS signoffs_immutable;
 CREATE TRIGGER signoffs_immutable BEFORE UPDATE ON audit_signoffs
@@ -63,4 +78,4 @@ BEGIN
   END;
 END;
 
-PRAGMA user_version = 1;
+PRAGMA user_version = 2;

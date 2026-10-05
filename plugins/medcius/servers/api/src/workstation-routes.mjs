@@ -24,6 +24,7 @@ import { DischargeReadinessEngine } from "../../../lib/discharge-readiness-engin
 import { buildRecordQualityReport } from "../../../lib/nhsa-record-quality-engine.mjs";
 import { createCaSignatureAdapter } from "../../../lib/ca-signature-adapter.mjs";
 import { globalGovernance } from "../../../lib/governance-mode.mjs";
+import { isClinicalLandingEnabled } from "../../../lib/clinical-landing-policy.mjs";
 import { HANDLERS as auditHandlers } from "../../audit/src/tools.mjs";
 import { computeDecisionDigest } from "../../shared/digital-signature.mjs";
 
@@ -175,7 +176,7 @@ export function createWorkstationHandler({ directoryAuth = null, governance = nu
           stage_name: stage.name_cn,
           stage_level: stage.level,
           description: stage.description,
-          can_sign_reports: stage.level >= 3,
+          can_sign_reports: stage.level >= 3 && !isProduction() && !isClinicalLandingEnabled(),
           allows_his_writeback: stage.allows_his_writeback,
           boundary: "Level ≤2 仅研究参考模式：输出仅供回顾性研究/静默比对，不向临床投放。",
         },
@@ -267,6 +268,11 @@ export function createWorkstationHandler({ directoryAuth = null, governance = nu
     const workflowDef = workflowDefs.find((def) => method === "POST" && pathname === def.path);
     if (workflowDef) {
       if (!requireSession(auth, sendJson)) return;
+      if (isProduction() || isClinicalLandingEnabled() || gov().getCurrentStage()?.id === "silent_pilot") {
+        return sendJson(403, {
+          error: "P0_CLINICIAN_SURFACE_SUPPRESSED: workstation clinical payloads are disabled in silent pilot; use /api/v1/his/embed/silent-capture",
+        });
+      }
       const authCheck = guardedAuthorize(workflowDef.permission);
       if (!authCheck.allowed) return sendJson(authCheck.status, { error: authCheck.error });
       const feeds = await resolveFeeds(body, sendJson);
@@ -282,6 +288,9 @@ export function createWorkstationHandler({ directoryAuth = null, governance = nu
     // ---- Record quality (病案/结算清单要素核对) ----
     if (method === "POST" && pathname === "/workstation/record-quality") {
       if (!requireSession(auth, sendJson)) return;
+      if (isProduction() || isClinicalLandingEnabled() || gov().getCurrentStage()?.id === "silent_pilot") {
+        return sendJson(403, { error: "P0_SKILL_UNREGISTERED: record-quality is outside the approved silent-pilot workflow." });
+      }
       const authCheck = guardedAuthorize("note:extract");
       if (!authCheck.allowed) return sendJson(authCheck.status, { error: authCheck.error });
       if (typeof body?.note_text !== "string" || !body.note_text.trim()) {
@@ -300,6 +309,9 @@ export function createWorkstationHandler({ directoryAuth = null, governance = nu
       if (!requireSession(auth, sendJson)) return;
       const authCheck = guardedAuthorize("workstation:signoff");
       if (!authCheck.allowed) return sendJson(authCheck.status, { error: authCheck.error });
+      if (isProduction() || isClinicalLandingEnabled()) {
+        return sendJson(403, { error: "P0_SIGNOFF_SUPPRESSED: the production reference adapter is restricted to silent capture.", code: "STAGE_FORBIDDEN" });
+      }
       const stage = gov().getCurrentStage();
       if (stage.level < 3) {
         return sendJson(403, {
@@ -324,9 +336,8 @@ export function createWorkstationHandler({ directoryAuth = null, governance = nu
           tenantId: auth.tenantId ?? "default",
           signerNote: body.signer_note ?? null,
         });
-        try {
-          auditHandlers.record_event({ actor: "workstation", action: audit_event.action, subject_ref: audit_event.subject_ref, payload: audit_event.payload });
-        } catch { /* audit availability must not block verification evidence */ }
+        auditHandlers.record_event({ actor: "workstation", action: audit_event.action, subject_ref: audit_event.subject_ref,
+          tenant_id: auth.tenantId, payload: audit_event.payload });
         return sendJson(200, signature_record);
       } catch (err) {
         return sendJson(400, { error: `SIGNOFF_FAILED: ${err.message}` });
@@ -337,6 +348,7 @@ export function createWorkstationHandler({ directoryAuth = null, governance = nu
     if (method === "POST" && pathname === "/workstation/signoff/verify") {
       if (!requireSession(auth, sendJson)) return;
       if (!body?.signature_record) return sendJson(400, { error: "SIGNATURE_RECORD_REQUIRED" });
+      if (body.signature_record.signer?.tenant_id !== auth.tenantId) return sendJson(403, { error: "SIGNATURE_TENANT_MISMATCH" });
       const result = await ca().verifySignatureRecord({ record: body.signature_record, payload: body.payload ?? null });
       return sendJson(200, { ...result, verified_at: new Date().toISOString() });
     }

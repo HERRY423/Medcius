@@ -1,4 +1,5 @@
 import { canonicalJson, sha256Hex } from "../servers/shared/crypto.mjs";
+import { ownershipAccepted } from "./clinical-boundary.mjs";
 
 const ALLOWED_KINDS = new Set(["patient", "encounter", "notes", "nis", "lis", "pacs", "his", "financial_access"]);
 const WRITE_CAPABILITY_NAMES = new Set(["write", "create", "update", "delete", "patch", "execute", "order", "create_resource", "update_resource", "delete_resource", "write_back"]);
@@ -51,11 +52,20 @@ function withProvenance(record, connector, envelope) {
       system: connector.id,
       kind: connector.kind,
       record_id: sourceRecordId,
+      record_version: record?.version_id ?? null,
       fetched_at: envelope.fetched_at,
       source_version: envelope.source_version || null,
       read_only: true,
     },
   };
+}
+
+function safeErrorCode(error) {
+  // Never return connector exception bodies: they may contain patient IDs,
+  // response bodies, query values or endpoint credentials.
+  const value = typeof error?.code === "string" ? error.code : (error instanceof Error ? error.message : "");
+  const match = /^(?:CONNECTOR|BRIDGE|PHI_EXIT_GUARD)_[A-Z][A-Z0-9_]{1,80}(?=[:\s]|$)/.exec(value);
+  return match ? match[0] : "CONNECTOR_READ_FAILED";
 }
 
 export class ReadOnlyHospitalDataBridge {
@@ -83,6 +93,8 @@ export class ReadOnlyHospitalDataBridge {
     };
     const sourceManifest = [];
     const unavailable = [];
+    const degradedRecords = [];
+    const sourceAvailability = [];
 
     for (const connector of this.connectors) {
       let envelope;
@@ -92,33 +104,74 @@ export class ReadOnlyHospitalDataBridge {
           doctor_id: context.doctor_id,
           patient_id: context.patient_id,
           encounter_id: context.encounter_id,
+          as_of: context.as_of,
+          time_window: context.time_window,
         });
         validateEnvelope(envelope, connector, context);
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        unavailable.push({ connector_id: connector.id, kind: connector.kind, error: message });
+        const code = safeErrorCode(error);
+        if (/PATIENT_MISMATCH|ENCOUNTER_MISMATCH|TENANT_MISMATCH/.test(code)) {
+          throw new Error(`BRIDGE_IDENTITY_REJECTED: ${code}`);
+        }
+        unavailable.push({ connector_id: connector.id, kind: connector.kind, error: code, reason_code: code });
+        sourceAvailability.push({ connector_id: connector.id, kind: connector.kind, status: "unavailable", fetched_at: null, source_version: null, record_count: null, accepted_record_count: null, reason_code: code });
         if (this.requiredKinds.has(connector.kind)) {
-          throw new Error(`BRIDGE_REQUIRED_SOURCE_UNAVAILABLE: ${connector.kind}/${connector.id}: ${message}`);
+          throw new Error(`BRIDGE_REQUIRED_SOURCE_UNAVAILABLE: ${connector.kind}/${connector.id}: ${code}`);
         }
         continue;
       }
 
       const records = envelope.records.map((record) => withProvenance(record, connector, envelope));
+      const owned = [];
       for (const record of records) {
-        if (record.patient_id && record.patient_id !== context.patient_id) throw new Error(`BRIDGE_RECORD_PATIENT_MISMATCH: ${connector.id}`);
-        if (record.encounter_id && record.encounter_id !== context.encounter_id) throw new Error(`BRIDGE_RECORD_ENCOUNTER_MISMATCH: ${connector.id}`);
+        if (!record.id && !record.resource_id) {
+          degradedRecords.push({ connector_id: connector.id, kind: connector.kind, record_id: null, ownership_status: "source_record_id_absent" });
+          continue;
+        }
+        if (record.patient_id && record.patient_id !== context.patient_id) {
+          throw new Error(`BRIDGE_RECORD_PATIENT_MISMATCH: ${connector.id}`);
+        }
+        if (record.encounter_id && record.encounter_id !== context.encounter_id) {
+          throw new Error(`BRIDGE_RECORD_ENCOUNTER_MISMATCH: ${connector.id}`);
+        }
+        const absent = record.ownership_status === "source_subject_absent" || record.ownership_status === "source_encounter_absent";
+        if (absent || (record.ownership_status && !ownershipAccepted(record))) {
+          degradedRecords.push({
+            connector_id: connector.id,
+            kind: connector.kind,
+            record_id: record.id || null,
+            ownership_status: record.ownership_status,
+          });
+          continue;
+        }
+        owned.push(record);
       }
 
+      if (this.requiredKinds.has(connector.kind) && records.length > 0 && owned.length === 0) {
+        throw new Error(`BRIDGE_REQUIRED_SOURCE_UNOWNED: ${connector.kind}/${connector.id}`);
+      }
+
+      const hasDegradedRecords = owned.length !== records.length;
+      const hasParseWarnings = Array.isArray(envelope.parse_warnings) && envelope.parse_warnings.length > 0;
+      const incomplete = envelope.complete === false || envelope.truncated === true || envelope.source_status === "unknown";
+      sourceAvailability.push({
+        connector_id: connector.id, kind: connector.kind,
+        status: hasDegradedRecords || hasParseWarnings || incomplete ? "unknown" : records.length === 0 ? "available_empty" : "available",
+        fetched_at: envelope.fetched_at, source_version: envelope.source_version ?? null,
+        record_count: records.length, accepted_record_count: owned.length,
+        reason_code: hasDegradedRecords ? "SOURCE_RECORDS_UNCONFIRMED" : hasParseWarnings ? "SOURCE_PARSE_DEGRADED" : incomplete ? "SOURCE_READ_INCOMPLETE" : null,
+      });
+
       if (connector.kind === "patient") {
-        if (records.length !== 1 || records[0].id !== context.patient_id) throw new Error(`BRIDGE_PATIENT_CARDINALITY_OR_ID_MISMATCH: ${connector.id}`);
-        feeds.patient = records[0];
+        if (owned.length !== 1 || owned[0].id !== context.patient_id) throw new Error(`BRIDGE_PATIENT_CARDINALITY_OR_ID_MISMATCH: ${connector.id}`);
+        feeds.patient = owned[0];
       } else if (connector.kind === "encounter") {
-        if (records.length !== 1 || records[0].id !== context.encounter_id) throw new Error(`BRIDGE_ENCOUNTER_CARDINALITY_OR_ID_MISMATCH: ${connector.id}`);
-        feeds.encounter = records[0];
+        if (owned.length !== 1 || owned[0].id !== context.encounter_id) throw new Error(`BRIDGE_ENCOUNTER_CARDINALITY_OR_ID_MISMATCH: ${connector.id}`);
+        feeds.encounter = owned[0];
       } else if (connector.kind === "his") {
-        feeds.his_orders.push(...records);
+        feeds.his_orders.push(...owned);
       } else {
-        feeds[connector.kind].push(...records);
+        feeds[connector.kind].push(...owned);
       }
 
       sourceManifest.push({
@@ -144,10 +197,12 @@ export class ReadOnlyHospitalDataBridge {
         patient_id: context.patient_id,
         encounter_id: context.encounter_id,
       },
-      dataFeeds: feeds,
+      dataFeeds: { ...feeds, source_availability: sourceAvailability },
       source_manifest: sourceManifest,
+      source_availability: sourceAvailability,
       unavailable_sources: unavailable,
-      completeness: unavailable.length === 0 ? "complete_for_configured_connectors" : "partial_with_explicit_unavailable_sources",
+      degraded_records: degradedRecords,
+      completeness: unavailable.length > 0 ? "partial_with_explicit_unavailable_sources" : sourceAvailability.some((entry) => entry.status === "unknown") ? "partial_with_explicit_unknown_sources" : "complete_for_configured_connectors",
       security_contract: {
         read_only_enforced: true,
         model_safe: false,

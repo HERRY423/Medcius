@@ -3,6 +3,7 @@
 // Usage: node scripts/serve.mjs [--port 8080] [--host 0.0.0.0]
 
 import { startServer } from "../plugins/medcius/servers/api/src/server.mjs";
+import { assembleAuthorizedHospitalSourceFromEnv } from "../plugins/medcius/lib/authorized-hospital-source.mjs";
 
 const args = process.argv.slice(2);
 let port = Number(process.env.PORT || 8080);
@@ -19,6 +20,7 @@ for (let i = 0; i < args.length; i++) {
 }
 
 try {
+  await assembleAuthorizedHospitalSourceFromEnv();
   await startServer(port, host);
 } catch (err) {
   console.error(`[Medcius API] Failed to start server: ${err.message}`);

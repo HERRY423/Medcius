@@ -30,7 +30,7 @@ export const TOOLS = [
   },
   {
     name: "pseudonymize",
-    description: "Stable pseudonymization: identifiers → [PSN:hmac8] keyed by salt. Same value maps to same token within a salt domain. Salt resolution: arg > env CLAUDE_MEDCIUS_PHI_SALT > ephemeral (warns: unstable across restarts).",
+    description: "Stable pseudonymization: identifiers → [PSN:hmac32] (32 hexadecimal HMAC-SHA256 characters) keyed by salt. Same value maps to same token within a salt domain. Salt resolution: arg > env CLAUDE_MEDCIUS_PHI_SALT > ephemeral (warns: unstable across restarts).",
     inputSchema: {
       $schema: "http://json-schema.org/draft-07/schema#",
       type: "object",

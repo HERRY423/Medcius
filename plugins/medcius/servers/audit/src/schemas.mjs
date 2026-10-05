@@ -6,7 +6,7 @@
 export const TOOLS = [
   {
     name: "record_event",
-    description: "Append a tamper-evident audit event (hash-chained). subject_ref/payload MUST be pre-redacted — raw PHI (ID card, mobile phone, bank card) is strictly rejected.",
+    description: "Append a v2 hash-chained event covering payload and metadata. All fields MUST be pre-redacted; structured identifiers and detected free-text PHI are rejected.",
     inputSchema: {
       $schema: "http://json-schema.org/draft-07/schema#",
       type: "object",
@@ -65,6 +65,21 @@ export const TOOLS = [
         key_id: { type: "string" },
         signed_hash: { type: "string" },
         tenant_id: { type: "string" },
+        envelope: {
+          type: "object", additionalProperties: false,
+          properties: {
+            schema: { const: "medcius.signoff-envelope.v1" },
+            event_id: { type: "integer", minimum: 1 },
+            event_digest: { type: "string", pattern: "^[a-f0-9]{64}$" },
+            tenant_id: { type: "string", minLength: 1 }, signer: { type: "string", minLength: 1 },
+            role: { enum: ["pharmacist", "physician", "admin", "auditor"] }, decision: { enum: ["agree", "override", "reject"] },
+            reason_digest: { type: "string", pattern: "^[a-f0-9]{64}$" }, signed_at: { type: "string", format: "date-time" },
+            replay_id: { type: "string", minLength: 1 },
+          },
+          required: ["schema", "event_id", "event_digest", "tenant_id", "signer", "role", "decision", "reason_digest", "signed_at", "replay_id"],
+        },
+        signed_at: { type: "string", format: "date-time" },
+        replay_id: { type: "string", minLength: 1 },
       },
       required: ["event_id", "signer", "role", "decision", "reason"],
     },

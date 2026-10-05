@@ -3,28 +3,31 @@
 
 import { writeFileSync, mkdirSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { evaluatePhysicianAnnotation } from "./physician-annotation-engine.mjs";
+import { canonicalJson, sha256Hex } from "../../servers/shared/crypto.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, "..", "..", "..", "..");
 
 export function buildPhysicianAnnotationReport(evalRes) {
   const lines = [];
-  lines.push(`# Medcius 查房前患者变化摘要 — 独立医生双盲标注与仲裁研究报告`);
+  lines.push(`# Medcius 查房前患者变化摘要 — 标注评测统计报告`);
   lines.push("");
 
-  if (evalRes.isDemo) {
+  {
     lines.push("> [!CAUTION]");
-    lines.push("> **⚠️【SYNTHETIC / NOT CLINICAL EVIDENCE】**");
-    lines.push("> **本报告基于心内科沙箱与合成连续病例双盲模拟生成（DEMO 模式），严禁作为正式临床有效性证据（CLINICAL EVIDENCE）、产品注册申报或临床准入依据。**");
+    lines.push("> **【NOT CLINICAL EVIDENCE】调用者参数不能核验数据来源、独立评分身份或授予临床通过。**");
+    lines.push("> **默认数据为心内科沙箱合成条目，标签模拟不等于实际独立医生双盲研究；严禁作为临床有效性或准入依据。**");
     lines.push("> **真实临床效能通行证必须基于三甲医院伦理委员会 (IRB) 批件、执业医师实名双盲标注及数字签名审计链产生。**");
     lines.push("");
   }
 
   lines.push(`- **评测时间**: ${new Date().toISOString()}`);
   lines.push(`- **工作流模块**: 查房前患者变化摘要 (Inpatient Pre-Round Evolution Summary)`);
-  lines.push(`- **入组连续床位**: 心血管内科住院二病区 01 - 16 床 (共 ${evalRes.total_cases} 个结构化评测条目)`);
+  lines.push(`- **输入评测条目**: ${evalRes.total_cases} 项（条目数不代表患者数或连续入组人数）`);
+  lines.push(`- **完整性**: 已解析金标准 ${evalRes.overall.scored_n}，未仲裁/缺失评分 ${evalRes.overall.unadjudicated}，弃答 ${evalRes.overall.abstentions}，缺失锚点 ${evalRes.overall.missing_evidence_anchors}，缺失记录键 ${evalRes.key_integrity.missing_keys}。`);
+  lines.push(`- **分母**: 金标准阳性 ${evalRes.overall.gold_positive_n}、阴性 ${evalRes.overall.gold_negative_n}；预测阳性 ${evalRes.overall.predicted_positive_n}、阴性 ${evalRes.overall.predicted_negative_n}。阳性类别错分 ${evalRes.overall.misclassifications} 项分别计入 FP 与 FN，但只计一个已评分条目；弃答不计正确。`);
   lines.push(`- **双医生标注一致性 (Cohen's Kappa)**: $\\kappa = ${evalRes.cohens_kappa}$ (${evalRes.endpoints.inter_annotator_kappa_met ? "达成预注册指标 ≥0.80" : "🔴 未达标"})`);
   lines.push(`- **主要终点总体达成**: ${evalRes.allPrimaryMet ? "🟢 全部达标 (Passed)" : "🔴 未达标 (Deficient)"}`);
   lines.push("");
@@ -49,8 +52,8 @@ export function buildPhysicianAnnotationReport(evalRes) {
   lines.push(`| **关键演变漏报数 (FN)** | $= 0$ 例 (零漏报) | ${evalRes.overall.critical_escapes} 例 | ${evalRes.endpoints.zero_critical_escape_met ? "✓ 达标 (0漏报)" : "✗ 存在漏报"} |`);
   lines.push(`| **虚构证据 Span 数 (Fake Spans)** | $= 0$ 条 (零虚构) | ${evalRes.overall.fake_spans} 条 | ${evalRes.endpoints.zero_fabricated_spans_met ? "✓ 达标 (0虚构)" : "✗ 存在虚构"} |`);
   lines.push(`| **双医生标注一致性 (Kappa)** | $\\ge 0.80$ | $\\kappa = ${evalRes.cohens_kappa}$ | ${evalRes.endpoints.inter_annotator_kappa_met ? "✓ 达标" : "✗ 偏低"} |`);
-  lines.push(`| **阳性预测值 (PPV)** | $\\ge 90.0\\%$ | ${evalRes.overall.ppv.str} | ✓ 达标 |`);
-  lines.push(`| **阴性预测值 (NPV)** | $\\ge 95.0\\%$ | ${evalRes.overall.npv.str} | ✓ 达标 |`);
+  lines.push(`| **阳性预测值 (PPV)** | $\\ge 90.0\\%$ | ${evalRes.overall.ppv.str} | ${(evalRes.overall.ppv.point ?? -1) >= 0.90 ? "✓ 达标" : "✗ 未达标或不可计算"} |`);
+  lines.push(`| **阴性预测值 (NPV)** | $\\ge 95.0\\%$ | ${evalRes.overall.npv.str} | ${(evalRes.overall.npv.point ?? -1) >= 0.95 ? "✓ 达标" : "✗ 未达标或不可计算"} |`);
   lines.push("");
   lines.push("---");
   lines.push("");
@@ -85,15 +88,31 @@ export function buildPhysicianAnnotationReport(evalRes) {
 }
 
 // CLI Execution
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+const outDir = join(repoRoot, "out");
+mkdirSync(outDir, { recursive: true });
+const outPath = join(outDir, "physician-annotation-report.md");
+const summaryPath = join(outDir, "physician-annotation-summary.json");
+writeFileSync(summaryPath, JSON.stringify({ schema_version: "medcius.eval-summary.v1", execution_status: "INCOMPLETE", clinical_evidence_pass: false }, null, 2) + "\n", "utf8");
+try {
 const casesPath = join(__dirname, "ward-annotation-cases.json");
 const rawCases = JSON.parse(readFileSync(casesPath, "utf8"));
 const evalRes = evaluatePhysicianAnnotation(rawCases, { isDemo: true });
 const reportMd = buildPhysicianAnnotationReport(evalRes);
 
-const outDir = join(repoRoot, "out");
-mkdirSync(outDir, { recursive: true });
-const outPath = join(outDir, "physician-annotation-report.md");
 writeFileSync(outPath, reportMd, "utf8");
+writeFileSync(summaryPath, JSON.stringify({
+  schema_version: "medcius.eval-summary.v1", execution_status: "COMPLETED",
+  input_sha256: sha256Hex(canonicalJson(rawCases)), data_source_verified: false,
+  total_cases: evalRes.total_cases, overall: evalRes.overall, endpoints: evalRes.endpoints,
+  pass_classification: evalRes.passClassification,
+}, null, 2) + "\n", "utf8");
 
 console.log(`✓ Physician annotation benchmark report generated: ${outPath}`);
 console.log(`Cases: ${evalRes.total_cases} | Kappa: ${evalRes.cohens_kappa} | All Met: ${evalRes.allPrimaryMet}`);
+} catch (error) {
+  writeFileSync(outPath, "# 评测失败 / INVALID\n\nclinical_evidence_pass: false\n\n本次输入未通过检查；此前报告已失效。\n", "utf8");
+  writeFileSync(summaryPath, JSON.stringify({ schema_version: "medcius.eval-summary.v1", execution_status: "INVALID", clinical_evidence_pass: false }, null, 2) + "\n", "utf8");
+  throw error;
+}
+}

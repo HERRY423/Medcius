@@ -17,6 +17,9 @@
 //   4. the generated SQL is asserted to be a single SELECT statement.
 // Row-level cross-patient contamination is re-checked by the bridge.
 
+import { bindSourceOwnership } from "../clinical-boundary.mjs";
+import { sourceLifecycle } from "./source-lifecycle.mjs";
+
 const IDENTIFIER_RE = /^[A-Za-z_][A-Za-z0-9_]{0,62}$/;
 const BRIDGE_KINDS = new Set(["patient", "encounter", "notes", "nis", "lis", "pacs", "his", "financial_access"]);
 
@@ -67,6 +70,7 @@ function buildEnvelope(connectorId, context, records, sourceVersion) {
     fetched_at: new Date().toISOString(),
     source_version: sourceVersion,
     records,
+    complete: records.complete !== false,
   };
 }
 
@@ -145,12 +149,22 @@ export function createViewDbConnector(options) {
         if (!row || typeof row !== "object" || Array.isArray(row)) {
           throw new Error(`CONNECTOR_VIEWDB_ROW_INVALID: ${id}[${index}]`);
         }
-        const record = mapRow(row, context);
+        const record = { ...sourceLifecycle(row), ...mapRow(row, context) };
         if (!record?.id) throw new Error(`CONNECTOR_VIEWDB_RECORD_ID_REQUIRED: ${id}[${index}]`);
-        if (!record.patient_id) record.patient_id = context.patient_id;
-        if (!record.encounter_id) record.encounter_id = context.encounter_id;
-        return record;
+        const sourcePatient = row[config.patientColumn] || (kind === "patient" ? (row[config.patientColumn] ?? row.id) : null);
+        const sourceEncounter = row[config.encounterColumn] || (kind === "encounter" ? (row[config.encounterColumn] ?? row.id) : null);
+        return bindSourceOwnership(context, record, {
+          patient_id: sourcePatient || null,
+          encounter_id: sourceEncounter || null,
+          tenant_id: config.tenantColumn ? row[config.tenantColumn] || null : null,
+        }, {
+          requirePatient: true,
+          requireEncounter: kind !== "patient",
+          policy: "query_scoped",
+        });
       });
+      // A full LIMIT-sized page does not prove the patient has no further rows.
+      records.complete = rows.length < config.limit;
       return buildEnvelope(id, context, records, sourceVersion);
     },
   };
@@ -159,20 +173,20 @@ export function createViewDbConnector(options) {
 /** Deterministic default row mappers for the four standard view shapes. */
 export const VIEWDB_ROW_MAPPERS = {
   patient: (row) => ({
-    id: String(row.patient_id ?? row.id),
+    id: row.patient_id == null && row.id == null ? null : String(row.patient_id ?? row.id),
     name: row.name ?? null,
     gender: row.gender ?? row.sex ?? null,
     birth_date: row.birth_date ?? null,
   }),
   encounter: (row) => ({
-    id: String(row.encounter_id ?? row.id),
+    id: row.encounter_id == null && row.id == null ? null : String(row.encounter_id ?? row.id),
     status: row.status ?? null,
     class: row.encounter_class ?? null,
     period_start: row.admission_time ?? null,
     period_end: row.discharge_time ?? null,
   }),
   lis: (row) => ({
-    id: String(row.id),
+    id: row.id == null ? null : String(row.id),
     order_id: row.order_id ?? null,
     code: row.item_code ?? null,
     name: row.item_name ?? null,
@@ -180,11 +194,12 @@ export const VIEWDB_ROW_MAPPERS = {
     unit: row.unit ?? null,
     status: row.status ?? null,
     sample_time: row.sample_time ?? null,
+    event_time: row.event_time ?? row.sample_time ?? null,
     reference_range_text: row.reference_range ?? null,
     is_critical: row.is_critical === 1 || row.is_critical === true || ["CR", "HH", "LL"].includes(String(row.abnormal_flag ?? "").toUpperCase()),
   }),
   his: (row) => ({
-    id: String(row.id),
+    id: row.id == null ? null : String(row.id),
     is_medication: true,
     drug_name: row.drug_name ?? null,
     dosage: row.dosage ?? null,
@@ -192,6 +207,7 @@ export const VIEWDB_ROW_MAPPERS = {
     frequency: row.frequency ?? null,
     authored_on: row.order_time ?? null,
     change_type: row.order_status ?? null,
+    status: row.status ?? row.order_status ?? null,
   }),
 };
 

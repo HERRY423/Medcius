@@ -43,11 +43,14 @@ const cases = JSON.parse(readFileSync(casesPath, "utf8"));
 
 const evalResult = evaluatePhysicianAnnotation(cases, { isDemo: true });
 
+const missingAnchors = cases.filter((item) => item.span == null).length;
 assert.ok(evalResult.total_cases >= 50, "Must evaluate at least 50 continuous ward cases/items");
 assert.ok(Number(evalResult.cohens_kappa) >= 0.80, `Kappa must be >= 0.80 (got ${evalResult.cohens_kappa})`);
-assert.equal(evalResult.overall.critical_escapes, 0, "Critical escapes must be exactly 0 (FN=0)");
+assert.equal(evalResult.overall.critical_escapes, 0, "Critical escapes must be exactly 0 on the agreed ward set");
 assert.equal(evalResult.overall.fake_spans, 0, "Fake spans must be exactly 0");
-assert.equal(evalResult.allPrimaryMet, true, "All primary endpoints must be met");
+assert.equal(evalResult.overall.missing_evidence_anchors, missingAnchors);
+assert.ok(missingAnchors > 0, "Null spans in the ward fixture must be counted");
+assert.equal(evalResult.allPrimaryMet, false, "Missing evidence anchors block allPrimaryMet");
 
 console.log(`✓ 16-bed evaluation passed (Cases: ${evalResult.total_cases}, Kappa: ${evalResult.cohens_kappa}, Sensitivity: ${evalResult.overall.sensitivity.str})`);
 
@@ -56,13 +59,16 @@ console.log(`✓ 16-bed evaluation passed (Cases: ${evalResult.total_cases}, Kap
 // ----------------------------------------------------
 console.log("\n[Test 3] Testing three-tier pass classification boundary...");
 
-assert.equal(evalResult.passClassification.engineering_pass, true, "Engineering pass must be true");
-assert.equal(evalResult.passClassification.synthetic_validation_pass, true, "Synthetic pass must be true in demo");
+assert.equal(evalResult.passClassification.engineering_pass, false, "Missing anchors block engineering pass");
+assert.equal(evalResult.passClassification.synthetic_validation_pass, false, "Synthetic pass follows the real endpoints");
 assert.equal(
   evalResult.passClassification.clinical_evidence_pass,
   false,
   "Clinical evidence pass must be strictly false for demo/sandbox data without IRB"
 );
+const upgraded = evaluatePhysicianAnnotation(cases, { isDemo: false, metadata: { ethics_approval_number: "" } });
+assert.equal(upgraded.passClassification.clinical_evidence_pass, false);
+assert.equal(upgraded.passClassification.caller_upgrade_attempted, true);
 
 console.log("✓ Three-tier pass classification verified (clinical_evidence_pass strictly guarded)");
 

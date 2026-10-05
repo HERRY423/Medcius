@@ -4,20 +4,36 @@
 
 const CITATION_REGEX = /\[(?:\^)?([A-Za-z0-9_\-]+)\]|\(([A-Za-z0-9_\-]+)\)/g;
 
-// Clinical assertion trigger keywords to detect sentences asserting medical facts
-const CLINICAL_ASSERTION_KEYWORDS = [
-  "体温", "血压", "心率", "脉搏", "呼吸", "氧饱和度", "spo2",
-  "肌酐", "alt", "ast", "白细胞", "血红蛋白", "血小板", "钾", "钠", "氯", "钙", "血糖",
-  "胸闷", "胸痛", "气促", "气短", "喘", "发热", "咳", "痰", "腹痛", "水肿", "尿量", "出入量",
-  "头痛", "恶心", "呕吐", "黄疸", "腹泻", "便秘", "引流", "抗生素", "停用", "新增", "调整",
-  "阿司匹林", "他汀", "头孢", "青霉素", "美罗培南", "哌拉西林", "多巴胺", "去甲肾上腺素",
-  "超声", "ct", "mri", "胸片", "x线", "阴影", "渗出", "积液", "骨折", "结节",
-];
+// This is a bounded text verifier, not a medical entailment model. Only exact
+// evidence text (ignoring presentation punctuation/spacing) can be supported.
+function evidenceText(text) {
+  return String(text || "").normalize("NFKC")
+    .replace(CITATION_REGEX, "")
+    .replace(/^(?:【(?:事实|原文事实|阴性事实|资料不足|规则提醒|待核实)】|\[(?:检验|影像|医嘱变更|待办事项|临床提醒|资料缺口)\])\s*/, "")
+    .replace(/[\s。！？；;，,]/g, "").trim();
+}
+
+function exactEvidenceMatch(sentence, items) {
+  const plain = evidenceText(sentence);
+  if (!plain) return false;
+  return items.some((item) => [item.summary, item.span].some((text) =>
+    typeof text === "string" && text.trim() && plain === evidenceText(text)));
+}
+
+function matchesCitedClauses(sentence, itemMap) {
+  const allIds = PostHocClaimVerifier.parseCitations(sentence);
+  if (allIds.length === 1 && exactEvidenceMatch(sentence, [itemMap.get(allIds[0].toUpperCase())])) return true;
+  const clauses = sentence.split(/[，,；;。！？]/).filter((part) => part.trim());
+  return clauses.length > 0 && clauses.every((clause) => {
+    const ids = PostHocClaimVerifier.parseCitations(clause);
+    return ids.length > 0 && exactEvidenceMatch(clause, ids.map((id) => itemMap.get(id.toUpperCase())));
+  });
+}
 
 export class PostHocClaimVerifier {
   /**
    * Extract verifiable sentence-level claims from a narrative text.
-   * Filters out structural headings, timestamps, and doctor signatures.
+   * Filters only a bounded set of standalone structural headings.
    * @param {string} text
    * @returns {Array<{ index: number, raw: string, isClinicalClaim: boolean, citations: string[] }>}
    */
@@ -32,11 +48,10 @@ export class PostHocClaimVerifier {
       const trimmedLine = line.trim();
       if (!trimmedLine) continue;
 
-      // Skip non-claim metadata headers and signatures
+      // Skip only known standalone headings. A heading prefix must never hide
+      // clinical content following it, including diagnosis/eGFR lines.
       if (
-        /^(?:【.*?】|一、|二、|三、|四、|五、|六、|七、|记录时间|查房医师|患者姓名|床号|主诊断|肾功能估算|医师签名)/.test(
-          trimmedLine
-        )
+        /^(?:【(?:日常查房记录(?: - 病情演变摘要)?|多源跨系统临床对齐 \(NIS\/LIS\/PACS\/HIS\))】|[一二三四五六七]、(?:今日病情变化与症状演变|主要异常检验及指标趋势|今日用药调整|未闭环事项与临床提醒|已知临床资料缺口提示|医师查房意见与下一步处置))$/.test(trimmedLine)
       ) {
         continue;
       }
@@ -45,15 +60,16 @@ export class PostHocClaimVerifier {
       const parts = trimmedLine
         .split(/(?<=[。！？；;])\s*|\s{2,}/)
         .map((s) => s.trim())
-        .filter((s) => s.length >= 3);
+        .filter(Boolean);
 
       for (const s of parts) {
         // Strip bullet prefixes
-        const cleanS = s.replace(/^[•\-\*\d+\.\s]+/, "").trim();
-        if (cleanS.length < 3) continue;
+        const cleanS = s.replace(/^(?:[•\-*]\s+|\d+[.)、]\s+)/, "").trim();
+        if (!cleanS) continue;
 
-        const lower = cleanS.toLowerCase();
-        const isClinicalClaim = CLINICAL_ASSERTION_KEYWORDS.some((kw) => lower.includes(kw));
+        // Unknown prose cannot be assumed neutral merely because a keyword is
+        // absent from a finite vocabulary.
+        const isClinicalClaim = true;
         const citations = this.parseCitations(cleanS);
 
         sentences.push({
@@ -99,6 +115,7 @@ export class PostHocClaimVerifier {
     const itemMap = new Map();
     for (const item of verifiableItems) {
       if (item?.id) {
+        if (itemMap.has(String(item.id).toUpperCase())) throw new Error(`DUPLICATE_EVIDENCE_ID: ${item.id}`);
         itemMap.set(String(item.id).toUpperCase(), item);
         itemMap.set(String(item.id), item);
       }
@@ -183,7 +200,7 @@ export class PostHocClaimVerifier {
           citations: s.citations,
           reason: "Sentence polarity contradicts grounded evidence item status",
         });
-      } else if (validCitations > 0) {
+      } else if (validCitations > 0 && matchesCitedClauses(s.raw, itemMap)) {
         supportedCount++;
         totalVerifiedCitations += validCitations;
         verifiedClaims.push({
@@ -191,7 +208,16 @@ export class PostHocClaimVerifier {
           status: "SUPPORTED",
           citations: s.citations,
           matched_items: matchedItems.map((i) => ({ id: i.id, title: i.title, summary: i.summary })),
-          reason: "Verified against grounded evidence",
+          verification_basis: "exact_evidence_text",
+          reason: "Exact match to supplied evidence text; source validity remains an upstream requirement",
+        });
+      } else {
+        unsupportedCount++;
+        verifiedClaims.push({
+          sentence: s.raw,
+          status: "UNVERIFIED_CLAIM",
+          citations: s.citations,
+          reason: "Citation exists but the full claim is not an exact supported excerpt; semantic review required",
         });
       }
     }
@@ -199,10 +225,11 @@ export class PostHocClaimVerifier {
     const totalAudited = supportedCount + unsupportedCount + invalidCitationCount + contradictoryCount;
     const flawedCount = unsupportedCount + invalidCitationCount + contradictoryCount;
     const unsupportedRate = totalAudited > 0 ? flawedCount / totalAudited : 0.0;
-    const isPassing = unsupportedRate <= maxUnsupportedRate && invalidCitationCount === 0 && contradictoryCount === 0;
+    const isPassing = totalAudited > 0 && unsupportedRate <= maxUnsupportedRate && invalidCitationCount === 0 && contradictoryCount === 0;
 
     const result = {
       is_passing: isPassing,
+      verification_scope: "exact_text_only_not_clinical_entailment",
       total_sentences: sentences.length,
       total_audited_claims: totalAudited,
       supported_count: supportedCount,

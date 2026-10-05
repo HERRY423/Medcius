@@ -133,7 +133,7 @@ const mismatchBridge = new ReadOnlyHospitalDataBridge({
 });
 await assert.rejects(
   () => mismatchBridge.readPatientSnapshot(context),
-  /BRIDGE_PATIENT_CARDINALITY_OR_ID_MISMATCH/
+  /BRIDGE_IDENTITY_REJECTED|BRIDGE_PATIENT_CARDINALITY_OR_ID_MISMATCH/
 );
 console.log("✓ Cross-patient contamination blocked at the bridge boundary");
 
@@ -308,6 +308,8 @@ const pagedFetch = async (url, init) => {
           entry: [{
             resource: {
               resourceType: "Observation", id: "obs-page-1", status: "final",
+              subject: { reference: "Patient/patient-synthetic-1" },
+              encounter: { reference: "Encounter/encounter-synthetic-1" },
               code: { coding: [{ code: "2160-0", display: "Creatinine" }], text: "血肌酐" },
               effectiveDateTime: "2026-08-25T06:00:00Z",
               valueQuantity: { value: 145, unit: "umol/L" },
@@ -325,6 +327,8 @@ const pagedFetch = async (url, init) => {
         entry: [{
           resource: {
             resourceType: "Observation", id: "obs-page-2", status: "final",
+            subject: { reference: "Patient/patient-synthetic-1" },
+            encounter: { reference: "Encounter/encounter-synthetic-1" },
             code: { coding: [{ code: "2823-3", display: "Potassium" }], text: "血钾测定" },
             effectiveDateTime: "2026-08-25T07:00:00Z",
             valueQuantity: { value: 2.4, unit: "mmol/L" },

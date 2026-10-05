@@ -15,6 +15,7 @@
     "/views/v_medcius_encounter": [
       {
         "id": "encounter-synthetic-1",
+        "patient_id": "patient-synthetic-1",
         "status": "in-progress",
         "class": "inpatient",
         "period_start": "2026-08-20T08:00:00Z"

@@ -6,21 +6,54 @@
 
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 const argOf = (k) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : null; };
 
-function readJsonl(p) {
+export function readJsonl(p, role = "gold") {
   if (!p || !existsSync(p)) throw new Error(`file not found: ${p}`);
   return readFileSync(p, "utf8").split(/\r?\n/).filter((l) => l.trim()).map((l, i) => {
     const o = JSON.parse(l);
-    if (!o.case_id || !o.dimension) throw new Error(`line ${i + 1}: missing case_id/dimension`);
-    if (!["flag", "clear"].includes(o.predicted)) throw new Error(`line ${i + 1}: predicted must be flag|clear`);
-    if (!["flag", "clear"].includes(o.gold)) throw new Error(`line ${i + 1}: gold must be flag|clear`);
+    validateRecord(o, i, role);
     return o;
   });
+}
+
+function validateRecord(row, index, role) {
+  if (!row || ![row.case_id, row.dimension].every((v) => typeof v === "string" && v.trim())) {
+    throw new Error(`VALIDATION_RECORD_KEY_REQUIRED: ${role}, line ${index + 1}`);
+  }
+  const field = role === "gold" ? "gold" : "predicted";
+  if (!["flag", "clear"].includes(row[field])) throw new Error(`VALIDATION_LABEL_INVALID: ${field}, line ${index + 1}`);
+}
+
+export function pairValidationRows(gold, predictions) {
+  const indexed = (rows, role) => {
+    if (!Array.isArray(rows) || !rows.length) throw new Error(`EMPTY_VALIDATION_DATASET: ${role}`);
+    const map = new Map();
+    rows.forEach((row, index) => {
+      validateRecord(row, index, role);
+      const key = JSON.stringify([row.case_id, row.dimension]);
+      if (map.has(key)) throw new Error(`DUPLICATE_VALIDATION_KEY: ${role}, line ${index + 1}`);
+      map.set(key, row);
+    });
+    return map;
+  };
+  const goldMap = indexed(gold, "gold");
+  const predictionMap = indexed(predictions, "prediction");
+  const missingPredictions = [...goldMap.keys()].filter((key) => !predictionMap.has(key)).length;
+  const missingGold = [...predictionMap.keys()].filter((key) => !goldMap.has(key)).length;
+  if (missingPredictions || missingGold) {
+    throw new Error(`UNPAIRED_VALIDATION_RECORDS: missing_predictions=${missingPredictions}, missing_gold=${missingGold}`);
+  }
+  return [...goldMap].map(([key, row]) => ({
+    case_id: row.case_id,
+    dimension: row.dimension,
+    gold: row.gold,
+    predicted: predictionMap.get(key).predicted,
+  }));
 }
 
 function confusion(pred) {
@@ -36,7 +69,8 @@ function confusion(pred) {
  * Wilson score interval for binomial proportions (default 95% confidence level, z = 1.95996).
  */
 export function wilsonScore(k, n, z = 1.95996) {
-  if (n === 0) return { point: null, low: null, high: null, str: "n/a" };
+  if (!Number.isSafeInteger(k) || !Number.isSafeInteger(n) || k < 0 || n < 0 || k > n || !Number.isFinite(z) || z <= 0) throw new Error("INVALID_BINOMIAL_COUNTS");
+  if (n === 0) return { point: null, low: null, high: null, str: "n/a", n: 0, computable: false };
   const p = k / n;
   const z2 = z * z;
   const denominator = 1 + z2 / n;
@@ -48,6 +82,8 @@ export function wilsonScore(k, n, z = 1.95996) {
     point: p,
     low,
     high,
+    n,
+    computable: true,
     str: `${(p * 100).toFixed(1)}% [${(low * 100).toFixed(1)}%~${(high * 100).toFixed(1)}%]`,
   };
 }
@@ -77,24 +113,31 @@ function metrics(c) {
 
 /** Exact two-sided McNemar via binomial(n=b+c, p=.5), doubling the smaller tail. */
 export function mcnemarExact(b, c) {
+  if (!Number.isSafeInteger(b) || !Number.isSafeInteger(c) || b < 0 || c < 0) throw new Error("INVALID_MCNEMAR_COUNTS");
   const n = b + c;
   if (n === 0) return { stat_b: 0, stat_c: 0, p: 1 };
-  const choose = (nn, k) => { let r = 1; for (let i = 0; i < k; i++) r = (r * (nn - i)) / (i + 1); return r; };
   const tail = Math.min(b, c);
-  let cum = 0;
-  for (let k = 0; k <= tail; k++) cum += choose(n, k) * Math.pow(0.5, n);
+  let logProbability = -n * Math.LN2;
+  for (let k = 1; k <= tail; k++) logProbability += Math.log(n - k + 1) - Math.log(k);
+  let probability = Math.exp(logProbability);
+  let cum = probability;
+  for (let k = tail; k > 0; k--) {
+    probability *= k / (n - k + 1);
+    cum += probability;
+  }
   return { stat_b: b, stat_c: c, p: Math.min(1, 2 * cum) };
 }
 
 const pct = (x) => (x === null ? "n/a" : `${(x * 100).toFixed(1)}%`);
 
-function buildReport(rows, meta) {
+export function buildReport(rows, meta) {
   const dims = [...new Set(rows.map((r) => r.dimension))].sort();
   const lines = [];
   lines.push(`# 合成管线基准测试报告（Synthetic Pipeline Benchmark Report）`);
   lines.push("");
   lines.push(`- 生成时间：${new Date().toISOString()}`);
   lines.push(`- 预测文件：\`${meta.pred}\`　金标准：\`${meta.gold}\`　配对样本总量：${rows.length}`);
+  lines.push("- 数据完整性：两侧记录键唯一且一一配对；缺失或重复记录使本次评测失败，不剔除后继续报告。`clinical_evidence_pass: false`；数据来源未经独立核验。");
   lines.push("");
   lines.push("> **统计口径说明**：本报告为合成管线测试基准，`flag`＝系统判为存在用药问题；`clear`＝审核通过。灵敏度、特异度、PPV、NPV 均附带 **Wilson 95% 置信区间 (95% CI)**。真实多中心有效性以药师盲标为准。");
   lines.push("");
@@ -123,7 +166,7 @@ function buildReport(rows, meta) {
     const m = metrics(confusion(sub));
     const mc = mcnemarExact(m.fp, m.fn);
     const name = d === "__overall__" ? "**总体合计**" : d;
-    const interp = mc.p >= 0.05 ? "✓ 无显著系统性偏倚 (p ≥ 0.05)" : "⚠️ 存在系统性分歧 (p < 0.05，需归因)";
+    const interp = mc.p >= 0.05 ? "未拒绝边际对称假设；不证明一致性或非劣效性" : "检出边际不对称，需归因";
     lines.push(`| ${name} | ${mc.stat_b} | ${mc.stat_c} | ${mc.p.toFixed(4)} | ${interp} |`);
   }
 
@@ -139,8 +182,9 @@ function buildReport(rows, meta) {
 }
 
 // ---- main ----
-if (process.argv[1] && (process.argv[1].endsWith("run.mjs") || process.argv[1].includes("run.mjs"))) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   let goldPath = argOf("--gold"), predPath = argOf("--pred"), out = argOf("--out");
+  try {
   if (args.includes("--demo")) {
     goldPath = join(__dirname, "cases.sample.jsonl");
     predPath = join(__dirname, "pred.sample.jsonl");
@@ -152,23 +196,20 @@ if (process.argv[1] && (process.argv[1].endsWith("run.mjs") || process.argv[1].i
     }
   }
 
-  if (goldPath && predPath) {
-    const gold = readJsonl(goldPath);
-    const predRaw = readJsonl(predPath);
-
-    const gmap = new Map(gold.map((r) => [`${r.case_id}|${r.dimension}`, r]));
-    const rows = [];
-    for (const p of predRaw) {
-      const g = gmap.get(`${p.case_id}|${p.dimension}`);
-      if (!g) continue;
-      rows.push({ case_id: p.case_id, dimension: p.dimension, predicted: p.predicted, gold: g.gold });
-    }
-    const unpaired = predRaw.length - rows.length;
-
-    const report = buildReport(rows, { gold: goldPath, pred: predPath })
-      .replace("配对样本总量：" + rows.length, `配对样本总量：${rows.length}${unpaired ? `（另有 ${unpaired} 条预测无金标准配对，已剔除）` : ""}`);
+  if (!goldPath || !predPath) throw new Error("VALIDATION_INPUTS_REQUIRED: --gold and --pred");
+    const gold = readJsonl(goldPath, "gold");
+    const predRaw = readJsonl(predPath, "prediction");
+    const rows = pairValidationRows(gold, predRaw);
+    const report = buildReport(rows, { gold: goldPath, pred: predPath });
 
     if (out) { writeFileSync(out, report, "utf8"); console.log(`report written: ${out}`); }
     console.log(report);
+  } catch (error) {
+    // Replace the requested output on failure so an earlier green report cannot
+    // be mistaken for the result of this invocation. Do not emit input contents.
+    const reason = String(error.message).split(":")[0];
+    if (out) writeFileSync(out, `# 评测失败 / INVALID\n\n- status: INVALID\n- clinical_evidence_pass: false\n- reason: ${reason}\n- 本次输入未通过完整性检查；此前输出已失效，不提供成功指标。\n`, "utf8");
+    console.error(`Clinical validation failed: ${reason}`);
+    process.exitCode = 1;
   }
 }

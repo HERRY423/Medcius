@@ -1,0 +1,31 @@
+{
+  "schema_version": "medcius.eval-summary.v1",
+  "execution_status": "COMPLETED",
+  "input_sha256": "ef2f03af3abca97e988cbafdd829715f839f788ac94b5dcef9ab9ba0d103e1db",
+  "data_source_verified": false,
+  "total_cases": 18,
+  "total_candidate_items": 207,
+  "span_metric": {
+    "matched": 4,
+    "missing": 203,
+    "unverified": 0,
+    "denominator": 207,
+    "wilson_ci_percent": {
+      "point": 1.93,
+      "lower": 0.75,
+      "upper": 4.86
+    }
+  },
+  "cohens_kappa": null,
+  "pass_classification": {
+    "engineering_pass": false,
+    "synthetic_validation_pass": false,
+    "clinical_evidence_pass": false,
+    "independent_review_pending": true,
+    "caller_upgrade_attempted": false,
+    "blocked_reason": "CLINICAL_EVIDENCE_BLOCKED",
+    "data_source_verified": false,
+    "endpoint_pass": false,
+    "human_acceptance": null
+  }
+}

@@ -6,6 +6,8 @@ import { splitSections, extractConTextAssertion } from "./parse-cn-note.mjs";
 import { HospitalDataAdapter, calculateEgfrCkdEpi, normalizeLabUnit } from "./hospital-data-adapter.mjs";
 import { trackHighRiskFollowup } from "./high-risk-followup-tracker.mjs";
 import { PostHocClaimVerifier } from "./post-hoc-verifier.mjs";
+import { classifySourceTime } from "./clinical-boundary.mjs";
+import { classifyRecordLifecycle, resolveRecordVersions, describeRecordLifecycle } from "./record-lifecycle.mjs";
 
 export const ITEM_CATEGORIES = {
   FACT: "FACT",           // 【原文事实】
@@ -41,6 +43,8 @@ export class PatientEvolutionEngine {
     lisFeed = [],
     rulePack = null,
     sourceManifest = null,
+    sourceAvailability = [],
+    recordHistory = {},
     now = new Date(),
   }) {
     const patientId = patient?.id || context?.patient_id;
@@ -68,6 +72,25 @@ export class PatientEvolutionEngine {
     if (!Number.isFinite(nowMs)) throw new Error("INVALID_TIME_CONTEXT: now must be a valid timestamp");
     const cutoffTime = nowMs - windowHours * 60 * 60 * 1000;
 
+    const assertFeedIdentity = (record, label) => {
+      if (!record || typeof record !== "object") return;
+      if (record.patient_id && record.patient_id !== patientId) {
+        throw new Error(`FAIL_CLOSED_PATIENT_MISMATCH: ${label} ${record.id || ""} belongs to ${record.patient_id}, not ${patientId}`);
+      }
+      if (context?.encounter_id && record.encounter_id && record.encounter_id !== context.encounter_id) {
+        throw new Error(`FAIL_CLOSED_ENCOUNTER_MISMATCH: ${label} ${record.id || ""} belongs to ${record.encounter_id}, not ${context.encounter_id}`);
+      }
+      if (context?.tenant_id && record.tenant_id && record.tenant_id !== context.tenant_id) {
+        throw new Error(`FAIL_CLOSED_TENANT_MISMATCH: ${label} ${record.id || ""} belongs to ${record.tenant_id}, not ${context.tenant_id}`);
+      }
+    };
+    for (const note of notes) assertFeedIdentity(note, "note");
+    for (const obs of observations) assertFeedIdentity(obs, "observation");
+    for (const med of medications) assertFeedIdentity(med, "medication");
+    for (const report of diagnosticReports) assertFeedIdentity(report, "diagnostic_report");
+    for (const order of orders) assertFeedIdentity(order, "order");
+    for (const row of lisFeed) assertFeedIdentity(row, "lis");
+
     // Verify Source Manifest Hash Integrity if provided
     if (Array.isArray(sourceManifest)) {
       for (const entry of sourceManifest) {
@@ -83,19 +106,24 @@ export class PatientEvolutionEngine {
     // 0. Multi-Source Normalization (F-04, F-05, F-06)
     let normalizedVitals = null;
     let normalizedFluids = null;
+    let nisTimeGaps = [];
     const activeNis = (nursingFeed && nursingFeed.length > 0) ? nursingFeed : (nisFeed || []);
     if (activeNis && activeNis.length > 0) {
+      for (const row of activeNis) assertFeedIdentity(row, "nis");
       const nisResult = HospitalDataAdapter.normalizeNisFeed(activeNis, { rulePack, cutoffTime, now: nowMs });
       normalizedVitals = nisResult.vitals_summary;
       normalizedFluids = nisResult.fluid_balance;
+      nisTimeGaps = nisResult.data_gaps || [];
     }
 
     let combinedObservations = [...observations];
     let topCriticalValues = [];
     let adapterDataGaps = [];
+    let observationHistory = [...(recordHistory.observations || [])];
     if (lisFeed && lisFeed.length > 0) {
-      const lisResult = HospitalDataAdapter.normalizeLisFeed(lisFeed, { rulePack });
+      const lisResult = HospitalDataAdapter.normalizeLisFeed(lisFeed, { rulePack, cutoffTime, now: nowMs });
       combinedObservations.push(...lisResult.observations);
+      observationHistory.push(...(lisResult.history_records || []));
       topCriticalValues.push(...lisResult.critical_values);
       if (lisResult.data_gaps?.length > 0) {
         adapterDataGaps.push(...lisResult.data_gaps);
@@ -103,37 +131,122 @@ export class PatientEvolutionEngine {
     }
 
     let combinedReports = [...diagnosticReports];
+    let reportHistory = [...(recordHistory.diagnosticReports || [])];
     let imagingImpressions = [];
+    let pacsTimeGaps = [];
     if (pacsFeed && pacsFeed.length > 0) {
-      const pacsResult = HospitalDataAdapter.normalizePacsFeed(pacsFeed);
+      for (const row of pacsFeed) assertFeedIdentity(row, "pacs");
+      const pacsResult = HospitalDataAdapter.normalizePacsFeed(pacsFeed, { cutoffTime, now: nowMs });
       combinedReports.push(...pacsResult.diagnostic_reports);
+      reportHistory.push(...(pacsResult.history_records || []));
       imagingImpressions.push(...pacsResult.imaging_impressions);
+      pacsTimeGaps = pacsResult.time_gaps || [];
     }
 
     let combinedMedications = [...medications];
     let antibioticAlerts = [];
     const hisResult = HospitalDataAdapter.normalizeHisOrders(combinedMedications, { rulePack, now: nowMs });
     antibioticAlerts = hisResult.antibiotic_alerts;
-
-    const highRiskFollowup = trackHighRiskFollowup({
-      orders,
-      observations: combinedObservations,
-      diagnosticReports: combinedReports,
-      rulePack,
-      now: nowMs,
-    });
+    const orderTimeGaps = hisResult.time_gaps || [];
 
     const gaps = [];
+    const resolutions = [
+      resolveRecordVersions([...observationHistory, ...combinedObservations], { sourceType: "observation", now: nowMs, cutoffTime }),
+      resolveRecordVersions([...reportHistory, ...combinedReports], { sourceType: "diagnostic_report", now: nowMs, cutoffTime }),
+      resolveRecordVersions([...(recordHistory.orders || []), ...orders], { sourceType: "order", now: nowMs, cutoffTime }),
+      resolveRecordVersions(combinedMedications, { sourceType: "medication", now: nowMs, cutoffTime }),
+      resolveRecordVersions([...(recordHistory.nis || []), ...activeNis], { sourceType: "nursing", now: nowMs, cutoffTime }),
+      resolveRecordVersions(notes, { sourceType: "note", now: nowMs, cutoffTime }),
+    ];
+    // Keep every distinct version for follow-up, but do not count raw and
+    // normalized representations of the same source version as a conflict.
+    const highRiskFollowup = trackHighRiskFollowup({
+      orders: resolutions[2].entries.map(({ record }) => record),
+      observations: resolutions[0].entries.map(({ record }) => record),
+      diagnosticReports: resolutions[1].entries.map(({ record }) => record),
+      sourceAvailability,
+      rulePack,
+      now: nowMs,
+      cutoffTime,
+    });
+    const usableResult = (record, sourceType) => !["cancelled", "entered_in_error"].includes(classifyRecordLifecycle(record, { sourceType, now: nowMs, cutoffTime }).result_status);
+    combinedObservations = resolutions[0].current_records.filter((record) => usableResult(record, "observation"));
+    combinedReports = resolutions[1].current_records;
+    orders = resolutions[2].current_records;
+    combinedMedications = resolutions[3].current_records;
+    notes = resolutions[5].current_records.filter((record) => usableResult(record, "note"));
+    topCriticalValues = topCriticalValues.filter((item) => combinedObservations.some((record) => record.id === item.observation_id
+      && (record.version_id ?? record.meta?.versionId ?? null) === (item.version_id ?? null)));
+    imagingImpressions = imagingImpressions.filter((item) => combinedReports.some((record) => record.id === item.id && usableResult(record, "diagnostic_report")
+      && (record.version_id ?? record.meta?.versionId ?? null) === (item.version_id ?? null)));
+    const changeItems = [];
+    for (const entry of resolutions.flatMap((resolution) => resolution.entries)) {
+      const { record, lifecycle: state, selection_status: selectionStatus } = entry;
+      if (selectionStatus === "future" || selectionStatus === "conflict") gaps.push({
+        id: genId("GAP-STATE"), category: ITEM_CATEGORIES.DATA_GAP, tag: CATEGORY_LABELS[ITEM_CATEGORIES.DATA_GAP],
+        gap_type: selectionStatus === "conflict" ? "SOURCE_VERSION_CONFLICT" : state.source_type === "observation" ? "OBSERVATION_TIME_FUTURE" : state.source_type === "note" ? "NOTE_TIME_FUTURE" : "SOURCE_RECORD_TIME_FUTURE",
+        severity: "MEDIUM", title: "来源状态不可作为当前事实", summary: selectionStatus === "conflict" ? "资源版本顺序或内容冲突，当前有效版本未知。" : "来源时间晚于复核时点，未纳入当前事实或闭环判断。",
+        source_type: state.source_type, source_id: state.source_id, span: null, timestamp: state.change_time });
+      const relevant = state.change_time_status === "in_window" || state.arrival_status === "late_record"
+        || ["unknown", "invalid"].includes(state.change_time_status) || selectionStatus === "conflict" || selectionStatus === "future";
+      if (!relevant) continue;
+      if (state.source_type === "note" && !["revision", "cancellation", "entered_in_error"].includes(state.change_type)
+          && state.arrival_status !== "late_record" && !["conflict", "future"].includes(selectionStatus)) continue;
+      const label = record.name || record.title || record.test_name || record.study_name || record.drug_name || "来源记录";
+      const explanation = selectionStatus === "superseded" ? " 已被本次可用的后续版本替代，不参与当前数值比较。"
+        : selectionStatus === "conflict" ? " 同一资源版本顺序或内容冲突，当前版本未知。"
+        : selectionStatus === "future" ? " 来源时间晚于复核时点，未作为当前事实。" : "";
+      changeItems.push({ id: genId("CHANGE"), category: ITEM_CATEGORIES.FACT, tag: "【记录变化】", ...state,
+        selection_status: selectionStatus, title: label, timestamp: state.change_time, span: record.span || null,
+        summary: describeRecordLifecycle(state, label) + explanation,
+        display_text: describeRecordLifecycle(state, label) + explanation });
+    }
+    const recordChanges = { items: changeItems, counts: Object.fromEntries(["new_result", "revision", "cancellation", "entered_in_error", "preliminary_result", "unknown", "late_record"].map((kind) =>
+      [kind, changeItems.filter((item) => {
+        if (["superseded", "future"].includes(item.selection_status)) return false;
+        if (kind === "unknown") return item.change_type === "unknown" || item.selection_status === "conflict";
+        if (item.selection_status !== "current") return false;
+        if (kind === "late_record") return item.arrival_status === kind;
+        return item.change_type === kind && (kind !== "new_result" || item.change_time_status === "in_window");
+      }).length])) };
+    for (const source of sourceAvailability) {
+      if (source.status === "available") continue;
+      const descriptions = { unavailable: "接口不可用，本次未能读取该来源；无法判断是否存在结果或未闭环事项。",
+        unknown: "来源完整性或记录归属无法确认；无法判断是否存在结果或未闭环事项。",
+        available_empty: "接口读取成功，本次返回零条记录；不等于未做检查、无异常或已闭环。" };
+      gaps.push({ id: genId("GAP-SOURCE"), category: ITEM_CATEGORIES.DATA_GAP, tag: CATEGORY_LABELS[ITEM_CATEGORIES.DATA_GAP],
+        gap_type: `SOURCE_${String(source.status).toUpperCase()}`, title: `${source.kind || "数据"}来源状态`, severity: "MEDIUM",
+        summary: descriptions[source.status] || "来源状态未知。", source_type: "SourceAvailability", source_id: source.connector_id || null,
+        source_status: source.status, timestamp: source.fetched_at || null, span: null });
+    }
+    for (const gap of [...nisTimeGaps, ...pacsTimeGaps, ...orderTimeGaps]) {
+      gaps.push({
+        id: genId("GAP"),
+        category: ITEM_CATEGORIES.DATA_GAP,
+        tag: CATEGORY_LABELS[ITEM_CATEGORIES.DATA_GAP],
+        gap_type: gap.gap_type || "SOURCE_TIME_GAP",
+        severity: gap.severity || "MEDIUM",
+        title: gap.title || "来源时间不足",
+        summary: gap.summary || "来源时间未知或落在窗口外，未当作当前事实。",
+        source_type: gap.source_type || "AuditGap",
+        source_id: gap.source_id || null,
+        span: null,
+        timestamp: null,
+      });
+    }
 
     // 0b. Structured Multi-Source Cross-System Clinical Alignment
     const structuredAlignments = HospitalDataAdapter.alignMultiSourceTimeline({
       vitalsSummary: normalizedVitals,
       fluidBalance: normalizedFluids,
-      observations: combinedObservations,
+      observations: combinedObservations.filter((record) => classifyRecordLifecycle(record, { sourceType: "observation", now: nowMs, cutoffTime }).event_time_status === "in_window"),
       criticalValues: topCriticalValues,
-      diagnosticReports: combinedReports,
-      medications: hisResult.medications,
-      orders: hisResult.orders,
+      diagnosticReports: combinedReports.filter((record) => {
+        const state = classifyRecordLifecycle(record, { sourceType: "diagnostic_report", now: nowMs, cutoffTime });
+        return ["final", "preliminary", "revised"].includes(state.result_status) && state.event_time_status === "in_window";
+      }),
+      medications: hisResult.current_medications,
+      orders: hisResult.current_orders,
       patient,
       rulePack,
     });
@@ -168,14 +281,11 @@ export class PatientEvolutionEngine {
 
     // 1a. Nursing Vitals & 24h Fluid Balance Card
     if (normalizedVitals || normalizedFluids) {
-      const nText = normalizedVitals?.news2
-        ? `，NEWS2早期预警评分: ${normalizedVitals.news2.total_score}分 [${normalizedVitals.news2.risk_level}]${normalizedVitals.news2.has_single_red ? " (含单项极危红灯)" : ""}`
-        : "";
       const vText = normalizedVitals
-        ? `最高体温: ${normalizedVitals.t_max ? normalizedVitals.t_max + '℃' : '平稳'}，血压: ${normalizedVitals.bp_max || '平稳'}，心率: ${normalizedVitals.hr_avg || '平稳'} bpm${nText}`
+        ? `最高体温: ${normalizedVitals.t_max != null ? normalizedVitals.t_max + '℃' : '未提供'}，血压: ${normalizedVitals.bp_max || '未提供'}，心率: ${normalizedVitals.hr_avg ?? '未提供'} bpm`
         : "";
       const fText = normalizedFluids
-        ? `24h总入量: ${normalizedFluids.intake_total_ml}ml，总出量: ${normalizedFluids.output_total_ml}ml (尿量 ${normalizedFluids.urine_24h_ml}ml)，净平衡: ${normalizedFluids.net_balance_label} [${normalizedFluids.status}]`
+        ? `窗口内已记录入量: ${normalizedFluids.intake_total_ml ?? '未提供'}ml，出量: ${normalizedFluids.output_total_ml ?? '未提供'}ml (尿量 ${normalizedFluids.urine_24h_ml ?? '未提供'}ml)，净平衡: ${normalizedFluids.net_balance_label} [${normalizedFluids.status}]`
         : "";
 
       changes.vitals_and_fluids = {
@@ -195,8 +305,25 @@ export class PatientEvolutionEngine {
 
     // 1b. Clinical Symptoms from Notes (Verbatim Spans ONLY)
     for (const note of notes) {
-      const noteTime = note.timestamp ? new Date(note.timestamp).getTime() : nowMs;
-      if (noteTime >= cutoffTime) {
+      const noteEventTime = note.event_time || note.timing?.t_event || note.effective_time || note.timestamp;
+      const noteTime = classifySourceTime(noteEventTime, { nowMs, cutoffMs: cutoffTime });
+      if (noteTime.status !== "in_window") {
+        gaps.push({
+          id: genId("GAP"),
+          category: ITEM_CATEGORIES.DATA_GAP,
+          tag: CATEGORY_LABELS[ITEM_CATEGORIES.DATA_GAP],
+          gap_type: `NOTE_TIME_${noteTime.status.toUpperCase()}`,
+          severity: "MEDIUM",
+          title: "病程时间不可用",
+          summary: `病程记录 ${note.id || ""} 的时间为 ${noteTime.status}，未纳入当前窗口症状。`,
+          source_type: "ClinicalNote",
+          source_id: note.id || null,
+          span: null,
+          timestamp: noteEventTime || null,
+        });
+        continue;
+      }
+      {
         const sections = splitSections(note.text || "");
         const docName = note.title || note.note_type || "病程记录";
 
@@ -223,7 +350,7 @@ export class PatientEvolutionEngine {
                 source_type: "ClinicalNote",
                 source_id: note.id || null,
                 source_title: docName,
-                timestamp: note.timestamp || null,
+                timestamp: noteEventTime || null,
               });
             }
           }
@@ -242,37 +369,79 @@ export class PatientEvolutionEngine {
 
     let patientEgfr = null;
 
-    for (const [code, obsList] of Object.entries(obsByCode)) {
+    for (const [code, groupedObservations] of Object.entries(obsByCode)) {
+      const obsList = [];
+      for (const observation of groupedObservations) {
+        const observationTime = observation.effective_time || observation.timestamp || null;
+        const classification = classifySourceTime(observationTime, { nowMs, cutoffMs: cutoffTime });
+        if (["unknown", "invalid", "future"].includes(classification.status)) {
+          gaps.push({ id: genId("GAP"), category: ITEM_CATEGORIES.DATA_GAP, tag: CATEGORY_LABELS[ITEM_CATEGORIES.DATA_GAP],
+            gap_type: `OBSERVATION_TIME_${classification.status.toUpperCase()}`, severity: "MEDIUM", title: "检验时间不可用",
+            summary: `${observation.display_name || observation.name || code} 的检验时间为 ${classification.status}，未纳入当前窗口或历史对比。`,
+            source_type: "Observation", source_id: observation.id || null, span: null, timestamp: observationTime });
+        } else obsList.push(observation);
+      }
+      if (!obsList.length) continue;
       obsList.sort((a, b) => new Date(b.effective_time || b.timestamp || 0).getTime() - new Date(a.effective_time || a.timestamp || 0).getTime());
 
       const latest = obsList[0];
-      const latestTime = new Date(latest.effective_time || latest.timestamp || nowMs).getTime();
-      const inWindow = latestTime >= cutoffTime;
+      const sourceTime = latest.effective_time || latest.timestamp || null;
+      const timeClass = classifySourceTime(sourceTime, { nowMs, cutoffMs: cutoffTime });
+      if (timeClass.status === "unknown" || timeClass.status === "invalid" || timeClass.status === "future") {
+        gaps.push({
+          id: genId("GAP"),
+          category: ITEM_CATEGORIES.DATA_GAP,
+          tag: CATEGORY_LABELS[ITEM_CATEGORIES.DATA_GAP],
+          gap_type: `OBSERVATION_TIME_${timeClass.status.toUpperCase()}`,
+          severity: "MEDIUM",
+          title: "检验时间不可用",
+          summary: `${latest.display_name || latest.name || code} 的检验时间为 ${timeClass.status}，未纳入当前窗口，也未据此计算 eGFR。`,
+          source_type: "Observation",
+          source_id: latest.id || null,
+          span: null,
+          timestamp: sourceTime,
+        });
+        continue;
+      }
+      const inWindow = timeClass.status === "in_window";
       const baseline = obsList.length > 1 ? obsList[1] : null;
+      const resultLifecycle = resolutions[0].entries.find((entry) => entry.record === latest)?.lifecycle
+        || classifyRecordLifecycle(latest, { sourceType: "observation", now: nowMs, cutoffTime });
 
-      const fhirRef = Array.isArray(latest.referenceRange) ? latest.referenceRange[0] : latest.referenceRange;
-      const refLow = fhirRef?.low?.value ?? latest.ref_low ?? null;
-      const refHigh = fhirRef?.high?.value ?? latest.ref_high ?? null;
-      const refText = fhirRef?.text ?? latest.ref_text ?? latest.reference_range ?? null;
-
-      const hasReferenceRange = refLow != null || refHigh != null;
-      const latestVal = Number(latest.value);
+      const latestVal = latest.value == null || typeof latest.value === "boolean" || String(latest.value).trim() === "" ? NaN : Number(latest.value);
       const testName = latest.display_name || latest.name || code;
       const unit = latest.unit || "";
+      const fhirRef = Array.isArray(latest.referenceRange) ? latest.referenceRange[0] : latest.referenceRange;
+      const rawRefLow = fhirRef?.low?.value ?? latest.ref_low ?? null;
+      const rawRefHigh = fhirRef?.high?.value ?? latest.ref_high ?? null;
+      const referenceValue = (value, referenceUnit) => {
+        if (value == null || typeof value === "boolean" || String(value).trim() === "") return null;
+        return normalizeLabUnit(Number(value), referenceUnit, unit, code).comparableValue;
+      };
+      const refLow = referenceValue(rawRefLow, fhirRef?.low?.unit ?? unit);
+      const refHigh = referenceValue(rawRefHigh, fhirRef?.high?.unit ?? unit);
+      const referenceInvalid = (rawRefLow != null && refLow == null) || (rawRefHigh != null && refHigh == null)
+        || (refLow != null && refHigh != null && refLow > refHigh);
+      const refText = fhirRef?.text ?? latest.ref_text ?? latest.reference_range ?? null;
+      const hasReferenceRange = !referenceInvalid && (refLow != null || refHigh != null);
+      if (referenceInvalid) gaps.push({ id: genId("GAP-REF"), category: ITEM_CATEGORIES.DATA_GAP,
+        tag: CATEGORY_LABELS[ITEM_CATEGORIES.DATA_GAP], gap_type: "REFERENCE_RANGE_UNUSABLE", severity: "MEDIUM",
+        title: "参考区间不可比较", summary: `${testName} 的参考区间数值、上下限顺序或单位不可确认，未据此判定正常或异常。`,
+        source_type: "Observation", source_id: latest.id || null, span: null, timestamp: sourceTime });
 
       let isHigh = false;
       let isLow = false;
       let isCritical = latest.is_critical || false;
       let statusLabel = "无参考区间 (仅呈现趋势)";
 
-      if (hasReferenceRange) {
+      if (hasReferenceRange && Number.isFinite(latestVal)) {
         isHigh = refHigh != null && latestVal > refHigh;
         isLow = refLow != null && latestVal < refLow;
         statusLabel = isCritical ? "🚨 危急值" : (isHigh ? "⚠️ 偏高" : (isLow ? "⚠️ 偏低" : "正常"));
       }
 
       // Check eGFR if test is serum creatinine (Strict: require age, gender, compatible unit & steady-state)
-      if (/(?:scr|肌酐|creatinine)/i.test(code) && !isNaN(latestVal)) {
+      if (inWindow && /(?:scr|肌酐|creatinine)/i.test(code) && Number.isFinite(latestVal)) {
         if (patient.age != null && patient.gender != null) {
           const normLatest = normalizeLabUnit(latestVal, unit, "umol/L", "scr");
           if (!normLatest.compatible || normLatest.comparableValue == null) {
@@ -297,7 +466,7 @@ export class PatientEvolutionEngine {
             let isAkiUnstable = false;
             if (baseline != null) {
               const baseVal = Number(baseline.value);
-              const normBase = normalizeLabUnit(baseVal, baseline.unit || unit, "umol/L", "scr");
+              const normBase = normalizeLabUnit(baseVal, baseline.unit, "umol/L", "scr");
               if (normBase.compatible && normBase.comparableValue != null) {
                 const scrDelta = normLatest.comparableValue - normBase.comparableValue;
                 const scrPctRise = normBase.comparableValue > 0 ? scrDelta / normBase.comparableValue : 0;
@@ -305,48 +474,20 @@ export class PatientEvolutionEngine {
                 if (scrDelta >= 26.5 || scrPctRise >= 0.5) {
                   isAkiUnstable = true;
                   patientEgfr = null; // Block static eGFR calculation during acute surge
-                  highRiskFollowup.items.push({
-                    tracking_id: `aki:${latest.id || "obs-scr-aki"}`,
-                    rule_id: "KDIGO-AKI-CREATININE-SURGE",
-                    kind: "aki_surge",
-                    label: "急性肾损伤 (AKI) 风险预警 / 肌酐非稳态",
-                    code: code,
-                    stage: "reported",
-                    stage_timestamp: latest.effective_time || latest.timestamp || null,
-                    required_stages: ["reported", "reviewed"],
-                    gap: "followup_review_pending",
-                    overdue: true,
-                    due_minutes: 60,
-                    source_reported_high_risk: true,
-                    summary: `【危急预警】血肌酐较基线快速上升 (${normBase.comparableValue} → ${normLatest.comparableValue} μmol/L，增量 +${scrDelta.toFixed(1)} μmol/L / +${(scrPctRise * 100).toFixed(1)}%)，符合 KDIGO AKI 警示标准。血肌酐处于急性非稳态，CKD-EPI eGFR 估算已阻断以防误导。`,
-                    recommended_action: "密切监测尿量及容量状态，排查肾毒性药物与病因，切勿依赖静态 eGFR 调药",
-                    evidence: [
-                      {
-                        source_type: "observation",
-                        id: latest.id || null,
-                        title: latest.display_name || latest.name || "血肌酐",
-                        span: latest.span || null,
-                        timestamp: latest.effective_time || latest.timestamp || null,
-                      },
-                    ],
-                  });
-                  if (highRiskFollowup.counts) {
-                    highRiskFollowup.counts.total = highRiskFollowup.items.length;
-                    highRiskFollowup.counts.open += 1;
-                    highRiskFollowup.counts.overdue += 1;
-                  }
-                  highRiskFollowup.interpretation = "tracked_high_risk_items_present";
+                  // This conservative calculation guard is not a source-reported
+                  // critical flag, a diagnosis, or an approved response-time rule.
                   gaps.push({
                     id: genId("GAP-AKI-EGFR"),
                     category: ITEM_CATEGORIES.DATA_GAP,
                     tag: CATEGORY_LABELS[ITEM_CATEGORIES.DATA_GAP],
                     gap_type: "CREATININE_NON_STEADY_STATE",
                     severity: "HIGH",
-                    title: "血肌酐处于非稳态（疑似 AKI）",
-                    summary: "【资料不足】患者血肌酐急剧上升，非稳态下 CKD-EPI 方程失效，已阻断 eGFR 数值计算。",
-                    clinical_action_needed: "评估急性肾损伤病因，追踪复查肌酐及尿量，必要时评估内生肌酐清除率",
+                    title: "eGFR 计算前提待核对",
+                    summary: `【资料不足】两次肌酐记录存在明显差异 (${normBase.comparableValue} → ${normLatest.comparableValue} μmol/L)。当前资料未确认稳态计算前提，暂停 eGFR 估算；此结果不作疾病判断。`,
+                    clinical_action_needed: "核对两次原始记录、采样时间与计算适用条件",
                     source_type: "AuditGap",
-                    source_id: "gap-aki-egfr",
+                    source_id: latest.id || null,
+                    evidence: [baseline, latest].map((observation) => ({ source_id: observation.id || null, timestamp: observation.effective_time || observation.timestamp || null })),
                     span: null,
                   });
                 }
@@ -370,16 +511,19 @@ export class PatientEvolutionEngine {
 
         if (baseline != null) {
           const baseVal = Number(baseline.value);
-          deltaVal = latestVal - baseVal;
-          deltaPct = baseVal !== 0 ? (deltaVal / baseVal) * 100 : 0;
+          const normalizedBaseline = normalizeLabUnit(baseVal, baseline.unit, unit, code);
+          if (baseline.value != null && String(baseline.value).trim() !== "" && normalizedBaseline.compatible && Number.isFinite(latestVal)) {
+          deltaVal = latestVal - normalizedBaseline.comparableValue;
+          deltaPct = normalizedBaseline.comparableValue !== 0 ? (deltaVal / normalizedBaseline.comparableValue) * 100 : null;
           if (deltaVal > 0) trendDirection = "↑";
           else if (deltaVal < 0) trendDirection = "↓";
 
-          deltaStr = `基线: ${baseVal} ${unit} → 当前: ${latestVal} ${unit} (${trendDirection} ${deltaVal > 0 ? "+" : ""}${deltaVal.toFixed(1)} ${unit} / ${deltaPct > 0 ? "+" : ""}${deltaPct.toFixed(1)}%)`;
+          deltaStr = `基线: ${normalizedBaseline.comparableValue} ${unit} → 当前: ${latestVal} ${unit} (${trendDirection} ${deltaVal > 0 ? "+" : ""}${deltaVal.toFixed(1)} ${unit} / ${deltaPct == null ? "百分比不可计算" : `${deltaPct > 0 ? "+" : ""}${deltaPct.toFixed(1)}%`})`;
+          } else { deltaStr = "历史对比不可用：数值或单位不完整/不兼容"; trendDirection = null; }
         } else {
           deltaStr = hasReferenceRange
-            ? `当前: ${latestVal} ${unit} (参考区间: ${refLow ?? 0}-${refHigh ?? '-'} ${unit})`
-            : `当前: ${latestVal} ${unit}`;
+            ? `当前: ${Number.isFinite(latestVal) ? latestVal : "未提供有效数值"} ${unit} (参考区间: ${refLow ?? '未提供'}-${refHigh ?? '未提供'} ${unit})`
+            : `当前: ${Number.isFinite(latestVal) ? latestVal : "未提供有效数值"} ${unit}`;
         }
 
         const isAbnormal = hasReferenceRange ? (isHigh || isLow || isCritical) : Boolean(isCritical);
@@ -390,7 +534,11 @@ export class PatientEvolutionEngine {
           category: isCritical ? ITEM_CATEGORIES.CRITICAL : ITEM_CATEGORIES.FACT,
           tag: CATEGORY_LABELS[isCritical ? ITEM_CATEGORIES.CRITICAL : ITEM_CATEGORIES.FACT],
           test_name: testName,
-          current_value: latestVal,
+          current_value: Number.isFinite(latestVal) ? latestVal : null,
+          result_status: resultLifecycle.result_status,
+          change_type: resultLifecycle.change_type,
+          version_id: resultLifecycle.version_id,
+          arrival_status: resultLifecycle.arrival_status,
           unit,
           has_reference_range: hasReferenceRange,
           ref_low: refLow,
@@ -402,7 +550,7 @@ export class PatientEvolutionEngine {
           critical_reason: latest.critical_reason || null,
           trend_direction: trendDirection,
           delta_summary: deltaStr,
-          summary: `${testName}: ${latestVal} ${unit} [${statusLabel}] (${deltaStr})`,
+          summary: `${testName}: ${Number.isFinite(latestVal) ? latestVal : "未提供有效数值"} ${unit} [${statusLabel}] (${deltaStr})${resultLifecycle.result_status === "unknown" ? "；来源结果状态未知，不能据此视为已出具或已确认" : resultLifecycle.change_type === "revision" ? "；来源修订结果，需核对当前版本" : resultLifecycle.result_status === "preliminary" ? "；来源初步结果，非正式报告" : ""}`,
           span: verbatimSpan,
           source_type: "Observation",
           source_id: latest.id || null,
@@ -438,12 +586,17 @@ export class PatientEvolutionEngine {
         source_type: "DiagnosticReport",
         source_id: imp.id || null,
         source_title: "PACS 影像系统",
-        timestamp: imp.ordered_at || null,
+        timestamp: imp.event_time || imp.study_time || null,
+        ordered_at: imp.ordered_at || null,
+        result_status: classifyRecordLifecycle({ status: imp.status }, { sourceType: "diagnostic_report", now: nowMs }).result_status,
       });
     }
 
     // 1e. Medication Regimen Diff
     for (const med of combinedMedications) {
+      // A cancelled or invalid order does not prove the patient started or
+      // stopped taking a medication; retain it in record_changes instead.
+      if (["cancelled", "canceled", "revoked", "entered-in-error", "entered_in_error"].includes(String(med.status || "").toLowerCase())) continue;
       const authoredTime = med.authored_on ? new Date(med.authored_on).getTime() : 0;
       const endTime = med.end_date ? new Date(med.end_date).getTime() : 0;
       const medName = med.drug_name || med.name || "未知药品";
@@ -452,6 +605,18 @@ export class PatientEvolutionEngine {
       const freq = med.frequency || "";
       const fullDose = [dose, route, freq].filter(Boolean).join(" ");
       const verbatimSpan = med.span || null;
+      const changeTimestamp = med.change_type === "discontinued" || med.status === "stopped" || med.status === "cancelled"
+        ? (med.end_date || med.changed_at || null) : (med.changed_at || med.authored_on || null);
+      const changeTime = classifySourceTime(changeTimestamp, { nowMs, cutoffMs: cutoffTime });
+      if (changeTime.status !== "in_window") {
+        if (changeTime.status !== "stale") gaps.push({
+          id: genId("GAP-MED-TIME"), category: ITEM_CATEGORIES.DATA_GAP, tag: CATEGORY_LABELS[ITEM_CATEGORIES.DATA_GAP],
+          gap_type: `MEDICATION_TIME_${changeTime.status.toUpperCase()}`, severity: "MEDIUM",
+          title: "医嘱变更时间不可用", summary: `${medName} 的变更时间未能核验，未计入当前窗口的用药变化。`,
+          source_type: "MedicationRequest", source_id: med.id || null, timestamp: changeTimestamp,
+        });
+        continue;
+      }
 
       if (med.change_type === "added" || (authoredTime >= cutoffTime && med.status === "active" && !med.is_prior)) {
         changes.medication_diff.added.push({
@@ -508,6 +673,9 @@ export class PatientEvolutionEngine {
       pending_reports: [],
       pending_orders: [],
       scheduled_consults: [],
+      status_unknown: changeItems.filter((item) => item.change_type === "unknown" || item.selection_status === "conflict"),
+      cancelled_or_invalid: changeItems.filter((item) => ["cancellation", "entered_in_error"].includes(item.change_type)),
+      late_records: changeItems.filter((item) => item.arrival_status === "late_record"),
     };
 
     for (const rep of combinedReports) {
@@ -519,8 +687,8 @@ export class PatientEvolutionEngine {
           report_name: rep.name || rep.title || "待回报检查",
           category_type: rep.category || "PACS/LIS",
           requested_time: rep.ordered_at || rep.timestamp || null,
-          status_desc: rep.status === "registered" ? "已送检/已采标本，等待检验报告" : "检查已完成，待出正式报告",
-          summary: `待出报告: ${rep.name || rep.title} (${rep.status === "registered" ? "标本检验中" : "待出报告"})`,
+          status_desc: rep.status === "registered" ? "来源已登记；采集、执行和出具结果尚未确认" : "来源标记为待报告/初步结果，正式报告尚未确认",
+          summary: `报告阶段待追踪: ${rep.name || rep.title || "检查"} (来源状态: ${rep.status}；不据此推断检查已完成)`,
           span: rep.span || null,
           source_type: "DiagnosticReport",
           source_id: rep.id || null,
@@ -551,7 +719,7 @@ export class PatientEvolutionEngine {
             tag: CATEGORY_LABELS[ITEM_CATEGORIES.FACT],
             order_name: ord.title || ord.name || "待执行医嘱",
             order_type: ord.order_type || "临时医嘱",
-            summary: `待执行医嘱: ${ord.title || ord.name} (${ord.scheduled_time || "今日待执行"})`,
+            summary: `医嘱阶段待追踪: ${ord.title || ord.name || "医嘱"} (来源状态: ${ord.status}；${ord.scheduled_time || "执行时间未确认"})`,
             span: ord.span || null,
             source_type: "ServiceRequest",
             source_id: ord.id || "ord-pend",
@@ -596,22 +764,8 @@ export class PatientEvolutionEngine {
       }
     }
 
-    // NEWS2 Deterioration Alert
-    if (normalizedVitals?.news2) {
-      const news2 = normalizedVitals.news2;
-      if (news2.total_score >= 5 || news2.has_single_red || news2.risk_level === "HIGH" || news2.risk_level === "MEDIUM") {
-        ruleReminders.push({
-          id: genId("RULE-NEWS2"),
-          category: ITEM_CATEGORIES.RULE_ALERT,
-          tag: CATEGORY_LABELS[ITEM_CATEGORIES.RULE_ALERT],
-          title: `NEWS2 早期预警警示 (${news2.total_score}分 / ${news2.risk_level})`,
-          summary: `【NEWS2 预警】患者国家早期预警评分达到 ${news2.total_score}分 (${news2.risk_level}风险)${news2.has_single_red ? "，触发单项红灯(3分)极危异常" : ""}。${news2.trigger_explanation || "提示存在急性临床恶化风险，建议立即由负责医师评估或启动快速反应流程。"}`,
-          news2,
-          source_type: "EarlyWarningScore",
-          source_id: "news2-deterioration-alert",
-        });
-      }
-    }
+    // NEWS2 remains an engineering calculation candidate. P0 has no approved
+    // deterioration-alert intended use or clinical response policy.
 
     // ----------------------------------------------------
     // BLOCK 4: 「哪些资料不足」 (Critical Safety & Data Gaps)
@@ -635,8 +789,8 @@ export class PatientEvolutionEngine {
           gap_type: "ALLERGY_MISSING",
           severity: "HIGH",
           title: "过敏史未明确记录",
-          summary: "【资料不足】过敏史缺失：当前系统与病历中无任何过敏史记录。使用高敏/抗菌药物前需重点补问并补录。",
-          clinical_action_needed: "查房时向患者或家属明确核实青霉素、头孢菌素等药物过敏史并补录入病历",
+          summary: "【资料不足】当前可用来源未能确认过敏史；不表示无过敏，也不表示尚未询问或记录。",
+          clinical_action_needed: "核对来源可用性与原始过敏史记录",
           source_type: "AuditGap",
           source_id: "gap-allergy",
           span: null,
@@ -654,8 +808,8 @@ export class PatientEvolutionEngine {
         gap_type: "RENAL_FUNCTION_MISSING",
         severity: "MEDIUM",
         title: "近期肾功能检验缺失",
-        summary: "【资料不足】肾功能缺失：近 48 小时未查见血肌酐/eGFR 检验。无法精确进行肾功能梯度剂量评估。",
-        clinical_action_needed: "若病情需要调整肾排泄药物，建议开具生化全套或急诊肾功能",
+        summary: "【资料不足】当前可用来源未能确认近期肾功能结果；不据此推断未做检查或结果正常。",
+        clinical_action_needed: "核对来源可用性、原始检验及其状态和时间",
         source_type: "AuditGap",
         source_id: "gap-renal",
         span: null,
@@ -670,9 +824,9 @@ export class PatientEvolutionEngine {
         tag: CATEGORY_LABELS[ITEM_CATEGORIES.DATA_GAP],
         gap_type: "WEIGHT_MISSING",
         severity: "LOW",
-        title: "入院体重未录入",
-        summary: "【资料不足】入院体重未录入：缺少实际测量体重，无法精确按体表面积或体重换算剂量。",
-        clinical_action_needed: "护士站补录患者入院体重",
+        title: "当前资料未能确认体重",
+        summary: "【资料不足】当前可用记录未提供有效体重，不能据此断言尚未测量或录入。",
+        clinical_action_needed: "核对来源与原始测量记录",
         source_type: "AuditGap",
         source_id: "gap-weight",
         span: null,
@@ -719,6 +873,7 @@ export class PatientEvolutionEngine {
     // BLOCK 5: 「查看原始证据」 (Source Attribution & Raw Spans)
     // ----------------------------------------------------
     const allSelectableItems = [
+      ...changeItems,
       ...alignmentSelectableItems,
       ...(changes.vitals_and_fluids ? [changes.vitals_and_fluids] : []),
       ...changes.clinical_symptoms,
@@ -761,6 +916,8 @@ export class PatientEvolutionEngine {
       generated_at: new Date(nowMs).toISOString(),
       critical_values: topCriticalValues,
       blocks: {
+        record_changes: recordChanges,
+        source_availability: sourceAvailability.map((source) => ({ ...source })),
         structured_multisource_alignment: structuredAlignments,
         what_changed: changes,
         whats_pending: pending,
@@ -805,6 +962,7 @@ export class PatientEvolutionEngine {
     const ordItems = chosen.filter((i) => i.id.startsWith("ORD"));
     const ruleItems = chosen.filter((i) => i.id.startsWith("RULE"));
     const gapItems = chosen.filter((i) => i.id.startsWith("GAP"));
+    const recordChangeItems = chosen.filter((i) => i.id.startsWith("CHANGE"));
 
     const lines = [];
     const dateStr = new Date().toISOString().replace("T", " ").slice(0, 16);
@@ -818,6 +976,12 @@ export class PatientEvolutionEngine {
       lines.push(`肾功能估算：eGFR ${summaryData.patient.egfr} mL/min/1.73m² (CKD-EPI 2021)`);
     }
     lines.push("");
+
+    if (recordChangeItems.length > 0) {
+      lines.push("记录状态与迟到资料");
+      recordChangeItems.forEach((item) => lines.push(`  • ${item.summary} [^${item.id}]`));
+      lines.push("");
+    }
 
     // Section 0: Structured Multi-Source Alignment
     if (alignItems.length > 0) {
@@ -864,7 +1028,7 @@ export class PatientEvolutionEngine {
       medAdj.forEach((i) => lines.push(`  • [调量] ${i.summary} [^${i.id}]`));
     }
     if (medAdd.length === 0 && medDisc.length === 0 && medAdj.length === 0) {
-      lines.push("  • 维持既有诊疗方案，暂无选中药物调整");
+      lines.push("  • 暂无选中药物调整记录；不据此判断实际方案是否变化");
     }
     lines.push("");
 
@@ -880,14 +1044,14 @@ export class PatientEvolutionEngine {
       ruleItems.forEach((i) => lines.push(`  • [临床提醒] ${i.summary} [^${i.id}]`));
     }
     if (repItems.length === 0 && ordItems.length === 0 && ruleItems.length === 0) {
-      lines.push("  • 无待办事项");
+      lines.push("  • 暂无选中待办记录；不代表所有事项已闭环");
     }
     lines.push("");
 
     // Section 5: Data Gaps
     if (gapItems.length > 0) {
       lines.push("五、已知临床资料缺口提示");
-      gapItems.forEach((i) => lines.push(`  • [资料缺口] ${i.summary} (需在今日查房处置) [^${i.id}]`));
+      gapItems.forEach((i) => lines.push(`  • [资料缺口] ${i.summary} [^${i.id}]`));
       lines.push("");
     }
 

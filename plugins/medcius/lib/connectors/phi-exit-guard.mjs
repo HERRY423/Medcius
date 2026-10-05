@@ -4,7 +4,7 @@
 //
 // Wraps any bridge-compliant connector. On every readPatient:
 //   1. every string inside envelope.records is pseudonymized with the
-//      deployment salt (stable [PSN:<hmac8>] tokens, same domain → same token);
+//      deployment salt (stable [PSN:<hmac32>] tokens, same domain → same token);
 //   2. the sanitized records are re-scanned with the fast raw-PHI detector and
 //      the guard FAILS CLOSED if anything still trips it.
 //
@@ -12,8 +12,9 @@
 // deployments whose upstream already de-identifies, and by tests proving the
 // blocking path works.
 
-import { canonicalJson, sha256Hex } from "../../servers/shared/crypto.mjs";
-import { containsRawPhi, pseudonymizeText } from "../../servers/phiguard/src/lib.mjs";
+import { sha256Hex } from "../../servers/shared/crypto.mjs";
+import { pseudonymizeText } from "../../servers/phiguard/src/lib.mjs";
+import { sealIdentityRecord, containsRawStructuredPhi } from "../clinical-boundary.mjs";
 
 function requireSalt(salt) {
   if (!salt || typeof salt !== "string" || salt.length < 8) {
@@ -25,8 +26,9 @@ function pseudonymizeDeep(value, salt) {
   if (typeof value === "string") return pseudonymizeText(value, { salt }).text;
   if (Array.isArray(value)) return value.map((item) => pseudonymizeDeep(item, salt));
   if (value && typeof value === "object") {
+    const sealed = sealIdentityRecord(value, { salt });
     const out = {};
-    for (const [key, item] of Object.entries(value)) out[key] = pseudonymizeDeep(item, salt);
+    for (const [key, item] of Object.entries(sealed)) out[key] = pseudonymizeDeep(item, salt);
     return out;
   }
   return value;
@@ -34,7 +36,7 @@ function pseudonymizeDeep(value, salt) {
 
 function assertNoRawPhi(records, connectorId) {
   for (const record of records) {
-    const hit = containsRawPhi(canonicalJson(record));
+    const hit = containsRawStructuredPhi(record);
     if (hit.hit) {
       throw new Error(
         `PHI_EXIT_GUARD_RAW_PHI_BLOCKED: ${connectorId} emitted raw ${hit.type}; refusing to release envelope`

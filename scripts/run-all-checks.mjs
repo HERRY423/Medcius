@@ -6,11 +6,28 @@
 import { spawnSync } from "node:child_process";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, "..");
+// A validation run must never open an operator's production audit store.
+const testDataRoot = mkdtempSync(join(tmpdir(), "medcius-quality-gates-"));
 
 const steps = [
+  { name: "Record Changes: Publication, Revision, Cancellation, Arrival & Unknown", cmd: "node", args: ["tests/test-record-change-semantics.mjs"] },
+  { name: "Record Versions: Time Boundaries, Replacement Chains & Conflicts", cmd: "node", args: ["tests/test-record-version-edge-cases.mjs"] },
+  { name: "Lifecycle Normalizers: Current Imaging & Medication Source States", cmd: "node", args: ["tests/test-lifecycle-normalizers.mjs"] },
+  { name: "Lifecycle Draft: Unknown, Open Follow-up & Source Outage", cmd: "node", args: ["tests/test-lifecycle-draft-boundary.mjs"] },
+  { name: "Follow-up: Version-Bound Review & Source Availability", cmd: "node", args: ["tests/test-followup-lifecycle.mjs"] },
+  { name: "Connectors: Source Lifecycle & Empty / Unavailable Separation", cmd: "node", args: ["tests/test-source-lifecycle.mjs"] },
+  { name: "Lifecycle Surface: Summary, Silent Archive & Replay", cmd: "node", args: ["tests/test-lifecycle-surface.mjs"] },
+  { name: "JSON Contract Syntax Validation", cmd: "node", args: ["scripts/validate-json.mjs"] },
+  { name: "P0: Boundary, Evidence Status & Frozen Silent Path", cmd: "node", args: ["tests/test-boundary-evidence-silent-path.mjs"] },
+  { name: "P0: Exact Evidence Text, Missing Data & Measurement Semantics", cmd: "node", args: ["tests/test-p0-fact-semantics.mjs"] },
+  { name: "P0: Field-Aware PHI, Signed Decisions & Audit Integrity", cmd: "node", args: ["tests/test-p0-phi-audit-hardening.mjs"] },
+  { name: "P0: Evaluation Integrity & Missing Observations", cmd: "node", args: ["tests/test-p0-evidence-integrity.mjs"] },
+  { name: "P0: Authorized Source, Tenant Archive & Silent HTTP Boundary", cmd: "node", args: ["tests/test-p0-authorized-silent-path.mjs"] },
   { name: "1. Skills Manifest Validation", cmd: "node", args: ["scripts/validate-skills.mjs"] },
   { name: "2. Cross-host MCP, Rules & Skills Adapter Validation", cmd: "node", args: ["scripts/validate-host-adapters.mjs"] },
   { name: "3. Regulatory Boundary & DHF Compliance Lint", cmd: "node", args: ["plugins/medcius/scripts/compliance-lint.mjs"] },
@@ -66,6 +83,8 @@ console.log("===================================================================
 
 let passedCount = 0;
 let failedCount = 0;
+let engineeringFailures = 0;
+let syntheticFailures = 0;
 
 for (const step of steps) {
   process.stdout.write(`▶ Running: ${step.name}... `);
@@ -73,7 +92,8 @@ for (const step of steps) {
   const res = spawnSync(step.cmd, step.args, {
     cwd: repoRoot,
     encoding: "utf8",
-    env: { ...process.env, NODE_NO_WARNINGS: "1" },
+    env: { ...process.env, CLAUDE_MEDCIUS_DATA: testDataRoot, MEDCIUS_DATA: testDataRoot, NODE_NO_WARNINGS: "1" },
+    maxBuffer: 16 * 1024 * 1024,
   });
   const elapsed = Date.now() - start;
 
@@ -85,6 +105,8 @@ for (const step of steps) {
     if (res.stdout) console.log(res.stdout.slice(0, 800));
     if (res.stderr) console.error(res.stderr.slice(0, 800));
     failedCount++;
+    if (step.args.some((arg) => arg.includes("/evals/") || arg === "scripts/run-evals.mjs")) syntheticFailures++;
+    else engineeringFailures++;
   }
 }
 
@@ -92,13 +114,14 @@ console.log("\n=================================================================
 console.log(` Quality Gate Summary: ${passedCount} Passed, ${failedCount} Failed / Total ${steps.length} Gates`);
 console.log("================================================================================");
 console.log(" Three-Tier Pass Status Classification:");
-console.log(` - 1. engineering_pass:          ${failedCount === 0 ? "🟢 PASS (All CI Unit Tests & Quality Gates Passed)" : "🔴 FAIL"}`);
-console.log(` - 2. synthetic_validation_pass:  ${failedCount === 0 ? "🟢 PASS (Synthetic Benchmarks & Traps Verified)" : "🔴 FAIL"}`);
+console.log(` - 1. engineering_pass:          ${engineeringFailures === 0 ? "🟢 PASS (Listed engineering checks passed)" : "🔴 FAIL"}`);
+console.log(` - 2. synthetic_execution_pass:   ${syntheticFailures === 0 ? "🟢 PASS (Listed synthetic scripts completed)" : "🔴 FAIL"}`);
+console.log("      synthetic_validation_pass: NOT_ESTABLISHED (Protocol endpoints are reported separately; execution success is not endpoint success)");
 console.log(` - 3. clinical_evidence_pass:    🔒 BLOCKED (Requires approved real-world study and independent clinician labeling)`);
 console.log("================================================================================");
 
 if (failedCount === 0) {
-  console.log("🎉 ALL QUALITY GATES, SECURITY TESTS & PRODUCTION HARDENING VALIDATIONS PASSED!");
+  console.log("All listed engineering checks and synthetic script executions completed successfully; clinical and deployment acceptance remain separate.");
   process.exit(0);
 } else {
   console.error(`❌ CI Quality Gate validation failed (${failedCount} gates failed).`);

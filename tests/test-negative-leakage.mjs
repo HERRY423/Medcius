@@ -10,6 +10,8 @@ import {
   signDecision,
   verifyDecisionSignature,
   registerPublicKey,
+  buildSignoffEnvelope,
+  signSignoffEnvelope,
 } from "../plugins/medcius/servers/shared/digital-signature.mjs";
 
 console.log("== Running Negative PHI Leakage & Security Injection Tests ==");
@@ -160,27 +162,60 @@ console.log("✓ Digital signature verified and tampering successfully detected"
 // Test 7: Pharmacist Signoff with Digital Signature into Audit Chain
 console.log("\n[Test 7] Testing signoff with verified digital signature...");
 const ev7 = auditHandlers.get_event({ event_id: auditOk.event_id });
-const sig7 = signDecision({
-  payload: ev7.payload,
+const signoffReason = "临床专科评估，患者肝肾功能及肌酸激酶正常，密切监护下维持方案";
+const built = buildSignoffEnvelope({
+  eventId: auditOk.event_id,
+  eventDigest: ev7.event_digest,
+  tenantId: "hospital_north_01",
+  signer: "PHARM-007",
+  role: "pharmacist",
+  decision: "override",
+  reason: signoffReason,
+  signedAt: "2026-10-04T00:00:00Z",
+  replayId: "replay-negative-leakage-7",
+});
+const sig7 = signSignoffEnvelope({
+  envelope: built.envelope,
   privateKeyPem: privateKey,
   keyId,
   signer: "PHARM-007",
   role: "pharmacist",
 });
-
-const signoffRes = auditHandlers.signoff({
+const signoffArgs = {
   event_id: auditOk.event_id,
   signer: "PHARM-007",
   role: "pharmacist",
   decision: "override",
-  reason: "临床专科评估，患者肝肾功能及肌酸激酶正常，密切监护下维持方案",
+  reason: signoffReason,
   signature: sig7.signature,
   signature_algorithm: sig7.signature_algorithm,
   key_id: keyId,
   signed_hash: sig7.signed_hash,
   tenant_id: "hospital_north_01",
-});
+  envelope: built.envelope,
+};
+const signoffRes = auditHandlers.signoff(signoffArgs);
 assert.equal(signoffRes.signature_verified, true, "Signoff signature must be cryptographically verified");
+assert.throws(() => auditHandlers.signoff(signoffArgs), /SIGNOFF_REPLAY/);
+assert.throws(
+  () => auditHandlers.signoff({ ...signoffArgs, decision: "reject", replay_id: "other" }),
+  /SIGNOFF_ENVELOPE_INCOMPLETE|SIGNOFF_REPLAY/,
+);
+assert.throws(
+  () => auditHandlers.signoff({ ...signoffArgs, tenant_id: "hospital_other", envelope: { ...built.envelope, tenant_id: "hospital_other", replay_id: "replay-other-tenant" } }),
+  /SIGNOFF_TENANT_MISMATCH|SIGNOFF_EVENT_DIGEST_MISMATCH|verification failed|SIGNOFF_REPLAY/,
+);
+assert.throws(
+  () => auditHandlers.signoff({
+    event_id: auditOk.event_id,
+    signer: "PHARM-007",
+    role: "pharmacist",
+    decision: "agree",
+    reason: "联系电话 13800138000",
+    tenant_id: "hospital_north_01",
+  }),
+  /PHI guard/,
+);
 console.log(`✓ Signed signoff recorded: signoff_id=${signoffRes.signoff_id}`);
 
 console.log("\nALL NEGATIVE LEAKAGE & SECURITY INJECTION TESTS PASSED!");

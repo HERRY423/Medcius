@@ -52,7 +52,8 @@ export function getCardiologyWardFixture() {
         { id: "med-001-3", drug_name: "硝酸甘油注射液", dosage: "5mg", route: "ivgtt", frequency: "st", change_type: "discontinued", end_date: h(6), stop_reason: "胸痛缓解停用静脉硝酸酯" },
       ],
       diagnosticReports: [
-        { id: "rep-001-1", name: "床旁超声心动图", status: "preliminary", ordered_at: h(8) },
+        // Explicit synthetic study and issue events; order time is a separate event.
+        { id: "rep-001-1", name: "床旁超声心动图", status: "preliminary", ordered_at: h(8), study_time: h(7), resulted_at: h(6) },
       ],
       orders: [
         { id: "ord-001-1", title: "24小时动态心电图", status: "active", scheduled_time: "今日 10:00" },
@@ -90,7 +91,7 @@ export function getCardiologyWardFixture() {
         { id: "med-002-2", drug_name: "氯化钾缓释片", dosage: "1.0g", route: "po", frequency: "tid", change_type: "added", authored_on: h(6) },
       ],
       diagnosticReports: [
-        { id: "rep-002-1", name: "胸部正侧位片 (DR)", status: "preliminary", ordered_at: h(12) },
+        { id: "rep-002-1", name: "胸部正侧位片 (DR)", status: "preliminary", ordered_at: h(12), study_time: h(11), resulted_at: h(10) },
       ],
       orders: [
         { id: "ord-002-1", title: "特级护理及出入量严密记录", status: "active" },
@@ -223,6 +224,8 @@ export function getCardiologyMultiSourceFeeds() {
       modality: rep.name.includes("CT") ? "CT" : (rep.name.includes("超声") ? "US" : "XR"),
       study_name: rep.name,
       ordered_at: rep.ordered_at,
+      study_time: rep.study_time ?? null,
+      resulted_at: rep.resulted_at ?? null,
       status: rep.status,
       impression: `${rep.name}未见明显急性渗出或机械并发症。`,
     }));
@@ -261,6 +264,7 @@ export function getCardiologyMultiSourceFeeds() {
         route: "ivgtt",
         frequency: "q8h",
         change_type: "active",
+        status: "active",
         authored_on: h(144), // 6 days ago -> overdue alert!
       });
     }

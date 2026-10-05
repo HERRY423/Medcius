@@ -153,6 +153,8 @@ const pacsSample = [
     modality: "CT",
     study_name: "胸部高分辨CT平扫",
     report_status: "final",
+    ordered_at: "2026-08-25T08:00:00Z",
+    study_time: "2026-08-25T09:00:00Z",
     impression: "双肺间质性改变；右肺中叶条索影，较 2026-08-18 旧片吸收；双侧胸膜局限性增厚。",
   },
 ];
@@ -161,6 +163,16 @@ const pacsResult = HospitalDataAdapter.normalizePacsFeed(pacsSample);
 assert.equal(pacsResult.diagnostic_reports.length, 1);
 assert.equal(pacsResult.imaging_impressions.length, 1);
 assert.ok(pacsResult.imaging_impressions[0].impression_summary.includes("较 2026-08-18 旧片吸收"));
+const undatedPacs = HospitalDataAdapter.normalizePacsFeed([{
+  id: "pacs-undated",
+  modality: "CT",
+  study_name: "未标时间CT",
+  report_status: "final",
+  impression: "双肺间质性改变",
+}]);
+assert.equal(undatedPacs.imaging_impressions.length, 0);
+assert.equal(undatedPacs.diagnostic_reports[0].ordered_at, null);
+assert.equal(undatedPacs.time_gaps[0].gap_type, "IMAGING_TIME_UNKNOWN");
 
 console.log("✓ PACS normalization accurately extracted comparative imaging impression");
 
@@ -174,6 +186,7 @@ const hisSample = [
   {
     id: "ord-med-01",
     drug_name: "注射用头孢曲松钠",
+    status: "active",
     dosage: "2.0g",
     route: "ivgtt",
     frequency: "qd",
@@ -183,6 +196,7 @@ const hisSample = [
   {
     id: "ord-med-02",
     drug_name: "阿司匹林肠溶片",
+    status: "active",
     dosage: "100mg",
     route: "po",
     frequency: "qd",

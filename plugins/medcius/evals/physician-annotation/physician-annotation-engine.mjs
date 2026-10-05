@@ -3,23 +3,33 @@
 
 import { wilsonScore, mcnemarExact } from "../clinical-validation/run.mjs";
 import { canonicalJson, sha256Hex } from "../../servers/shared/crypto.mjs";
+import { inspectEvaluationKeys, resolveCallerEvidenceStatus } from "../evidence-status.mjs";
+
+const ABSTENTION_VALUES = new Set(["abstain", "unknown", "not_evaluated"]);
+
+function isAbstention(value) {
+  return typeof value !== "string" || !value.trim() || ABSTENTION_VALUES.has(value.trim().toLowerCase());
+}
 
 /**
  * Compute Cohen's Kappa between Physician A and Physician B across categorical ratings.
+ * Missing a rater side, or an empty comparison, is not agreement.
  */
 export function computeClinicianCohensKappa(raterA, raterB) {
+  if (!Array.isArray(raterA) || !Array.isArray(raterB)) return null;
   const n = raterA.length;
-  if (n === 0) return 1.0;
+  if (n === 0 || raterB.length === 0 || raterA.length !== raterB.length) return null;
+  if (raterA.some(isAbstention) || raterB.some(isAbstention)) return null;
 
   // Collect all unique categories
   const categories = Array.from(new Set([...raterA, ...raterB]));
   const k = categories.length;
-  if (k <= 1) return 1.0;
+  if (k <= 1) return null; // No category variation: expected agreement is one.
 
   // Build confusion matrix
-  const matrix = {};
+  const matrix = Object.create(null);
   for (const c1 of categories) {
-    matrix[c1] = {};
+    matrix[c1] = Object.create(null);
     for (const c2 of categories) {
       matrix[c1][c2] = 0;
     }
@@ -50,7 +60,7 @@ export function computeClinicianCohensKappa(raterA, raterB) {
     pe += (rowSum / n) * (colSum / n);
   }
 
-  if (pe === 1) return 1.0;
+  if (pe === 1) return null;
   return (po - pe) / (1 - pe);
 }
 
@@ -64,17 +74,24 @@ export function evaluatePhysicianAnnotation(cases, options = {}) {
   if (!Array.isArray(cases) || cases.length === 0) {
     throw new Error("EMPTY_ANNOTATION_DATASET: Cases array cannot be empty");
   }
+  if (cases.some((item) => !item || typeof item !== "object")) throw new Error("INVALID_ANNOTATION_RECORD");
+  const keyIntegrity = inspectEvaluationKeys(cases);
+  if (keyIntegrity.duplicate_keys) throw new Error("DUPLICATE_ANNOTATION_KEY");
 
   // 1. Resolve Final Gold Standard via Double-Blind + 3rd Adjudicator
   let unadjudicatedCount = 0;
   const resolved = cases.map((c) => {
-    const agreed = c.physician_a === c.physician_b;
+    const completeRatings = !isAbstention(c.physician_a) && !isAbstention(c.physician_b);
+    const agreed = completeRatings && c.physician_a === c.physician_b;
     let finalGold = null;
     let unadjudicated = false;
 
-    if (agreed) {
+    if (!completeRatings) {
+      unadjudicated = true;
+      unadjudicatedCount++;
+    } else if (agreed) {
       finalGold = c.physician_a;
-    } else if (c.adjudicator != null) {
+    } else if (!isAbstention(c.adjudicator)) {
       finalGold = c.adjudicator;
     } else {
       // Disagreement without 3rd adjudicator MUST NOT silently default to Physician A
@@ -83,7 +100,7 @@ export function evaluatePhysicianAnnotation(cases, options = {}) {
       unadjudicatedCount++;
     }
 
-    const aiMatched = finalGold != null && c.ai_extracted === finalGold;
+    const aiMatched = finalGold != null && !isAbstention(c.ai_extracted) && c.ai_extracted === finalGold;
     return {
       ...c,
       physicians_agreed: agreed,
@@ -102,43 +119,72 @@ export function evaluatePhysicianAnnotation(cases, options = {}) {
   // 3. Overall Concordance & Diagnostic Performance
   let tp = 0, fp = 0, fn = 0, tn = 0;
   let criticalEscapeCount = 0;
+  let criticalMisclassificationCount = 0;
   let fakeSpanCount = 0;
+  let missingEvidenceAnchors = 0;
+  let abstentionCount = 0;
+  let resolvedCount = 0;
+  let goldPositiveCount = 0;
+  let goldNegativeCount = 0;
+  let predictedPositiveCount = 0;
+  let predictedNegativeCount = 0;
+  let misclassificationCount = 0;
+
+  for (const c of cases) {
+    if (typeof c.span !== "string" || !c.span.trim()) missingEvidenceAnchors++;
+    else if (c.is_verbatim_span !== true) fakeSpanCount++;
+    if (isAbstention(c.ai_extracted)) abstentionCount++;
+  }
 
   for (const c of resolved) {
-    if (c.gold == null) continue; // Skip unadjudicated cases from valid score matrix
+    if (c.unadjudicated || c.gold == null) {
+      if (c.is_critical_point) criticalEscapeCount++;
+      continue;
+    }
 
-    const isGoldPositive = c.gold !== "clear" && c.gold !== "none";
-    const isAiPositive = c.ai_extracted !== "clear" && c.ai_extracted !== "none";
+    const isGoldPositive = c.gold !== "clear" && c.gold !== "none" && !isAbstention(c.gold);
+    const aiAbstains = isAbstention(c.ai_extracted);
+    const isAiPositive = !aiAbstains && c.ai_extracted !== "clear" && c.ai_extracted !== "none";
+    resolvedCount++;
+    if (isGoldPositive) goldPositiveCount++; else goldNegativeCount++;
+    if (isAiPositive) predictedPositiveCount++;
+    else if (!aiAbstains) predictedNegativeCount++;
 
-    if (isAiPositive && isGoldPositive) {
+    if (aiAbstains) {
+      if (isGoldPositive) {
+        fn++;
+        if (c.is_critical_point) criticalEscapeCount++;
+      }
+    } else if (isAiPositive && isGoldPositive) {
       if (c.ai_extracted === c.gold) {
         tp++;
       } else {
-        // Partial or mismatched extraction category
         fp++;
+        fn++;
+        misclassificationCount++;
+        if (c.is_critical_point) criticalMisclassificationCount++;
+        if (c.is_critical_point) criticalEscapeCount++;
       }
     } else if (isAiPositive && !isGoldPositive) {
       fp++;
     } else if (!isAiPositive && isGoldPositive) {
       fn++;
-      if (c.is_critical_point) {
-        criticalEscapeCount++;
-      }
+      if (c.is_critical_point) criticalEscapeCount++;
     } else {
       tn++;
     }
 
-    // Check span fidelity
-    if (c.span != null && !c.is_verbatim_span) {
-      fakeSpanCount++;
-    }
   }
 
-  const sensitivity = wilsonScore(tp, tp + fn);
-  const specificity = wilsonScore(tn, tn + fp);
-  const ppv = wilsonScore(tp, tp + fp);
-  const npv = wilsonScore(tn, tn + fn);
-  const mc = mcnemarExact(fp, fn);
+  // Exact positive category recovery is required; positive-to-positive errors
+  // count as both missed and spurious labels, but never as extra observations.
+  const sensitivity = wilsonScore(tp, goldPositiveCount);
+  const specificity = wilsonScore(tn, goldNegativeCount);
+  const ppv = wilsonScore(tp, predictedPositiveCount);
+  const npv = wilsonScore(tn, predictedNegativeCount);
+  const mc = misclassificationCount || abstentionCount || unadjudicatedCount
+    ? { stat_b: null, stat_c: null, p: null, reason: "INCOMPLETE_OR_MULTICATEGORY_PAIRS" }
+    : mcnemarExact(fp, fn);
 
   // 4. Stratification by clinical dimension
   const byDimension = {};
@@ -168,8 +214,11 @@ export function evaluatePhysicianAnnotation(cases, options = {}) {
     specificity_target_met: (specificity.point ?? 0) >= 0.90,
     zero_critical_escape_met: criticalEscapeCount === 0,
     zero_fabricated_spans_met: fakeSpanCount === 0,
-    inter_annotator_kappa_met: kappa >= 0.80,
+    inter_annotator_kappa_met: typeof kappa === "number" && kappa >= 0.80,
     all_disagreements_adjudicated: unadjudicatedCount === 0,
+    evidence_anchors_complete: missingEvidenceAnchors === 0,
+    record_keys_complete: keyIntegrity.complete,
+    no_abstentions: abstentionCount === 0,
   };
 
   const allPrimaryMet =
@@ -179,32 +228,42 @@ export function evaluatePhysicianAnnotation(cases, options = {}) {
     endpoints.zero_critical_escape_met &&
     endpoints.zero_fabricated_spans_met &&
     endpoints.inter_annotator_kappa_met &&
-    endpoints.all_disagreements_adjudicated;
+    endpoints.all_disagreements_adjudicated &&
+    endpoints.evidence_anchors_complete &&
+    endpoints.record_keys_complete &&
+    endpoints.no_abstentions;
 
   return {
     isDemo,
     metadata,
     total_cases: resolved.length,
+    key_integrity: keyIntegrity,
     unadjudicated_cases_count: unadjudicatedCount,
-    cohens_kappa: kappa.toFixed(3),
+    cohens_kappa: typeof kappa === "number" ? kappa.toFixed(3) : null,
     overall: {
       tp, fp, fn, tn,
+      scored_n: resolvedCount,
+      gold_positive_n: goldPositiveCount,
+      gold_negative_n: goldNegativeCount,
+      predicted_positive_n: predictedPositiveCount,
+      predicted_negative_n: predictedNegativeCount,
+      misclassifications: misclassificationCount,
       sensitivity,
       specificity,
       ppv,
       npv,
       mcnemar: mc,
       critical_escapes: criticalEscapeCount,
+      critical_misclassifications: criticalMisclassificationCount,
       fake_spans: fakeSpanCount,
+      missing_evidence_anchors: missingEvidenceAnchors,
+      abstentions: abstentionCount,
+      unadjudicated: unadjudicatedCount,
     },
     dimensionStats,
     endpoints,
     allPrimaryMet,
-    passClassification: {
-      engineering_pass: allPrimaryMet,
-      synthetic_validation_pass: allPrimaryMet,
-      clinical_evidence_pass: !isDemo && allPrimaryMet && metadata?.ethics_approval_number != null,
-    },
+    passClassification: resolveCallerEvidenceStatus({ isDemo, metadata, allPrimaryMet }),
     resolved,
   };
 }

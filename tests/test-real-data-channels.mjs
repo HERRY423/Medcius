@@ -126,7 +126,9 @@ const hl7Bridge = new ReadOnlyHospitalDataBridge({
   connectors: guardedHl7,
 });
 const hl7Snapshot = await hl7Bridge.readPatientSnapshot(context);
-assert.equal(hl7Snapshot.completeness, "complete_for_configured_connectors");
+assert.equal(hl7Snapshot.completeness, "partial_with_explicit_unknown_sources", "the malformed OBX fixture prevents claiming a complete source read");
+assert.equal(hl7Snapshot.source_availability.find(source => source.kind === "lis").status, "unknown");
+assert.equal(hl7Snapshot.source_availability.find(source => source.kind === "lis").reason_code, "SOURCE_PARSE_DEGRADED");
 assert.equal(hl7Snapshot.dataFeeds.patient.gender, "male");
 assert.equal(hl7Snapshot.dataFeeds.encounter.id, context.encounter_id);
 assert.equal(hl7Snapshot.dataFeeds.encounter.period_start, "2026-08-20T08:00:00");
@@ -136,7 +138,7 @@ assert.equal(hl7Critical.result_value, 2.4);
 assert.equal(hl7Snapshot.dataFeeds.his_orders[0].drug_name, "注射用头孢曲松钠（合成）");
 assert.equal(hl7Snapshot.dataFeeds.his_orders[0].dosage, "2g");
 assert.equal(hl7Snapshot.dataFeeds.his_orders[0].route, "静脉滴注");
-console.log("✓ P4 replay mapped ADT/ORU/RDE flows into a complete bridge snapshot");
+console.log("✓ P4 replay retained valid ADT/ORU/RDE records and explicitly marked the partial LIS source");
 
 // ----------------------------------------------------
 // Test 5: malformed HL7 fails closed; OBX degrade surfaces in parse_warnings
@@ -173,7 +175,7 @@ console.log("\n[Test 7] PHI exit guard tokenizes raw PID identifiers before enve
 const rawHl7 = hl7Connectors.map((connector) => withPhiExitGuard(connector, { salt: GUARD_SALT }));
 const rawEnvelope = await rawHl7[0].readPatient(context);
 const serialized = JSON.stringify(rawEnvelope.records);
-assert.ok(serialized.includes("[PSN:"), "pseudonym tokens must be present");
+assert.ok(serialized.includes("[PSN:") || serialized.includes("[ID:"), "free-text or structured pseudonym tokens must be present");
 assert.ok(!serialized.includes("13900001111"), "raw phone from PID-13 must be tokenized before release");
 const assertGuard = withPhiExitGuard(hl7Connectors[0], { salt: GUARD_SALT, mode: "assert" });
 await assert.rejects(() => assertGuard.readPatient(context), /PHI_EXIT_GUARD_RAW_PHI_BLOCKED/);

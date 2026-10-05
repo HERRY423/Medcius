@@ -44,36 +44,65 @@ export const GOVERNANCE_STAGES = {
   },
 };
 
+function knownStage(stageId) {
+  return Object.values(GOVERNANCE_STAGES).find((stage) => stage.id === stageId) || null;
+}
+
+export function resolveGovernanceStageId(initialStage) {
+  const isProduction = process.env.NODE_ENV === "production" || process.env.MEDCIUS_PROFILE === "production";
+  const envStage = process.env.MEDCIUS_GOVERNANCE_STAGE;
+
+  if (isProduction && envStage && (envStage === "certified_writeback" || envStage === "advisory_mode")) {
+    throw new Error(
+      `FATAL_PROD_GOVERNANCE_ERROR: Prohibited setting governance stage directly to [${envStage}] via environment variable in production. ` +
+      "Transitions to Level 3 (Advisory Mode) and Level 4 (Certified Writeback) must be verified through the cryptographically signed Evidence Registry.",
+    );
+  }
+  if (envStage && !knownStage(envStage)) {
+    throw new Error(`GOVERNANCE_STAGE_UNKNOWN: ${envStage}`);
+  }
+
+  const explicit = initialStage !== undefined;
+  let stageId;
+  let stageSource;
+  if (explicit) {
+    if (!knownStage(initialStage)) throw new Error(`GOVERNANCE_STAGE_UNKNOWN: ${initialStage}`);
+    stageId = initialStage;
+    stageSource = "constructor";
+  } else if (envStage) {
+    stageId = envStage;
+    stageSource = "environment";
+  } else if (isClinicalLandingEnabled() && isProduction) {
+    throw new Error("GOVERNANCE_STAGE_REQUIRED");
+  } else {
+    stageId = "retrospective_study";
+    stageSource = "default";
+  }
+
+  const resolved = knownStage(stageId);
+  if (isClinicalLandingEnabled() && resolved.level > HOSPITAL_MAX_GOVERNANCE_LEVEL) {
+    throw new Error(
+      `P0_GOVERNANCE_CAP: clinical landing cannot start at [${stageId}]. Maximum is silent_pilot (Level ${HOSPITAL_MAX_GOVERNANCE_LEVEL}).`,
+    );
+  }
+  const startupDegraded = Boolean(isClinicalLandingEnabled() && !isProduction && !envStage && !explicit);
+  return { stageId, stageSource, startupDegraded };
+}
+
 export class GovernanceStateManager {
-  constructor(initialStage = "retrospective_study") {
-    const isProduction = process.env.NODE_ENV === "production" || process.env.MEDCIUS_PROFILE === "production";
-    const envStage = process.env.MEDCIUS_GOVERNANCE_STAGE;
-
-    if (isProduction && envStage && (envStage === "certified_writeback" || envStage === "advisory_mode")) {
-      throw new Error(
-        `FATAL_PROD_GOVERNANCE_ERROR: Prohibited setting governance stage directly to [${envStage}] via environment variable in production. ` +
-        "Transitions to Level 3 (Advisory Mode) and Level 4 (Certified Writeback) must be verified through the cryptographically signed Evidence Registry.",
-      );
-    }
-
-    if (isClinicalLandingEnabled()) {
-      const landingStageId = envStage || initialStage;
-      const landingStage = Object.values(GOVERNANCE_STAGES).find((s) => s.id === landingStageId);
-      if (landingStage && landingStage.level > HOSPITAL_MAX_GOVERNANCE_LEVEL) {
-        throw new Error(
-          `P0_GOVERNANCE_CAP: clinical landing cannot start at [${landingStageId}]. Maximum is silent_pilot (Level ${HOSPITAL_MAX_GOVERNANCE_LEVEL}).`,
-        );
-      }
-    }
-
-    this.currentStageId = initialStage;
+  constructor(initialStage = undefined) {
+    const resolved = resolveGovernanceStageId(initialStage);
+    this.currentStageId = resolved.stageId;
+    this.stageSource = resolved.stageSource;
+    this.startupDegraded = resolved.startupDegraded;
     this.history = [
       {
         stage: this.currentStageId,
+        stage_source: this.stageSource,
         transitioned_at: new Date().toISOString(),
         actor: "system:init",
         reason: "Initial governance baseline registration",
-        evidence_hash: sha256Hex(canonicalJson({ initialStage })),
+        evidence_hash: sha256Hex(canonicalJson({ initialStage: this.currentStageId, stage_source: this.stageSource })),
       },
     ];
   }

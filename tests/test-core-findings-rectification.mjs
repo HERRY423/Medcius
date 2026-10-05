@@ -33,8 +33,8 @@ const verifiableItems = [
 // Case A: Fully supported narrative
 const validNarrative = `
 【日常查房记录】
-患者目前诉轻度胸闷 [^SYM-001]，否认发热 [^SYM-002]。
-生化检验示血肌酐 142 μmol/L [^LAB-001]。
+患者诉轻度胸闷 [^SYM-001]，否认发热 [^SYM-002]。
+血肌酐 142 μmol/L [^LAB-001]。
 `;
 
 const resA = PostHocClaimVerifier.verifyClaims({ narrativeText: validNarrative, verifiableItems });
@@ -406,11 +406,11 @@ const evolutionAki = PatientEvolutionEngine.analyzePatientEvolution({
 
 assert.equal(evolutionAki.patient.egfr, null, "Static eGFR must be blocked during acute creatinine instability/AKI");
 const akiAlert = evolutionAki.blocks.high_risk_followup.items.find((r) => r.tracking_id.includes("aki:"));
-assert.ok(akiAlert, "Must emit KDIGO AKI risk alert in high_risk_followup");
+assert.equal(akiAlert, undefined, "A calculation guard must not invent source-reported AKI or a response deadline");
 const akiGap = evolutionAki.blocks.data_gaps.find((g) => g.gap_type === "CREATININE_NON_STEADY_STATE");
 assert.ok(akiGap, "Must emit CREATININE_NON_STEADY_STATE data gap");
 
-console.log("✓ Test 10 KDIGO AKI creatinine surge correctly blocked eGFR and generated AKI risk alert");
+console.log("✓ Test 10 creatinine difference blocks eGFR without inventing a diagnosis or response deadline");
 
 // ----------------------------------------------------
 // 11. Test NEWS2 Early Warning Score Calculation & Integration
@@ -478,11 +478,11 @@ const evolutionNews = PatientEvolutionEngine.analyzePatientEvolution({
   rulePack: sandboxRulePack,
 });
 
-assert.ok(evolutionNews.blocks.what_changed.vitals_and_fluids.summary.includes("NEWS2早期预警评分"), "Vitals summary must include NEWS2 score");
+assert.equal(evolutionNews.blocks.what_changed.vitals_and_fluids.vitals.news2.total_score, null, "Missing consciousness must prevent a complete score");
 const newsReminder = evolutionNews.blocks.rule_reminders.find((r) => r.id.includes("RULE-NEWS2"));
-assert.ok(newsReminder, "NEWS2 alert must be emitted in ruleReminders when score indicates high clinical deterioration risk");
+assert.equal(newsReminder, undefined, "Unapproved NEWS2 alerts must stay outside the P0 summary");
 
-console.log("✓ Test 11 NEWS2 physiology calculation, single-red trigger, and vitals integration verified");
+console.log("✓ Test 11 NEWS2 candidate calculation, incomplete input, and P0 alert suppression verified");
 
 // ----------------------------------------------------
 // 12. Test DualTrackGatingEngine RulePack Potassium & Deprecation

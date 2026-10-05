@@ -2,7 +2,7 @@
 // Standards-compliant identity verification, tenant isolation, and role authorization.
 // Security Model: Default Closed (默认关闭) with strict JWT issuer, audience, alg, and tenant binding.
 
-import { createHmac } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 
 export const ROLES = {
   PHYSICIAN: "physician",
@@ -35,6 +35,8 @@ const ROLE_PERMISSIONS = {
     "audit:verify",
     "audit:export",
     "governance:view",
+    "research:read",
+    "research:replay",
   ]),
   [ROLES.ADMIN]: new Set([
     "round:summary",
@@ -46,6 +48,8 @@ const ROLE_PERMISSIONS = {
     "audit:verify",
     "audit:export",
     "workstation:signoff",
+    "research:read",
+    "research:replay",
   ]),
   [ROLES.SYSTEM]: new Set([
     "coding:resolve",
@@ -58,7 +62,8 @@ const ROLE_PERMISSIONS = {
   ]),
 };
 
-const ALLOWED_ALGS = new Set(["HS256", "RS256", "ES256"]);
+// Only claim the algorithm actually implemented by this verifier.
+const ALLOWED_ALGS = new Set(["HS256"]);
 const DEFAULT_ISSUER = "https://auth.medcius.hospital.internal";
 const DEFAULT_AUDIENCE = "https://api.medcius.hospital.internal";
 
@@ -137,6 +142,9 @@ export function verifyToken(token, options = {}) {
   } catch (err) {
     return { valid: false, error: `Invalid Base64 JSON in token: ${err.message}` };
   }
+  if (!header || typeof header !== "object" || Array.isArray(header) || !payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return { valid: false, error: "Invalid JWT claims object" };
+  }
 
   // 1. Verify Algorithm
   if (!header.alg || !ALLOWED_ALGS.has(header.alg)) {
@@ -145,7 +153,7 @@ export function verifyToken(token, options = {}) {
 
   // 2. Verify Expiration
   const nowSec = Math.floor(Date.now() / 1000);
-  if (payload.exp && payload.exp < nowSec) {
+  if (!Number.isFinite(payload.exp) || payload.exp <= nowSec) {
     return { valid: false, error: "Token expired", payload };
   }
   if (payload.nbf && payload.nbf > nowSec) {
@@ -154,12 +162,12 @@ export function verifyToken(token, options = {}) {
 
   // 3. Verify Issuer & Audience if specified
   const expectedIss = options.issuer || process.env.MEDCIUS_JWT_ISSUER || DEFAULT_ISSUER;
-  if (expectedIss && payload.iss && payload.iss !== expectedIss) {
+  if (expectedIss && payload.iss !== expectedIss) {
     return { valid: false, error: `Invalid issuer: expected ${expectedIss}, got ${payload.iss}`, payload };
   }
 
   const expectedAud = options.audience || process.env.MEDCIUS_JWT_AUDIENCE || DEFAULT_AUDIENCE;
-  if (expectedAud && payload.aud && payload.aud !== expectedAud) {
+  if (expectedAud && payload.aud !== expectedAud) {
     return { valid: false, error: `Invalid audience: expected ${expectedAud}, got ${payload.aud}`, payload };
   }
 
@@ -168,7 +176,7 @@ export function verifyToken(token, options = {}) {
   const expectedSig = base64UrlEncode(
     createHmac("sha256", secret).update(`${encHeader}.${encPayload}`).digest(),
   );
-  if (sig !== expectedSig) {
+  if (!/^[A-Za-z0-9_-]+$/.test(sig) || sig.length !== expectedSig.length || !timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSig))) {
     return { valid: false, error: "Invalid token signature", payload };
   }
 
@@ -194,10 +202,14 @@ export function extractAuthContext(req) {
     const verifyRes = verifyToken(token);
     if (verifyRes.valid) {
       const p = verifyRes.payload;
-      const tokenTenant = p.tenant_id || p.hospital_id || "default";
+      const tokenTenant = p.tenant_id || p.hospital_id;
+      const subject = p.sub || p.user_id;
+      if (typeof subject !== "string" || !subject.trim()) {
+        return { isAuthenticated: false, user: "anonymous", roles: [], tenantId: tokenTenant || "default", claims: {} };
+      }
 
       // Strict Tenant Binding check: if header and token disagree, reject!
-      if (tenantHeader && tenantHeader !== "default" && tokenTenant !== "default" && tenantHeader !== tokenTenant) {
+      if (typeof tokenTenant !== "string" || !tokenTenant.trim() || (tenantHeader && tenantHeader !== tokenTenant)) {
         return {
           isAuthenticated: false,
           user: "tenant_mismatch",
@@ -210,9 +222,9 @@ export function extractAuthContext(req) {
 
       return {
         isAuthenticated: true,
-        user: p.sub || p.user_id || p.name || "authenticated_user",
+        user: subject,
         roles: Array.isArray(p.roles) ? p.roles : (p.role ? [p.role] : []),
-        tenantId: tenantHeader || tokenTenant,
+        tenantId: tokenTenant,
         claims: p,
       };
     }

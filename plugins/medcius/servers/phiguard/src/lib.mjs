@@ -58,11 +58,17 @@ function maskValue(value, keepLast) {
  * earliest-start. Returns spans so callers can render or transform.
  */
 export function scanText(text) {
+  text = String(text ?? "");
+  // Token digests may contain long numeric runs. Do not reinterpret generated
+  // tokens as new phone/ID spans and corrupt them on a second boundary pass.
+  const protectedSpans = [...text.matchAll(/\[(?:ID:[A-Za-z0-9_-]+:(?:[a-f0-9]{32}|REDACTED)|PSN:(?:[a-f0-9]{8}|[a-f0-9]{32}|[a-f0-9]{64})|REDACTED:[A-Za-z0-9_]+)\]/g)]
+    .map((match) => ({ start: match.index, end: match.index + match[0].length }));
   const found = [];
   const push = (re, type, extra) => {
     re.lastIndex = 0;
     let m;
     while ((m = re.exec(text))) {
+      if (protectedSpans.some((span) => m.index >= span.start && m.index + m[0].length <= span.end)) continue;
       found.push({
         type,
         start: m.index,
@@ -101,19 +107,12 @@ export function scanText(text) {
   };
 }
 
-/** Raw-PHI presence test used by the audit server's guard (fast, no spans). */
+/** Raw-PHI presence test. Same findings as scanText, including labeled names and beds. */
 export function containsRawPhi(text) {
-  RE_ID18.lastIndex = 0;
-  RE_PHONE.lastIndex = 0;
-  RE_FIXED_PHONE.lastIndex = 0;
-  RE_EMAIL.lastIndex = 0;
-  RE_BANK_CARD.lastIndex = 0;
-  if (RE_ID18.test(text)) return { hit: true, type: "id_card" };
-  if (RE_PHONE.test(text)) return { hit: true, type: "phone_cn_mobile" };
-  if (RE_FIXED_PHONE.test(text)) return { hit: true, type: "phone_cn_fixed" };
-  if (RE_EMAIL.test(text)) return { hit: true, type: "email" };
-  if (RE_BANK_CARD.test(text)) return { hit: true, type: "bank_card" };
-  return { hit: false };
+  if (text == null || text === "") return { hit: false };
+  const scan = scanText(String(text));
+  if (!scan.total) return { hit: false };
+  return { hit: true, type: scan.findings[0].type };
 }
 
 /**
@@ -136,7 +135,7 @@ export function redactText(text, { mode = "mask", keepLast = 2 } = {}) {
 }
 
 /**
- * Stable pseudonymization: each identifier → [PSN:<hmac8>] keyed by salt and
+ * Stable pseudonymization: each identifier → [PSN:<hmac32>] keyed by salt and
  * type+value, so the same person/number maps to the same token within one salt
  * domain without revealing the original.
  */
@@ -146,7 +145,7 @@ export function pseudonymizeText(text, { salt }) {
   const { findings } = scanText(text);
   let out = text;
   for (const f of [...findings].sort((a, b) => b.start - a.start)) {
-    const token = `[PSN:${hmacHex(salt, `${f.type}|${f.value}`, 8)}]`;
+    const token = `[PSN:${hmacHex(salt, `${f.type}|${f.value}`, 32)}]`;
     out = out.slice(0, f.start) + token + out.slice(f.end);
   }
   return { text: out, pseudonymized: findings.length };

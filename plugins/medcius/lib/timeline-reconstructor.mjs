@@ -21,30 +21,24 @@ export function extractDualTimestamp(item = {}, { fallbackRecordTime = Date.now(
   }
 
   // 2. FHIR-style properties
-  if (!tEventMs) {
-    const rawEventTime = item.effectiveDateTime || item.effectiveInstant || item.occurredDateTime || item.sampled_at || item.collected_at;
+  if (tEventMs == null) {
+    const rawEventTime = item.event_time || item.effectiveDateTime || item.effectiveInstant || item.occurredDateTime || item.effective_time || item.sample_time || item.sampled_at || item.collected_at;
     if (rawEventTime) {
       tEventMs = new Date(rawEventTime).getTime();
     }
   }
 
-  if (!tRecordMs) {
-    const rawRecordTime = item.issued || item.recorded || item.auth_time || item.created_at || item.timestamp;
+  if (tRecordMs == null) {
+    const rawRecordTime = item.recorded_at || item.received_at || item.recorded || item.auth_time || item.created_at;
     if (rawRecordTime) {
       tRecordMs = new Date(rawRecordTime).getTime();
     }
   }
 
-  // 3. Fallbacks and cross-resolution
-  if (!tRecordMs) {
-    tRecordMs = tEventMs || fallbackRecordTime;
-  }
-
-  if (!tEventMs) {
-    // If event time is not explicitly noted, fall back to record time but mark uncertainty
-    tEventMs = tRecordMs;
-    uncertainty = true;
-  }
+  // Missing source times stay missing; neither fetch nor wall-clock time is evidence.
+  if (!Number.isFinite(tEventMs)) tEventMs = null;
+  if (!Number.isFinite(tRecordMs)) tRecordMs = null;
+  if (tEventMs == null || tRecordMs == null) uncertainty = true;
 
   return {
     t_event: tEventMs,
@@ -79,8 +73,10 @@ export class TimelineReconstructor {
 
     // Sort primarily by t_event (actual occurrence), then prioritize objective tests over subjective notes
     decorated.sort((a, b) => {
-      const diff = a.t_event - b.t_event;
-      if (diff !== 0) return diff;
+      const diff = (a.t_event ?? Infinity) - (b.t_event ?? Infinity);
+      if (Number.isFinite(diff) && diff !== 0) return diff;
+      if (a.t_event == null && b.t_event != null) return 1;
+      if (b.t_event == null && a.t_event != null) return -1;
 
       // Same event timestamp: observations & critical values before subjective notes
       const priorityOrder = {
@@ -103,10 +99,10 @@ export class TimelineReconstructor {
     return decorated.map((d) => ({
       ...d.item,
       _timeline_meta: {
-        t_event: new Date(d.t_event).toISOString(),
-        t_record: new Date(d.t_record).toISOString(),
+        t_event: d.t_event == null ? null : new Date(d.t_event).toISOString(),
+        t_record: d.t_record == null ? null : new Date(d.t_record).toISOString(),
         timestamp_uncertainty: d.uncertainty,
-        lag_minutes: Math.round((d.t_record - d.t_event) / (60 * 1000)),
+        lag_minutes: d.t_event == null || d.t_record == null ? null : Math.round((d.t_record - d.t_event) / (60 * 1000)),
       },
     }));
   }

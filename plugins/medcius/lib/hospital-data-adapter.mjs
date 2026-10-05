@@ -3,7 +3,8 @@
 // Outputs: Standardized FHIR R4 Bundles & Normalized Clinical Feeds for PatientEvolutionEngine
 
 import { loadSpecialtyRulePack } from "./specialty-rule-pack.mjs";
-import { sha256Hex } from "../servers/shared/crypto.mjs";
+import { canonicalJson, sha256Hex } from "../servers/shared/crypto.mjs";
+import { classifyRecordLifecycle, lifecycleFields, resolveRecordVersions } from "./record-lifecycle.mjs";
 
 const LEGACY_SANDBOX_RULE_PACK = loadSpecialtyRulePack("cardiology-inpatient-sandbox");
 
@@ -13,13 +14,16 @@ const LEGACY_SANDBOX_RULE_PACK = loadSpecialtyRulePack("cardiology-inpatient-san
  * Returns { comparableValue, compatible, error }
  */
 export function normalizeLabUnit(val, fromUnit = "", targetUnit = "", testCode = "") {
-  if (typeof val !== "number" || isNaN(val)) {
+  if (typeof val !== "number" || !Number.isFinite(val)) {
     return { comparableValue: null, compatible: false, error: "NON_NUMERIC_VALUE" };
   }
-  const cleanFrom = String(fromUnit || "").trim().toLowerCase().replace(/\s+/g, "");
-  const cleanTarget = String(targetUnit || "").trim().toLowerCase().replace(/\s+/g, "");
+  const cleanFrom = String(fromUnit || "").trim().toLowerCase().replace(/\s+/g, "").replace(/µ/g, "μ");
+  const cleanTarget = String(targetUnit || "").trim().toLowerCase().replace(/\s+/g, "").replace(/µ/g, "μ");
 
-  if (!cleanFrom || !cleanTarget || cleanFrom === cleanTarget) {
+  if (!cleanFrom || !cleanTarget) {
+    return { comparableValue: null, compatible: false, error: "UNIT_MISSING" };
+  }
+  if (cleanFrom === cleanTarget) {
     return { comparableValue: val, compatible: true };
   }
 
@@ -37,10 +41,11 @@ export function normalizeLabUnit(val, fromUnit = "", targetUnit = "", testCode =
 
   // Creatinine: umol/L <-> mg/dL (1 mg/dL = 88.4 umol/L)
   if (code === "scr" || code.includes("creatinine") || code.includes("肌酐")) {
-    if ((cleanFrom === "mg/dl" || cleanFrom === "mg/100ml") && (cleanTarget.includes("mol/l") || cleanTarget === "umol_l")) {
+    const micromolar = new Set(["umol/l", "μmol/l", "umol_l"]);
+    if ((cleanFrom === "mg/dl" || cleanFrom === "mg/100ml") && micromolar.has(cleanTarget)) {
       return { comparableValue: Math.round(val * 88.4 * 10) / 10, compatible: true };
     }
-    if ((cleanFrom.includes("mol/l") || cleanFrom === "umol_l") && (cleanTarget === "mg/dl" || cleanTarget === "mg/100ml")) {
+    if (micromolar.has(cleanFrom) && (cleanTarget === "mg/dl" || cleanTarget === "mg/100ml")) {
       return { comparableValue: Math.round((val / 88.4) * 100) / 100, compatible: true };
     }
   }
@@ -70,8 +75,8 @@ export function normalizeLabUnit(val, fromUnit = "", targetUnit = "", testCode =
     (cleanFrom === "umol/l" && cleanTarget === "μmol/l") ||
     (cleanFrom === "μmol/l" && cleanTarget === "umol/l") ||
     (cleanFrom === "umol_l" && cleanTarget === "umol/l") ||
-    (cleanFrom === "mmol/l" && cleanTarget === "meq/l") ||
-    (cleanFrom === "meq/l" && cleanTarget === "mmol/l")
+    (/^(?:k|na|cl|potassium|sodium|chloride|钾|钠|氯|血钾|血钠|血氯)$/.test(code)
+      && ((cleanFrom === "mmol/l" && cleanTarget === "meq/l") || (cleanFrom === "meq/l" && cleanTarget === "mmol/l")))
   ) {
     return { comparableValue: val, compatible: true };
   }
@@ -106,7 +111,8 @@ export const RESTRICTED_ANTIBIOTICS = LEGACY_SANDBOX_RULE_PACK.clinical_rules.re
  * @param {string} gender - '男' / '女' or 'male' / 'female'
  */
 export function calculateEgfrCkdEpi(scr, age, gender) {
-  if (!scr || !age) return null;
+  if (!Number.isFinite(Number(scr)) || Number(scr) <= 0 || !Number.isFinite(Number(age)) || Number(age) < 18
+    || !["男", "女", "male", "female", "M", "F"].includes(gender)) return null;
   const isFemale = gender === "女" || gender === "female" || gender === "F";
   // Convert μmol/L to mg/dL: mg/dL = μmol/L / 88.4
   const scrMgDl = scr / 88.4;
@@ -158,9 +164,11 @@ export function calculateNews2({
   const actualSbp = systolic_bp ?? sbp;
   const actualHr = heart_rate ?? hr;
   const actualTemp = temperature ?? t;
+  const numeric = (value) => value != null && value !== "" && typeof value !== "boolean"
+    && (typeof value !== "string" || value.trim() !== "") && Number.isFinite(Number(value));
 
   // 1. Respiration Rate (breaths/min)
-  if (actualRr != null && !isNaN(Number(actualRr))) {
+  if (numeric(actualRr)) {
     const rr = Number(actualRr);
     let s = 0;
     if (rr <= 8) s = 3;
@@ -176,7 +184,7 @@ export function calculateNews2({
   }
 
   // 2. Oxygen Saturation (SpO2, Scale 1)
-  if (spo2 != null && !isNaN(Number(spo2))) {
+  if (numeric(spo2) && Number(spo2) >= 0 && Number(spo2) <= 100) {
     const sp = Number(spo2);
     let s = 0;
     if (sp <= 91) s = 3;
@@ -191,19 +199,20 @@ export function calculateNews2({
   }
 
   // 3. Supplemental Oxygen (Air vs Oxygen)
-  if (supplemental_oxygen != null) {
-    const isO2 = typeof supplemental_oxygen === "boolean"
-      ? supplemental_oxygen
-      : /(?:吸氧|面罩|鼻导管|oxygen|o2|文丘里|高流量)/i.test(String(supplemental_oxygen));
+  const oxygen = typeof supplemental_oxygen === "boolean" ? supplemental_oxygen
+    : /^(?:true|yes|吸氧|面罩|鼻导管|oxygen|o2|文丘里|高流量)$/i.test(String(supplemental_oxygen).trim()) ? true
+      : /^(?:false|no|air|room air|空气|未吸氧)$/i.test(String(supplemental_oxygen).trim()) ? false : null;
+  if (oxygen != null) {
+    const isO2 = oxygen;
     const s = isO2 ? 2 : 0;
     subscores.supplemental_oxygen = s;
     totalScore += s;
   } else {
-    subscores.supplemental_oxygen = 0;
+    missing.push("supplemental_oxygen");
   }
 
   // 4. Systolic Blood Pressure (mmHg)
-  if (actualSbp != null && !isNaN(Number(actualSbp))) {
+  if (numeric(actualSbp)) {
     const bpVal = Number(actualSbp);
     let s = 0;
     if (bpVal <= 90) s = 3;
@@ -219,7 +228,7 @@ export function calculateNews2({
   }
 
   // 5. Heart Rate (beats/min)
-  if (actualHr != null && !isNaN(Number(actualHr))) {
+  if (numeric(actualHr)) {
     const hrVal = Number(actualHr);
     let s = 0;
     if (hrVal <= 40) s = 3;
@@ -236,19 +245,20 @@ export function calculateNews2({
   }
 
   // 6. Consciousness (AVPU)
-  if (consciousness != null) {
-    const cStr = String(consciousness).trim().toUpperCase();
-    const isAltered = /^(?:V|P|U|昏迷|嗜睡|微弱|昏睡|躁动|谵妄)/i.test(cStr) || cStr === "VOICE" || cStr === "PAIN" || cStr === "UNRESPONSIVE";
+  const cStr = String(consciousness ?? "").trim().toUpperCase();
+  const isAltered = /^(?:C|V|P|U|NEW CONFUSION|VOICE|PAIN|UNRESPONSIVE|ALTERED|昏迷|嗜睡|微弱|昏睡|躁动|新发谵妄|谵妄)$/.test(cStr);
+  const isAlert = /^(?:A|ALERT|清醒|神志清楚)$/.test(cStr);
+  if (isAltered || isAlert) {
     const s = isAltered ? 3 : 0;
     subscores.consciousness = s;
     totalScore += s;
     if (s === 3) singleRed = true;
   } else {
-    subscores.consciousness = 0;
+    missing.push("consciousness");
   }
 
   // 7. Temperature (°C)
-  if (actualTemp != null && !isNaN(Number(actualTemp))) {
+  if (numeric(actualTemp)) {
     const tVal = Number(actualTemp);
     let s = 0;
     if (tVal <= 35.0) s = 3;
@@ -263,6 +273,15 @@ export function calculateNews2({
     missing.push("temperature");
   }
 
+  if (missing.length) {
+    return {
+      score: null, total_score: null, risk_level: "资料不足", risk_code: "UNKNOWN", risk_category: "资料不足",
+      complete: false, single_trigger_red: null, has_single_red: null,
+      subscores, components: subscores, missing_parameters: missing,
+      clinical_alerts_enabled: false,
+    };
+  }
+
   // Risk Classification according to Royal College of Physicians NEWS2
   let riskLevel = "低风险 (Low)";
   let riskCode = "LOW";
@@ -275,6 +294,8 @@ export function calculateNews2({
   }
 
   return {
+    complete: true,
+    clinical_alerts_enabled: false,
     score: totalScore,
     total_score: totalScore,
     risk_level: riskLevel,
@@ -297,6 +318,10 @@ export class HospitalDataAdapter {
     if (!Array.isArray(nisFeed) || nisFeed.length === 0) {
       return { vitals_summary: null, fluid_balance: null, fhir_observations: [], discarded_outside_window_count: 0 };
     }
+    nisFeed = resolveRecordVersions(nisFeed, { sourceType: "nursing", now: now ?? new Date(), cutoffTime }).current_records
+      .filter((record) => !["cancelled", "entered_in_error"].includes(classifyRecordLifecycle(record, { sourceType: "nursing", now: now ?? new Date() }).result_status))
+      .map((record) => ({ ...record, timestamp: record.event_time || record.timing?.t_event || record.timestamp || null }));
+    if (!nisFeed.length) return { vitals_summary: null, fluid_balance: null, fhir_observations: [], discarded_outside_window_count: 0 };
 
     const cutoffMs = cutoffTime != null ? (typeof cutoffTime === "number" ? cutoffTime : new Date(cutoffTime).getTime()) : null;
     const nowMs = now != null ? (typeof now === "number" ? now : new Date(now).getTime()) : null;
@@ -308,15 +333,16 @@ export class HospitalDataAdapter {
     let spo2Min = Infinity;
     let hrSum = 0;
     let hrCount = 0;
-    let rrMax = -Infinity;
-    let hasSupplementalO2 = null;
-    let hasAlteredConsciousness = false;
+    let latestVitalsRecord = null;
+    let latestVitalsTime = -Infinity;
 
     let intakeTotal = 0;
     let outputTotal = 0;
     let urineTotal = 0;
     let drainTotal = 0;
     let stoolCount = 0;
+    const recorded = { intake: false, output: false, urine: false, drain: false, stool: false };
+    const isRecordedNumber = (value) => value != null && typeof value !== "boolean" && String(value).trim() !== "" && Number.isFinite(Number(value));
     const drainDetails = [];
     const fhirObservations = [];
     let discardedCount = 0;
@@ -331,8 +357,17 @@ export class HospitalDataAdapter {
         }
       }
 
+      // Score one source measurement only. Window extrema and averages belong
+      // to the trend display and must not be combined into a fictitious NEWS2.
+      const measuredAt = record.timestamp ? new Date(record.timestamp).getTime() : NaN;
+      const hasVitals = ["temperature", "systolic_bp", "heart_rate", "spo2", "respiratory_rate", "rr", "consciousness", "avpu"].some((key) => record[key] != null);
+      if (hasVitals && Number.isFinite(measuredAt) && measuredAt > latestVitalsTime && (nowMs == null || measuredAt <= nowMs)) {
+        latestVitalsRecord = record;
+        latestVitalsTime = measuredAt;
+      }
+
       // Temperature (°C)
-      if (record.temperature != null) {
+      if (isRecordedNumber(record.temperature)) {
         const t = Number(record.temperature);
         if (t > tMax) tMax = t;
         if (t < tMin) tMin = t;
@@ -347,7 +382,7 @@ export class HospitalDataAdapter {
       }
 
       // Blood Pressure (mmHg) - Track authentic paired readings from the same measurement event
-      if (record.systolic_bp != null && record.diastolic_bp != null) {
+      if (isRecordedNumber(record.systolic_bp) && isRecordedNumber(record.diastolic_bp)) {
         const s = Number(record.systolic_bp);
         const d = Number(record.diastolic_bp);
         if (!Number.isNaN(s) && !Number.isNaN(d)) {
@@ -363,58 +398,45 @@ export class HospitalDataAdapter {
       }
 
       // Heart Rate / Pulse (bpm)
-      if (record.heart_rate != null) {
+      if (isRecordedNumber(record.heart_rate)) {
         hrSum += Number(record.heart_rate);
         hrCount++;
       }
 
       // SpO2 (%)
-      if (record.spo2 != null) {
+      if (isRecordedNumber(record.spo2)) {
         const sp = Number(record.spo2);
         if (sp < spo2Min) spo2Min = sp;
       }
 
-      // Respiratory Rate (breaths/min)
-      if (record.respiratory_rate != null || record.rr != null) {
-        const rr = Number(record.respiratory_rate ?? record.rr);
-        if (!isNaN(rr) && rr > rrMax) rrMax = rr;
-      }
-
-      // Supplemental Oxygen
-      if (record.supplemental_oxygen != null || record.oxygen != null || record.o2 != null) {
-        hasSupplementalO2 = record.supplemental_oxygen ?? record.oxygen ?? record.o2;
-      }
-
-      // Consciousness / AVPU
-      if (record.consciousness != null || record.avpu != null) {
-        const cVal = String(record.consciousness ?? record.avpu);
-        if (/^(?:V|P|U|昏迷|嗜睡|微弱|昏睡|躁动|谵妄)/i.test(cVal)) {
-          hasAlteredConsciousness = true;
-        }
-      }
-
       // Fluid Intake (ml) - Mutually exclusive accumulation to prevent double counting
-      const hasOral = record.oral_intake_ml != null && !Number.isNaN(Number(record.oral_intake_ml));
-      const hasIv = record.iv_intake_ml != null && !Number.isNaN(Number(record.iv_intake_ml));
-      const hasTotalIntake = record.intake_ml != null && !Number.isNaN(Number(record.intake_ml));
+      const hasOral = isRecordedNumber(record.oral_intake_ml);
+      const hasIv = isRecordedNumber(record.iv_intake_ml);
+      const hasTotalIntake = isRecordedNumber(record.intake_ml);
 
       if (hasOral || hasIv) {
+        recorded.intake = true;
         intakeTotal += (hasOral ? Number(record.oral_intake_ml) : 0) + (hasIv ? Number(record.iv_intake_ml) : 0);
       } else if (hasTotalIntake) {
+        recorded.intake = true;
         intakeTotal += Number(record.intake_ml);
       }
 
       // Fluid Output (ml) - Prevent double counting of sub-items and total output
-      const hasUrine = record.urine_output_ml != null && !Number.isNaN(Number(record.urine_output_ml));
-      const hasDrain = record.drain_output_ml != null && !Number.isNaN(Number(record.drain_output_ml));
-      const hasTotalOutput = record.output_ml != null && !Number.isNaN(Number(record.output_ml));
+      const hasUrine = isRecordedNumber(record.urine_output_ml);
+      const hasDrain = isRecordedNumber(record.drain_output_ml);
+      const hasTotalOutput = isRecordedNumber(record.output_ml);
 
       if (hasUrine) {
+        recorded.output = true;
+        recorded.urine = true;
         const u = Number(record.urine_output_ml);
         outputTotal += u;
         urineTotal += u;
       }
       if (hasDrain) {
+        recorded.output = true;
+        recorded.drain = true;
         const dr = Number(record.drain_output_ml);
         outputTotal += dr;
         drainTotal += dr;
@@ -423,22 +445,44 @@ export class HospitalDataAdapter {
         }
       }
       if (!hasUrine && !hasDrain && hasTotalOutput) {
+        recorded.output = true;
         outputTotal += Number(record.output_ml);
       }
-      if (record.stool_count != null) {
+      if (isRecordedNumber(record.stool_count)) {
+        recorded.stool = true;
         stoolCount += Number(record.stool_count);
       }
     }
 
-    const news2 = calculateNews2({
-      temperature: tMax !== -Infinity ? tMax : null,
-      systolic_bp: peakBpReading?.s ?? nadirBpReading?.s ?? null,
-      heart_rate: hrCount > 0 ? Math.round(hrSum / hrCount) : null,
-      spo2: spo2Min !== Infinity ? spo2Min : null,
-      respiratory_rate: rrMax !== -Infinity ? rrMax : null,
-      supplemental_oxygen: hasSupplementalO2,
-      consciousness: hasAlteredConsciousness ? "altered" : "alert",
-    });
+    const allDiscarded = cutoffMs != null && nisFeed.length > 0 && discardedCount === nisFeed.length;
+    if (allDiscarded) {
+      return {
+        vitals_summary: null,
+        fluid_balance: null,
+        fhir_observations: [],
+        discarded_outside_window_count: discardedCount,
+        data_gaps: [{
+          gap_type: "NIS_WINDOW_EMPTY",
+          severity: "MEDIUM",
+          title: "窗口内无护理记录",
+          summary: "护理记录缺少时间，或全部落在当前窗口之外，未生成当前生命体征摘要。",
+          source_type: "NursingRecord",
+          source_id: null,
+        }],
+      };
+    }
+
+    const news2 = {
+      ...calculateNews2({
+        ...(latestVitalsRecord || {}),
+        respiratory_rate: latestVitalsRecord?.respiratory_rate ?? latestVitalsRecord?.rr,
+        supplemental_oxygen: latestVitalsRecord?.supplemental_oxygen ?? latestVitalsRecord?.oxygen ?? latestVitalsRecord?.o2,
+        consciousness: latestVitalsRecord?.consciousness ?? latestVitalsRecord?.avpu,
+      }),
+      source_id: latestVitalsRecord?.id || null,
+      timestamp: latestVitalsRecord?.timestamp || null,
+      calculation_basis: "single_source_record",
+    };
 
     const vitalsSummary = {
       t_max: tMax === -Infinity ? null : tMax,
@@ -450,10 +494,10 @@ export class HospitalDataAdapter {
       news2,
     };
 
-    const netBalance = intakeTotal - outputTotal;
+    const netBalance = recorded.intake && recorded.output ? intakeTotal - outputTotal : null;
     const fluidThresholds = rulePack?.clinical_rules?.ward_thresholds?.fluid_balance_net_ml;
-    let fluidStatus = "已记录（未配置专科判断阈值）";
-    if (fluidThresholds) {
+    let fluidStatus = netBalance == null ? "出入量资料不完整，无法计算净平衡" : "已记录（未配置专科判断阈值）";
+    if (fluidThresholds && netBalance != null) {
       if (netBalance > fluidThresholds.high_attention_above) {
         fluidStatus = `触发规则包净正平衡关注边界 (> ${fluidThresholds.high_attention_above} ml)`;
       } else if (netBalance < fluidThresholds.low_attention_below) {
@@ -463,13 +507,14 @@ export class HospitalDataAdapter {
       }
     }
     const fluidBalance = {
-      intake_total_ml: intakeTotal,
-      output_total_ml: outputTotal,
+      intake_total_ml: recorded.intake ? intakeTotal : null,
+      output_total_ml: recorded.output ? outputTotal : null,
       net_balance_ml: netBalance,
-      net_balance_label: `${netBalance >= 0 ? "+" : ""}${netBalance} ml`,
-      urine_24h_ml: urineTotal,
-      drain_24h_ml: drainTotal,
-      stool_24h_count: stoolCount,
+      net_balance_label: netBalance == null ? "资料不足" : `${netBalance >= 0 ? "+" : ""}${netBalance} ml`,
+      urine_24h_ml: recorded.urine ? urineTotal : null,
+      drain_24h_ml: recorded.drain ? drainTotal : null,
+      stool_24h_count: recorded.stool ? stoolCount : null,
+      recorded_components: recorded,
       drain_details: drainDetails,
       status: fluidStatus,
       rule_pack_id: rulePack?.pack_id || null,
@@ -483,7 +528,7 @@ export class HospitalDataAdapter {
 
     return {
       vitals_summary: vitalsSummary,
-      fluid_balance: fluidBalance,
+      fluid_balance: Object.values(recorded).some(Boolean) ? fluidBalance : null,
       fhir_observations: fhirObservations,
       discarded_outside_window_count: discardedCount,
     };
@@ -500,6 +545,7 @@ export class HospitalDataAdapter {
     if (!Array.isArray(lisFeed)) return { observations: [], critical_values: [], data_gaps: [] };
 
     const observations = [];
+    const historyRecords = [];
     const criticalValues = [];
     const dataGaps = [];
 
@@ -508,13 +554,23 @@ export class HospitalDataAdapter {
 
     for (const item of lisFeed) {
       const codeKey = (item.code || item.test_code || "").toLowerCase();
-      const val = Number(item.value ?? item.result_value);
+      const rawValue = item.value ?? item.result_value;
+      const val = rawValue == null || typeof rawValue === "boolean" || String(rawValue).trim() === "" ? NaN : Number(rawValue);
       const unit = item.unit || "";
       const reportName = item.report_name || item.test_name || "检验报告";
 
       // F-04: Do NOT fabricate timestamp with new Date(). Respect actual timestamp or mark missing.
       const rawSampleTime = item.effective_time || item.sample_time || null;
       const sampleTime = rawSampleTime;
+      const historyRecord = {
+        ...item, ...lifecycleFields(item),
+        id: item.id || `obs-lis-${sha256Hex(`${codeKey}:${val}:${unit}:${sampleTime || 'no-time'}`).slice(0, 12)}`,
+        code: codeKey, value: Number.isFinite(val) ? val : null, unit,
+        name: item.name || item.test_name || item.code || null,
+        effective_time: sampleTime, status: item.status || item.result_status || null,
+        resulted_at: item.resulted_at || item.issued || null,
+      };
+      historyRecords.push(historyRecord);
 
       // Check time window if cutoffTime is provided
       if (cutoffMs != null) {
@@ -573,32 +629,42 @@ export class HospitalDataAdapter {
       const detId = item.id || `obs-lis-${sha256Hex(`${codeKey}:${val}:${unit}:${sampleTime || 'no-time'}`).slice(0, 12)}`;
 
       const obsObj = {
+        ...lifecycleFields(item),
         id: detId,
         name: item.name || item.test_name || thresh?.name || item.code,
         code: codeKey || item.code,
-        value: isNaN(val) ? item.value : val,
+        value: Number.isFinite(val) ? val : null,
         unit: unit,
         effective_time: sampleTime,
         timestamp_status: sampleTime ? "VALID" : "MISSING",
         report_name: reportName,
         referenceRange: item.referenceRange || (item.reference_range_text ? [{ text: item.reference_range_text }] : []),
+        ref_low: item.ref_low ?? null,
+        ref_high: item.ref_high ?? null,
+        ref_text: item.ref_text ?? null,
+        reference_range: item.reference_range ?? null,
+        reference_range_text: item.reference_range_text ?? null,
         is_critical: isCritical,
         critical_reason: criticalReason,
         span: item.span || null,
-        status: item.status || item.result_status || "final",
+        status: item.status || item.result_status || null,
         priority: item.priority || item.urgency || null,
         order_id: item.order_id || item.service_request_id || null,
         collected_at: item.collected_at || item.specimen_received_at || item.sample_time || null,
-        resulted_at: item.resulted_at || item.issued || item.effective_time || item.sample_time || null,
+        resulted_at: item.resulted_at || item.issued || null,
         acknowledged_at: item.acknowledged_at || null,
         _source: item._source || null,
       };
 
       observations.push(obsObj);
+      Object.assign(historyRecord, obsObj);
 
-      if (isCritical) {
+      const lifecycle = classifyRecordLifecycle(obsObj, { sourceType: "observation", now: now ?? new Date(), cutoffTime });
+      if (isCritical && !["cancelled", "entered_in_error"].includes(lifecycle.result_status)) {
         criticalValues.push({
           observation_id: obsObj.id,
+          version_id: lifecycle.version_id,
+          result_status: lifecycle.result_status,
           name: obsObj.name,
           value: obsObj.value,
           unit: obsObj.unit,
@@ -612,31 +678,44 @@ export class HospitalDataAdapter {
       }
     }
 
-    return { observations, critical_values: criticalValues, data_gaps: dataGaps };
+    const current = resolveRecordVersions(historyRecords, { sourceType: "observation", now: now ?? new Date(), cutoffTime }).current_records;
+    const currentCritical = criticalValues.filter((value) => current.some((record) => record.id === value.observation_id
+      && (record.version_id ?? record.meta?.versionId ?? null) === value.version_id
+      && !["cancelled", "entered_in_error"].includes(classifyRecordLifecycle(record, { now: now ?? new Date() }).result_status)));
+    return { observations, history_records: historyRecords, critical_values: currentCritical, data_gaps: dataGaps };
   }
 
   /**
    * 3. Normalize PACS (Imaging System) Reports and Extract Comparative Impressions
    */
-  static normalizePacsFeed(pacsFeed = []) {
+  static normalizePacsFeed(pacsFeed = [], { cutoffTime = null, now = null } = {}) {
     if (!Array.isArray(pacsFeed)) return { diagnostic_reports: [], imaging_impressions: [] };
 
     const diagnosticReports = [];
     const imagingImpressions = [];
+    const timeGaps = [];
 
     for (const item of pacsFeed) {
       const modality = item.modality || "影像检查";
       const name = item.name || item.study_name || `${modality} 检查`;
-      const status = item.status || (item.report_status === "final" ? "final" : "preliminary");
-      const orderedAt = item.ordered_at || item.study_time || new Date().toISOString();
+      const status = item.status || item.report_status || null;
+      const orderedRaw = item.ordered_at || null;
+      const orderedKnown = orderedRaw != null && orderedRaw !== "" && Number.isFinite(new Date(orderedRaw).getTime());
+      const orderedAt = orderedKnown ? orderedRaw : null;
+      const studyRaw = item.study_time || item.effectiveDateTime || item.effective_time || item.event_time || null;
+      const studyKnown = studyRaw != null && studyRaw !== "" && Number.isFinite(new Date(studyRaw).getTime());
+      const studyAt = studyKnown ? studyRaw : null;
       const impression = item.impression || item.impression_text || item.findings || "";
 
       diagnosticReports.push({
+        ...lifecycleFields(item),
         id: item.id || `pacs-rep-${sha256Hex(`${modality}:${name}:${orderedAt}:${impression}`).slice(0, 12)}`,
         name: name,
         modality: modality,
         status: status,
         ordered_at: orderedAt,
+        study_time: studyAt,
+        event_time: item.event_time || studyAt,
         impression: impression,
         code: item.code || item.study_code || null,
         priority: item.priority || item.urgency || null,
@@ -647,17 +726,37 @@ export class HospitalDataAdapter {
         _source: item._source || null,
       });
 
-      if (impression) {
+    }
+
+    const currentReports = resolveRecordVersions(diagnosticReports, { sourceType: "diagnostic_report", now: now ?? new Date(), cutoffTime }).current_records;
+    for (const report of currentReports) {
+      const lifecycle = classifyRecordLifecycle(report, { sourceType: "diagnostic_report", now: now ?? new Date(), cutoffTime });
+      if (["unknown", "invalid"].includes(lifecycle.event_time_status)) {
+        timeGaps.push({
+          gap_type: "IMAGING_TIME_UNKNOWN",
+          severity: "MEDIUM",
+          title: "影像时间未知",
+          summary: `${report.name} 缺少可确认的检查时间，开单时间不能代替检查时间，印象未纳入当前窗口。`,
+          source_type: "DiagnosticReport",
+          source_id: report.id || null,
+        });
+      } else if (report.impression && ["final", "preliminary", "revised"].includes(lifecycle.result_status)
+        && lifecycle.event_time_status === "in_window") {
         imagingImpressions.push({
-          report_name: name,
-          status: status,
-          ordered_at: orderedAt,
-          impression_summary: impression.trim(),
+          id: report.id,
+          ordered_at: report.ordered_at,
+          study_time: report.study_time,
+          event_time: lifecycle.event_time,
+          report_name: report.name,
+          status: report.status,
+          version_id: report.version_id ?? report.meta?.versionId ?? null,
+          impression_summary: report.impression.trim(),
         });
       }
     }
 
-    return { diagnostic_reports: diagnosticReports, imaging_impressions: imagingImpressions };
+    return { diagnostic_reports: diagnosticReports, history_records: diagnosticReports,
+      current_diagnostic_reports: currentReports, imaging_impressions: imagingImpressions, time_gaps: timeGaps };
   }
 
   /**
@@ -669,20 +768,62 @@ export class HospitalDataAdapter {
     const medications = [];
     const orders = [];
     const antibioticAlerts = [];
+    const timeGaps = [];
     const antibioticRules = rulePack?.clinical_rules?.restricted_antibiotics || [];
+    const nowMs = new Date(now).getTime();
+    const isMedication = item => item.is_medication || item.drug_name;
+    const selectedMedications = new Set(resolveRecordVersions(ordersFeed.filter(isMedication), { sourceType: "medication", now }).current_records);
+    const selectedOrders = new Set(resolveRecordVersions(ordersFeed.filter(item => !isMedication(item)), { sourceType: "order", now }).current_records);
+    const currentMedications = [];
+    const currentOrders = [];
 
     for (const item of ordersFeed) {
       if (item.is_medication || item.drug_name) {
         const drugName = item.drug_name || item.name;
-        const authoredOn = item.authored_on || item.start_time || new Date().toISOString();
+        const authoredRaw = item.authored_on || item.start_time || null;
+        const authoredMs = authoredRaw == null ? NaN : new Date(authoredRaw).getTime();
+        const authoredFuture = Number.isFinite(authoredMs) && authoredMs > nowMs;
+        const authoredKnown = Number.isFinite(authoredMs) && !authoredFuture;
+        const activeStatus = String(item.status ?? item.result_status ?? "").trim().toLowerCase() === "active";
+        const endTime = item.end_date ?? item.stopped_at ?? null;
+        const endMs = endTime == null || endTime === "" ? null : new Date(endTime).getTime();
+        const isCurrentActive = selectedMedications.has(item) && activeStatus && (endMs == null || Number.isFinite(endMs) && endMs > nowMs);
+        if (!authoredKnown) {
+          timeGaps.push({
+            gap_type: authoredFuture ? "ORDER_TIME_FUTURE" : "ORDER_TIME_UNKNOWN",
+            severity: "MEDIUM",
+            title: "医嘱时间未知",
+            summary: `${drugName || "医嘱"} 的开立时间不可用，未推算抗菌药物使用时长。`,
+            source_type: "MedicationRequest",
+            source_id: item.id || null,
+          });
+          medications.push({
+            ...lifecycleFields(item),
+            id: item.id || `med-his-undated-${sha256Hex(`${drugName || ""}:${item.dosage || ""}`).slice(0, 12)}`,
+            drug_name: drugName,
+            dosage: item.dosage || "",
+            route: item.route || null,
+            frequency: item.frequency || null,
+            change_type: item.change_type || null,
+            status: item.status || null,
+            previous_dosage: item.previous_dosage,
+            authored_on: authoredRaw,
+            stop_reason: item.stop_reason,
+            antibiotic_info: null,
+            _source: item._source || null,
+          });
+          if (isCurrentActive) currentMedications.push(medications.at(-1));
+          continue;
+        }
+        const authoredOn = authoredRaw;
         const startTimestamp = new Date(authoredOn).getTime();
-        const durationDays = Math.max(1, Math.ceil((now - startTimestamp) / (24 * 3600000)));
+        const durationDays = Math.max(1, Math.ceil((nowMs - startTimestamp) / (24 * 3600000)));
 
         // Check if restricted/special antibiotic
-        const matchAnti = antibioticRules.find((a) => drugName.includes(a.name));
+        const matchAnti = antibioticRules.find((a) => String(drugName || "").includes(a.name));
         let antiInfo = null;
 
-        if (matchAnti) {
+        if (matchAnti && isCurrentActive) {
           const reviewAfterDays = matchAnti.review_after_days;
           const isOverdue = Number.isFinite(reviewAfterDays) ? durationDays >= reviewAfterDays : null;
           antiInfo = {
@@ -690,35 +831,40 @@ export class HospitalDataAdapter {
             class: matchAnti.class,
             level: matchAnti.level,
             duration_days: durationDays,
+            duration_basis: "elapsed_since_order_authored_not_administration",
             review_after_days: reviewAfterDays ?? null,
             is_overdue: isOverdue,
-            alert_message: `【${matchAnti.level}】${drugName}已使用第 ${durationDays} 天。${isOverdue === true ? "已达到院内规则包配置的复核时间点，需由临床团队复核。" : "尚未达到规则包复核时间点。"}`,
+            alert_message: `【${matchAnti.level}】${drugName}的来源医嘱仍标记有效，距开立第 ${durationDays} 天，实际给药天数未确认。${isOverdue === true ? "已达到院内规则包配置的复核时间点，需由临床团队复核。" : isOverdue === false ? "尚未达到规则包复核时间点。" : "规则包复核时间点未提供。"}`,
           };
           antibioticAlerts.push(antiInfo);
         }
 
         medications.push({
-          id: item.id || `med-his-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          ...lifecycleFields(item),
+          id: item.id || `med-his-${sha256Hex(canonicalJson(item)).slice(0, 16)}`,
           drug_name: drugName,
           dosage: item.dosage || "",
-          route: item.route || "po",
-          frequency: item.frequency || "qd",
-          change_type: item.change_type || "active",
+          route: item.route || null,
+          frequency: item.frequency || null,
+          change_type: item.change_type || null,
+          status: item.status || null,
           previous_dosage: item.previous_dosage,
           authored_on: authoredOn,
           stop_reason: item.stop_reason,
           antibiotic_info: antiInfo,
           _source: item._source || null,
         });
+        if (isCurrentActive) currentMedications.push(medications.at(-1));
       } else {
         orders.push({
-          id: item.id || `ord-his-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          ...lifecycleFields(item),
+          id: item.id || `ord-his-${sha256Hex(canonicalJson(item)).slice(0, 16)}`,
           title: item.title || item.name,
           order_type: item.order_type || "general",
           department: item.department,
           purpose: item.purpose,
-          status: item.status || "active",
-          scheduled_time: item.scheduled_time || "今日待执行",
+          status: item.status || null,
+          scheduled_time: item.scheduled_time || null,
           code: item.code || item.order_code || null,
           priority: item.priority || item.urgency || item.order_priority || null,
           authored_on: item.authored_on || item.ordered_at || null,
@@ -727,10 +873,12 @@ export class HospitalDataAdapter {
           acknowledged_at: item.acknowledged_at || null,
           _source: item._source || null,
         });
+        if (selectedOrders.has(item)) currentOrders.push(orders.at(-1));
       }
     }
 
-    return { medications, orders, antibiotic_alerts: antibioticAlerts };
+    return { medications, orders, history_records: [...medications, ...orders], current_medications: currentMedications,
+      current_orders: currentOrders, antibiotic_alerts: antibioticAlerts, time_gaps: timeGaps };
   }
 
   /**
@@ -750,6 +898,9 @@ export class HospitalDataAdapter {
     rulePack = null,
   } = {}) {
     const alignments = [];
+    const statusLabel = (record, sourceType = "observation") => ({ final: "正式结果", preliminary: "初步结果", revised: "修订结果", unknown: "来源状态未知" })[
+      classifyRecordLifecycle(record, { sourceType }).result_status] || "来源阶段待核对";
+    const labText = (record, label = record.name || record.code) => `${label}: ${record.value ?? "数值未知"} ${record.unit || "单位未提供"}（${statusLabel(record)}）`;
 
     // Helper: find observations by keyword
     const findObs = (kw) => {
@@ -770,8 +921,7 @@ export class HospitalDataAdapter {
     };
 
     // --- Domain 1: 液体平衡 - 肾功能 - 血压 - 利尿对齐 (Fluid / Renal / Hemodynamics) ---
-    const scrObs = findObs("肌酐") || findObs("scr") || findObs("creatinine");
-    const kObs = findObs("钾") || findObs("potassium");
+    const scrObs = [...new Set([...findObs("肌酐"), ...findObs("scr"), ...findObs("creatinine")])];
     const diuretics = medications.filter((m) => {
       const d = String(m.drug_name || m.medication || "");
       return /呋塞米|托拉塞米|螺内酯|氢氯噻嗪|布美他尼|重组人脑利钠肽|新活素/.test(d);
@@ -789,7 +939,7 @@ export class HospitalDataAdapter {
     if (hasFluid || hasScr || hasDiuretic || hasVaso) {
       const nisParts = [];
       if (fluidBalance) {
-        nisParts.push(`24h入量 ${fluidBalance.intake_total_ml}ml, 出量 ${fluidBalance.output_total_ml}ml (尿量 ${fluidBalance.urine_24h_ml}ml), 净平衡 ${fluidBalance.net_balance_label}`);
+        nisParts.push(`24h入量 ${fluidBalance.intake_total_ml ?? "未提供"}ml, 出量 ${fluidBalance.output_total_ml ?? "未提供"}ml (尿量 ${fluidBalance.urine_24h_ml ?? "未提供"}ml), 净平衡 ${fluidBalance.net_balance_label}`);
       }
       if (vitalsSummary?.bp_max) {
         nisParts.push(`血压极值: ${vitalsSummary.bp_max} ~ ${vitalsSummary.bp_min || ""}`);
@@ -798,7 +948,7 @@ export class HospitalDataAdapter {
       const lisParts = [];
       if (scrObs.length > 0) {
         const latestScr = scrObs[0];
-        lisParts.push(`血肌酐: ${latestScr.value} ${latestScr.unit || "μmol/L"}`);
+        lisParts.push(labText(latestScr, "血肌酐"));
       }
 
       const hisParts = [];
@@ -809,21 +959,16 @@ export class HospitalDataAdapter {
         hisParts.push(`心血管/血管活性药: ${vasoactives.map((d) => d.drug_name || d.medication).join("、")}`);
       }
 
-      let syn = "出入量与肾功能演变监控中";
-      if (fluidBalance && fluidBalance.net_balance_ml > 800) {
-        syn = `24h显著净正平衡 (${fluidBalance.net_balance_label})` + (diuretics.length > 0 ? "，已有在用利尿剂治疗" : "，提示关注容量负荷");
-      } else if (fluidBalance && fluidBalance.urine_24h_ml < 500 && fluidBalance.urine_24h_ml > 0) {
-        syn = `少尿状态 (24h 尿量 ${fluidBalance.urine_24h_ml}ml)` + (scrObs.length > 0 ? ` 伴肌酐 ${scrObs[0].value} μmol/L` : "");
-      }
+      const syn = "并列展示已提供的出入量、肾功能及医嘱记录，不推断诊断或治疗关系";
 
       alignments.push({
         domain_id: "fluid_renal_hemodynamic",
         domain_title: "液体平衡 - 肾功能 - 循环与利尿对齐",
-        nis_summary: nisParts.join("；") || "无特定记录",
-        lis_summary: lisParts.join("；") || "未查血肌酐",
-        his_summary: hisParts.join("；") || "无在用利尿/血管活性药",
+        nis_summary: nisParts.join("；") || "未提供相关护理记录",
+        lis_summary: lisParts.join("；") || "未提供肌酐记录",
+        his_summary: hisParts.join("；") || "未提供相关医嘱记录",
         clinical_synthesis: syn,
-        requires_attention: fluidBalance?.net_balance_ml > 1000 || (fluidBalance?.urine_24h_ml > 0 && fluidBalance?.urine_24h_ml < 500),
+        requires_attention: scrObs.some((o) => o.is_critical === true),
       });
     }
 
@@ -839,39 +984,36 @@ export class HospitalDataAdapter {
     if (vitalsSummary?.t_max != null || infObs.length > 0 || antibiotics.length > 0) {
       const nisParts = [];
       if (vitalsSummary?.t_max) {
-        nisParts.push(`最高体温: ${vitalsSummary.t_max}℃` + (vitalsSummary.t_max >= 38.5 ? " (高热)" : vitalsSummary.t_max >= 37.3 ? " (低热)" : " (正常)"));
+        nisParts.push(`最高体温: ${vitalsSummary.t_max}℃`);
       }
 
-      const lisParts = infObs.map((o) => `${o.name || o.code}: ${o.value} ${o.unit || ""}`);
+      const lisParts = infObs.map((o) => labText(o));
       const hisParts = antibiotics.map((a) => {
         const name = a.drug_name || a.medication;
-        const dur = a.antibiotic_info?.duration_days ? `第${a.antibiotic_info.duration_days}天` : "";
+        const dur = a.antibiotic_info?.duration_days ? `距医嘱开立第${a.antibiotic_info.duration_days}天，实际给药天数未知` : "";
         const lvl = a.antibiotic_info?.level ? `[${a.antibiotic_info.level}]` : "";
         return `${name} ${dur} ${lvl}`.trim();
       });
 
-      let syn = "感染与体温指标平稳";
-      if (vitalsSummary?.t_max >= 38.0) {
-        syn = `监测到体温升高 (${vitalsSummary.t_max}℃)` + (antibiotics.length > 0 ? `，当前使用 ${antibiotics.map((a) => a.drug_name || a.medication).join("、")}` : "，未启用抗菌药物");
-      } else if (antibiotics.some((a) => a.antibiotic_info?.is_overdue)) {
-        syn = "抗菌药物已达院内规则包复核时间点，建议复核降阶梯或停药指征";
-      }
+      const syn = antibiotics.some((a) => a.antibiotic_info?.is_overdue)
+        ? "抗菌药物记录达到院内规则包复核时间点，请核对来源与规则；不提供停药或降阶梯建议"
+        : "并列展示已提供的体温、检验及抗菌药医嘱记录";
 
       alignments.push({
         domain_id: "infection_temperature_antimicrobial",
         domain_title: "体温 - 感染指标 - 抗菌药物对齐",
-        nis_summary: nisParts.join("；") || "体温平稳",
-        lis_summary: lisParts.join("；") || "近期未见感染指标化验",
-        his_summary: hisParts.join("；") || "未开立抗菌药物",
+        nis_summary: nisParts.join("；") || "未提供体温记录",
+        lis_summary: lisParts.join("；") || "未提供相关检验记录",
+        his_summary: hisParts.join("；") || "未提供抗菌药医嘱记录",
         clinical_synthesis: syn,
-        requires_attention: (vitalsSummary?.t_max >= 38.5) || antibiotics.some((a) => a.antibiotic_info?.is_overdue),
+        requires_attention: infObs.some((o) => o.is_critical === true) || antibiotics.some((a) => a.antibiotic_info?.is_overdue),
       });
     }
 
     // --- Domain 3: 电解质异常与补给闭环对齐 (Electrolyte Balance & Replenishment) ---
     const electrolyteObs = observations.filter((o) => {
       const n = String(o.name || o.code || "").toLowerCase();
-      return /钾|钠|钙|镁|k|na|ca|mg/.test(n) && (o.is_critical || o.value < 3.5 || o.value > 5.3 || o.value < 135 || o.value > 145);
+      return /钾|钠|钙|镁|potassium|sodium|calcium|magnesium|^(?:k|na|ca|mg)$/.test(n);
     });
     const replenishments = medications.filter((m) => {
       const d = String(m.drug_name || m.medication || "");
@@ -879,16 +1021,16 @@ export class HospitalDataAdapter {
     });
 
     if (electrolyteObs.length > 0 || replenishments.length > 0) {
-      const lisParts = electrolyteObs.map((o) => `${o.name || o.code}: ${o.value} ${o.unit || ""} (${o.is_critical ? "危急值" : "异常"})`);
+      const lisParts = electrolyteObs.map((o) => `${labText(o)}${o.is_critical === true ? " (来源危急标记)" : ""}`);
       const hisParts = replenishments.map((m) => `${m.drug_name || m.medication} ${m.dosage || ""} ${m.route || ""}`);
 
       alignments.push({
         domain_id: "electrolytes_replenishment",
         domain_title: "电解质异常 - 纠正医嘱 - 复查闭环对齐",
-        nis_summary: "生命体征同步监测",
-        lis_summary: lisParts.join("；") || "电解质平稳",
-        his_summary: hisParts.join("；") || "无电解质补充医嘱",
-        clinical_synthesis: electrolyteObs.length > 0 && replenishments.length > 0 ? "已见电解质异常并开立对应用药，关注复查闭环" : (electrolyteObs.length > 0 ? "检出电解质异常，尚未见纠正医嘱" : "在用电解质补充药物"),
+        nis_summary: vitalsSummary ? "生命体征记录另见护理摘要；未证明与检验同步采集" : "未提供相关生命体征记录",
+        lis_summary: lisParts.join("；") || "未提供电解质记录",
+        his_summary: hisParts.join("；") || "未提供电解质补充医嘱记录",
+        clinical_synthesis: "并列展示已提供的电解质与医嘱记录，不推断异常或治疗对应关系",
         requires_attention: electrolyteObs.some((o) => o.is_critical),
       });
     }
@@ -908,18 +1050,18 @@ export class HospitalDataAdapter {
     });
 
     if (cardiacObs.length > 0 || cardiacMeds.length > 0 || cardiacPacs.length > 0) {
-      const lisParts = cardiacObs.map((o) => `${o.name || o.code}: ${o.value} ${o.unit || ""}`);
-      const pacsParts = cardiacPacs.map((p) => `${p.name}: ${p.impression || p.status}`);
+      const lisParts = cardiacObs.map((o) => labText(o));
+      const pacsParts = cardiacPacs.map((p) => `${p.name}: ${p.impression || "印象未提供"}（${statusLabel(p, "diagnostic_report")}）`);
       const hisParts = cardiacMeds.map((m) => `${m.drug_name || m.medication}`);
 
       alignments.push({
         domain_id: "cardiovascular_biomarkers_medication",
         domain_title: "心血管标志物 - 影像 - 抗栓与调脂对齐",
-        nis_summary: vitalsSummary?.bp_max ? `血压: ${vitalsSummary.bp_max}, 心率: ${vitalsSummary.hr_avg || "平稳"} bpm` : "体征平稳",
-        lis_summary: lisParts.join("；") || "未复查心肌酶/BNP",
-        pacs_summary: pacsParts.join("；") || "无近期心血管影像报告",
-        his_summary: hisParts.join("；") || "无在用抗栓/调脂医嘱",
-        clinical_synthesis: "心血管专科指标与用药协同监测中",
+        nis_summary: vitalsSummary?.bp_max ? `血压: ${vitalsSummary.bp_max}, 心率: ${vitalsSummary.hr_avg ?? "未提供"} bpm` : "未提供相关体征记录",
+        lis_summary: lisParts.join("；") || "未提供相关检验记录",
+        pacs_summary: pacsParts.join("；") || "未提供相关影像报告",
+        his_summary: hisParts.join("；") || "未提供相关医嘱记录",
+        clinical_synthesis: "并列展示已提供的心血管检验、影像和医嘱记录，不推断正在监测或实际给药",
         requires_attention: cardiacObs.some((o) => o.is_critical),
       });
     }

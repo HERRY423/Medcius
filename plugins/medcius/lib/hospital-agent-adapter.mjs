@@ -10,8 +10,60 @@ import { HospitalDataAdapter } from "./hospital-data-adapter.mjs";
 import { loadSpecialtyRulePack } from "./specialty-rule-pack.mjs";
 import { StagedDraftService } from "./staged-draft-service.mjs";
 import { ClinicalSkillCatalog } from "./clinical-skill-catalog.mjs";
-import { containsRawPhi, redactText } from "../servers/phiguard/src/lib.mjs";
+import { containsRawPhi, scanText } from "../servers/phiguard/src/lib.mjs";
 import { canonicalJson, sha256Hex } from "../servers/shared/crypto.mjs";
+import { assertExplicitFeedOwnership, toModelSafe } from "./clinical-boundary.mjs";
+
+const HARD_IDENTIFIER_TYPES = new Set(["id_card", "phone_cn_mobile", "phone_cn_fixed", "bank_card", "email", "mrn_label"]);
+// Raw research material never travels in the serializable host response.
+const researchSnapshots = new WeakMap();
+
+// Generic `name` fields are identities at a PHI boundary. Give only these
+// contract-defined clinical names explicit domain keys before freezing them.
+function canonicalClinicalFeeds(dataFeeds) {
+  if (!dataFeeds) return dataFeeds;
+  return { ...dataFeeds, his_orders: (dataFeeds.his_orders || []).map((order) => {
+    const { name, ...rest } = order;
+    return order.is_medication || order.drug_name
+      ? { ...rest, drug_name: order.drug_name || name }
+      : { ...rest, title: order.title || name };
+  }) };
+}
+
+function encodeResearchRulePack(rulePack) {
+  if (!rulePack?.clinical_rules?.restricted_antibiotics) return rulePack;
+  return { ...rulePack, clinical_rules: { ...rulePack.clinical_rules,
+    restricted_antibiotics: rulePack.clinical_rules.restricted_antibiotics.map(({ name, ...rule }) => ({ ...rule, drug_name: name })) } };
+}
+
+function decodeResearchRulePack(rulePack) {
+  if (!rulePack?.clinical_rules?.restricted_antibiotics) return rulePack;
+  return { ...rulePack, clinical_rules: { ...rulePack.clinical_rules,
+    restricted_antibiotics: rulePack.clinical_rules.restricted_antibiotics.map(({ drug_name, ...rule }) => ({ ...rule, name: drug_name })) } };
+}
+
+export function getPreRoundResearchSnapshot(result) {
+  const snapshot = researchSnapshots.get(result);
+  if (!snapshot) throw new Error("RESEARCH_SNAPSHOT_UNAVAILABLE");
+  return structuredClone(snapshot);
+}
+
+export function replayPreRoundResearchSnapshot(input) {
+  return HospitalAgentAdapter.executePreRoundWorkflow({
+    host: "his_embed",
+    context: input.context,
+    dataFeeds: input.dataFeeds,
+    sourceAvailability: input.sourceAvailability,
+    frozenRulePack: input.rule_pack_encoding === "clinical-drug-name-v1" ? decodeResearchRulePack(input.rulePack) : input.rulePack,
+  }).summary;
+}
+
+function assertNoHardIdentifiers(text) {
+  const hit = scanText(String(text ?? "")).findings.find((finding) => HARD_IDENTIFIER_TYPES.has(finding.type));
+  if (hit) {
+    throw new Error(`FAIL_CLOSED_PHI_VIOLATION: Raw unredacted PHI detected in payload (${hit.type}). Processing blocked.`);
+  }
+}
 import {
   CLINICAL_SURFACES,
   ENGINEERING_SURFACES,
@@ -66,7 +118,13 @@ export class HospitalAgentAdapter {
   /**
    * Execute inpatient pre-round patient evolution workflow for any host agent.
    */
-  static executePreRoundWorkflow({ host = HOST_TYPES.HOSPITAL_CUSTOM_AGENT, context, dataFeeds }) {
+  static executePreRoundWorkflow({ host = HOST_TYPES.HOSPITAL_CUSTOM_AGENT, context, dataFeeds, frozenRulePack = undefined, sourceAvailability = undefined }) {
+    dataFeeds = canonicalClinicalFeeds(dataFeeds);
+    const availability = sourceAvailability ?? dataFeeds?.source_availability ?? [];
+    if (!Array.isArray(availability)) throw new Error("FAIL_CLOSED_SOURCE_AVAILABILITY: expected an explicit array");
+    // Capture exactly the source states supplied with this snapshot; an empty
+    // feed alone never establishes that an interface succeeded or failed.
+    const frozenAvailability = toModelSafe(structuredClone(availability));
     this.validateContextEnvelope(context);
     assertSkillInvocable({
       skillId: "patient-evolution-summary",
@@ -77,22 +135,34 @@ export class HospitalAgentAdapter {
 
     const { tenant_id, doctor_id, doctor_name, patient_id, encounter_id, time_window = "24h" } = context;
     const { patient, notes = [], nis = [], lis = [], pacs = [], his_orders = [], allergies = null } = dataFeeds || {};
-    const rulePack = this.resolveRulePack(context);
+    const rulePack = frozenRulePack === undefined ? this.resolveRulePack(context) : frozenRulePack;
 
     if (!patient || patient.id !== patient_id) {
       throw new Error(`FAIL_CLOSED: Patient record mismatch or missing in active ward context (expected ${patient_id})`);
     }
 
-    // Normalize multi-source feeds
-    const nisNormalized = HospitalDataAdapter.normalizeNisFeed(nis, { rulePack });
-    const lisNormalized = HospitalDataAdapter.normalizeLisFeed(lis, { rulePack });
-    const pacsNormalized = HospitalDataAdapter.normalizePacsFeed(pacs);
-    const hisNormalized = HospitalDataAdapter.normalizeHisOrders(his_orders, { rulePack, now: Date.now() });
+    assertExplicitFeedOwnership({ tenant_id, patient_id, encounter_id }, notes, "note");
+    assertExplicitFeedOwnership({ tenant_id, patient_id, encounter_id }, nis, "nis");
+    assertExplicitFeedOwnership({ tenant_id, patient_id, encounter_id }, lis, "lis");
+    assertExplicitFeedOwnership({ tenant_id, patient_id, encounter_id }, pacs, "pacs");
+    assertExplicitFeedOwnership({ tenant_id, patient_id, encounter_id }, his_orders, "his");
+    assertNoHardIdentifiers(JSON.stringify({ patient, notes, nis, lis, pacs, his_orders }));
+
+    const asOf = context.as_of || context.now || new Date().toISOString();
+    const asOfMs = new Date(asOf).getTime();
+    if (!Number.isFinite(asOfMs)) throw new Error("FAIL_CLOSED: as_of is not a valid timestamp");
+    const windowHours = time_window === "72h" ? 72 : 24;
+    const cutoff = new Date(asOfMs - windowHours * 60 * 60 * 1000).toISOString();
+
+    const nisNormalized = HospitalDataAdapter.normalizeNisFeed(nis, { rulePack, cutoffTime: cutoff, now: asOf });
+    const lisNormalized = HospitalDataAdapter.normalizeLisFeed(lis, { rulePack, cutoffTime: cutoff, now: asOf });
+    const pacsNormalized = HospitalDataAdapter.normalizePacsFeed(pacs, { cutoffTime: cutoff, now: asOf });
+    const hisNormalized = HospitalDataAdapter.normalizeHisOrders(his_orders, { rulePack, now: asOfMs });
 
     const mergedObservations = [...(lisNormalized.observations || []), ...(nisNormalized.fhir_observations || [])];
-
-    const evolutionSummary = PatientEvolutionEngine.analyzePatientEvolution({
+    const engineInput = {
       patient,
+      context: { tenant_id, doctor_id, patient_id, encounter_id },
       timeWindow: time_window,
       notes,
       observations: mergedObservations,
@@ -101,11 +171,33 @@ export class HospitalAgentAdapter {
       orders: hisNormalized.orders,
       allergies,
       rulePack,
-    });
+      sourceAvailability: frozenAvailability,
+      recordHistory: {
+        nis,
+        observations: lisNormalized.history_records || [],
+        diagnosticReports: pacsNormalized.history_records || [],
+        orders: hisNormalized.orders || [],
+      },
+      now: asOf,
+    };
+    const engineOutput = PatientEvolutionEngine.analyzePatientEvolution(engineInput);
+    const evolutionSummary = JSON.parse(JSON.stringify(engineOutput));
 
     if (nisNormalized.vitals_summary || nisNormalized.fluid_balance) {
       evolutionSummary.blocks.what_changed.nursing_vitals_summary = nisNormalized.vitals_summary;
       evolutionSummary.blocks.what_changed.fluid_balance_24h = nisNormalized.fluid_balance;
+    }
+    for (const gap of [
+      ...(nisNormalized.data_gaps || []),
+      ...(pacsNormalized.time_gaps || []),
+      ...(hisNormalized.time_gaps || []),
+    ]) {
+      evolutionSummary.blocks.data_gaps.push({
+        id: `GAP-SRC-${evolutionSummary.blocks.data_gaps.length + 1}`,
+        category: "DATA_GAP",
+        tag: "【资料不足】",
+        ...gap,
+      });
     }
     if (lisNormalized.critical_values?.length > 0) {
       evolutionSummary.blocks.what_changed.critical_values = lisNormalized.critical_values;
@@ -117,15 +209,10 @@ export class HospitalAgentAdapter {
       evolutionSummary.blocks.what_changed.imaging_impressions = pacsNormalized.imaging_impressions;
     }
 
-    // Enforce strict PHI Guard check: Block immediately if raw unredacted PHI is present in feeds or output
-    const feedsRaw = JSON.stringify({ patient, notes });
-    const summaryJson = JSON.stringify(evolutionSummary);
-    const inputPhiCheck = containsRawPhi(feedsRaw);
-    const outputPhiCheck = containsRawPhi(summaryJson);
-
-    if (inputPhiCheck.hit || outputPhiCheck.hit) {
-      const reason = inputPhiCheck.hit ? inputPhiCheck.type : outputPhiCheck.type;
-      throw new Error(`FAIL_CLOSED_PHI_VIOLATION: Raw unredacted PHI detected in payload (${reason}). Processing blocked.`);
+    const modelSafeSummary = toModelSafe(evolutionSummary);
+    const outputPhiCheck = containsRawPhi(JSON.stringify(modelSafeSummary));
+    if (outputPhiCheck.hit) {
+      throw new Error(`FAIL_CLOSED_PHI_VIOLATION: Raw unredacted PHI detected in payload (${outputPhiCheck.type}). Processing blocked.`);
     }
 
     const provenanceDigest = sha256Hex(canonicalJson({
@@ -134,14 +221,14 @@ export class HospitalAgentAdapter {
       encounter_id,
       time_window,
       total_items: evolutionSummary.total_items_count,
-      timestamp: new Date().toISOString(),
+      timestamp: asOf,
     }));
 
-    return {
+    const result = toModelSafe({
       success: true,
       host_info: {
         host_type: host,
-        adapter_version: "0.7.0-pilot",
+        adapter_version: "0.8.0-pilot",
         workflow: "patient-evolution-summary",
       },
       context: {
@@ -152,7 +239,8 @@ export class HospitalAgentAdapter {
         encounter_id: encounter_id,
         time_window,
       },
-      summary: evolutionSummary,
+      summary: modelSafeSummary,
+      as_of: asOf,
       provenance: {
         envelope_sha256: provenanceDigest,
         evidence_count: evolutionSummary.blocks.evidence.length,
@@ -172,7 +260,15 @@ export class HospitalAgentAdapter {
         phi_leakage_detected: false,
         read_only_enforced: true,
       },
-    };
+    });
+    researchSnapshots.set(result, {
+      engineInput: toModelSafe({ ...engineInput, rulePack: encodeResearchRulePack(rulePack), rule_pack_encoding: "clinical-drug-name-v1" }),
+      engineOutput: modelSafeSummary,
+      sourceAvailability: frozenAvailability,
+      replayInput: toModelSafe({ context: { ...context, as_of: asOf }, dataFeeds,
+        sourceAvailability: frozenAvailability, rulePack: encodeResearchRulePack(rulePack), rule_pack_encoding: "clinical-drug-name-v1" }),
+    });
+    return result;
   }
 
   /**
@@ -185,18 +281,29 @@ export class HospitalAgentAdapter {
     if (!bridge || typeof bridge.readPatientSnapshot !== "function") {
       throw new Error("FAIL_CLOSED: A ReadOnlyHospitalDataBridge instance is required");
     }
-    const snapshot = await bridge.readPatientSnapshot(context);
-    const result = this.executePreRoundWorkflow({ host, context, dataFeeds: snapshot.dataFeeds });
-    return {
+    const fixedContext = { ...context, as_of: context.as_of || context.now || new Date().toISOString() };
+    const snapshot = await bridge.readPatientSnapshot({ ...fixedContext });
+    if (snapshot?.security_contract?.read_only_enforced !== true) throw new Error("FAIL_CLOSED: Source read-only contract is unverified");
+    if (snapshot.source_availability != null && snapshot.dataFeeds?.source_availability != null
+        && canonicalJson(snapshot.source_availability) !== canonicalJson(snapshot.dataFeeds.source_availability)) {
+      throw new Error("FAIL_CLOSED_SOURCE_AVAILABILITY: bridge and feed availability disagree");
+    }
+    const result = this.executePreRoundWorkflow({ host, context: fixedContext, dataFeeds: snapshot.dataFeeds,
+      sourceAvailability: snapshot.source_availability ?? snapshot.dataFeeds?.source_availability ?? [] });
+    const response = {
       ...result,
-      source_bridge: {
+      source_bridge: toModelSafe({
         schema_version: snapshot.schema_version,
         completeness: snapshot.completeness,
         source_manifest: snapshot.source_manifest,
+        source_availability: researchSnapshots.get(result).sourceAvailability,
         unavailable_sources: snapshot.unavailable_sources,
+        degraded_records: snapshot.degraded_records || [],
         read_only_enforced: snapshot.security_contract.read_only_enforced,
-      },
+      }),
     };
+    researchSnapshots.set(response, researchSnapshots.get(result));
+    return response;
   }
 
   /**
@@ -251,7 +358,7 @@ export class HospitalAgentAdapter {
       success: true,
       host_info: {
         host_type: host,
-        adapter_version: "0.7.0-pilot",
+        adapter_version: "0.8.0-pilot",
         workflow: "shift-handover",
       },
       context: {
@@ -328,7 +435,7 @@ export class HospitalAgentAdapter {
       success: true,
       host_info: {
         host_type: host,
-        adapter_version: "0.7.0-pilot",
+        adapter_version: "0.8.0-pilot",
         workflow: "consult-preparation",
       },
       context: {
@@ -401,7 +508,7 @@ export class HospitalAgentAdapter {
       success: true,
       host_info: {
         host_type: host,
-        adapter_version: "0.7.0-pilot",
+        adapter_version: "0.8.0-pilot",
         workflow: "discharge-readiness-check",
       },
       context: {
@@ -458,7 +565,7 @@ export class HospitalAgentAdapter {
       case "patient-evolution-summary": {
         const result = this.executePreRoundWorkflow({ host, context, dataFeeds });
         const progressiveViews = StagedDraftService.generateProgressiveViewsFromSummary(result.summary, {
-          patient: dataFeeds?.patient || {},
+          patient: result.summary?.patient || toModelSafe(dataFeeds?.patient || {}),
           timeWindow: context.time_window || "24h",
         });
         return {
