@@ -5,10 +5,10 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 process.env.CLAUDE_MEDCIUS_DATA = mkdtempSync(join(tmpdir(), "medcius-authorized-path-"));
-process.env.CLAUDE_MEDCIUS_PHI_SALT = "synthetic-authorized-path-salt-0123456789";
+process.env.CLAUDE_MEDCIUS_PHI_SALT = Buffer.alloc(16, 0x5a).toString("hex");
 process.env.MEDCIUS_PROFILE = "production";
 process.env.MEDCIUS_GOVERNANCE_STAGE = "silent_pilot";
-process.env.MEDCIUS_JWT_SECRET = "synthetic-authorized-path-jwt-secret-0123456789";
+process.env.MEDCIUS_JWT_SECRET = Buffer.alloc(32, 0x5a).toString("hex");
 delete process.env.MEDCIUS_CLINICAL_LANDING;
 delete process.env.MEDCIUS_LIVE_HOSPITAL_DATA;
 delete process.env.MEDCIUS_HOSPITAL_SOURCE_MODULE;

@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 process.env.CLAUDE_MEDCIUS_DATA = mkdtempSync(join(tmpdir(), "medcius-lifecycle-surface-"));
-process.env.CLAUDE_MEDCIUS_PHI_SALT = "synthetic-lifecycle-surface-salt-0123456789";
+process.env.CLAUDE_MEDCIUS_PHI_SALT = Buffer.alloc(16, 0x5a).toString("hex");
 delete process.env.MEDCIUS_PROFILE;
 delete process.env.NODE_ENV;
 delete process.env.MEDCIUS_CLINICAL_LANDING;

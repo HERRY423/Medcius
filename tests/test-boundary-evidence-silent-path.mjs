@@ -9,7 +9,7 @@ import { join } from "node:path";
 
 const dataDir = mkdtempSync(join(tmpdir(), "medcius-boundary-"));
 process.env.CLAUDE_MEDCIUS_DATA = dataDir;
-process.env.CLAUDE_MEDCIUS_PHI_SALT = "synthetic-boundary-salt-0123456789";
+process.env.CLAUDE_MEDCIUS_PHI_SALT = Buffer.alloc(16, 0x5a).toString("hex");
 delete process.env.MEDCIUS_CLINICAL_LANDING;
 delete process.env.MEDCIUS_LIVE_HOSPITAL_DATA;
 delete process.env.MEDCIUS_PROFILE;
@@ -440,7 +440,7 @@ console.log("✓ Those four failure modes enter the endpoint counts");
 console.log("\n[10] Formal silent capture freezes an output an auditor can read and replay");
 process.env.MEDCIUS_PROFILE = "production";
 process.env.MEDCIUS_CLINICAL_LANDING = "1";
-process.env.MEDCIUS_JWT_SECRET = "synthetic-boundary-jwt-secret-0123456789";
+process.env.MEDCIUS_JWT_SECRET = Buffer.alloc(32, 0x5a).toString("hex");
 const bridge = {
   async readPatientSnapshot(context) {
     return {
