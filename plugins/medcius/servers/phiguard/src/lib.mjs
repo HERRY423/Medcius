@@ -5,9 +5,13 @@
 // deliberately NOT attempted — document this limitation, don't fake it.
 
 import { sha256Hex, hmacHex } from "../../shared/crypto.mjs";
+import { isIntegrityMetadata } from "../../shared/integrity-metadata.mjs";
 
 export const RE_ID18 = /\d{17}[\dXx]/g;
 export const RE_PHONE = /(?<!\d)1[3-9]\d{9}(?!\d)/g;
+// Deliberately retain detection beside letters in free text (e.g. tel139...x).
+// Structured integrity values use scanStructuredValue; broadening this regex's
+// boundary to hex/alphanumeric characters would hide real identifiers.
 export const RE_FIXED_PHONE = /(?<!\d)0\d{2,3}[-—\s]?[1-9]\d{6,7}(?!\d)/g;
 export const RE_EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 export const RE_BANK_CARD = /(?<!\d)(?:62\d{14,17}|4\d{15}|5[1-5]\d{14})(?!\d)/g;
@@ -57,7 +61,7 @@ function maskValue(value, keepLast) {
  * Scan text for PHI candidates. Overlapping matches resolved longest-first /
  * earliest-start. Returns spans so callers can render or transform.
  */
-export function scanText(text) {
+export function scanText(text, { contextual = false } = {}) {
   text = String(text ?? "");
   // Token digests may contain long numeric runs. Do not reinterpret generated
   // tokens as new phone/ID spans and corrupt them on a second boundary pass.
@@ -90,6 +94,14 @@ export function scanText(text) {
   push(RE_PHONE, "phone_cn_mobile");
   push(RE_FIXED_PHONE, "phone_cn_fixed");
   push(RE_EMAIL, "email");
+  if (contextual) {
+    // Optional legacy context profile, shared by both detection and transform.
+    // Deliberately bounded to names adjacent to introductions/actions.
+    push(/(?:患者|病人|患儿)([\u4e00-\u9fa5]{2,4})(?=[，,]|诉|因|于|今日|昨日|入院|出院)/g, "context_patient");
+    push(/(?:由其[子女]|陪护人(?:家属)?(?:姓名)?[：:]?|家属(?:姓名)?[：:]?)([\u4e00-\u9fa5]{2,4})(?=[，,。]|送入|陪同|代诉|诉称)/g, "context_relative");
+    push(/(?:患者系|就职于|任职于|担任)(?:某|原)?(?:市委|省委|局长|科长|主任|书记|董事长|总经理|校长|院长)/g, "context_title");
+    push(/病案号[：:]\s*[A-Za-z0-9_-]{4,25}/g, "mrn_label");
+  }
 
   // de-overlap: sort by (start, longer first), greedily accept non-overlapping
   found.sort((a, b) => a.start - b.start || b.end - b.start - (a.end - a.start));
@@ -113,6 +125,27 @@ export function containsRawPhi(text) {
   const scan = scanText(String(text));
   if (!scan.total) return { hit: false };
   return { hit: true, type: scan.findings[0].type };
+}
+
+/** Scan structured textual content without flattening cryptographic metadata.
+ * This is the text scanner, not the structured identity-field policy.
+ * JSON strings inside records remain free text and are scanned as such.
+ */
+export function scanStructuredValue(value, options = {}) {
+  const findings = [];
+  function visit(item) {
+    if (typeof item === 'string' || typeof item === 'number') {
+      findings.push(...scanText(String(item), options).findings); return;
+    }
+    if (!item || typeof item !== 'object') return;
+    for (const [key, child] of Object.entries(item)) {
+      findings.push(...scanText(key, options).findings);
+      if (!Array.isArray(item) && isIntegrityMetadata(key, child, item)) continue;
+      visit(child);
+    }
+  }
+  visit(value);
+  return { findings, total: findings.length };
 }
 
 /**
@@ -139,14 +172,20 @@ export function redactText(text, { mode = "mask", keepLast = 2 } = {}) {
  * type+value, so the same person/number maps to the same token within one salt
  * domain without revealing the original.
  */
-export function pseudonymizeText(text, { salt }) {
+export function pseudonymizeText(text, { salt, contextual = false }) {
   if (!salt || typeof salt !== "string" || salt.length < 8)
     throw new Error("pseudonymizeText: salt required (>=8 chars); set CLAUDE_MEDCIUS_PHI_SALT for stability");
-  const { findings } = scanText(text);
+  const { findings } = scanText(text, { contextual });
   let out = text;
   for (const f of [...findings].sort((a, b) => b.start - a.start)) {
     const token = `[PSN:${hmacHex(salt, `${f.type}|${f.value}`, 32)}]`;
     out = out.slice(0, f.start) + token + out.slice(f.end);
   }
   return { text: out, pseudonymized: findings.length };
+}
+
+export function redactPhiText(text, options = {}) {
+  let out = String(text ?? "");
+  for (const f of scanText(out, options).findings.reverse()) out = out.slice(0, f.start) + `[REDACTED:${f.type}]` + out.slice(f.end);
+  return out;
 }

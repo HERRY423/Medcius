@@ -41,10 +41,20 @@ assert.ok(vC.errors.some((e) => e.includes("LLM_TOPOLOGY_C_REJECTED")), "C 档�
 const vB = validateLlmConfig({ ...baseA, topology: "B", desensitization_attestation: false });
 assert.equal(vB.ok, false);
 assert.ok(vB.errors.some((e) => e.includes("LLM_B_ATTESTATION_REQUIRED")));
+// P0-3: B 档四项缺一即拒绝（默认关闭）。
+const bPartial = { ...baseA, topology: "B", desensitization_attestation: true, provider_registration_ref: "R20:服务商备案核验留档-001" };
+const vBPartial = validateLlmConfig(bPartial);
+assert.equal(vBPartial.ok, false, "B 档缺守卫版本/抽检/裸姓名确认必须拒绝");
+assert.ok(vBPartial.errors.some((e) => e.includes("LLM_B_PHI_GUARD_VERSION_REQUIRED")));
+assert.ok(vBPartial.errors.some((e) => e.includes("LLM_B_HUMAN_SAMPLING_REQUIRED")));
+assert.ok(vBPartial.errors.some((e) => e.includes("LLM_B_BARE_NAME_ACK_REQUIRED")));
 const vBOk = validateLlmConfig({
   ...baseA,
   topology: "B",
   desensitization_attestation: true,
+  phi_exit_guard_version: "phiguard-v1:config-digest-dev",
+  egress_human_sampling_attested: true,
+  bare_name_limitation_acknowledged: true,
   provider_registration_ref: "R20:服务商备案核验留档-001",
 });
 assert.equal(vBOk.ok, true);

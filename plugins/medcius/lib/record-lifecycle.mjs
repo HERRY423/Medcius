@@ -6,6 +6,8 @@ const lower = (value) => String(value ?? "").trim().toLowerCase().replaceAll("_"
 const first = (...values) => values.find((value) => value != null && value !== "") ?? null;
 const measurements = (record) => Object.fromEntries(["temperature", "systolic_bp", "diastolic_bp", "heart_rate", "spo2", "respiratory_rate", "consciousness",
   "intake_ml", "output_ml", "oral_intake_ml", "iv_intake_ml", "urine_output_ml", "drain_output_ml"].map((key) => [key, record[key] ?? null]));
+// Withdrawal/error requires reconciliation; never equate it with successful completion.
+export const requiresRecordReconciliation = status => status === "cancelled" || status === "entered_in_error";
 export const lifecycleTime = (value) => value == null || value === "" || typeof value === "boolean" ? null
   : Number.isFinite(new Date(value).getTime()) ? new Date(value).getTime() : null;
 
@@ -216,7 +218,7 @@ export function resolveRecordVersions(records = [], options = {}) {
     if (winner && ["final", "revised"].includes(winner.lifecycle.result_status)
         && visible.some((other) => other !== winner && ["final", "revised"].includes(other.lifecycle.result_status) && clinicalContent(other) !== clinicalContent(winner))) {
       const revised = classifyRecordLifecycle({ ...winner.record, status: "corrected", result_status: "corrected" }, options);
-      winner.lifecycle = { ...winner.lifecycle, change_type: "revision", change_time: revised.change_time, change_time_status: revised.change_time_status };
+      winner.lifecycle = { ...winner.lifecycle, result_status: "revised", change_type: "revision", change_time: revised.change_time, change_time_status: revised.change_time_status };
       if (future(winner.lifecycle)) { winner = null; reasons.push("VERSION_UPDATE_OUTSIDE_AS_OF"); }
     }
     for (const entry of group) {

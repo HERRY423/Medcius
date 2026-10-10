@@ -97,7 +97,7 @@ export class TimeMotionAnalyzer {
 }
 
 // Multi-physician multi-specialty observation dataset (Cardiology & Respiratory Physicians)
-const sampleObservationSessions = [
+export const sampleObservationSessions = [
   {
     physician: "Dr. L (Attending, Cardiology)",
     ward: "Cardiology Ward 2",

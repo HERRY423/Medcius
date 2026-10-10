@@ -10,9 +10,9 @@ import { HospitalDataAdapter } from "./hospital-data-adapter.mjs";
 import { loadSpecialtyRulePack } from "./specialty-rule-pack.mjs";
 import { StagedDraftService } from "./staged-draft-service.mjs";
 import { ClinicalSkillCatalog } from "./clinical-skill-catalog.mjs";
-import { containsRawPhi, scanText } from "../servers/phiguard/src/lib.mjs";
+import { scanStructuredValue } from "../servers/phiguard/src/lib.mjs";
 import { canonicalJson, sha256Hex } from "../servers/shared/crypto.mjs";
-import { assertExplicitFeedOwnership, toModelSafe } from "./clinical-boundary.mjs";
+import { assertExplicitFeedOwnership, toModelSafe, containsRawStructuredPhi } from "./clinical-boundary.mjs";
 
 const HARD_IDENTIFIER_TYPES = new Set(["id_card", "phone_cn_mobile", "phone_cn_fixed", "bank_card", "email", "mrn_label"]);
 // Raw research material never travels in the serializable host response.
@@ -59,7 +59,7 @@ export function replayPreRoundResearchSnapshot(input) {
 }
 
 function assertNoHardIdentifiers(text) {
-  const hit = scanText(String(text ?? "")).findings.find((finding) => HARD_IDENTIFIER_TYPES.has(finding.type));
+  const hit = scanStructuredValue(text).findings.find((finding) => HARD_IDENTIFIER_TYPES.has(finding.type));
   if (hit) {
     throw new Error(`FAIL_CLOSED_PHI_VIOLATION: Raw unredacted PHI detected in payload (${hit.type}). Processing blocked.`);
   }
@@ -146,7 +146,7 @@ export class HospitalAgentAdapter {
     assertExplicitFeedOwnership({ tenant_id, patient_id, encounter_id }, lis, "lis");
     assertExplicitFeedOwnership({ tenant_id, patient_id, encounter_id }, pacs, "pacs");
     assertExplicitFeedOwnership({ tenant_id, patient_id, encounter_id }, his_orders, "his");
-    assertNoHardIdentifiers(JSON.stringify({ patient, notes, nis, lis, pacs, his_orders }));
+    assertNoHardIdentifiers({ patient, notes, nis, lis, pacs, his_orders });
 
     const asOf = context.as_of || context.now || new Date().toISOString();
     const asOfMs = new Date(asOf).getTime();
@@ -167,7 +167,9 @@ export class HospitalAgentAdapter {
       notes,
       observations: mergedObservations,
       medications: hisNormalized.medications,
-      diagnosticReports: pacsNormalized.diagnostic_reports,
+      diagnosticReports: [],
+      pacsFeed: pacs,
+      nursingFeed: nis,
       orders: hisNormalized.orders,
       allergies,
       rulePack,
@@ -183,34 +185,8 @@ export class HospitalAgentAdapter {
     const engineOutput = PatientEvolutionEngine.analyzePatientEvolution(engineInput);
     const evolutionSummary = JSON.parse(JSON.stringify(engineOutput));
 
-    if (nisNormalized.vitals_summary || nisNormalized.fluid_balance) {
-      evolutionSummary.blocks.what_changed.nursing_vitals_summary = nisNormalized.vitals_summary;
-      evolutionSummary.blocks.what_changed.fluid_balance_24h = nisNormalized.fluid_balance;
-    }
-    for (const gap of [
-      ...(nisNormalized.data_gaps || []),
-      ...(pacsNormalized.time_gaps || []),
-      ...(hisNormalized.time_gaps || []),
-    ]) {
-      evolutionSummary.blocks.data_gaps.push({
-        id: `GAP-SRC-${evolutionSummary.blocks.data_gaps.length + 1}`,
-        category: "DATA_GAP",
-        tag: "【资料不足】",
-        ...gap,
-      });
-    }
-    if (lisNormalized.critical_values?.length > 0) {
-      evolutionSummary.blocks.what_changed.critical_values = lisNormalized.critical_values;
-    }
-    if (hisNormalized.antibiotic_alerts?.length > 0) {
-      evolutionSummary.blocks.what_changed.antibiotic_duration_alerts = hisNormalized.antibiotic_alerts;
-    }
-    if (pacsNormalized.imaging_impressions?.length > 0) {
-      evolutionSummary.blocks.what_changed.imaging_impressions = pacsNormalized.imaging_impressions;
-    }
-
     const modelSafeSummary = toModelSafe(evolutionSummary);
-    const outputPhiCheck = containsRawPhi(JSON.stringify(modelSafeSummary));
+    const outputPhiCheck = containsRawStructuredPhi(modelSafeSummary);
     if (outputPhiCheck.hit) {
       throw new Error(`FAIL_CLOSED_PHI_VIOLATION: Raw unredacted PHI detected in payload (${outputPhiCheck.type}). Processing blocked.`);
     }
@@ -221,6 +197,7 @@ export class HospitalAgentAdapter {
       encounter_id,
       time_window,
       total_items: evolutionSummary.total_items_count,
+      summary_sha256: sha256Hex(canonicalJson(modelSafeSummary)),
       timestamp: asOf,
     }));
 
@@ -309,7 +286,8 @@ export class HospitalAgentAdapter {
   /**
    * Execute shift handover workflow (SBAR / I-PASS model).
    */
-  static executeShiftHandoverWorkflow({ host = HOST_TYPES.HOSPITAL_CUSTOM_AGENT, context, dataFeeds, shiftType = SHIFT_TYPES.MORNING_TO_EVENING }) {
+  static executeShiftHandoverWorkflow({ host = HOST_TYPES.HOSPITAL_CUSTOM_AGENT, context, dataFeeds, shiftType = SHIFT_TYPES.MORNING_TO_EVENING,
+    handoverContext = {}, handoverEvents = [], verifyHandoverEvent, verifyHandoverHistory, eventsAsOf, windowStart }) {
     this.validateContextEnvelope(context);
     assertSkillInvocable({
       skillId: "shift-handover",
@@ -325,18 +303,20 @@ export class HospitalAgentAdapter {
       throw new Error(`FAIL_CLOSED: Patient record mismatch for handover (expected ${patient_id})`);
     }
 
-    const nisNormalized = HospitalDataAdapter.normalizeNisFeed(nis, { rulePack });
-    const lisNormalized = HospitalDataAdapter.normalizeLisFeed(lis, { rulePack });
-    const hisNormalized = HospitalDataAdapter.normalizeHisOrders(his_orders, { rulePack });
-
+    const asOf = context.as_of || new Date().toISOString();
     const handoverPackage = ShiftHandoverEngine.analyzePatientHandover({
+      context: { tenant_id, patient_id, encounter_id }, asOf,
+      windowStart: windowStart || context.window_start || new Date(new Date(asOf).getTime() - 24 * 3600_000).toISOString(),
+      eventsAsOf, handoverContext, handoverEvents, verifyHandoverEvent, verifyHandoverHistory, rulePack,
       patient,
       encounter,
       notes,
-      vitals: nisNormalized,
-      observations: lisNormalized.observations,
-      medications: hisNormalized.medications,
-      orders: hisNormalized.orders,
+      nursing: dataFeeds.nursing ?? nis,
+      observations: dataFeeds.observations ?? lis,
+      diagnosticReports: dataFeeds.diagnosticReports ?? pacs,
+      medications: dataFeeds.medications ?? his_orders.filter(order => order.is_medication),
+      orders: dataFeeds.orders ?? his_orders.filter(order => !order.is_medication),
+      sourceAvailability: dataFeeds.source_availability ?? [],
       allergies,
       shiftType,
     });
@@ -351,7 +331,8 @@ export class HospitalAgentAdapter {
       patient_id,
       encounter_id,
       shift_type: shiftType,
-      timestamp: new Date().toISOString(),
+      packet_digest: handoverPackage.packet_digest,
+      event_history: handoverPackage.handover_events,
     }));
 
     return {
@@ -364,7 +345,7 @@ export class HospitalAgentAdapter {
       context: {
         tenant_id,
         doctor_id,
-        doctor_name: doctor_name || "Doctor",
+        doctor_name: toModelSafe({ doctor_name: doctor_name || doctor_id }).doctor_name,
         patient_id,
         encounter_id: encounter_id || null,
       },
@@ -383,7 +364,7 @@ export class HospitalAgentAdapter {
   /**
    * Execute specialist consultation preparation workflow.
    */
-  static executeConsultPrepWorkflow({ host = HOST_TYPES.HOSPITAL_CUSTOM_AGENT, context, dataFeeds, consultRequest = {} }) {
+  static executeConsultPrepWorkflow({ host = HOST_TYPES.HOSPITAL_CUSTOM_AGENT, context, dataFeeds, consultRequest = {}, consultRequests = null }) {
     this.validateContextEnvelope(context);
     assertSkillInvocable({
       skillId: "consult-preparation",
@@ -391,32 +372,27 @@ export class HospitalAgentAdapter {
       clinicalLanding: context?.clinical_landing,
     });
 
-    if (!consultRequest.department) {
+    if (!consultRequests && !consultRequest.department) {
       throw new Error("FAIL_CLOSED: Missing target department (consultRequest.department is required)");
     }
 
     const { tenant_id, doctor_id, doctor_name, patient_id, encounter_id } = context;
     const { patient, encounter = {}, notes = [], lis = [], pacs = [], his_orders = [], allergies = null } = dataFeeds || {};
-    const rulePack = this.resolveRulePack(context);
-
     if (!patient || patient.id !== patient_id) {
       throw new Error(`FAIL_CLOSED: Patient record mismatch for consult preparation (expected ${patient_id})`);
     }
 
-    const lisNormalized = HospitalDataAdapter.normalizeLisFeed(lis, { rulePack });
-    const pacsNormalized = HospitalDataAdapter.normalizePacsFeed(pacs);
-    const hisNormalized = HospitalDataAdapter.normalizeHisOrders(his_orders, { rulePack });
-
-    const consultDossier = ConsultPreparationEngine.prepareConsultDossier({
-      patient,
-      encounter,
-      consultRequest,
-      notes,
-      observations: lisNormalized.observations,
-      diagnosticReports: pacsNormalized.diagnostic_reports,
-      medications: hisNormalized.medications,
-      allergies,
+    const snapshot = ConsultPreparationEngine.createSnapshot({
+      context: { tenant_id, patient_id, encounter_id }, patient, encounter, notes, allergies,
+      asOf: context.as_of || new Date().toISOString(), observations: dataFeeds.observations ?? lis,
+      diagnosticReports: dataFeeds.diagnosticReports ?? pacs,
+      medications: dataFeeds.medications ?? his_orders.filter((order) => order.is_medication),
+      orders: dataFeeds.orders ?? his_orders.filter((order) => !order.is_medication),
+      sourceAvailability: dataFeeds.source_availability ?? [],
+      nursing: dataFeeds.nursing ?? dataFeeds.nis ?? [],
     });
+    const consultationViews = ConsultPreparationEngine.prepareConsultViews({ snapshot, consultRequests: consultRequests ?? [consultRequest] });
+    const consultDossier = consultationViews.views[0];
 
     const briefText = ConsultPreparationEngine.generateConsultBriefText({
       consultDossier,
@@ -427,8 +403,8 @@ export class HospitalAgentAdapter {
       tenant_id,
       patient_id,
       encounter_id,
-      target_department: consultRequest.department,
-      timestamp: new Date().toISOString(),
+      snapshot_id: snapshot.snapshot_id,
+      dossier_digests: consultationViews.views.map((view) => view.dossier_sha256),
     }));
 
     return {
@@ -441,11 +417,12 @@ export class HospitalAgentAdapter {
       context: {
         tenant_id,
         doctor_id,
-        doctor_name: doctor_name || "Doctor",
+        doctor_name: toModelSafe({ doctor_name: doctor_name || doctor_id }).doctor_name,
         patient_id,
         encounter_id: encounter_id || null,
       },
       dossier: consultDossier,
+      consultation_views: consultationViews,
       brief_text: briefText,
       provenance: {
         envelope_sha256: provenanceDigest,
@@ -460,7 +437,8 @@ export class HospitalAgentAdapter {
   /**
    * Execute discharge readiness & completeness check workflow.
    */
-  static executeDischargeReadinessWorkflow({ host = HOST_TYPES.HOSPITAL_CUSTOM_AGENT, context, dataFeeds, dischargeMedications = [] }) {
+  static executeDischargeReadinessWorkflow({ host = HOST_TYPES.HOSPITAL_CUSTOM_AGENT, context, dataFeeds, dischargeMedications = [],
+    medicationTransitions = [], followUpPlans = [], patientInstructions = [] }) {
     this.validateContextEnvelope(context);
     assertSkillInvocable({
       skillId: "discharge-readiness-check",
@@ -470,21 +448,20 @@ export class HospitalAgentAdapter {
 
     const { tenant_id, doctor_id, doctor_name, patient_id, encounter_id } = context;
     const { patient, encounter = {}, notes = [], pacs = [], his_orders = [], allergies = null, financial_access = [] } = dataFeeds || {};
-    const rulePack = this.resolveRulePack(context);
-
     if (!patient || patient.id !== patient_id) {
       throw new Error(`FAIL_CLOSED: Patient record mismatch for discharge check (expected ${patient_id})`);
     }
 
-    const pacsNormalized = HospitalDataAdapter.normalizePacsFeed(pacs);
-    const hisNormalized = HospitalDataAdapter.normalizeHisOrders(his_orders, { rulePack });
-
     const readinessResult = DischargeReadinessEngine.evaluateDischargeReadiness({
+      context: { tenant_id, patient_id, encounter_id }, asOf: context.as_of || new Date().toISOString(),
       patient,
       encounter,
-      diagnosticReports: pacsNormalized.diagnostic_reports,
-      inpatientMedications: hisNormalized.medications,
-      dischargeMedications,
+      diagnosticReports: dataFeeds.diagnosticReports ?? pacs,
+      observations: dataFeeds.observations ?? dataFeeds.lis ?? [],
+      inpatientMedications: dataFeeds.medications ?? his_orders.filter(order => order.is_medication),
+      orders: dataFeeds.orders ?? his_orders.filter(order => !order.is_medication),
+      sourceAvailability: dataFeeds.source_availability ?? [],
+      dischargeMedications, medicationTransitions, followUpPlans, patientInstructions,
       notes,
       allergies,
       financialAccessRecords: financial_access,
@@ -499,9 +476,9 @@ export class HospitalAgentAdapter {
       tenant_id,
       patient_id,
       encounter_id,
-      is_ready: readinessResult.readiness_verdict.is_ready,
+      packet_digest: readinessResult.packet_digest,
       financial_access_status: readinessResult.patient_affordability.assessment_status,
-      timestamp: new Date().toISOString(),
+      as_of: readinessResult.as_of,
     }));
 
     return {
@@ -514,7 +491,7 @@ export class HospitalAgentAdapter {
       context: {
         tenant_id,
         doctor_id,
-        doctor_name: doctor_name || "Doctor",
+        doctor_name: toModelSafe({ doctor_name: doctor_name || doctor_id }).doctor_name,
         patient_id,
         encounter_id: encounter_id || null,
       },
@@ -580,6 +557,9 @@ export class HospitalAgentAdapter {
           context,
           dataFeeds,
           shiftType: options.shiftType || SHIFT_TYPES.MORNING_TO_EVENING,
+          handoverContext: options.handoverContext, handoverEvents: options.handoverEvents,
+          verifyHandoverEvent: options.verifyHandoverEvent, eventsAsOf: options.eventsAsOf, windowStart: options.windowStart,
+          verifyHandoverHistory: options.verifyHandoverHistory,
         });
       }
 
@@ -588,7 +568,8 @@ export class HospitalAgentAdapter {
           host,
           context,
           dataFeeds,
-          consultRequest: options.consultRequest || { department: options.department || "心血管内科" },
+          consultRequest: options.consultRequest || { department: options.department, purpose: options.purpose },
+          consultRequests: options.consultRequests ?? null,
         });
       }
 
@@ -598,6 +579,8 @@ export class HospitalAgentAdapter {
           context,
           dataFeeds,
           dischargeMedications: options.dischargeMedications || [],
+          medicationTransitions: options.medicationTransitions || [], followUpPlans: options.followUpPlans || [],
+          patientInstructions: options.patientInstructions || [],
         });
       }
 

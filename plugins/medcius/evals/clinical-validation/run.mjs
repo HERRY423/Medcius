@@ -56,7 +56,7 @@ export function pairValidationRows(gold, predictions) {
   }));
 }
 
-function confusion(pred) {
+export function confusion(pred) {
   let tp = 0, fp = 0, fn = 0, tn = 0;
   for (const r of pred) {
     const P = r.predicted === "flag", G = r.gold === "flag";

@@ -1,0 +1,129 @@
+{
+  "schema_version": "medcius.controlled-documents.v1",
+  "product_version": "0.8.0-pilot",
+  "approval_status": "DRAFT_UNAPPROVED",
+  "manifests": [
+    "plugins/medcius/plugin.json",
+    "plugins/medcius/.claude-plugin/plugin.json",
+    "plugins/medcius/.codex-plugin/plugin.json"
+  ],
+  "documents": [
+    {
+      "path": "SECURITY.md",
+      "revision": 2,
+      "sha256_lf": "c58ef142d7a652104bd313653c777e2e7b2fcf8a3b10d28aebb2b9badd0389c5"
+    },
+    {
+      "path": "PRIVACY.md",
+      "revision": 1,
+      "sha256_lf": "725af677b560b99524bcedac5f3b027053490560e84c0d329798aec357ea7d0a"
+    },
+    {
+      "path": "CLINICAL-SAFETY.md",
+      "revision": 1,
+      "sha256_lf": "605b7356cdc431751f48bf4f556e284497488f35c51f4eeb54cf2c6260461210"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "revision": 1,
+      "sha256_lf": "b725ca244bd81fce4ccfb20c8347a1600efd742b33120798ec39ace267562b3e"
+    },
+    {
+      "path": "docs/compliance/CLINICAL-TIMELINE-COLLABORATION-MATRIX.md",
+      "revision": 1,
+      "sha256_lf": "c767c3dc58c8848f30495fcef38f5765c7cf596b5b0080e5afc59fb5aa0dfc93"
+    },
+    {
+      "path": "docs/compliance/ptr/PRODUCT-TECHNICAL-REQUIREMENTS.md",
+      "revision": 1,
+      "sha256_lf": "84533fb90f2753734433311d9531b21f21b1b48d4917d2e91fc2a2fce73f174d"
+    },
+    {
+      "path": "docs/compliance/qms/QMS-CONTROLLED-DOCUMENTS.md",
+      "revision": 1,
+      "sha256_lf": "fc3fcb6bdf808ba83c57335b6d47d31235e2fa7265d49ae1f636d5f84990af53"
+    },
+    {
+      "path": "docs/compliance/qms/QMS-INTERNAL-AUDIT-CHECKLIST.md",
+      "revision": 1,
+      "sha256_lf": "a143ea2f25d75dd7b731f74a17b9340635baf482d2921f918d75a6ac4f6889df"
+    },
+    {
+      "path": "docs/compliance/qms/CONTROLLED-BASELINE.md",
+      "revision": 1,
+      "sha256_lf": "725756533c2cc81b228ddc69586d945eeb1dd5d681303c4bc34961ceb48ca560"
+    },
+    {
+      "path": "docs/compliance/classification-pack/01-intended-use.md",
+      "revision": 1,
+      "sha256_lf": "d48a7ddd7a63bd20308a399881b24d8329cf565827b2a42f673aa301d31a9432"
+    },
+    {
+      "path": "docs/compliance/classification-pack/02-device-description.md",
+      "revision": 1,
+      "sha256_lf": "d13fff94937e74fd09310cd902d615af65069ed899d8c5454b1ffc176a1a94de"
+    },
+    {
+      "path": "docs/compliance/classification-pack/03-prior-art.md",
+      "revision": 1,
+      "sha256_lf": "a96a9cc040400798ffaf7dd49f0371a3b98fc6cc867fa22a9515205ee405eb2e"
+    },
+    {
+      "path": "docs/compliance/classification-pack/04-timeline.md",
+      "revision": 1,
+      "sha256_lf": "02bf5f0b148c8c0d5b26faf493108d4f82186bc3d670023574e2b4063db76c84"
+    },
+    {
+      "path": "docs/compliance/classification-pack/05-hospital-interface-records.md",
+      "revision": 1,
+      "sha256_lf": "949939360c57a31884133f0f8ac72ec791384311e0814bba89a709b48ca1e7d5"
+    },
+    {
+      "path": "docs/compliance/classification-pack/README.md",
+      "revision": 1,
+      "sha256_lf": "4ced99556dc8f63a8fc5cc87b55871dd7c90107dfd5199be4a7684a8a276909a"
+    },
+    {
+      "path": "docs/compliance/dhf/SRS-CN-SKILLS.md",
+      "revision": 1,
+      "sha256_lf": "2ddbf509b88acda13e8a4307cefefac458a8f55d82fcc7ad859338eb306d4641"
+    },
+    {
+      "path": "docs/compliance/dhf/RISK-MANAGEMENT.md",
+      "revision": 1,
+      "sha256_lf": "4901f5d67a30602de0329509a6311ee1be62ce5b31e0dfe9aa833351cb99ec2b"
+    },
+    {
+      "path": "docs/ops/FIRST-HOSPITAL-SILENT-PILOT.md",
+      "revision": 1,
+      "sha256_lf": "120f55b6db7283f1349a71b48d72cad8090b0c3974d93521616dbb2644604f38"
+    }
+  ],
+  "components": [
+    {
+      "path": "plugins/medcius/servers/china-codes/package.json",
+      "version": "0.0.1",
+      "version_domain": "independent_internal_component"
+    },
+    {
+      "path": "plugins/medcius/servers/documents/package.json",
+      "version": "0.0.1",
+      "version_domain": "independent_internal_component"
+    },
+    {
+      "path": "plugins/medcius/servers/drug-labels/package.json",
+      "version": "0.0.1",
+      "version_domain": "independent_internal_component"
+    },
+    {
+      "path": "plugins/medcius/servers/fhir/package.json",
+      "version": "0.0.1",
+      "version_domain": "independent_internal_component"
+    },
+    {
+      "path": "plugins/medcius/servers/phiguard/package.json",
+      "version": "0.0.1",
+      "version_domain": "independent_internal_component"
+    }
+  ]
+}

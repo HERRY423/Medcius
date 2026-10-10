@@ -146,6 +146,11 @@ assert.ok(pacsTimed.summary.blocks.what_changed.imaging_impressions.some((item) 
 // is a clinical title, and antibiotic-rule names must survive frozen PHI exits.
 const sandboxRules = loadSpecialtyRulePack("cardiology-inpatient-sandbox", { production: false });
 const cardiologyFixtures = getCardiologyMultiSourceFeeds();
+assert.throws(() => HospitalAgentAdapter.executePreRoundWorkflow({ host: "his_embed", context: lastContext, dataFeeds: feeds, frozenRulePack: sandboxRules }), /RULE_PACK_REJECTED/,
+  "a caller-supplied sandbox pack cannot bypass production validation");
+// The following cases explicitly exercise synthetic archival compatibility,
+// not production approval of the sandbox rules.
+process.env.MEDCIUS_PROFILE = "demo";
 for (const fixture of cardiologyFixtures) {
   const context = { tenant_id: "synthetic-cardiology-regression", doctor_id: "synthetic-doctor", patient_id: fixture.patient.id,
     encounter_id: fixture.encounter?.id || "synthetic-cardiology-encounter", as_of: new Date().toISOString(), clinical_landing: true };
@@ -161,6 +166,7 @@ for (const fixture of cardiologyFixtures) {
     assert.ok(computed.summary.blocks.what_changed.antibiotic_duration_alerts.some((alert) => alert.drug_name === "注射用美罗培南"));
   }
 }
+process.env.MEDCIUS_PROFILE = "production";
 await assert.rejects(() => executeHisEmbedPreRound({ context: requestContext, authContext: auth }), /AUDIT_REQUIRED/);
 await assert.rejects(() => executeHisEmbedPreRound({ context: requestContext, authContext: auth, auditAppend: async () => { throw new Error("synthetic audit unavailable"); } }), /synthetic audit unavailable/);
 for (const route of ["/api/v1/patient/evolution-summary", "/api/v1/patient/progress-note-draft", "/workstation/evolution", "/workstation/shift-handover", "/workstation/record-quality"]) {

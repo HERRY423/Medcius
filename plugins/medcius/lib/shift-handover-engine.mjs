@@ -1,228 +1,95 @@
-// Clinical Shift Handover & Handoff Engine (临床交接班整理引擎)
-// Implements SBAR (Situation, Background, Assessment, Recommendation) / I-PASS Inpatient Handoff Model
-// Summarizes overnight critical monitoring points, drain alerts, scheduled lab follow-ups, and contingency plans.
+import { requiresRecordReconciliation } from "./record-lifecycle.mjs";
+// Handover preparation: shared source state plus explicitly authored human events.
+import { createPatientSourceSnapshot, assertPatientSourceSnapshot } from "./patient-source-snapshot.mjs";
+import { classifyRecordLifecycle, describeRecordLifecycle, lifecycleTime } from "./record-lifecycle.mjs";
+import { trackHighRiskFollowup, isExplicitCritical } from "./high-risk-followup-tracker.mjs";
+import { readHandoverEvents, deriveHandoverResponsibility } from "./handover-events.mjs";
+import { canonicalJson, sha256Hex } from "../servers/shared/crypto.mjs";
+import { assertHandoverConsistency, detachedFrozenOutput } from "./output-consistency.mjs";
 
-export const SHIFT_TYPES = {
-  MORNING_TO_EVENING: "day_to_night",     // 白班交夜班
-  EVENING_TO_MORNING: "night_to_day",     // 夜班交白班
-  WEEKEND_ON_CALL: "weekend_handoff",     // 周末总值班交接
-};
+export const SHIFT_TYPES = { MORNING_TO_EVENING: "day_to_night", EVENING_TO_MORNING: "night_to_day", WEEKEND_ON_CALL: "weekend_handoff" };
+const hash = value => sha256Hex(canonicalJson(value));
+const label = r => r.test_name || r.study_name || r.drug_name || r.title || (typeof r.code === "string" ? r.code : r.code?.text) || "名称未提供";
 
 export class ShiftHandoverEngine {
-  /**
-   * Analyze and generate SBAR structured handover package for a patient or ward.
-   * 
-   * @param {Object} params
-   * @param {Object} params.patient - Patient demographic & admission info
-   * @param {Object} params.encounter - Encounter details & care level
-   * @param {Array} params.notes - Recent progress notes
-   * @param {Object} params.vitals - Normalized NIS vitals summary & fluid balance
-   * @param {Array} params.observations - Normalized LIS observations & critical values
-   * @param {Array} params.medications - Active medications & infusions
-   * @param {Array} params.orders - Active orders & scheduled overnight actions
-   * @param {Array} params.allergies - Known allergies
-   * @param {string} params.shiftType - One of SHIFT_TYPES
-   */
-  static analyzePatientHandover({
-    patient = {},
-    encounter = {},
-    notes = [],
-    vitals = {},
-    observations = [],
-    medications = [],
-    orders = [],
-    allergies = null,
-    shiftType = SHIFT_TYPES.MORNING_TO_EVENING,
-  }) {
-    if (!patient.id) {
-      throw new Error("FAIL_CLOSED: Patient identifier is required for clinical handover");
-    }
+  static createSnapshot(params) { return createPatientSourceSnapshot(params); }
 
-    const { vitals_summary, fluid_balance } = vitals;
-
-    // ----------------------------------------------------
-    // S - Situation (当前现状)
-    // ----------------------------------------------------
-    const careLevel = encounter.care_level || (patient.bed_number === "01床" || patient.bed_number === "02床" ? "特级护理" : "一级护理");
-    const situation = {
-      bed_number: patient.bed_number || "未分配床位",
-      patient_name: patient.name || "脱敏患者",
-      age: patient.age,
-      gender: patient.gender,
-      primary_diagnosis: patient.primary_diagnosis || "入院待查",
-      care_level: careLevel,
-      acuity_status: careLevel === "特级护理" ? "🚨 重症监护/重点交班" : "稳定观察",
+  static analyzePatientHandover({ snapshot, windowStart, eventsAsOf, handoverContext = {}, handoverEvents = [], verifyHandoverEvent,
+    verifyHandoverHistory, rulePack = null, shiftType = SHIFT_TYPES.MORNING_TO_EVENING, ...input }) {
+    snapshot = snapshot ? assertPatientSourceSnapshot(snapshot) : createPatientSourceSnapshot(input);
+    if (!Object.values(SHIFT_TYPES).includes(shiftType)) throw new Error("FAIL_CLOSED: Invalid handover shift type");
+    if (typeof windowStart !== "string" || !/T.*(?:Z|[+-]\d{2}:\d{2})$/i.test(windowStart)
+      || lifecycleTime(windowStart) == null || lifecycleTime(windowStart) >= lifecycleTime(snapshot.as_of)) throw new Error("FAIL_CLOSED: Explicit valid handover window required");
+    eventsAsOf ??= snapshot.as_of;
+    if (typeof eventsAsOf !== "string" || !/T.*(?:Z|[+-]\d{2}:\d{2})$/i.test(eventsAsOf)
+      || lifecycleTime(eventsAsOf) == null || lifecycleTime(eventsAsOf) < lifecycleTime(snapshot.as_of)) throw new Error("FAIL_CLOSED: Invalid event cutoff");
+    const session = { handover_id: handoverContext.handover_id ?? null, outgoing_doctor_id: handoverContext.outgoing_doctor_id ?? null,
+      incoming_doctor_id: handoverContext.incoming_doctor_id ?? null };
+    const human = readHandoverEvents({ events: handoverEvents, verifyEvent: verifyHandoverEvent, context: snapshot.context, session, eventsAsOf });
+    const historyDigest = hash(human.history);
+    const historyComplete = typeof verifyHandoverHistory === "function" && verifyHandoverHistory({ history_digest: historyDigest,
+      context: structuredClone(snapshot.context), handover_context: structuredClone(session), events_as_of: eventsAsOf }) === true;
+    const current = key => (snapshot.records[key] || []).filter(e => e.eligible);
+    // Preserve a revision detected by the shared resolver even if the source kept status=final.
+    const recordForState = entry => entry.lifecycle.change_type === "revision" ? { ...entry.record, result_status: "corrected" } : entry.record;
+    const clinical = key => current(key).filter(e => !requiresRecordReconciliation(e.lifecycle.result_status));
+    const item = entry => ({ title: label(entry.record), record: entry.record, evidence: entry.evidence, lifecycle: entry.lifecycle });
+    const changes = Object.entries(snapshot.records).flatMap(([kind, entries]) => entries.filter(e => e.eligible).map(entry => {
+      const state = classifyRecordLifecycle(recordForState(entry), { sourceType: entry.evidence.source_type, now: snapshot.as_of, cutoffTime: windowStart });
+      return { ...item(entry), kind, lifecycle: state, description: describeRecordLifecycle(state, label(entry.record)), is_new_since_previous: null };
+    })).filter(e => e.lifecycle.change_time_status === "in_window" || e.lifecycle.recorded_time_status === "in_window")
+      .sort((a, b) => (lifecycleTime(b.lifecycle.change_time) ?? 0) - (lifecycleTime(a.lifecycle.change_time) ?? 0) || a.evidence.content_sha256.localeCompare(b.evidence.content_sha256));
+    const followup = trackHighRiskFollowup({ orders: current("orders").map(recordForState), observations: current("observations").map(recordForState),
+      diagnosticReports: current("diagnosticReports").map(recordForState), rulePack, now: snapshot.as_of, cutoffTime: windowStart,
+      sourceAvailability: snapshot.source_availability });
+    const dataGaps = [];
+    if (!snapshot.source_availability.length) dataGaps.push("来源覆盖未知；未检索到不等于没有待跟进事项。");
+    if (snapshot.excluded.length) dataGaps.push(`${snapshot.excluded.length} 条旧版本、冲突、缺来源/时间或未来记录未进入当前事实。`);
+    if (!human.plans.length) dataGaps.push("未提供经来源核验的交班医生预案；不自动生成处置预案。");
+    if (!historyComplete) dataGaps.push("交接事件历史完整性未核验；可能缺少后续撤回或修订，不能据此确认当前责任归属。");
+    if (!session.handover_id || !session.outgoing_doctor_id || !session.incoming_doctor_id) dataGaps.push("交接班次或双方身份未完整提供，不能确认责任转交。");
+    if (Object.values(snapshot.records).flat().some(e => e.evidence.ownership_basis === "feed_context")) dataGaps.push("部分记录仅绑定输入资料包，记录级归属尚未独立核验。");
+    const scheduled = clinical("orders").map(e => ({ ...item(e), scheduled_time: e.record.scheduled_time ?? null, purpose: e.record.purpose ?? null, execution_status: "unknown" }));
+    const sbar = {
+      situation: { patient_id: snapshot.context.patient_id, encounter_id: snapshot.context.encounter_id, care_level: null, acuity_status: "unknown",
+        note: "护理级别与病情稳定性不由床位、空数据或无报警推断。" },
+      background: { source_notes: clinical("notes").map(item), allergy_summary: "过敏史需核对有来源的原始记录", has_allergy_gap: true },
+      assessment: { critical_values: clinical("observations").filter(e => isExplicitCritical(e.record)).map(item),
+        source_observations: clinical("observations").map(item), nursing_records: clinical("nursing").map(item),
+        medication_orders: clinical("medications").map(e => ({ ...item(e), execution_status: "unknown" })),
+        diagnostic_reports: current("diagnosticReports").map(item), fluid_balance_status: "unknown" },
+      recommendation: { scheduled_follow_ups: scheduled, contingency_plans: human.plans,
+        attribution: "仅保留来源核验的交班医师原话；不生成医学建议或新医嘱。" },
     };
-
-    // ----------------------------------------------------
-    // B - Background (背景信息与重要历程)
-    // ----------------------------------------------------
-    const allergySummary = allergies == null || (Array.isArray(allergies) && allergies.length === 0)
-      ? "⚠️ 过敏史缺失 (需当面核实)"
-      : (Array.isArray(allergies) ? allergies.join(", ") : String(allergies));
-
-    const background = {
-      admission_date: patient.admission_date || null,
-      allergy_summary: allergySummary,
-      has_allergy_gap: allergySummary.includes("缺失"),
-      recent_procedures: [],
-    };
-
-    // Extract recent surgical or procedural notes
-    for (const note of notes) {
-      if (/术后|PCI|造影|穿刺|置管|引流|介入/i.test(note.text || "")) {
-        background.recent_procedures.push({
-          note_id: note.id,
-          title: note.title || "手术/操作记录",
-          timestamp: note.timestamp,
-          summary: (note.text || "").slice(0, 100),
-        });
-      }
-    }
-
-    // ----------------------------------------------------
-    // A - Assessment (值班重点评估与异常指标)
-    // ----------------------------------------------------
-    const criticalObservations = observations.filter((o) => o.is_critical);
-    const abnormalLabs = observations.filter((o) => o.is_abnormal || (o.referenceRange?.length > 0 && o.is_critical));
-    const activeInfusions = medications.filter((m) => m.route === "iv" || m.route === "ivgtt" || m.route === "泵入" || /多巴胺|去甲肾上腺素|硝酸甘油|呋塞米|胰岛素|胺碘酮/i.test(m.drug_name || ""));
-
-    const assessment = {
-      vitals_alerts: [],
-      drain_alerts: [],
-      critical_values: criticalObservations.map((c) => ({
-        name: c.name,
-        value: c.value,
-        unit: c.unit,
-        reason: c.critical_reason || "触发危急值",
-      })),
-      abnormal_labs_count: abnormalLabs.length,
-      active_infusions: activeInfusions.map((m) => ({
-        drug_name: m.drug_name,
-        dosage: m.dosage,
-        route: m.route,
-      })),
-      fluid_balance_status: fluid_balance?.status || "平稳",
-    };
-
-    // Vitals warning
-    if (vitals_summary) {
-      if (vitals_summary.t_max && vitals_summary.t_max >= 38.0) {
-        assessment.vitals_alerts.push(`体温升高最高达 ${vitals_summary.t_max}℃`);
-      }
-      if (vitals_summary.spo2_min && parseInt(vitals_summary.spo2_min) < 93) {
-        assessment.vitals_alerts.push(`SpO2 波动最低至 ${vitals_summary.spo2_min}`);
-      }
-    }
-
-    // Drain alerts
-    if (fluid_balance?.drain_details?.length > 0) {
-      for (const d of fluid_balance.drain_details) {
-        assessment.drain_alerts.push(`${d.name}: 24h 累计 ${d.amount_ml}ml (${d.description})`);
-      }
-    }
-
-    // ----------------------------------------------------
-    // R - Recommendation (值班待办、复查时点与应急预案)
-    // ----------------------------------------------------
-    const scheduledFollowUps = [];
-    const contingencyPlans = [];
-
-    // Collect scheduled follow-ups
-    for (const ord of orders) {
-      if (ord.scheduled_time || /复查|急查|监护|记录/i.test(ord.title || "")) {
-        scheduledFollowUps.push({
-          title: ord.title || ord.name,
-          scheduled_time: ord.scheduled_time || "今晚/夜间待办",
-          purpose: ord.purpose || "病情监测",
-        });
-      }
-    }
-
-    // Generate intelligent clinical contingency reminders
-    if (criticalObservations.some((c) => /k|钾/i.test(c.code || c.name))) {
-      contingencyPlans.push("【电解质应急】血钾异常波动，夜间注意心电监护 U 波/T 波演变，复查急诊电解质后按医嘱补钾或降钾。");
-    }
-    if (situation.primary_diagnosis.includes("心肌梗死") || situation.primary_diagnosis.includes("ACS")) {
-      contingencyPlans.push("【胸痛应急】若夜间再发压榨性胸痛或心率骤降，立即行床旁 18 导联心电图、吸氧并遵医嘱急查肌钙蛋白/急请二线。");
-    }
-    if (situation.primary_diagnosis.includes("心力衰竭") || (fluid_balance && fluid_balance.net_balance_ml > 1000)) {
-      contingencyPlans.push("【心衰容量负荷】患者处于明显正平衡，夜间若突发端坐呼吸或两肺湿啰音增多，注意半卧位吸氧及紧急利尿支持。");
-    }
-
-    return {
-      patient_id: patient.id,
-      shift_type: shiftType,
-      generated_at: new Date().toISOString(),
-      sbar: {
-        situation,
-        background,
-        assessment,
-        recommendation: {
-          scheduled_follow_ups: scheduledFollowUps,
-          contingency_plans: contingencyPlans,
-        },
-      },
-    };
+    const packet = { schema_version: "medcius.shift-handover.v2", snapshot_id: snapshot.snapshot_id, as_of: snapshot.as_of,
+      window_start: windowStart, shift_type: shiftType, context: snapshot.context, handover_context: session,
+      sbar, record_changes: changes, high_risk_followup: followup, data_gaps: dataGaps,
+      source_availability: snapshot.source_availability, source_visibility: snapshot.source_visibility, excluded_records: snapshot.excluded };
+    const packetDigest = hash(packet);
+    const responsibility = deriveHandoverResponsibility({ history: human.history, session, packetDigest, snapshotAsOf: snapshot.as_of });
+    responsibility.event_history_completeness = historyComplete ? "host_verified_complete" : "unknown";
+    responsibility.current_responsible_doctor_id = historyComplete ? responsibility.reported_responsible_doctor_id : null;
+    return detachedFrozenOutput(assertHandoverConsistency({ ...packet, patient_id: snapshot.context.patient_id, generated_at: snapshot.as_of, packet_digest: packetDigest,
+      events_as_of: eventsAsOf, handover_events: human.history, event_history_digest: historyDigest, responsibility,
+      boundary: "准备、浏览、结果复核、责任转交与临床执行分别记录；本输出不写回医院系统。" }));
   }
 
-  /**
-   * Generate structured handoff card text.
-   */
-  static generateHandoverText({ handoverData, outgoingDoctor = "白班医师", incomingDoctor = "夜班值班医师" }) {
-    const { sbar } = handoverData;
-    const { situation, background, assessment, recommendation } = sbar;
-
-    const lines = [];
-    lines.push(`【临床交接班记录 (SBAR 模型)】`);
-    lines.push(`交接床位：${situation.bed_number}  |  患者姓名：${situation.patient_name} (${situation.age}岁/${situation.gender})  |  分级：${situation.care_level}`);
-    lines.push(`交班医师：${outgoingDoctor}  ➔  接班医师：${incomingDoctor}  |  时间：${new Date().toISOString().replace("T", " ").slice(0, 16)}`);
-    lines.push("");
-
-    lines.push(`一、S (现状 Situation)`);
-    lines.push(`  • 主要诊断：${situation.primary_diagnosis}`);
-    lines.push(`  • 当前状态：${situation.acuity_status}`);
-    lines.push("");
-
-    lines.push(`二、B (背景 Background)`);
-    lines.push(`  • 过敏情况：${background.allergy_summary}`);
-    if (background.recent_procedures.length > 0) {
-      background.recent_procedures.forEach((p) => lines.push(`  • 近期操作：${p.title} (${p.summary.slice(0, 50)}...)`));
-    } else {
-      lines.push(`  • 近期操作：无特殊有创操作`);
-    }
-    lines.push("");
-
-    lines.push(`三、A (评估 Assessment)`);
-    if (assessment.critical_values.length > 0) {
-      assessment.critical_values.forEach((c) => lines.push(`  • 🚨 危急值关注：${c.name} ${c.value} ${c.unit} (${c.reason})`));
-    }
-    if (assessment.vitals_alerts.length > 0) {
-      assessment.vitals_alerts.forEach((v) => lines.push(`  • ⚠️ 体征预警：${v}`));
-    }
-    if (assessment.drain_alerts.length > 0) {
-      assessment.drain_alerts.forEach((d) => lines.push(`  • 引流管路：${d}`));
-    }
-    if (assessment.active_infusions.length > 0) {
-      lines.push(`  • 维持静脉通路/泵入：${assessment.active_infusions.map((m) => `${m.drug_name} ${m.dosage}`).join("、")}`);
-    }
-    if (assessment.critical_values.length === 0 && assessment.vitals_alerts.length === 0 && assessment.drain_alerts.length === 0) {
-      lines.push(`  • 暂无危急值及特殊生命体征报警，整体平稳`);
-    }
-    lines.push("");
-
-    lines.push(`四、R (建议与值班预案 Recommendation)`);
-    if (recommendation.scheduled_follow_ups.length > 0) {
-      recommendation.scheduled_follow_ups.forEach((f) => lines.push(`  • [待办复查] ${f.title} (${f.scheduled_time})`));
-    } else {
-      lines.push(`  • [待办复查] 暂无夜间指定复查`);
-    }
-    if (recommendation.contingency_plans.length > 0) {
-      recommendation.contingency_plans.forEach((cp) => lines.push(`  • ${cp}`));
-    }
-    lines.push("");
-    lines.push(`交接双方签字确认：交班人 [ ${outgoingDoctor} ]   接班人 [ ${incomingDoctor} ]`);
-
+  static generateHandoverText({ handoverData: d }) {
+    assertHandoverConsistency(d);
+    const lines = ["【交接班准备资料（SBAR）】", `资料截至：${d.as_of}；变化窗口起点：${d.window_start}`,
+      "一、S（现状）", d.sbar.situation.note, "二、B（来源病程）"];
+    const add = rows => {
+      if (!rows.length) lines.push("当前资料中未检索到；不等于不存在。");
+      for (const row of rows) lines.push(`• ${row.title}：${row.record.text ?? row.record.value ?? row.record.impression ?? row.record.dosage ?? "请核对原始字段"} [来源 ${row.evidence.locator}]`);
+    };
+    add(d.sbar.background.source_notes);
+    lines.push("三、A（变化与待跟进）");
+    for (const change of d.record_changes) lines.push(`• ${change.description} [来源 ${change.evidence.locator}]`);
+    for (const pending of d.high_risk_followup.items) lines.push(`• ${pending.label}：结果复核 ${pending.review_status}；跟进 ${pending.closure_status}`);
+    add(d.sbar.assessment.nursing_records);
+    lines.push("四、R（来源医嘱与医生原话预案）"); add(d.sbar.recommendation.scheduled_follow_ups);
+    for (const plan of d.sbar.recommendation.contingency_plans) lines.push(`• ${plan.trigger_text ?? "触发条件未提供"}：${plan.action_text} [交班医生 ${plan.author_id}；来源事件 ${plan.evidence.source_id}]`);
+    lines.push(`责任交接状态：${d.responsibility.status}`, d.responsibility.boundary, ...d.data_gaps, d.boundary);
     return lines.join("\n");
   }
 }

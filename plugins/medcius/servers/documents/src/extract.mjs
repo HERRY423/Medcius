@@ -1,3 +1,4 @@
+import { writeSafeDiagnostic } from "../../shared/phi-output.mjs";
 // Subprocess document extraction: text out of untrusted bytes, entirely local.
 // The server never touches the network; extraction is one subprocess per
 // document, CPU-bound, and OCR on a scanned page costs seconds — so extraction
@@ -64,7 +65,7 @@ const run = async (cmd, args, opts = {}) => {
     // exits 127 instead. A missing nicety must not read as N parse failures.
     if (e?.code !== "ENOENT") throw e;
     niceMissing = true;
-    process.stderr.write("extract: `nice` not found — running extraction at normal priority\n");
+    writeSafeDiagnostic("extract: `nice` not found — running extraction at normal priority\n");
     return pexec(cmd, args, o);
   }
 };
@@ -99,7 +100,7 @@ async function extractWithLiteparse(lit, src) {
       }));
     } catch (e) {
       if (/maxBuffer/i.test(String(e?.message)))
-        process.stderr.write(`extract: ${src} output exceeded the ${MAX_BUFFER}-byte cap\n`);
+        writeSafeDiagnostic(`extract: ${src} output exceeded the ${MAX_BUFFER}-byte cap\n`);
       continue; // non-zero exit — try the next variant, then the pdftotext fallback
     }
     if (!stdout.trim()) continue;
@@ -120,7 +121,7 @@ async function extractWithPdftotext(src) {
     ({ stdout } = await run("pdftotext", ["-layout", src, "-"], { maxBuffer: MAX_BUFFER }));
   } catch (e) {
     if (/maxBuffer/i.test(String(e?.message)))
-      process.stderr.write(`extract: ${src} output exceeded the ${MAX_BUFFER}-byte cap\n`);
+      writeSafeDiagnostic(`extract: ${src} output exceeded the ${MAX_BUFFER}-byte cap\n`);
     return null;
   }
   // pdftotext separates pages with a form-feed; anchor each with its number.

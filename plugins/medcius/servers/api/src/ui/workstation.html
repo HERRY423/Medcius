@@ -1,317 +1,221 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Medcius 医生工作台（内网独立版）</title>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Medcius 医生工作台 · 资料核对</title>
 <style>
-  :root { --bg:#f5f7fa; --card:#fff; --line:#e3e8ef; --ink:#1f2937; --muted:#6b7280; --blue:#1d4ed8; --red:#b91c1c; --green:#047857; --amber:#92400e; --banner:#fef3c7; }
-  * { box-sizing: border-box; }
-  body { margin:0; font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif; background:var(--bg); color:var(--ink); }
-  header { background:#0f172a; color:#fff; padding:10px 20px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
-  header h1 { font-size:16px; margin:0; font-weight:600; }
-  .badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:12px; border:1px solid rgba(255,255,255,.35); }
-  .badge.warn { background:#fbbf24; color:#78350f; border-color:#fbbf24; }
-  .badge.ok { background:#34d399; color:#064e3b; border-color:#34d399; }
-  main { display:flex; min-height:calc(100vh - 54px); }
-  nav { width:190px; background:var(--card); border-right:1px solid var(--line); padding:12px 0; }
-  nav button { display:block; width:100%; text-align:left; padding:11px 18px; background:none; border:none; border-left:3px solid transparent; cursor:pointer; font-size:14px; color:var(--ink); }
-  nav button.active { border-left-color:var(--blue); background:#eff6ff; color:var(--blue); font-weight:600; }
-  .content { flex:1; padding:18px 22px; max-width:1100px; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin-bottom:14px; }
-  .card h2 { margin:0 0 10px; font-size:15px; }
-  .banner { background:var(--banner); border:1px solid #fcd34d; color:#78350f; border-radius:8px; padding:9px 14px; font-size:13px; margin-bottom:14px; }
-  .error { background:#fef2f2; border:1px solid #fecaca; color:var(--red); border-radius:8px; padding:9px 14px; font-size:13px; margin:10px 0; white-space:pre-wrap; }
-  label { display:block; font-size:12px; color:var(--muted); margin:8px 0 3px; }
-  input, textarea, select { width:100%; padding:7px 10px; border:1px solid var(--line); border-radius:6px; font-size:13px; font-family:inherit; }
-  textarea { min-height:70px; }
-  button.primary { background:var(--blue); color:#fff; border:none; border-radius:6px; padding:8px 18px; font-size:13px; cursor:pointer; margin-top:10px; }
-  button.ghost { background:none; border:1px solid var(--line); border-radius:6px; padding:7px 14px; font-size:13px; cursor:pointer; margin-top:10px; }
-  .row { display:flex; gap:12px; flex-wrap:wrap; } .row > div { flex:1; min-width:150px; }
-  .digest { font-family:monospace; font-size:12px; background:#0f172a; color:#a5f3fc; padding:6px 10px; border-radius:6px; word-break:break-all; }
-  table.tree { border-collapse:collapse; width:100%; font-size:12.5px; }
-  table.tree td { border:1px solid var(--line); padding:4px 8px; vertical-align:top; }
-  table.tree td.k { width:240px; color:var(--muted); background:#fafbfc; }
-  .tag { display:inline-block; padding:1px 8px; border-radius:4px; font-size:11px; margin-right:4px; }
-  .tag.null { background:#fee2e2; color:#991b1b; }
-  .tag.ok { background:#d1fae5; color:#065f46; }
-  .tag.warn { background:#fef3c7; color:#92400e; }
-  .tag.high { background:#fecaca; color:#7f1d1d; font-weight:700; }
-  .hidden { display:none; }
-  .muted { color:var(--muted); font-size:12px; }
-  code.inline { background:#eef2f7; padding:1px 6px; border-radius:4px; font-size:12px; }
-</style>
-</head>
-<body>
-<header>
-  <h1>Medcius 医生工作台</h1>
-  <span class="badge" id="stage-badge">治理阶段加载中…</span>
-  <span class="muted" id="clinician-info" style="color:#cbd5e1;"></span>
-  <span style="flex:1"></span>
-  <button class="ghost" style="margin:0;color:#e2e8f0;border-color:#334155;" onclick="logout()">退出</button>
-</header>
-<div id="research-banner" class="hidden" style="padding:0 22px;">
-  <div class="banner" style="border-radius:0;">🔬 <b>研究参考模式</b>：当前治理阶段（Level ≤2）输出仅供回顾性研究 / 静默比对，禁止临床投放与签核。投放能力将在建议模式（Level 3）后按医院治理决议开启。</div>
-</div>
+:root{--bg:#f3f5f6;--card:#fff;--ink:#18303d;--muted:#586d79;--line:#dbe3e7;--blue:#126478;--amber:#855311;--red:#a02b2b;--green:#256449}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 'Microsoft YaHei','PingFang SC',system-ui,sans-serif}button,input,textarea,select{font:inherit}button,summary{cursor:pointer}button{min-height:42px;border:1px solid var(--line);border-radius:8px;background:white;color:var(--ink);padding:8px 16px}button:disabled{cursor:not-allowed;opacity:.55}button.primary{background:var(--blue);border-color:var(--blue);color:white}button.ghost{background:transparent}button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #e4a536;outline-offset:3px}header{background:#173743;color:white;padding:13px 28px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}header h1{font-size:18px;margin:0}header .muted{color:#c6d9e1}header button{color:white;border-color:#5d7c88}.brand{letter-spacing:1px;font-weight:700}.badge,.tag{display:inline-block;border:1px solid var(--line);border-radius:5px;padding:1px 8px;font-size:12px}.warn{background:#fff3dc;color:#75480d}.muted{color:var(--muted);font-size:13px}.content{max-width:1160px;margin:auto;padding:22px 28px}.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin:14px 0}.card h2{margin:0 0 8px;font-size:18px}h3{font-size:17px;margin:22px 0 10px}p{margin:8px 0}h4{margin:18px 0 6px}label{display:block;font-size:13px;color:var(--muted);margin:8px 0 4px}input,select,textarea{padding:9px 12px;border:1px solid #b9c9d1;border-radius:7px;width:100%;color:var(--ink);background:white}textarea{min-height:100px}.row{display:flex;gap:16px;flex-wrap:wrap}.row>div{flex:1;min-width:200px}.hidden,[hidden]{display:none!important}.banner{padding:10px 28px;background:#fff4de;color:#76531c;font-size:13px;border-bottom:1px solid #e7d4ad}.patient-strip{position:sticky;top:0;z-index:5;background:#fff;padding:14px 20px;display:flex;align-items:center;gap:18px;border:1px solid var(--line);border-radius:10px;box-shadow:0 3px 10px #18303d08}.patient-strip strong{font-size:18px}.patient-strip select{max-width:210px}.patient-info{flex:1;min-width:200px}.task-tabs{display:flex;gap:6px;margin:22px 0 10px;border-bottom:1px solid var(--line);padding-bottom:9px}.task-tabs button{border-color:transparent;background:transparent;flex:1;white-space:nowrap}.task-tabs button.active{background:#e0eef0;color:#0d5364;font-weight:700;border-color:#aacbd1}.task-config{margin:0 0 12px}.task-config>h2{font-size:19px;margin:0}.task-config .primary{margin-top:14px}.status-line{min-height:27px;color:var(--muted);font-size:13px;margin:10px 0}.empty-state{text-align:center;padding:58px 24px;background:white;border:1px dashed #aebfc8;border-radius:10px}.empty-state h2{font-size:20px}.overview{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0}.overview>a,.overview>div{flex:1;min-width:180px;border:1px solid var(--line);border-radius:9px;padding:14px 18px;background:white;color:inherit;text-decoration:none}.overview strong{font-size:25px;display:block}.overview span{font-size:13px;color:var(--muted)}.attention{border-left:4px solid #a86413;background:#fffbf2}.source-alert{border-left:4px solid var(--red)}.section-head{display:flex;justify-content:space-between;gap:12px;align-items:center}.section-head span{font-size:13px;color:var(--muted)}details{margin:10px 0}summary{padding:6px 0;color:#265e70}details>details{margin-left:10px}.clinical-row{border-bottom:1px solid var(--line);padding:13px 0}.clinical-row:last-child{border-bottom:0}.clinical-row>b{font-size:15px}.source-meta{color:var(--muted);font-size:12px;overflow-wrap:anywhere}.record-fields{display:grid;grid-template-columns:minmax(100px,160px) 1fr;gap:6px 16px;font-size:14px;margin:10px 0}.record-fields dt{color:var(--muted)}.record-fields dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.6 ui-monospace,monospace;background:#f3f6f8;padding:12px;border-radius:6px;max-height:420px;overflow:auto}.error{padding:12px 16px;color:#8a2525;background:#fff0ed;border:1px solid #e9c1b9;border-radius:8px}.tech-tools{margin-top:32px;border-top:1px solid var(--line);padding-top:14px}.tech-tools>summary{font-size:13px;color:var(--muted)}.digest{font:12px monospace;overflow-wrap:anywhere;padding:10px;background:#f1f5f7}.report-meta{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:12px}.report-title{font-size:23px!important}a{color:var(--blue)}.boundary{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}.reading-tools{display:flex;gap:10px;flex-wrap:wrap}html{scroll-behavior:smooth;scroll-padding-top:100px}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}@media(max-width:680px){.content{padding:16px}header{padding:12px 16px}.banner{padding:9px 16px}.patient-strip{position:static;flex-wrap:wrap;padding:14px}.patient-strip select{max-width:none}.task-tabs{overflow:auto;gap:0}.task-tabs button{font-size:13px;padding:8px}.row>div{min-width:100%}.card{padding:14px}.record-fields{grid-template-columns:100px 1fr}.overview>a,.overview>div{min-width:120px}.tech-tools{overflow-wrap:anywhere}}
+</style></head><body>
+<header><div class="brand">MEDCIUS</div><h1>医生工作台</h1><span class="muted">资料核对</span><span style="flex:1"></span><span id="clinician-info" class="muted"></span><button class="ghost" onclick="logout()">退出</button></header>
+<div id="research-banner" class="banner">研究参考界面 · 仅供合成回放与流程评估，尚未开放临床使用。</div>
+<div class="content" id="view-login"><div class="card" style="max-width:440px;margin:50px auto"><h2>登录资料工作台</h2><p class="muted">使用已配置的医院目录身份。</p><label for="login-tenant">院区</label><input id="login-tenant" value="default"><label for="login-user">工号</label><input id="login-user" autocomplete="username"><label for="login-pass">密码</label><input id="login-pass" type="password" autocomplete="current-password"><button class="primary" style="margin-top:18px" onclick="login()">登录</button><div id="login-error" role="alert"></div><details><summary>无法登录？</summary><p>请联系本院信息部门确认目录接入和账户权限。</p></details></div></div>
+<main id="view-app" class="hidden content">
+<section class="patient-strip" aria-label="当前患者"><div class="patient-info"><strong id="patient-label">尚未载入患者</strong><div class="muted" id="patient-identity">请从医院患者页面打开，或选择合成示例。</div></div><div><label for="ctx-demo">资料来源</label><select id="ctx-demo"><option value="">院内上下文（待接入）</option><option value="demo">合成示例</option></select></div><div id="demo-bed-wrap" class="hidden"><label for="ctx-bed">合成床位</label><select id="ctx-bed"><option value="01床">01床</option><option value="02床">02床</option><option value="03床">03床</option></select></div></section>
+<nav class="task-tabs" aria-label="资料任务"><button data-tab="evolution" class="active" aria-pressed="true">查房准备</button><button data-tab="shift-handover" aria-pressed="false">交接班</button><button data-tab="consult-preparation" aria-pressed="false">会诊准备</button><button data-tab="discharge-readiness" aria-pressed="false">出院资料</button></nav>
+<section class="card task-config" id="panel-evolution"><h2>这段时间发生了什么</h2><div class="row"><div style="max-width:240px"><label for="evo-window">回看范围</label><select id="evo-window"><option value="24h">近 24 小时</option><option value="72h">近 72 小时</option></select></div></div><button class="primary run-button" onclick="runWorkflow('evolution',{time_window:val('evo-window')})">整理查房资料</button></section>
+<section class="card task-config hidden" id="panel-shift-handover"><h2>交班前还需核对什么</h2><label for="sh-type">班次</label><select id="sh-type" style="max-width:240px"><option value="day_to_night">白班 → 夜班</option><option value="night_to_day">夜班 → 白班</option><option value="weekend_handoff">周末交接</option></select><p class="muted">保留来源医生预案和接班记录；整理资料不代表责任已转交。</p><button class="primary run-button" onclick="runWorkflow('shift-handover',{shift_type:val('sh-type')})">整理交班资料</button></section>
+<section class="card task-config hidden" id="panel-consult-preparation"><h2>这次希望专科解决什么问题</h2><div class="row"><div><label for="cs-dept">会诊科室 · 必填</label><input id="cs-dept" placeholder="例如：肾内科"></div><div style="flex:2"><label for="cs-purpose">会诊诉求 · 必填</label><input id="cs-purpose" placeholder="例如：核对肌酐与血钾变化"></div></div><details><summary>补充具体问题与重点资料</summary><label for="cs-question">具体问题</label><input id="cs-question"><label for="cs-focus">重点资料词，用逗号分隔</label><input id="cs-focus" placeholder="肌酐，血钾，尿量"></details><button class="primary run-button" onclick="runWorkflow('consult-preparation',{consult_request:{department:val('cs-dept'),purpose:val('cs-purpose'),question:val('cs-question'),focus_terms:val('cs-focus').split(/[,，]/).map(x=>x.trim()).filter(Boolean)}})">按诉求整理资料</button></section>
+<section class="card task-config hidden" id="panel-discharge-readiness"><h2>结果、用药与后续安排是否有据可查</h2><p class="muted">只核对资料，不判断临床上是否适合出院。</p><button class="primary run-button" onclick="runWorkflow('discharge-readiness')">核对出院资料</button></section>
+<div class="status-line" id="request-status" role="status" aria-live="polite">选择资料来源后开始整理。</div>
+<div id="report-error" role="alert"></div><div id="report-empty" class="empty-state"><h2>先确认患者，再查看资料</h2><p class="muted">整理后的变化、待跟进事项和原始依据会显示在这里。</p></div>
+<section id="report-card" class="hidden" aria-label="当前资料报告"><div class="report-meta"><span id="report-context"></span><span id="report-cutoff"></span></div><div id="report-body"></div><details><summary>报告标识与核验信息</summary><div class="digest" id="report-digest"></div><p class="muted">标识绑定这一份资料，不表示已复核、已接班或已批准出院。</p></details></section>
+<section id="review-panel" class="card hidden" aria-label="我的核对重点"><h2>我的核对重点</h2><p class="muted">仅为本次阅读草稿，30 分钟后过期；已读不等于事实确认，也不形成签核。</p><div id="review-toolbar"></div><div id="review-items"></div><label for="review-note">补充核对问题（勿填身份信息）</label><textarea id="review-note" maxlength="1000"></textarea><button onclick="reviewAct('note',{note:val('review-note')})">保存问题草稿</button><button onclick="reviewAct('request')">准备所选条目的核对问题</button><button onclick="reloadReview()">重新读取草稿</button><div id="review-status" role="status" aria-live="polite"></div></section>
+<details class="tech-tools" id="engineering-tools"><summary>接入设置与辅助工具</summary><p class="muted">以下为研究与接入验证工具，不属于日常资料阅读流程。治理阶段：<span id="stage-badge">尚未读取</span></p><div class="card"><h2>来源接入</h2><div class="row"><div><label for="ctx-patient">患者标识</label><input id="ctx-patient"></div><div><label for="ctx-encounter">就诊标识</label><input id="ctx-encounter"></div></div><label for="ctx-feeds">脱敏来源资料对象</label><textarea id="ctx-feeds" placeholder="仅接入验证使用；不要粘贴真实患者资料"></textarea><label for="dr-meds">出院补充来源资料对象</label><textarea id="dr-meds" placeholder='{"dischargeMedications":[],"medicationTransitions":[],"followUpPlans":[],"patientInstructions":[]}'></textarea></div><details><summary>病案 / 清单核对</summary><p class="muted">独立辅助流程；不改变当前患者报告。</p><label for="rq-text">脱敏记录</label><textarea id="rq-text"></textarea><button class="ghost" onclick="runRecordQuality()">核对记录</button><div id="rq-result"></div></details><details id="panel-signoff"><summary>报告签核与验签（接入验证）</summary><p class="muted">签核只绑定资料报告，不完成结果复核、责任转交或出院批准。</p><p id="signoff-current">尚无报告</p><label for="signoff-note">签核备注</label><input id="signoff-note"><button id="signoff-button" disabled onclick="signoff()">签核当前资料报告</button><div id="signoff-result"></div><label for="verify-record">签名记录</label><textarea id="verify-record"></textarea><label for="verify-payload">原始报告</label><textarea id="verify-payload"></textarea><button onclick="verifySignoff()">核验签名</button><div id="verify-result"></div></details></details>
 
-<!-- 登录视图 -->
-<div class="content" id="view-login">
-  <div class="card" style="max-width:430px;margin:60px auto;">
-    <h2>医院目录身份登录</h2>
-    <p class="muted">使用医院工号登录（LDAP/AD/统一身份经目录适配器对接；连续失败将锁定）。</p>
-    <label>租户 / 院区</label><input id="login-tenant" value="default">
-    <label>工号</label><input id="login-user" autocomplete="off">
-    <label>密码</label><input id="login-pass" type="password">
-    <button class="primary" style="width:100%;" onclick="login()">登录</button>
-    <div id="login-error"></div>
-    <p class="muted" style="margin-top:12px;">无目录配置时返回 <code class="inline">WORKSTATION_DIRECTORY_NOT_CONFIGURED</code>——由信息科按 <code class="inline">integrations/doctor-workstation/README.md</code> 注入目录适配器。</p>
-  </div>
-</div>
-
-<!-- 工作台 -->
-<main id="view-app" class="hidden">
-  <nav>
-    <button data-tab="evolution" class="active">查房前变化摘要</button>
-    <button data-tab="shift-handover">交接班 (SBAR)</button>
-    <button data-tab="consult-preparation">会诊前资料包</button>
-    <button data-tab="discharge-readiness">出院核对</button>
-    <button data-tab="record-quality">病案/清单质量核对</button>
-    <button data-tab="signoff">签核与验签</button>
-  </nav>
-  <div class="content">
-    <div class="card">
-      <h2>数据来源</h2>
-      <div class="row">
-        <div><label>患者 ID</label><input id="ctx-patient" placeholder="如 patient-synthetic-1"></div>
-        <div><label>就诊 ID</label><input id="ctx-encounter" placeholder="如 encounter-synthetic-1"></div>
-        <div style="max-width:170px;"><label>演示病区（仅非生产）</label>
-          <select id="ctx-demo"><option value="">不使用</option><option value="demo">合成心内病区</option></select>
-        </div>
-      </div>
-      <label>显式数据覆盖（JSON，可选——直连患者时由医院集成平台注入）</label>
-      <textarea id="ctx-feeds" placeholder='{"patient":{...},"notes":[...],"lis":[...],"his_orders":[...],"pacs":[...],"allergies":[]}'></textarea>
-    </div>
-    <div class="card" id="panel-evolution">
-      <h2>查房前患者变化与未闭环核对摘要</h2>
-      <div class="row">
-        <div style="max-width:160px;"><label>时间窗</label>
-          <select id="evo-window"><option>24h</option><option>72h</option></select>
-        </div>
-      </div>
-      <button class="primary" onclick="runWorkflow('evolution', { time_window: val('evo-window') })">生成摘要</button>
-    </div>
-    <div class="card hidden" id="panel-shift-handover">
-      <h2>交接班 SBAR 整理</h2>
-      <div class="row">
-        <div style="max-width:220px;"><label>班次</label>
-          <select id="sh-type"><option value="morning_to_evening">白班→夜班</option><option value="evening_to_night">晚班→夜班</option><option value="night_to_morning">夜班→白班</option></select>
-        </div>
-      </div>
-      <button class="primary" onclick="runWorkflow('shift-handover', { shift_type: val('sh-type') })">生成交接班单</button>
-    </div>
-    <div class="card hidden" id="panel-consult-preparation">
-      <h2>专科会诊前资料包</h2>
-      <div class="row">
-        <div><label>目标科室</label><input id="cs-dept" placeholder="如 心内科"></div>
-        <div><label>会诊目的</label><input id="cs-purpose" placeholder="如 术前评估"></div>
-      </div>
-      <button class="primary" onclick="runWorkflow('consult-preparation', { consult_request: { department: val('cs-dept'), purpose: val('cs-purpose') } })">生成资料包</button>
-    </div>
-    <div class="card hidden" id="panel-discharge-readiness">
-      <h2>出院资料完整性与安全核对</h2>
-      <label>出院带药（JSON 数组，可选）</label>
-      <textarea id="dr-meds" placeholder='[{"drug_name":"阿司匹林肠溶片","route":"po"}]'></textarea>
-      <button class="primary" onclick="runWorkflow('discharge-readiness', { dischargeMedications: tryParse(val('dr-meds')) || [] })">执行核对</button>
-    </div>
-    <div class="card hidden" id="panel-record-quality">
-      <h2>病案首页 / 医保结算清单要素质量核对</h2>
-      <p class="muted">确定性核对：必填要素缺口、住院天数/费用代数、离院方式值域、性别/年龄-诊断章节冲突。不做分组、不改编码、不判定违规。</p>
-      <label>病历文本（脱敏）</label>
-      <textarea id="rq-text" style="min-height:140px;" placeholder="出院记录
-性别：男 年龄：67岁
-入院日期：2024-08-01 出院日期：2024-08-10
-住院天数：3天
-离院方式：1 医嘱离院
-出院诊断：急性胆囊炎"></textarea>
-      <button class="primary" onclick="runRecordQuality()">执行核对</button>
-    </div>
-    <div class="card hidden" id="panel-signoff">
-      <h2>报告签核与验签（Level ≥3 可用）</h2>
-      <div id="signoff-current" class="muted">尚无待签核报告——先在左侧生成一份报告。</div>
-      <label>签核备注（可选）</label><input id="signoff-note" placeholder="如：已核对全部证据 span">
-      <button class="primary" onclick="signoff()">确认签核（绑定报告摘要）</button>
-      <div id="signoff-result"></div>
-      <hr style="border:none;border-top:1px solid var(--line);margin:14px 0;">
-      <h2>验签</h2>
-      <label>签名记录（JSON）</label>
-      <textarea id="verify-record" placeholder='{"schema_version":"medcius.clinician-signature-record.v1", ...}'></textarea>
-      <label>原始报告（JSON，可选——用于篡改检测）</label>
-      <textarea id="verify-payload"></textarea>
-      <button class="ghost" onclick="verifySignoff()">验签</button>
-      <div id="verify-result"></div>
-    </div>
-    <div class="card hidden" id="report-card">
-      <h2>报告（证据优先）</h2>
-      <div id="report-error"></div>
-      <div id="report-body"></div>
-      <div style="margin-top:10px;"><span class="muted">报告摘要（签核绑定此摘要）：</span> <div class="digest" id="report-digest"></div></div>
-      <button class="ghost" onclick="jumpSignoff()">去签核 →</button>
-    </div>
-  </div>
 </main>
 <script>
-let token = sessionStorage.getItem("medcius_ws_token") || null;
-let currentReport = null;
-
-const val = (id) => document.getElementById(id).value.trim();
-const tryParse = (s) => { try { return s ? JSON.parse(s) : null; } catch { return null; } };
-
-function headers() { return { "Content-Type": "application/json", Authorization: `Bearer ${token}` }; }
-
-async function api(path, body, method = "POST") {
-  const res = await fetch(path, { method, headers: headers(), body: body ? JSON.stringify(body) : undefined });
-  const data = await res.json().catch(() => ({ error: "HTTP " + res.status }));
-  return { ok: res.ok, status: res.status, data };
+let token = sessionStorage.getItem('medcius_ws_token') || null;
+let currentReport = null, activeWorkflow = 'evolution', requestEpoch = 0, pendingController = null, canSign = false, initialized = false;
+const workflowNames = { evolution:'查房准备', 'shift-handover':'交接班', 'consult-preparation':'会诊准备', 'discharge-readiness':'出院资料' };
+const inputIds = ['ctx-demo','ctx-bed','ctx-patient','ctx-encounter','ctx-feeds','evo-window','sh-type','cs-dept','cs-purpose','cs-question','cs-focus','dr-meds'];
+const $ = id => document.getElementById(id);
+const val = id => $(id).value.trim();
+const esc = value => String(value ?? '未提供').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+const tryParse = text => { try { return text ? JSON.parse(text) : null; } catch { return null; } };
+function parseObject(text) { if (!text) return {}; try { const p=JSON.parse(text); if (!p || Array.isArray(p) || typeof p!=='object') throw Error(); return p; } catch { throw new Error('来源资料格式有误，请在接入设置中核对。'); } }
+const fingerprint = () => JSON.stringify(inputIds.map(id=>val(id)));
+function headers(){ return {'Content-Type':'application/json',Authorization:`Bearer ${token}`}; }
+async function api(path,body,method='POST',signal){ const res=await fetch(path,{method,headers:headers(),body:body ? JSON.stringify(body):undefined,signal}); const data=await res.json().catch(()=>({error:'服务返回异常，请重试。'})); return {ok:res.ok,status:res.status,data}; }
+function readableError(data) {
+  const raw=String(data?.error || data?.message || '');
+  if (/AUTH|401|session/i.test(raw)) return '登录已失效或权限不足，请重新登录后查看资料。';
+  if (/DIRECTORY_NOT_CONFIGURED/.test(raw)) return '医院目录尚未接入，请联系信息部门。';
+  if (/PHI/.test(raw)) return '资料中检测到未完成脱敏的信息，本次未显示。请通过批准的来源接入。';
+  if (/FROZEN|SUPPRESSED|STAGE_FORBIDDEN|403/.test(raw)) return '当前运行模式未开放此操作。';
+  if (/MISMATCH|CONTEXT|inpatient|encounter/i.test(raw)) return '患者或就诊资料无法对应，请核对来源后重新整理。';
+  if (/Missing.*purpose|consultation purpose|目标|会诊诉求/.test(raw)) return '请填写会诊科室和本次诉求。';
+  if (/格式|尚未接入/.test(raw)) return raw;
+  return '本次未能完成资料整理。请核对来源连接后重试，旧报告已撤下。';
+}
+function showErr(id,data){ $(id).innerHTML=`<div class="error">${esc(readableError(data))}</div>`; }
+function setBusy(busy){ document.querySelectorAll('.run-button').forEach(b=>b.disabled=busy); $('report-card').setAttribute('aria-busy',String(busy)); }
+function invalidateReport(message='条件已变化，请重新整理资料。'){
+  $('review-panel').classList.add('hidden'); $('review-items').innerHTML=''; $('review-note').value=''; $('review-status').textContent=''; reviewBusy=false;
+  requestEpoch++; if(pendingController) pendingController.abort(); pendingController=null; currentReport=null; setBusy(false);
+  $('report-card').classList.add('hidden'); $('report-body').innerHTML=''; $('report-empty').classList.remove('hidden'); $('report-error').textContent='';
+  $('report-context').textContent=''; $('report-cutoff').textContent=''; $('report-digest').textContent=''; $('signoff-current').textContent='尚无当前报告'; $('signoff-button').disabled=true; $('signoff-result').textContent=''; $('request-status').textContent=message;
+}
+function showPatientContext(){
+  const demo=val('ctx-demo')==='demo'; $('demo-bed-wrap').classList.toggle('hidden',!demo);
+  $('patient-label').textContent=demo ? `合成患者 · ${val('ctx-bed')}` : val('ctx-patient') ? '患者上下文待核对' : '尚未载入患者';
+  $('patient-identity').textContent=demo ? '仅用于流程体验，不是真实病历' : '以本次返回的患者与就诊标识核对身份';
+}
+function switchWorkflow(name){
+  if(!workflowNames[name]) return;
+  activeWorkflow=name; document.querySelectorAll('[data-tab]').forEach(b=>{ const selected=b.dataset.tab===name; b.classList.toggle('active',selected); b.setAttribute('aria-pressed',String(selected)); });
+  Object.keys(workflowNames).forEach(key=>$('panel-'+key).classList.toggle('hidden',key!==name));
+  invalidateReport(`已切换至${workflowNames[name]}，请整理当前任务资料。`);
+}
+function initUi(){
+  if(initialized) return; initialized=true;
+  document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>switchWorkflow(b.dataset.tab)));
+  inputIds.forEach(id=>$(id).addEventListener('input',()=>{ invalidateReport(); showPatientContext(); }));
+}
+async function login(){
+  try { const {ok,data}=await api('/workstation/login',{username:val('login-user'),password:$('login-pass').value,tenant_id:val('login-tenant')||'default'}); $('login-pass').value=''; if(!ok) return showErr('login-error',data); token=data.token; sessionStorage.setItem('medcius_ws_token',token); await enterApp(); } catch(e){ showErr('login-error',e); }
+}
+async function logout(){ invalidateReport('已退出。'); try{if(token) await api('/workstation/logout',{});}finally{token=null; sessionStorage.removeItem('medcius_ws_token'); $('view-app').classList.add('hidden'); $('view-login').classList.remove('hidden');} }
+async function enterApp(){
+  try { const {ok,data}=await api('/workstation/session',null,'GET'); if(!ok){token=null; sessionStorage.removeItem('medcius_ws_token'); return showErr('login-error',data);}
+    canSign=data.governance.can_sign_reports===true; $('stage-badge').textContent=data.governance.stage_name;
+    $('clinician-info').textContent=`${data.clinician.id} · ${data.clinician.tenant_id}`;
+    $('view-login').classList.add('hidden'); $('view-app').classList.remove('hidden'); showPatientContext();
+  }catch(e){showErr('login-error',e);}
+}
+function contextBody(extra={}){
+  if(val('ctx-demo')==='demo') return {...extra,demo_ward:true,bed:val('ctx-bed')};
+  const feeds=parseObject(val('ctx-feeds'));
+  if(!feeds.patient?.id || !feeds.encounter?.id) throw Error('来源尚未接入；请通过院内上下文提供资料，或选择合成示例。');
+  const patientId=val('ctx-patient') || feeds.patient.id, encounterId=val('ctx-encounter') || feeds.encounter.id;
+  if(patientId!==feeds.patient.id || encounterId!==feeds.encounter.id) throw Error('CONTEXT_MISMATCH');
+  return {...feeds,...extra,patient_id:patientId,encounter_id:encounterId};
+}
+async function runWorkflow(name,extra={}){
+  if(name!==activeWorkflow) return;
+  invalidateReport('正在读取资料，请稍候…'); const epoch=requestEpoch, inputKey=fingerprint();
+  try {
+    if(name==='consult-preparation' && (!extra.consult_request?.department?.trim() || !extra.consult_request?.purpose?.trim())) throw Error('会诊诉求缺失');
+    if(name==='discharge-readiness') extra=parseObject(val('dr-meds'));
+    const body=contextBody(extra); pendingController=new AbortController(); setBusy(true);
+    const result=typeof window!=='undefined' && window.MEDCIUS_PREVIEW ? await window.MEDCIUS_PREVIEW(name,body) : await api(`/workstation/${name}`,body,'POST',pendingController.signal);
+    if(epoch!==requestEpoch || name!==activeWorkflow || inputKey!==fingerprint()) return;
+    renderReport(result,name,body);
+  }catch(e){ if(epoch!==requestEpoch || e.name==='AbortError') return; showErr('report-error',e); $('request-status').textContent='未生成报告，请核对后重试。'; }
+  finally{if(epoch===requestEpoch){pendingController=null; setBusy(false);}}
+}
+function renderReport({ok,data},workflow,request={}){
+  if(!ok){showErr('report-error',data); $('request-status').textContent='未生成报告，请核对后重试。'; return;}
+  const p=data.payload, id=p?.patient?.id || p?.header?.patient_id || p?.context?.patient_id || p?.patient_id;
+  if(!p || data.workflow!==workflow || (request.patient_id && id!==request.patient_id)) throw Error('CONTEXT_MISMATCH');
+  const encounter=p.header?.encounter_id || p.context?.encounter_id || data.patient_context?.encounter_id;
+  if(data.patient_context?.patient_id && data.patient_context.patient_id!==id) throw Error('CONTEXT_MISMATCH');
+  if(request.encounter_id && encounter && encounter!==request.encounter_id) throw Error('CONTEXT_MISMATCH');
+  const body=workflow==='evolution' ? renderEvolution(p) : workflow==='consult-preparation' ? renderConsult(p) : workflow==='shift-handover' ? renderHandover(p) : renderDischarge(p);
+  currentReport=data; $('report-body').innerHTML=(workflow==='evolution'?'':visibilityNotice(p.source_visibility))+body; $('report-error').textContent=''; $('report-empty').classList.add('hidden'); $('report-card').classList.remove('hidden'); renderReview(true);
+  const cutoff=p.as_of || p.generated_at;
+  $('patient-label').textContent=request.demo_ward ? `合成患者 · ${request.bed}` : '当前患者';
+  $('patient-identity').textContent=`患者 ${id || '标识未提供'} · 就诊 ${encounter || '来源未提供'}`;
+  $('report-context').textContent=`${workflowNames[workflow]} · ${id || '患者标识未提供'}`; $('report-cutoff').textContent=`资料截至 ${displayTime(cutoff)}（本机时间）`;
+  $('report-digest').textContent=data.payload_digest || '未提供'; $('signoff-current').textContent=`当前报告：${workflowNames[workflow]}`; $('signoff-button').disabled=!canSign || data.signable!==true;
+  $('request-status').textContent='资料已整理。展开条目可核对原始依据；本页不记录临床执行。';
+}
+async function runRecordQuality(){try{const result=await api('/workstation/record-quality',{note_text:val('rq-text')}); if(!result.ok) return showErr('rq-result',result.data); $('rq-result').innerHTML=renderTree(result.data.payload);}catch(e){showErr('rq-result',e);}}
+async function signoff(){
+  if(!currentReport || !canSign || currentReport.signable!==true) return showErr('signoff-result',{error:'STAGE_FORBIDDEN'});
+  const report=currentReport, epoch=requestEpoch; $('signoff-button').disabled=true;
+  try{const {ok,data}=await api('/workstation/signoff',{workflow:report.workflow,payload:report.payload,payload_digest:report.payload_digest,signer_note:val('signoff-note')}); if(epoch!==requestEpoch || report!==currentReport) return; if(!ok) return showErr('signoff-result',data); $('signoff-result').innerHTML='<p>资料报告签核记录已生成；不代表已完成临床任务。</p>'; $('verify-record').value=JSON.stringify(data,null,2); $('verify-payload').value=JSON.stringify(report.payload,null,2);}catch(e){if(epoch===requestEpoch)showErr('signoff-result',e);}finally{if(epoch===requestEpoch)$('signoff-button').disabled=false;}
+}
+async function verifySignoff(){try{const record=parseObject(val('verify-record')),payload=parseObject(val('verify-payload'));const {ok,data}=await api('/workstation/signoff/verify',{signature_record:record,payload}); if(!ok) return showErr('verify-result',data); $('verify-result').textContent=data.valid ? '来源签名核验通过。' : '来源签名核验未通过，请核对原始报告。';}catch(e){showErr('verify-result',e);}}
+function displayTime(value){if(!value || !Number.isFinite(Date.parse(value))) return '时间未提供'; return new Date(value).toLocaleString('zh-CN',{hour12:false});}
+const stateNames={final:'正式结果',revised:'更正结果',preliminary:'初步结果',cancelled:'已取消',entered_in_error:'录入错误',unknown:'未知',ordered:'已开立，执行未确认',pending:'待复核',acknowledged:'来源已记录复核',open:'待跟进',closed:'结果复核已记录',requires_reconciliation:'变更后待核对',available:'已读取',available_empty:'已读取，返回为空',unavailable:'未能读取',active:'来源标记有效',draft:'草稿',planned:'已有计划',requested:'已申请',booked:'来源记载已预约',continue:'继续',change:'调整',stop:'停止',new:'新增'};
+const fields={text:'原文',impression:'报告内容',impression_text:'报告内容',findings:'所见',name:'名称',title:'名称',study_name:'检查名称',test_name:'检验名称',drug_name:'药品名称',value:'结果',unit:'单位',dosage:'剂量',route:'途径（来源记录）',frequency:'频次（来源记录）',duration_or_stop_rule:'疗程或停止规则',status:'来源状态',result_status:'结果状态',source_status:'原始来源状态',purpose:'目的',scheduled_at:'安排时间',timing_text:'时间说明',destination:'去向',responsible_party:'责任人',contact_route:'联络途径',author_id:'提供者',rationale_text:'来源说明',arrangement_status:'安排状态',action:'衔接方式',trigger_text:'触发条件',action_text:'医生预案',recorded_at:'记录时间',timestamp:'记录时间',event_time:'发生时间',effective_time:'采样时间',issued:'出具时间',updated_at:'更正时间',version_id:'来源版本',id:'来源标识',source_id:'来源标识',source_type:'来源类别',source_system:'来源系统',locator:'来源定位',acknowledged_at:'来源复核时间',temperature:'体温',heart_rate:'心率',systolic_bp:'收缩压',diastolic_bp:'舒张压',spo2:'血氧饱和度',intake_ml:'记录入量',output_ml:'记录出量'};
+function renderTree(value){
+  if(value==null) return '<span class="muted">未提供 / 未知</span>';
+  if(Array.isArray(value)) return value.length ? value.map(renderTree).join('') : '<p class="muted">当前输入未见记录，不等于不存在。</p>';
+  if(typeof value!=='object') return esc(value);
+  const known=Object.entries(value).filter(([k,v])=>fields[k] && (v==null || typeof v!=='object'));
+  const rest=Object.fromEntries(Object.entries(value).filter(([k,v])=>!fields[k] || (v!=null && typeof v==='object')));
+  return `<dl class="record-fields">${known.map(([k,v])=>`<dt>${fields[k]}</dt><dd>${esc(stateNames[v] || v)}</dd>`).join('')}</dl>${Object.keys(rest).length ? `<details><summary>来源附加字段</summary><pre>${esc(JSON.stringify(rest,null,2))}</pre></details>`:''}`;
+}
+function evidenceDetails(e,record=null,label="查看原始依据"){return `<details><summary>${esc(label)}</summary><p class="source-meta">${esc(e?.locator || e?.source_reference?.resource_id || e?.source_id || '来源标识未提供')} · 版本 ${esc(e?.version_id ?? e?.source_version)} · ${esc(displayTime(e?.event_time || e?.recorded_at || e?.timestamp))}</p>${e?.text_anchor ? '<p>引文仅绑定生成时的脱敏快照；原病历修改后须重新核对，旧偏移不得用于实时病历。</p>' : ''}${record ? renderTree(record) : renderTree(e)}</details>`;}
+function section(title,rows,render,limit=4){return `<section><h3>${esc(title)} <span class="muted">${rows.length} 条</span></h3>${rows.slice(0,limit).map(render).join('') || '<p class="muted">当前输入未见记录，不等于不存在。</p>'}${rows.length>limit ? `<details><summary>展开其余 ${rows.length-limit} 条</summary>${rows.slice(limit).map(render).join('')}</details>`:''}</section>`;}
+function visibilityNotice(v){return `<div class="card attention" role="status"><h3>数据可见范围 · 不能用于排除危急值</h3><p>${esc(v?.message || '来源同步完整性未确认；未检索到不等于不存在。')}</p><p>摘要截止：${esc(displayTime(v?.as_of))} · 固定快照，不是实时监测</p><p>${esc(v?.action || '请核对院内 LIS 与危急值通知通道。')}</p>${(v?.sources || []).map(s=>`<p>${esc(s.kind || '来源')}：读取 ${esc(displayTime(s.fetched_at))}；来源报告同步至 ${esc(displayTime(s.synchronized_through))}；${s.reasons?.length ? '同步或完整性仍有缺口' : '仅来源报告，未经独立核验'}</p>`).join('')}</div>`;}
+function renderEvolution(d){
+  const b=d.blocks,c=b.what_changed,p=b.whats_pending,follow=b.high_risk_followup?.items || [],open=follow.filter(r=>r.closure_status!=='closed');
+  const changed=b.record_changes.items.filter(r=>r.selection_status==='current'), exceptional=changed.filter(r=>['revision','cancellation','entered_in_error','unknown'].includes(r.change_type) && !(r.change_type==='revision' && [...c.abnormal_labs,...c.imaging_changes].some(x=>x.source_id===r.source_id && x.version_id===r.version_id)));
+  const row=r=>`<div class="clinical-row"><b>${esc(r.title || r.test_name || r.drug_name || r.report_name || '来源记录')}</b><p>${esc(r.summary || r.display_text)}</p>${evidenceDetails(b.evidence.find(e=>e.item_id===r.id)||r,r.span ? {text:r.span}:null)}</div>`;
+  const followRow=r=>`<div class="clinical-row"><b>${esc(r.label)}</b><p>${esc(stateNames[r.closure_status] || '状态未知')} · ${esc(stateNames[r.review_status] || '复核未知')}</p>${evidenceDetails(null,r.evidence)}</div>`;
+  return `<h2 class="report-title">变化与待跟进</h2><p class="muted">近 ${d.time_window==='72h'?'72':'24'} 小时来源记录；数量用于资料导航，不代表病情轻重。</p><div class="overview"><a href="#round-changes"><strong>${changed.length}</strong><span>本次整理的当前来源变化</span></a><a href="#round-followup"><strong>${open.length}</strong><span>规则识别的待跟进事项</span></a><a href="#round-gaps"><strong>${b.data_gaps.length}</strong><span>资料缺口</span></a></div>
+  ${visibilityNotice(d.critical_visibility)}
+  ${d.critical_values.length ? `<div class="card source-alert"><h3>来源危急标记 · 请核对当前版本</h3>${d.critical_values.map(r=>`<p><b>${esc(r.name)} ${esc(r.value)} ${esc(r.unit)}</b> · ${esc(stateNames[r.result_status] || '状态未知')} · ${esc(displayTime(r.sample_time))}</p>${evidenceDetails({...r,source_id:r.observation_id,timestamp:r.sample_time})}`).join('')}</div>`:''}
+  <div id="round-changes" class="card">${section('更正、撤销与状态待核对',exceptional,row)}${section('检验记录',c.abnormal_labs,row)}${section('影像记录',c.imaging_changes,row)}<details><summary>病程、护理与用药变化</summary>${section('病程摘录',c.clinical_symptoms,row)}${c.vitals_and_fluids?row(c.vitals_and_fluids):'<p>护理汇总未提供。</p>'}${section('用药医嘱变化',[...c.medication_diff.added,...c.medication_diff.adjusted,...c.medication_diff.discontinued],row)}</details><details><summary>全部来源变化与历史版本</summary>${b.record_changes.items.map(row).join('')}</details></div>
+  <div id="round-followup" class="card">${section('待跟进',open,followRow)}<details><summary>其他报告阶段、医嘱及已记录的复核</summary>${[...p.pending_reports,...p.pending_orders,...p.scheduled_consults].map(row).join('')}${follow.filter(r=>r.closure_status==='closed').map(followRow).join('')}</details></div>
+  <div id="round-gaps" class="card attention">${section('资料缺口',b.data_gaps,row,3)}<details><summary>来源读取情况</summary>${b.source_availability.map(s=>`<p>${esc(s.kind || s.source_type || '来源')}：${esc(stateNames[s.status] || '完整性未知')}</p>`).join('') || '来源覆盖范围未提供。'}</details></div><details><summary>规则提示与多来源对照</summary>${b.rule_reminders.map(row).join('')}${b.structured_multisource_alignment.map(r=>`<p>${esc(r.domain_title)}：${esc(r.clinical_synthesis)}</p>`).join('')}</details><p class="boundary">未检索到不等于不存在。浏览资料不代表已复核或已完成临床任务。</p>`;
 }
 
-function showErr(elId, data) {
-  const el = document.getElementById(elId);
-  el.textContent = `⚠ ${data.code ?? ""} ${data.error ?? "请求失败"}`;
+function renderConsult(d){
+  const names={relevant_clinical_notes:'相关病程',targeted_labs_timeline:'检验时间轴',nursing_observations:'护理记录',relevant_imaging_reports:'已出报告',pending_specialty_reports:'初步结果与状态待核对',active_medications:'有效用药医嘱（执行未确认）',medication_records_to_verify:'用药状态待核对',record_status_changes:'取消与录入错误',additional_records:'其他来源资料'};
+  const row=r=>{ const source=d.evidence_records.find(e=>e.evidence.content_sha256===r.evidence.content_sha256); const description=r.excerpt ?? (r.measurements?r.measurements.map(m=>`${m.label} ${m.value} ${m.unit}`).join('；'):r.test_name?`${r.value??'数值未提供'} ${r.unit??'单位未提供'}`:r.impression??r.dosage??'请核对来源字段'); return `<div class="clinical-row ${r.source_critical?'source-alert':''}"><b>${esc(r.title)}</b> · ${esc(r.status_label)}${r.source_critical?' · 来源标记危急':''}<p>${esc(description)}</p><div class="source-meta">${esc(displayTime(r.timestamp))} · ${r.relevance.reason==='consult_question'?'匹配会诊诉求':'补充资料'}</div>${evidenceDetails(r.evidence,source?.record)}</div>`; };
+  const gaps=d.data_gaps.map(g=>g.split(': ').slice(1).join(': ')||g),empty=Object.entries(names).filter(([key])=>!d[key].length).map(([,label])=>label);
+  return `<h2 class="report-title">${esc(d.header.target_department)} · 会诊资料</h2><div class="card"><b>本次诉求</b><p>${esc(d.header.purpose)}</p>${d.header.question?`<p>具体问题：${esc(d.header.question)}</p>`:''}<p class="muted">资料截至 ${esc(displayTime(d.as_of))} · 未生成会诊意见</p></div>
+  ${gaps.length?`<div class="card attention"><b>资料范围需留意 · ${gaps.length} 项</b>${gaps.slice(0,2).map(g=>`<p>${esc(g)}</p>`).join('')}${gaps.length>2?`<details><summary>其余 ${gaps.length-2} 项资料缺口</summary>${gaps.slice(2).map(g=>`<p>${esc(g)}</p>`).join('')}</details>`:''}</div>`:''}
+  ${Object.entries(names).filter(([key])=>d[key].length && key!=='additional_records').map(([key,title])=>{const shown=d.views.digest[key].items;const rest=d[key].filter(r=>!shown.some(s=>s.evidence.content_sha256===r.evidence.content_sha256));return `<div class="card"><h3>${title} <span class="muted">${d[key].length} 条</span></h3>${shown.map(row).join('')}${rest.length?`<details><summary>展开其余 ${rest.length} 条</summary>${rest.map(row).join('')}</details>`:''}</div>`;}).join('')}
+  <details><summary>其他资料与未返回的类别</summary>${d.additional_records.map(row).join('')}<p>当前输入未返回：${esc(empty.join('、')||'无空类别')}。未匹配不等于不存在。</p></details><details><summary>来源覆盖与排除记录</summary>${renderTree(d.source_availability)}${renderTree(d.excluded_records)}</details><p class="boundary">${esc(d.boundary)}</p>`;
+}
+function renderHandover(d){
+  const status={not_proposed:'尚无转交记录',awaiting_acceptance:'已提出转交，待接班确认',accepted_in_source:'来源记录显示接班人已确认此资料包',requires_reconfirmation:'资料或预案已变化，需要重新确认',declined:'接班人已拒绝',withdrawn:'交班人已撤回',acceptance_revoked:'接班确认已撤回'};
+  const rows=r=>`<div class="clinical-row"><b>${esc(r.title)}</b><p>${esc(r.description??r.record?.text??r.record?.value??r.record?.impression??'请核对来源字段')}</p>${evidenceDetails(r.evidence,r.record)}</div>`;
+  const follow=d.high_risk_followup.items,open=follow.filter(r=>r.closure_status!=='closed');
+  const followRow=r=>`<div class="clinical-row"><b>${esc(r.label)}</b><p>复核：${esc(stateNames[r.review_status]||'未知')} · 跟进：${esc(stateNames[r.closure_status]||'未知')}</p>${evidenceDetails(null,r.evidence)}</div>`;
+  return `<h2 class="report-title">交接班准备</h2><p class="muted">资料截至 ${esc(displayTime(d.as_of))} · 事件截至 ${esc(displayTime(d.events_as_of))}</p><div class="card attention"><b>${esc(status[d.responsibility.status]||'交接状态未知')}</b><p>交班方：${esc(d.responsibility.outgoing_doctor_id)} → 接班方：${esc(d.responsibility.incoming_doctor_id)}</p><p>${d.responsibility.event_history_completeness==='host_verified_complete'?'来源事件历史完整性已核验。':'事件历史完整性未知，当前责任归属不能确认。'}</p></div>
+  <div class="card">${section('待跟进',open,followRow)}<details><summary>来源已记录的结果复核（${follow.length-open.length}）</summary>${follow.filter(r=>r.closure_status==='closed').map(followRow).join('')||'当前未见此类记录。'}</details></div>
+  <div class="card"><h3>交班医生提供的预案</h3>${d.sbar.recommendation.contingency_plans.map(p=>`<div class="clinical-row"><b>触发条件：${esc(p.trigger_text)}</b><p>${esc(p.action_text)}</p><div class="source-meta">提供者 ${esc(p.author_id)} · ${esc(displayTime(p.recorded_at))} · 来源事件 ${esc(p.evidence.source_id)}</div></div>`).join('')||'<p>未提供经核验的医生预案。</p>'}</div>
+  <div class="card">${section('变化与更正',d.record_changes,rows)}${section('来源医嘱（执行未确认）',d.sbar.recommendation.scheduled_follow_ups,rows)}</div><details><summary>背景病程、护理及交接事件</summary>${d.sbar.background.source_notes.map(rows).join('')}${d.sbar.assessment.nursing_records.map(rows).join('')}${renderTree(d.handover_events)}</details>
+  <div class="card attention"><h3>资料缺口</h3>${d.data_gaps.slice(0,3).map(g=>`<p>${esc(g)}</p>`).join('')}${d.data_gaps.length>3?`<details><summary>展开其余 ${d.data_gaps.length-3} 项</summary>${d.data_gaps.slice(3).map(g=>`<p>${esc(g)}</p>`).join('')}</details>`:''}<details><summary>来源覆盖与排除记录</summary>${renderTree(d.source_availability)}${renderTree(d.excluded_records)}</details></div><p class="boundary">${esc(d.responsibility.boundary)} ${esc(d.boundary)}</p>`;
+}
+function humanFinding(message){const map={drug_name:'药品名称',dosage:'剂量',route:'用药途径',frequency:'频次',duration_or_stop_rule:'疗程或停药规则',purpose:'目的',destination:'去向',responsible_party:'责任人',contact_route:'联络途径',author_id:'提供者',timing:'时间',arrangement_status:'安排状态',appointment_reference:'预约来源',SOURCE_REFERENCE_MISSING:'缺少来源标识',SOURCE_TIME_MISSING_OR_INVALID:'记录时间未确认',SOURCE_TIME_INVALID:'来源时间无效',source_withdrawn:'来源已撤回',future:'晚于资料截止时间',conflict:'来源版本冲突',INPATIENT_LINK_STALE_OR_MISSING:'在院用药来源链接缺失或失效',DISCHARGE_LINK_STALE_OR_MISSING:'出院用药来源链接缺失或失效',AUTHOR_MISSING:'提供者缺失',RATIONALE_MISSING:'衔接原因未提供',CONTINUE_FIELDS_DIFFER:'记载为继续但前后字段不同',ACTION_UNKNOWN:'衔接方式未知',result_link_stale_or_missing:'结果来源链接缺失或失效',scheduled_time_invalid_or_past:'安排时间无效或已过',final:'正式结果',revised:'更正结果',preliminary:'初步结果',unknown:'未知',cancelled:'已取消',entered_in_error:'录入错误'};let s=String(message);for(const k of Object.keys(map).sort((a,b)=>b.length-a.length))s=s.replaceAll(k,map[k]);return s;}
+function renderDischarge(d){
+  const med=item=>item?[item.record.drug_name,item.record.dosage,item.record.route,item.record.frequency].map(esc).join(' · '):'未提供或未绑定当前来源';
+  const gaps=domain=>domain.findings.length?`<div class="attention card">${domain.findings.slice(0,3).map(f=>`<p>${esc(humanFinding(f.message))}</p>`).join('')}${domain.findings.length>3?`<details><summary>展开其余 ${domain.findings.length-3} 项待核对资料</summary>${domain.findings.slice(3).map(f=>`<p>${esc(humanFinding(f.message))}</p>`).join('')}</details>`:''}</div>`:'';
+  const names={results:'结果资料',medications:'用药衔接',follow_up:'后续安排'};
+  const resultRow=r=>`<div class="clinical-row"><b>${esc(r.title)}</b><p>${esc(stateNames[r.result_status]||'未知')} · ${esc(stateNames[r.review_status]||'复核未确认')}</p><p>${esc(r.record.impression ?? (r.record.value != null || r.record.valueQuantity?.value != null ? `${r.record.value ?? r.record.valueQuantity.value} ${r.record.unit ?? r.record.valueQuantity?.unit ?? '单位未提供'}` : '结果内容未提供'))}</p>${evidenceDetails(r.evidence,r.record)}</div>`;
+  const transition=r=>`<div class="clinical-row"><b>来源记录：${esc(stateNames[r.record.action]||'衔接方式未知')}</b><p>在院：${med(r.inpatient)}</p><p>出院：${med(r.discharge)}</p>${r.record.rationale_text?`<p>来源说明：${esc(r.record.rationale_text)}</p>`:''}${evidenceDetails(r.evidence,r.record,'衔接记录依据')}${r.inpatient?evidenceDetails(r.inpatient.evidence,r.inpatient.record,'在院用药依据'):''}${r.discharge?evidenceDetails(r.discharge.evidence,r.discharge.record,'出院用药依据'):''}</div>`;
+  const plan=r=>`<div class="clinical-row"><b>${esc(r.record.purpose)}</b><p>${esc(stateNames[r.record.arrangement_status]||'安排未知')} · 预约未外部核验</p><p>时间：${esc(r.record.scheduled_at?displayTime(r.record.scheduled_at):r.record.timing_text)} · 去向：${esc(r.record.destination)}</p><p>责任人：${esc(r.record.responsible_party)} · 联络：${esc(r.record.contact_route)}</p>${evidenceDetails(r.evidence,r.record)}</div>`;
+  return `<h2 class="report-title">出院资料核对</h2><p class="boundary">${esc(d.clinical_suitability.note)} 全部字段齐备也不表示可以出院。</p><div class="overview">${Object.entries(names).map(([k,title])=>`<a href="#discharge-${k}"><b>${title}</b><p>${esc(d.domains[k].status_label)}</p></a>`).join('')}</div>
+  <section id="discharge-results" class="card"><h3>一、结果资料</h3>${gaps(d.domains.results)}${d.domains.results.items.map(resultRow).join('')}</section><section id="discharge-medications" class="card"><h3>二、用药衔接</h3><p class="muted">仅核对来源记录，未评估治疗合理性。</p>${gaps(d.domains.medications)}${d.domains.medications.items.map(transition).join('')}<details><summary>全部在院与出院用药来源</summary>${[...d.domains.medications.inpatient,...d.domains.medications.discharge].map(r=>`<p>${med(r)}</p>${evidenceDetails(r.evidence,r.record)}`).join('')}</details></section><section id="discharge-follow_up" class="card"><h3>三、后续安排</h3>${gaps(d.domains.follow_up)}${d.domains.follow_up.items.map(plan).join('')}<h4>医生提供的患者说明</h4>${d.domains.follow_up.patient_instructions.map(r=>`<p>${esc(r.record.text)}</p>${evidenceDetails(r.evidence,r.record)}`).join('')||'<p>未提供，不自动补写。</p>'}</section>
+  <div class="card attention"><b>资料覆盖仍需核对</b>${d.findings.filter(f=>['source','access'].includes(f.domain)).map(f=>`<p>${esc(humanFinding(f.message))}</p>`).join('')}</div><details><summary>费用与可获得性资料</summary><p>费用资料不决定医学上是否适合出院；未提供不等于没有障碍。</p>${renderTree(d.patient_affordability)}</details><details><summary>来源覆盖与排除记录</summary>${renderTree(d.source_availability)}${renderTree(d.excluded_records)}</details><p class="boundary">${esc(d.boundary)}</p>`;
 }
 
-async function login() {
-  const { ok, data } = await api("/workstation/login", {
-    username: val("login-user"), password: document.getElementById("login-pass").value, tenant_id: val("login-tenant") || "default",
-  });
-  if (!ok) return showErr("login-error", data);
-  token = data.token;
-  sessionStorage.setItem("medcius_ws_token", token);
-  await enterApp();
+let reviewBusy=false;
+function renderReview(syncNote=false){
+  const s=currentReport?.review_session; $('review-panel').classList.toggle('hidden',!s); if(!s)return;
+  const labels={unread:'未读',read:'已读',concern:'存疑',deferred:'暂缓'}, reasons={source:'来源',time:'时间',state:'状态',missingness:'资料缺失',fact:'事实'};
+  const disabled=reviewBusy||s.mode==='paused';
+  $('review-toolbar').innerHTML=`<p>已选 ${s.selected_ids.length} / 12 项 · ${s.mode==='paused'?'已暂停':'核对中'} · 草稿版本 ${s.revision}</p><button ${reviewBusy?'disabled':''} onclick="reviewAct('${s.mode==='paused'?'resume':'pause'}')">${s.mode==='paused'?'继续核对':'暂停核对'}</button>`;
+  $('review-items').innerHTML=s.items.map((i,index)=>`<div class="clinical-row"><b>${esc(i.title)}</b> <span class="tag">${labels[i.status]}</span><p>${esc(i.summary)}</p>${evidenceDetails(i.evidence)}<button ${disabled?'disabled':''} onclick="reviewSelect(${index})">${s.selected_ids.includes(i.id)?'移出重点':'列入重点'}</button> <button ${disabled?'disabled':''} onclick="reviewMark(${index},'read')">已读</button> <button ${disabled?'disabled':''} onclick="reviewMark(${index},'deferred')">暂缓</button> <label for="review-reason-${index}">存疑维度</label><select id="review-reason-${index}" ${disabled?'disabled':''}>${Object.entries(reasons).map(([k,v])=>`<option value="${k}" ${i.reason===k?'selected':''}>${v}</option>`).join('')}</select><button ${disabled?'disabled':''} onclick="reviewMark(${index},'concern')">标记存疑</button> <button ${disabled?'disabled':''} onclick="reviewMark(${index},'unread')">撤销标记</button></div>`).join('');
+  $('review-note').disabled=disabled;
+  if(syncNote)$('review-note').value=s.note;
 }
-
-async function logout() {
-  await api("/workstation/logout", {}, "POST");
-  token = null; sessionStorage.removeItem("medcius_ws_token");
-  location.reload();
+function reviewMark(index,status){const i=currentReport?.review_session?.items[index];if(i)return reviewAct('mark',{item_id:i.id,item_hash:i.item_hash,status,...(status==='concern'?{reason:val('review-reason-'+index)}:{})});}
+function reviewSelect(index){const s=currentReport?.review_session,i=s?.items[index];if(!i)return;return reviewAct('focus',{selected_ids:s.selected_ids.includes(i.id)?s.selected_ids.filter(id=>id!==i.id):[...s.selected_ids,i.id]});}
+async function reviewAct(action,extra={}){
+  const report=currentReport,s=report?.review_session,epoch=requestEpoch;if(!s||reviewBusy)return;
+  if(action==='request'&&val('review-note')!==s.note){$('review-status').textContent='请先保存补充问题，再准备核对请求。';return;}
+  reviewBusy=true;renderReview();$('review-status').textContent='正在保存本次阅读草稿…';
+  try{
+    const response=await api('/workstation/review/action',{session_id:s.session_id,snapshot_hash:s.snapshot_hash,expected_revision:s.revision,request_id:crypto.randomUUID(),action,...extra});
+    if(epoch!==requestEpoch||report!==currentReport)return;
+    if(!response.ok){$('review-status').textContent=response.status===409?'草稿已变化，请重新读取后再操作。':'本次操作未保存；可能已暂停、过期或尚未选择条目。';return;}
+    report.review_session=response.data.review_session;
+    if(action==='note')$('review-note').value=report.review_session.note;
+    $('review-status').textContent=action==='request'?'问题已准备；此参考工作台未连接宿主，尚未提交或重新核对。':'阅读草稿已更新；不改变原始报告。';
+  }catch{if(epoch===requestEpoch)$('review-status').textContent='保存结果未知，请重新读取草稿核对；不要重复提交。';}
+  finally{if(epoch===requestEpoch&&report===currentReport){reviewBusy=false;renderReview();}}
 }
-
-async function enterApp() {
-  document.getElementById("view-login").classList.add("hidden");
-  document.getElementById("view-app").classList.remove("hidden");
-  const { ok, data } = await api("/workstation/session", null, "GET");
-  if (!ok) return showErr("login-error", data);
-  const badge = document.getElementById("stage-badge");
-  badge.textContent = `治理：${data.governance.stage_name} (L${data.governance.stage_level})`;
-  badge.className = "badge " + (data.governance.stage_level >= 3 ? "ok" : "warn");
-  document.getElementById("research-banner").classList.toggle("hidden", data.governance.stage_level >= 3);
-  document.getElementById("clinician-info").textContent =
-    `${data.clinician.id}（${(data.clinician.roles ?? []).join("/")}）· 租户 ${data.clinician.tenant_id}`;
-  document.querySelectorAll("nav button").forEach((b) => b.addEventListener("click", () => {
-    document.querySelectorAll("nav button").forEach((x) => x.classList.remove("active"));
-    b.classList.add("active");
-    ["evolution","shift-handover","consult-preparation","discharge-readiness","record-quality","signoff"].forEach((t) =>
-      document.getElementById("panel-" + t).classList.toggle("hidden", t !== b.dataset.tab));
-  }));
+async function reloadReview(){
+  const report=currentReport,s=report?.review_session,epoch=requestEpoch;if(!s||reviewBusy)return;reviewBusy=true;
+  try{const r=await api('/workstation/review/read',{session_id:s.session_id});if(epoch!==requestEpoch||report!==currentReport)return;if(r.ok){report.review_session=r.data.review_session;$('review-status').textContent='已重新读取草稿。';}else{$('review-status').textContent='草稿不可用，请重新整理报告。';}}
+  catch{if(epoch===requestEpoch)$('review-status').textContent='读取失败，请检查连接。';}
+  finally{if(epoch===requestEpoch&&report===currentReport){reviewBusy=false;renderReview();}}
 }
-
-function contextBody(extra = {}) {
-  const demo = val("ctx-demo");
-  const feeds = tryParse(val("ctx-feeds"));
-  return {
-    ...extra,
-    ...(demo ? { demo_ward: true, bed: val("ctx-patient") || undefined } : {
-      patient_id: val("ctx-patient"), encounter_id: val("ctx-encounter"), ...(feeds ?? {}),
-      patient: feeds?.patient,
-    }),
-  };
-}
-
-async function runWorkflow(name, extra = {}) {
-  renderReport(await api(`/workstation/${name}`, contextBody(extra)), name);
-}
-
-async function runRecordQuality() {
-  renderReport(await api("/workstation/record-quality", { note_text: document.getElementById("rq-text").value }), "record-quality");
-}
-
-function jumpSignoff() {
-  document.querySelector('[data-tab="signoff"]').click();
-}
-
-async function signoff() {
-  const el = document.getElementById("signoff-result");
-  if (!currentReport) { el.innerHTML = '<div class="error">无待签核报告</div>'; return; }
-  const { ok, data } = await api("/workstation/signoff", {
-    workflow: currentReport.workflow, payload: currentReport.payload, payload_digest: currentReport.payload_digest,
-    signer_note: val("signoff-note"),
-  });
-  if (!ok) { el.innerHTML = `<div class="error">⚠ ${data.code ?? ""} ${data.error ?? ""}</div>`; return; }
-  el.innerHTML = `<div class="card" style="background:#f0fdf4;border-color:#a7f3d0;">
-    <b style="color:var(--green);">✔ 签核完成</b> <span class="tag ok">${data.provider}</span>
-    <div class="muted">签名记录已生成（可复制到验签面板）：</div>
-    <textarea style="min-height:120px;font-family:monospace;font-size:11px;">${JSON.stringify(data, null, 2)}</textarea>
-    ${data.boundary ? `<div class="muted">${data.boundary.note}</div>` : ""}</div>`;
-}
-
-async function verifySignoff() {
-  const record = tryParse(val("verify-record"));
-  const payload = tryParse(val("verify-payload"));
-  const el = document.getElementById("verify-result");
-  if (!record) { el.innerHTML = '<div class="error">签名记录 JSON 无效</div>'; return; }
-  const { ok, data } = await api("/workstation/signoff/verify", { signature_record: record, payload: payload ?? null });
-  el.innerHTML = ok
-    ? `<div class="card" style="background:${data.valid ? "#f0fdf4" : "#fef2f2"};">
-        <b style="color:${data.valid ? "var(--green)" : "var(--red)"};">${data.valid ? "✔ 验签通过" : "✘ 验签失败"}</b>
-        <div class="muted">${data.reason ?? ""}</div></div>`
-    : `<div class="error">⚠ ${data.error ?? ""}</div>`;
-}
-
-// ---- 证据优先渲染：显式 null / 缺口 / 严重度标签 ----
-function tagFor(key, value) {
-  if (value === null) return '<span class="tag null">NULL</span>';
-  if (key === "severity") return `<span class="tag ${value === "HIGH" ? "high" : "warn"}">${value}</span>`;
-  if (key === "check_status" || key === "status" || key === "exact" || key === "is_ready")
-    return `<span class="tag ${String(value).includes("pass") || value === true || String(value).includes("ready") ? "ok" : "warn"}">${String(value)}</span>`;
-  if (key === "ok") return value ? '<span class="tag ok">通过</span>' : '<span class="tag high">不通过</span>';
-  return "";
-}
-
-function renderTree(value, key = "", depth = 0) {
-  if (value === null) return `<span class="tag null">NULL / 未提及</span>`;
-  if (Array.isArray(value)) {
-    if (!value.length) return '<span class="muted">[]（当前输入范围内未识别到项目 ≠ 不存在）</span>';
-    return `<table class="tree">${value.map((item, i) => `<tr><td class="k">${i}</td><td>${renderTree(item, "", depth + 1)}</td></tr>`).join("")}</table>`;
-  }
-  if (typeof value === "object") {
-    return `<table class="tree">${Object.entries(value).map(([k, v]) =>
-      `<tr><td class="k">${k} ${tagFor(k, v)}</td><td>${renderTree(v, k, depth + 1)}</td></tr>`).join("")}</table>`;
-  }
-  return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;");
-}
-
-function renderReport({ ok, data }, workflow) {
-  const card = document.getElementById("report-card");
-  card.classList.remove("hidden");
-  card.scrollIntoView({ behavior: "smooth" });
-  const errEl = document.getElementById("report-error");
-  if (!ok) {
-    errEl.innerHTML = `<div class="error">⚠ ${data.code ?? ""} ${data.error ?? ""}</div>`;
-    document.getElementById("report-body").innerHTML = "";
-    document.getElementById("report-digest").textContent = "—";
-    currentReport = null;
-    return;
-  }
-  errEl.innerHTML = "";
-  currentReport = data;
-  document.getElementById("report-body").innerHTML = renderTree(data.payload);
-  document.getElementById("report-digest").textContent = `${data.workflow} · ${data.payload_digest}`;
-  document.getElementById("signoff-current").innerHTML =
-    `待签核：<code class="inline">${data.workflow}</code>，摘要 <code class="inline">${data.payload_digest.slice(0, 24)}…</code>`;
-}
-
-if (token) {
-  api("/workstation/session", null, "GET").then(({ ok }) => { if (ok) enterApp(); else { token = null; sessionStorage.clear(); } });
-}
-</script>
-</body>
-</html>
+if (typeof document !== 'undefined') document.addEventListener('DOMContentLoaded', () => { initUi(); if (typeof window !== 'undefined' && window.MEDCIUS_PREVIEW) startPreview(); else if (token) enterApp(); });
+</script></body></html>

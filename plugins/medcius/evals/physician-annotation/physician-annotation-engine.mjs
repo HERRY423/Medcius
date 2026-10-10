@@ -7,6 +7,22 @@ import { inspectEvaluationKeys, resolveCallerEvidenceStatus } from "../evidence-
 
 const ABSTENTION_VALUES = new Set(["abstain", "unknown", "not_evaluated"]);
 
+// The endpoints that decide `allPrimaryMet`, declared once at module scope.
+// A report must render every one of these: otherwise a "not met" verdict can
+// sit above a table in which every printed row reports success.
+export const PRIMARY_ENDPOINT_IDS = Object.freeze([
+  "sensitivity_target_met",
+  "sensitivity_ci_lower_met",
+  "specificity_target_met",
+  "zero_critical_escape_met",
+  "zero_fabricated_spans_met",
+  "inter_annotator_kappa_met",
+  "all_disagreements_adjudicated",
+  "evidence_anchors_complete",
+  "record_keys_complete",
+  "no_abstentions",
+]);
+
 function isAbstention(value) {
   return typeof value !== "string" || !value.trim() || ABSTENTION_VALUES.has(value.trim().toLowerCase());
 }
@@ -221,17 +237,9 @@ export function evaluatePhysicianAnnotation(cases, options = {}) {
     no_abstentions: abstentionCount === 0,
   };
 
-  const allPrimaryMet =
-    endpoints.sensitivity_target_met &&
-    endpoints.sensitivity_ci_lower_met &&
-    endpoints.specificity_target_met &&
-    endpoints.zero_critical_escape_met &&
-    endpoints.zero_fabricated_spans_met &&
-    endpoints.inter_annotator_kappa_met &&
-    endpoints.all_disagreements_adjudicated &&
-    endpoints.evidence_anchors_complete &&
-    endpoints.record_keys_complete &&
-    endpoints.no_abstentions;
+  // Derived from the declared list, so the verdict and every report that
+  // renders it cannot drift apart.
+  const allPrimaryMet = PRIMARY_ENDPOINT_IDS.every((id) => endpoints[id] === true);
 
   return {
     isDemo,
@@ -262,6 +270,7 @@ export function evaluatePhysicianAnnotation(cases, options = {}) {
     },
     dimensionStats,
     endpoints,
+    primary_endpoint_ids: PRIMARY_ENDPOINT_IDS,
     allPrimaryMet,
     passClassification: resolveCallerEvidenceStatus({ isDemo, metadata, allPrimaryMet }),
     resolved,

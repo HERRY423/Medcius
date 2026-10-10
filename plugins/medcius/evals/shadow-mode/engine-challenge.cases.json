@@ -1,0 +1,13 @@
+{
+  "evidence_class": "synthetic_engineering_fixture",
+  "cases": [
+    {"id":"k-normal","code":"k","value":4.2,"unit":"mmol/L"},
+    {"id":"k-high","code":"k","value":6.3,"unit":"mmol/L"},
+    {"id":"k-boundary","code":"k","value":6.2,"unit":"mmol/L"},
+    {"id":"k-below","code":"k","value":6.19,"unit":"mmol/L"},
+    {"id":"na-low","code":"na","value":119,"unit":"mmol/L"},
+    {"id":"na-normal","code":"na","value":140,"unit":"mmol/L"},
+    {"id":"missing-unit","code":"k","value":6.3,"unit":""},
+    {"id":"wrong-unit","code":"k","value":6.3,"unit":"mg/dL"}
+  ]
+}

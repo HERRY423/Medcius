@@ -124,6 +124,11 @@ const reportDir = join(__dirname, "reports");
 mkdirSync(reportDir, { recursive: true });
 const reportPath = join(reportDir, "pilot-ward-time-motion.md");
 writeFileSync(reportPath, reportContent, "utf8");
+writeFileSync(join(reportDir, "time-motion-assumptions-summary.json"), JSON.stringify({
+  evaluation_id: "time-motion-assumptions-v1", execution_status: "COMPLETED", evidence_class: "assumed_workflow_model",
+  cohort_unit: "assumed_patient_workflow", inputs: protocolBenchmarkData,
+  assumed_saved_percentage: Number(simulatedSavedPct), clinical_evidence_pass: false,
+}, null, 2) + "\n", "utf8");
 
 console.log(`\n✓ Time-Motion Protocol Benchmark written to: ${reportPath}`);
 assert.ok(Number(simulatedSavedPct) > 70.0);

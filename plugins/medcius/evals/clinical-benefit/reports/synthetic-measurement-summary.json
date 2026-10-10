@@ -1,0 +1,68 @@
+{
+  "evaluation_id": "benefit-negative-control-v1",
+  "execution_status": "COMPLETED",
+  "evidence_class": "caller_reported_unverified",
+  "schema_version": "medcius.benefit-observations.v1",
+  "expected_episodes": 2,
+  "observed_episodes": 1,
+  "missing_episodes": 1,
+  "incomplete_episodes": 2,
+  "paired_timing_episodes": 1,
+  "complete_episodes": 0,
+  "descriptive_mean_saved_seconds": -10,
+  "complete_case_mean_saved_seconds": null,
+  "episodes": [
+    {
+      "episode_id": "synthetic-slower",
+      "status": "observed",
+      "control": {
+        "complete": false,
+        "total_seconds": 100,
+        "accuracy": null,
+        "safety": null
+      },
+      "intervention": {
+        "complete": false,
+        "total_seconds": 110,
+        "accuracy": null,
+        "safety": null
+      },
+      "anchor_metadata_present": false,
+      "reference_metadata_present": false,
+      "descriptive_complete": false,
+      "paired_saved_seconds": -10
+    },
+    {
+      "episode_id": "synthetic-missing",
+      "status": "missing",
+      "control": {
+        "complete": false,
+        "total_seconds": null,
+        "accuracy": null,
+        "safety": null
+      },
+      "intervention": {
+        "complete": false,
+        "total_seconds": null,
+        "accuracy": null,
+        "safety": null
+      },
+      "anchor_metadata_present": false,
+      "reference_metadata_present": false,
+      "descriptive_complete": false,
+      "paired_saved_seconds": null
+    }
+  ],
+  "clinical_evidence_pass": false,
+  "safety_non_inferiority": null,
+  "accuracy_benefit": null,
+  "efficiency_benefit": null,
+  "safety_benefit": null,
+  "blocked_reason": "APPROVED_STUDY_AND_INDEPENDENT_ANALYSIS_REQUIRED",
+  "limitations": [
+    "Missing and failed episodes remain in the enrolled denominator",
+    "No inferential CI, causal benefit or safety non-inferiority is computed",
+    "Do not treat reviewer metadata or a packet hash as independent reference verification",
+    "Review agreement alone does not measure omissions"
+  ]
+}

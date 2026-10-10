@@ -1,5 +1,8 @@
 # 04 并行化时间线与费用区间（估算）
 
+> Product baseline: 0.8.0-pilot; document revision: 1; approval: DRAFT_UNAPPROVED
+
+
 > 法定时限已核实（2021-47/104/121号），日历时间含检验/体系核查/发补等待，费用待询价。
 
 ## 1. 甘特（并行充分前提下）

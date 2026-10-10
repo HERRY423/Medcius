@@ -6,6 +6,8 @@ import { loadSpecialtyRulePack } from "./specialty-rule-pack.mjs";
 import { canonicalJson, sha256Hex } from "../servers/shared/crypto.mjs";
 import { classifyRecordLifecycle, lifecycleFields, resolveRecordVersions } from "./record-lifecycle.mjs";
 
+import { CALCULATION_REFERENCE as CALC, CALCULATION_PROVENANCE, newsSubscore } from "./calculation-reference.mjs";
+
 const LEGACY_SANDBOX_RULE_PACK = loadSpecialtyRulePack("cardiology-inpatient-sandbox");
 
 /**
@@ -32,10 +34,10 @@ export function normalizeLabUnit(val, fromUnit = "", targetUnit = "", testCode =
   // Glucose: mmol/L <-> mg/dL (1 mmol/L = 18.018 mg/dL)
   if (code === "glu" || code.includes("glucose") || code.includes("血糖")) {
     if ((cleanFrom === "mg/dl" || cleanFrom === "mg/100ml") && cleanTarget === "mmol/l") {
-      return { comparableValue: Math.round((val / 18.018) * 100) / 100, compatible: true };
+      return { comparableValue: Math.round((val / CALC.unit_factors.glucose) * 100) / 100, compatible: true };
     }
     if (cleanFrom === "mmol/l" && (cleanTarget === "mg/dl" || cleanTarget === "mg/100ml")) {
-      return { comparableValue: Math.round(val * 18.018 * 10) / 10, compatible: true };
+      return { comparableValue: Math.round(val * CALC.unit_factors.glucose * 10) / 10, compatible: true };
     }
   }
 
@@ -43,10 +45,10 @@ export function normalizeLabUnit(val, fromUnit = "", targetUnit = "", testCode =
   if (code === "scr" || code.includes("creatinine") || code.includes("肌酐")) {
     const micromolar = new Set(["umol/l", "μmol/l", "umol_l"]);
     if ((cleanFrom === "mg/dl" || cleanFrom === "mg/100ml") && micromolar.has(cleanTarget)) {
-      return { comparableValue: Math.round(val * 88.4 * 10) / 10, compatible: true };
+      return { comparableValue: Math.round(val * CALC.unit_factors.creatinine * 10) / 10, compatible: true };
     }
     if (micromolar.has(cleanFrom) && (cleanTarget === "mg/dl" || cleanTarget === "mg/100ml")) {
-      return { comparableValue: Math.round((val / 88.4) * 100) / 100, compatible: true };
+      return { comparableValue: Math.round((val / CALC.unit_factors.creatinine) * 100) / 100, compatible: true };
     }
   }
 
@@ -63,10 +65,10 @@ export function normalizeLabUnit(val, fromUnit = "", targetUnit = "", testCode =
   // Calcium: mmol/L <-> mg/dL (1 mmol/L = 4.0 mg/dL)
   if (code === "ca" || code.includes("calcium") || code.includes("钙")) {
     if (cleanFrom === "mg/dl" && cleanTarget === "mmol/l") {
-      return { comparableValue: val / 4.0, compatible: true };
+      return { comparableValue: val / CALC.unit_factors.calcium, compatible: true };
     }
     if (cleanFrom === "mmol/l" && cleanTarget === "mg/dl") {
-      return { comparableValue: val * 4.0, compatible: true };
+      return { comparableValue: val * CALC.unit_factors.calcium, compatible: true };
     }
   }
 
@@ -111,21 +113,21 @@ export const RESTRICTED_ANTIBIOTICS = LEGACY_SANDBOX_RULE_PACK.clinical_rules.re
  * @param {string} gender - '男' / '女' or 'male' / 'female'
  */
 export function calculateEgfrCkdEpi(scr, age, gender) {
-  if (!Number.isFinite(Number(scr)) || Number(scr) <= 0 || !Number.isFinite(Number(age)) || Number(age) < 18
+  if (!Number.isFinite(Number(scr)) || Number(scr) <= 0 || !Number.isFinite(Number(age)) || Number(age) < CALC.egfr.minimum_age
     || !["男", "女", "male", "female", "M", "F"].includes(gender)) return null;
   const isFemale = gender === "女" || gender === "female" || gender === "F";
   // Convert μmol/L to mg/dL: mg/dL = μmol/L / 88.4
-  const scrMgDl = scr / 88.4;
-  const kappa = isFemale ? 0.7 : 0.9;
-  const alpha = isFemale ? -0.241 : -0.302;
-  const genderMult = isFemale ? 1.012 : 1.0;
+  const scrMgDl = scr / CALC.unit_factors.creatinine;
+  const kappa = isFemale ? CALC.egfr.female_kappa : CALC.egfr.male_kappa;
+  const alpha = isFemale ? CALC.egfr.female_alpha : CALC.egfr.male_alpha;
+  const genderMult = isFemale ? CALC.egfr.female_multiplier : 1.0;
 
   const scrRatio = scrMgDl / kappa;
   const minPart = Math.min(scrRatio, 1) ** alpha;
-  const maxPart = Math.max(scrRatio, 1) ** -1.2;
-  const agePart = 0.9938 ** age;
+  const maxPart = Math.max(scrRatio, 1) ** CALC.egfr.max_exponent;
+  const agePart = CALC.egfr.age_base ** age;
 
-  const egfr = 142 * minPart * maxPart * agePart * genderMult;
+  const egfr = CALC.egfr.coefficient * minPart * maxPart * agePart * genderMult;
   return Math.round(egfr * 10) / 10;
 }
 
@@ -170,12 +172,7 @@ export function calculateNews2({
   // 1. Respiration Rate (breaths/min)
   if (numeric(actualRr)) {
     const rr = Number(actualRr);
-    let s = 0;
-    if (rr <= 8) s = 3;
-    else if (rr <= 11) s = 1;
-    else if (rr <= 20) s = 0;
-    else if (rr <= 24) s = 2;
-    else s = 3;
+    const s = newsSubscore("respiration_rate", rr);
     subscores.respiration_rate = s;
     totalScore += s;
     if (s === 3) singleRed = true;
@@ -186,11 +183,7 @@ export function calculateNews2({
   // 2. Oxygen Saturation (SpO2, Scale 1)
   if (numeric(spo2) && Number(spo2) >= 0 && Number(spo2) <= 100) {
     const sp = Number(spo2);
-    let s = 0;
-    if (sp <= 91) s = 3;
-    else if (sp <= 93) s = 2;
-    else if (sp <= 95) s = 1;
-    else s = 0;
+    const s = newsSubscore("spo2", sp);
     subscores.spo2 = s;
     totalScore += s;
     if (s === 3) singleRed = true;
@@ -204,7 +197,7 @@ export function calculateNews2({
       : /^(?:false|no|air|room air|空气|未吸氧)$/i.test(String(supplemental_oxygen).trim()) ? false : null;
   if (oxygen != null) {
     const isO2 = oxygen;
-    const s = isO2 ? 2 : 0;
+    const s = isO2 ? CALC.news2.oxygen_score : 0;
     subscores.supplemental_oxygen = s;
     totalScore += s;
   } else {
@@ -214,12 +207,7 @@ export function calculateNews2({
   // 4. Systolic Blood Pressure (mmHg)
   if (numeric(actualSbp)) {
     const bpVal = Number(actualSbp);
-    let s = 0;
-    if (bpVal <= 90) s = 3;
-    else if (bpVal <= 100) s = 2;
-    else if (bpVal <= 110) s = 1;
-    else if (bpVal <= 219) s = 0;
-    else s = 3;
+    const s = newsSubscore("systolic_bp", bpVal);
     subscores.systolic_bp = s;
     totalScore += s;
     if (s === 3) singleRed = true;
@@ -230,13 +218,7 @@ export function calculateNews2({
   // 5. Heart Rate (beats/min)
   if (numeric(actualHr)) {
     const hrVal = Number(actualHr);
-    let s = 0;
-    if (hrVal <= 40) s = 3;
-    else if (hrVal <= 50) s = 1;
-    else if (hrVal <= 90) s = 0;
-    else if (hrVal <= 110) s = 1;
-    else if (hrVal <= 130) s = 2;
-    else s = 3;
+    const s = newsSubscore("heart_rate", hrVal);
     subscores.heart_rate = s;
     totalScore += s;
     if (s === 3) singleRed = true;
@@ -249,7 +231,7 @@ export function calculateNews2({
   const isAltered = /^(?:C|V|P|U|NEW CONFUSION|VOICE|PAIN|UNRESPONSIVE|ALTERED|昏迷|嗜睡|微弱|昏睡|躁动|新发谵妄|谵妄)$/.test(cStr);
   const isAlert = /^(?:A|ALERT|清醒|神志清楚)$/.test(cStr);
   if (isAltered || isAlert) {
-    const s = isAltered ? 3 : 0;
+    const s = isAltered ? CALC.news2.altered_score : 0;
     subscores.consciousness = s;
     totalScore += s;
     if (s === 3) singleRed = true;
@@ -260,12 +242,7 @@ export function calculateNews2({
   // 7. Temperature (°C)
   if (numeric(actualTemp)) {
     const tVal = Number(actualTemp);
-    let s = 0;
-    if (tVal <= 35.0) s = 3;
-    else if (tVal <= 36.0) s = 1;
-    else if (tVal <= 38.0) s = 0;
-    else if (tVal <= 39.0) s = 1;
-    else s = 2;
+    const s = newsSubscore("temperature", tVal);
     subscores.temperature = s;
     totalScore += s;
     if (s === 3) singleRed = true;
@@ -279,23 +256,25 @@ export function calculateNews2({
       complete: false, single_trigger_red: null, has_single_red: null,
       subscores, components: subscores, missing_parameters: missing,
       clinical_alerts_enabled: false,
+      calculation_provenance: CALCULATION_PROVENANCE,
     };
   }
 
   // Risk Classification according to Royal College of Physicians NEWS2
   let riskLevel = "低风险 (Low)";
   let riskCode = "LOW";
-  if (totalScore >= 7) {
+  if (totalScore >= CALC.news2.high_score) {
     riskLevel = "高风险 (High)";
     riskCode = "HIGH";
-  } else if (totalScore >= 5 || singleRed) {
-    riskLevel = singleRed ? "中等风险 (单项红色警示 3分)" : "中等风险 (Medium)";
-    riskCode = singleRed ? "LOW-MEDIUM" : "MEDIUM";
+  } else if (totalScore >= CALC.news2.medium_score || singleRed) {
+    riskLevel = singleRed && totalScore < CALC.news2.medium_score ? "中等风险 (单项红色警示 3分)" : "中等风险 (Medium)";
+    riskCode = singleRed && totalScore < CALC.news2.medium_score ? "LOW-MEDIUM" : "MEDIUM";
   }
 
   return {
     complete: true,
     clinical_alerts_enabled: false,
+      calculation_provenance: CALCULATION_PROVENANCE,
     score: totalScore,
     total_score: totalScore,
     risk_level: riskLevel,
@@ -898,6 +877,10 @@ export class HospitalDataAdapter {
     rulePack = null,
   } = {}) {
     const alignments = [];
+    const references = (records, sourceType) => records.map(r => ({ source_id: r.id || null, source_type: sourceType, timestamp: r.effective_time || r.timestamp || r.start_time || r.authored_on || null }));
+    // Aggregated nursing values do not yet retain all contributing rows.
+    // An explicit unresolved anchor prevents a partial chain looking complete.
+    const nursingReferences = () => vitalsSummary || fluidBalance ? [{ source_id: null, source_type: "NursingAggregate", timestamp: null }] : [];
     const statusLabel = (record, sourceType = "observation") => ({ final: "正式结果", preliminary: "初步结果", revised: "修订结果", unknown: "来源状态未知" })[
       classifyRecordLifecycle(record, { sourceType }).result_status] || "来源阶段待核对";
     const labText = (record, label = record.name || record.code) => `${label}: ${record.value ?? "数值未知"} ${record.unit || "单位未提供"}（${statusLabel(record)}）`;
@@ -963,6 +946,7 @@ export class HospitalDataAdapter {
 
       alignments.push({
         domain_id: "fluid_renal_hemodynamic",
+        source_references: [...references(scrObs.slice(0, 1), "Observation"), ...references([...diuretics, ...vasoactives], "MedicationRequest"), ...nursingReferences()],
         domain_title: "液体平衡 - 肾功能 - 循环与利尿对齐",
         nis_summary: nisParts.join("；") || "未提供相关护理记录",
         lis_summary: lisParts.join("；") || "未提供肌酐记录",
@@ -1001,6 +985,7 @@ export class HospitalDataAdapter {
 
       alignments.push({
         domain_id: "infection_temperature_antimicrobial",
+        source_references: [...references(infObs, "Observation"), ...references(antibiotics, "MedicationRequest"), ...nursingReferences()],
         domain_title: "体温 - 感染指标 - 抗菌药物对齐",
         nis_summary: nisParts.join("；") || "未提供体温记录",
         lis_summary: lisParts.join("；") || "未提供相关检验记录",
@@ -1026,6 +1011,7 @@ export class HospitalDataAdapter {
 
       alignments.push({
         domain_id: "electrolytes_replenishment",
+        source_references: [...references(electrolyteObs, "Observation"), ...references(replenishments, "MedicationRequest"), ...nursingReferences()],
         domain_title: "电解质异常 - 纠正医嘱 - 复查闭环对齐",
         nis_summary: vitalsSummary ? "生命体征记录另见护理摘要；未证明与检验同步采集" : "未提供相关生命体征记录",
         lis_summary: lisParts.join("；") || "未提供电解质记录",
@@ -1056,6 +1042,7 @@ export class HospitalDataAdapter {
 
       alignments.push({
         domain_id: "cardiovascular_biomarkers_medication",
+        source_references: [...references(cardiacObs, "Observation"), ...references(cardiacMeds, "MedicationRequest"), ...references(cardiacPacs, "DiagnosticReport"), ...nursingReferences()],
         domain_title: "心血管标志物 - 影像 - 抗栓与调脂对齐",
         nis_summary: vitalsSummary?.bp_max ? `血压: ${vitalsSummary.bp_max}, 心率: ${vitalsSummary.hr_avg ?? "未提供"} bpm` : "未提供相关体征记录",
         lis_summary: lisParts.join("；") || "未提供相关检验记录",

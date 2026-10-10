@@ -1,5 +1,8 @@
 # Third-Party Notices & Provenance
 
+> Product baseline: 0.8.0-pilot; document revision: 1; approval: DRAFT_UNAPPROVED
+
+
 Medcius (this repository, `HERRY423/Medcius`) is a **rebranded, architecturally converged, and extended clinical workflow plugin platform** derived from the [`anthropics/healthcare`](https://github.com/anthropics/healthcare) repository. This notice records the provenance of all codebase assets, explicit module ownership, licensing postures, and independent rewrite audit baselines.
 
 ---
@@ -20,7 +23,7 @@ Medcius (this repository, `HERRY423/Medcius`) is a **rebranded, architecturally 
 ## 2. Codebase Provenance & Architectural Classification
 
 ```text
-Medcius Codebase (v0.2.0-pilot)
+Medcius Codebase (v0.8.0-pilot)
  ├── 1. Medcius Original Production Core (100% Owned by Medcius)
  │    ├─ Reference Workflow Engines (Patient Evolution, SBAR Shift Handover, Consult Prep, Discharge Readiness)
  │    ├─ Multi-Source Adapters & Real Bridge (NIS, LIS, PACS, HIS, FHIR R4, CDA Document Connector)

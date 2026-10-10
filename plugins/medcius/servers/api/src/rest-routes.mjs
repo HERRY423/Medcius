@@ -13,6 +13,7 @@ import { isClinicalLandingEnabled, isLiveHospitalDataEnabled } from "../../../li
 import { loadSiteActivationFromEnv } from "../../../lib/site-activation-gate.mjs";
 import { isFormalHospitalPath, resolveAuthorizedHospitalSource } from "../../../lib/authorized-hospital-source.mjs";
 import { readFrozenResearchRecord, replayFrozenResearchRecord } from "../../../lib/silent-research-archive.mjs";
+import { getResearchReviewPacket, prepareResearchReview, confirmResearchReview, getResearchReviewStatus } from "../../../lib/research-review-workflow.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -339,6 +340,26 @@ export async function routeRequest(req, res, body) {
     }
   }
 
+  if (pathname === "/api/v1/research/review-packet" || pathname.startsWith("/api/v1/research/review/")) {
+    const authCheck = guardedAuthorize("research:read");
+    if (!authCheck.allowed) return sendJson(authCheck.status, { error: authCheck.error });
+    try {
+      let result;
+      if (method === "GET" && pathname === "/api/v1/research/review-packet") {
+        result = getResearchReviewPacket(url.searchParams.get("case_id"), auth);
+        auditHandlers.record_event({ actor: auth.user, action: "research_review_packet_read", tenant_id: auth.tenantId,
+          subject_ref: encodeAuditResearchReference(result.case_id), payload: { packet_digest: encodeAuditDigest(result.packet_sha256) } });
+      } else if (method === "POST" && pathname === "/api/v1/research/review/prepare") result = prepareResearchReview(body || {}, auth);
+      else if (method === "POST" && pathname === "/api/v1/research/review/confirm") result = confirmResearchReview(body || {}, auth);
+      else if (method === "GET" && pathname === "/api/v1/research/review/status") result = getResearchReviewStatus({
+        case_id: url.searchParams.get("case_id"), event_id: Number(url.searchParams.get("event_id")) }, auth);
+      else return sendJson(404, { error: "RESEARCH_REVIEW_ROUTE_NOT_FOUND" });
+      return sendJson(200, result);
+    } catch (err) {
+      return sendJson(err.message === "RESEARCH_REVIEW_FORBIDDEN" ? 403 : 400, { error: err.message });
+    }
+  }
+
   if (method === "GET" && pathname === "/api/v1/research/frozen-record") {
     const authCheck = guardedAuthorize("research:read");
     if (!authCheck.allowed) return sendJson(authCheck.status, { error: authCheck.error });
@@ -441,6 +462,10 @@ export async function routeRequest(req, res, body) {
     "GET  /his/embed",
     "POST /api/v1/his/embed/silent-capture",
     "GET  /api/v1/research/frozen-record",
+    "GET  /api/v1/research/review-packet",
+    "POST /api/v1/research/review/prepare",
+    "POST /api/v1/research/review/confirm",
+    "GET  /api/v1/research/review/status",
     "POST /api/v1/research/frozen-record/replay",
     "GET  /health",
     "GET  /cds-services",

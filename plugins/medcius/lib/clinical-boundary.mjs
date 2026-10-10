@@ -5,6 +5,7 @@
 
 import { canonicalJson, hmacHex } from "../servers/shared/crypto.mjs";
 import { containsRawPhi, pseudonymizeText, scanText } from "../servers/phiguard/src/lib.mjs";
+import { isIntegrityMetadata } from "../servers/shared/integrity-metadata.mjs";
 
 export const STRUCTURED_IDENTIFIER_KEYS = new Set([
   "name",
@@ -155,12 +156,19 @@ export function sealIdentityRecord(record, options = {}) {
 
 /** Field-aware detector shared by transform and assert-only exits. Never returns raw values. */
 export function containsRawStructuredPhi(value) {
-  if (typeof value === "string" || typeof value === "number") return containsRawPhi(String(value));
+  if (typeof value === "string") {
+    // MCP/audit text envelopes may contain serialized structured records.
+    let parsed; if (/^\s*[\[{]/.test(value)) { try { parsed = JSON.parse(value); } catch { /* ordinary text */ } }
+    if (parsed && typeof parsed === 'object') return containsRawStructuredPhi(parsed);
+    return containsRawPhi(value);
+  }
+  if (typeof value === "number") return containsRawPhi(String(value));
   if (!value || typeof value !== "object") return { hit: false };
   for (const [key, item] of Object.entries(value)) {
     const keyHit = containsRawPhi(key);
     if (keyHit.hit) return keyHit;
     if (!Array.isArray(value) && isIdentityKey(value, key) && isRawStructuredIdentifier(item)) return { hit: true, type: "structured_identifier", field: key };
+    if (!Array.isArray(value) && isIntegrityMetadata(key, item, value)) continue;
     const nested = containsRawStructuredPhi(item);
     if (nested.hit) return nested;
   }
@@ -171,6 +179,12 @@ export function containsRawStructuredPhi(value) {
 export function toModelSafe(value, { salt = process.env.CLAUDE_MEDCIUS_PHI_SALT } = {}) {
   if (typeof value === "number" && containsRawPhi(String(value)).hit) return toModelSafe(String(value), { salt });
   if (typeof value === "string") {
+    let parsed; if (/^\s*[\[{]/.test(value)) { try { parsed = JSON.parse(value); } catch { /* ordinary text */ } }
+    if (parsed && typeof parsed === 'object') {
+      const safe = toModelSafe(parsed, { salt });
+      // Preserve already-safe serialized bytes, including whitespace/escapes.
+      return JSON.stringify(safe) === JSON.stringify(parsed) ? value : JSON.stringify(safe);
+    }
     if (salt != null) return pseudonymizeText(value, { salt }).text;
     let output = value;
     for (const finding of scanText(value).findings.reverse()) output = output.slice(0, finding.start) + `[REDACTED:${finding.type}]` + output.slice(finding.end);
@@ -180,7 +194,7 @@ export function toModelSafe(value, { salt = process.env.CLAUDE_MEDCIUS_PHI_SALT 
   if (value && typeof value === "object") {
     const sealed = sealIdentityRecord(value, { salt });
     const out = {};
-    for (const [key, item] of Object.entries(sealed)) out[key] = toModelSafe(item, { salt });
+    for (const [key, item] of Object.entries(sealed)) out[key] = isIntegrityMetadata(key, item, sealed) ? item : toModelSafe(item, { salt });
     return out;
   }
   return value;

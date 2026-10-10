@@ -1,5 +1,8 @@
 # 质量管理体系受控文件与程序文件（SOP）清单 (QMS-CONTROLLED-DOCUMENTS)
 
+> Product baseline: 0.8.0-pilot; document revision: 1; approval: DRAFT_UNAPPROVED
+
+
 > **版本**：v1.0 (2026-08)  
 > **受控范围**：Medcius 临床工作流 Agent 插件全生命周期研发与产品化文档。
 
@@ -39,19 +42,19 @@
 
 | 文档编号 | 文档名称 | 对应标准条款 | 当前状态 |
 |---|---|---|---|
-| **DHF-01** | 软件需求规格说明书 (SRS) | IEC 62304 §5.2 | 🟢 受控 (`SRS-CN-SKILLS.md`) |
-| **DHF-02** | 软件系统安全与架构设计说明书 | IEC 62304 §5.3 | 🟢 受控 (`SECURITY-ARCHITECTURE.md`) |
-| **DHF-03** | 软件风险管理报告 (RMR) | ISO 14971 §4-§8 | 🟢 受控 (`RISK-MANAGEMENT.md`) |
-| **DHF-04** | 需求-设计-测试双向追溯性矩阵 | IEC 62304 §5.2.6 | 🟢 自动同步 (`TRACEABILITY.md`) |
-| **DHF-05** | 软件产品技术要求 (PTR 送审稿) | GB/T 25000.51 | 🟢 受控 (`PRODUCT-TECHNICAL-REQUIREMENTS.md`) |
-| **DHF-06** | 软件单元与系统集成验证测试报告 | IEC 62304 §5.5-§5.7 | 🟢 自动生成 (37 项门禁通过) |
-| **DHF-07** | 个人信息保护影响评估报告 (PIA) | 个保法 §55 | 🟢 受控 (`DATA-PROTECTION-IMPACT-ASSESSMENT.md`) |
-| **DHF-08** | 临床评价报告大纲与影子研究报告 | 医疗器械临床评价指导原则 | 🟢 受控 (`CLINICAL-EVALUATION-REPORT-FRAMEWORK.md`) |
+| **DHF-01** | 软件需求规格说明书 (SRS) | IEC 62304 §5.2 | 草案待批准 (`SRS-CN-SKILLS.md`) |
+| **DHF-02** | 软件系统安全与架构设计说明书 | IEC 62304 §5.3 | 草案待批准 (`SECURITY-ARCHITECTURE.md`) |
+| **DHF-03** | 软件风险管理报告 (RMR) | ISO 14971 §4-§8 | 草案待批准 (`RISK-MANAGEMENT.md`) |
+| **DHF-04** | 需求-设计-测试双向追溯性矩阵 | IEC 62304 §5.2.6 | 机器可核对 (`TRACEABILITY.md`) |
+| **DHF-05** | 软件产品技术要求 (PTR 送审稿) | GB/T 25000.51 | 草案待批准 (`PRODUCT-TECHNICAL-REQUIREMENTS.md`) |
+| **DHF-06** | 软件单元与系统集成验证测试报告 | IEC 62304 §5.5-§5.7 | 本次门禁记录，逐项区分执行/断言/证据 |
+| **DHF-07** | 个人信息保护影响评估报告 (PIA) | 个保法 §55 | 草案待批准 (`DATA-PROTECTION-IMPACT-ASSESSMENT.md`) |
+| **DHF-08** | 临床评价报告大纲与影子研究报告 | 医疗器械临床评价指导原则 | 草案待批准 (`CLINICAL-EVALUATION-REPORT-FRAMEWORK.md`) |
 
 ---
 
 ## 四、 四级质量记录与审计凭证
 
-- **Git 提交不可变审计**：所有代码与文书变更均附带 PGP 签名与 Git Hash；
-- **本地 SHA-256 审计链**：`plugins/medcius/servers/audit/` 持续记录每一个事件的 Merkle 链条；
+- **Git 提交不可变审计**：Git Hash 记录版本；是否具名签署须单独核验，不默认所有提交有 PGP 签名；
+- **本地 SHA-256 审计链**：`plugins/medcius/servers/audit/` 持续记录每一个事件的 哈希链条；
 - **CI 自动化门禁测试记录**：`scripts/run-all-checks.mjs` 每次全量回归生成结构化退出状态与控制台日志。

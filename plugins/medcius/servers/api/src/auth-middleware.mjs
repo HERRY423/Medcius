@@ -1,8 +1,20 @@
 // SMART on FHIR / OIDC / Hospital Unified Identity Auth & RBAC Middleware
-// Standards-compliant identity verification, tenant isolation, and role authorization.
+// Locally configured public-key JWT verification or legacy HMAC, plus RBAC.
 // Security Model: Default Closed (默认关闭) with strict JWT issuer, audience, alg, and tenant binding.
 
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { IdpJwksVerifier } from "../../../lib/idp-jwks-verifier.mjs";
+
+// Trusted deployment file, never token-supplied URLs. Re-read to honor key
+// rotation/revocation. No network discovery or automatic JWKS refresh implied.
+export function configuredIdpVerifier(path = process.env.MEDCIUS_IDP_CONFIG) {
+  const config = JSON.parse(readFileSync(path, "utf8"));
+  if (!Array.isArray(config.allowedAudiences) || !config.allowedAudiences.length || !Array.isArray(config.allowedTenants) || !config.allowedTenants.length || !Array.isArray(config.issuers) || !config.issuers.length) throw new Error("IDP_CONFIG_INVALID");
+  const verifier = new IdpJwksVerifier(config);
+  for (const issuer of config.issuers) verifier.registerTrustedIssuer(issuer.issuerUrl, issuer);
+  return verifier;
+}
 
 export const ROLES = {
   PHYSICIAN: "physician",
@@ -124,6 +136,12 @@ export function generateToken(payload, options = {}) {
  * Validates: segments, base64 json, algorithm, expiration, issuer, audience, and signature.
  */
 export function verifyToken(token, options = {}) {
+  if (process.env.MEDCIUS_IDP_CONFIG || options.idpVerifier) {
+    try {
+      const result = (options.idpVerifier || configuredIdpVerifier()).verifyToken(token);
+      return result.isValid ? { valid: true, payload: result.claims } : { valid: false, error: "IDP_TOKEN_REJECTED" };
+    } catch { return { valid: false, error: "IDP_CONFIG_OR_TOKEN_REJECTED" }; }
+  }
   if (!token || typeof token !== "string") {
     return { valid: false, error: "Empty or invalid token format" };
   }

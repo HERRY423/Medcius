@@ -6,6 +6,7 @@ experimental
 node_modules
 staging
 out
+output
 deploy
 *.md
 !README.md

@@ -17,10 +17,11 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, r
 import { createHash } from "node:crypto";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
 
 const REPO = resolve(join(dirname(fileURLToPath(import.meta.url)), ".."));
 const NODE_MIN_MAJOR = 20;
-const COPY_EXCLUDE = new Set([".git", ".github", "node_modules", "staging", "out", "deploy"]);
+const COPY_EXCLUDE = new Set([".git", ".github", "node_modules", "staging", "out", "output", "deploy"]);
 
 function sha256File(path) {
   const content = readFileSync(path);
@@ -50,7 +51,8 @@ function status() {
   } catch {
     checks.push({ item: "source_revision", pass: false, evidence: "not a git checkout" });
   }
-  const gate = { pass: true, evidence: "skipped in status (run: node scripts/validate-json.mjs)" };
+  const result = spawnSync(process.execPath, [join(REPO, "scripts/validate-json.mjs")], { cwd: REPO, encoding: "utf8", timeout: 15000 });
+  const gate = { pass: result.status === 0 && /ALL JSON CONTRACTS VALID/.test(result.stdout || ""), evidence: `validate-json exit=${result.status}; ${result.error ? "execution failed" : "syntax and declared contracts checked"}` };
   checks.push({ item: "quick_gate", ...gate });
   const ok = checks.every((c) => c.pass);
   plan(checks.map((c) => `${c.pass ? "PASS" : "FAIL"} ${c.item}: ${c.evidence}`));

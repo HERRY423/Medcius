@@ -15,7 +15,12 @@ function phiNoun(type) {
 }
 
 function guardNoPhi(text) {
-  const hit = typeof text === "object" ? containsRawStructuredPhi(text) : containsRawPhi(String(text));
+  // Audit ingress is stricter than serialization of generated output. A caller
+  // cannot authorize a raw identifier by naming its field record_sha256. Keep
+  // the established byte encoding for digest payloads and strict text scan.
+  const structured = containsRawStructuredPhi(text);
+  const raw = containsRawPhi(typeof text === 'object' ? canonicalJson(text) : String(text));
+  const hit = structured.hit ? structured : raw;
   if (hit.hit) {
     throw new Error(
       `PHI guard: 检测到疑似${phiNoun(hit.type)}原文。` +

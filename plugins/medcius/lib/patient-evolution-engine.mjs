@@ -1,13 +1,18 @@
+import { assessCriticalVisibility } from "./critical-visibility.mjs";
 // Patient Evolution Summary Engine (住院医生查房前“患者变化摘要”确定性计算引擎)
 // Enhanced: Multi-source data fusion (NIS vitals/fluids, LIS critical values, PACS impressions, HIS antibiotics),
 // Dynamic eGFR (CKD-EPI), and Clinical Safety / Quality Control rules hardening.
 
 import { splitSections, extractConTextAssertion } from "./parse-cn-note.mjs";
+import { inspectEvidenceAnchor } from "./evidence-anchors.mjs";
+import { CALCULATION_PROVENANCE, renalStabilityPolicy } from "./calculation-reference.mjs";
+import { rulePackDigest, validateSpecialtyRulePack } from "./specialty-rule-pack.mjs";
 import { HospitalDataAdapter, calculateEgfrCkdEpi, normalizeLabUnit } from "./hospital-data-adapter.mjs";
-import { trackHighRiskFollowup } from "./high-risk-followup-tracker.mjs";
+import { trackHighRiskFollowup, isExplicitCritical } from "./high-risk-followup-tracker.mjs";
 import { PostHocClaimVerifier } from "./post-hoc-verifier.mjs";
 import { classifySourceTime } from "./clinical-boundary.mjs";
 import { classifyRecordLifecycle, resolveRecordVersions, describeRecordLifecycle } from "./record-lifecycle.mjs";
+import { assertEvolutionConsistency, detachedFrozenOutput } from "./output-consistency.mjs";
 
 export const ITEM_CATEGORIES = {
   FACT: "FACT",           // 【原文事实】
@@ -71,6 +76,12 @@ export class PatientEvolutionEngine {
     const nowMs = new Date(now).getTime();
     if (!Number.isFinite(nowMs)) throw new Error("INVALID_TIME_CONTEXT: now must be a valid timestamp");
     const cutoffTime = nowMs - windowHours * 60 * 60 * 1000;
+    const production = process.env.NODE_ENV === "production" || process.env.MEDCIUS_PROFILE === "production";
+    if (production && rulePack) {
+      const validation = validateSpecialtyRulePack(rulePack, { production, hospitalScope: context?.tenant_id, now });
+      if (!validation.ok) throw new Error(`RULE_PACK_REJECTED: ${validation.errors.join(",")}`);
+    }
+    const stabilityPolicy = renalStabilityPolicy(rulePack);
 
     const assertFeedIdentity = (record, label) => {
       if (!record || typeof record !== "object") return;
@@ -175,10 +186,21 @@ export class PatientEvolutionEngine {
     orders = resolutions[2].current_records;
     combinedMedications = resolutions[3].current_records;
     notes = resolutions[5].current_records.filter((record) => usableResult(record, "note"));
-    topCriticalValues = topCriticalValues.filter((item) => combinedObservations.some((record) => record.id === item.observation_id
-      && (record.version_id ?? record.meta?.versionId ?? null) === (item.version_id ?? null)));
+    // Every critical projection uses the same selected source version and lifecycle.
+    topCriticalValues = resolutions[0].entries.filter(e => e.is_current && usableResult(e.record, "observation")
+      && e.lifecycle.event_time_status === "in_window" && isExplicitCritical(e.record)).map(({ record, lifecycle }) => ({
+      observation_id: lifecycle.source_id, source_system: lifecycle.source_system, version_id: lifecycle.version_id,
+      result_status: lifecycle.result_status, change_type: lifecycle.change_type,
+      name: record.display_name || record.name || record.test_name || record.code || "检验",
+      value: record.value ?? null, unit: record.unit ?? null, report_name: record.report_name || "检验报告",
+      sample_time: lifecycle.event_time, reason: record.critical_reason || "来源显式标记危急；未在此推断数值阈值",
+      urgency_action: "核对来源标记与当前版本；本插件仅追踪阶段",
+    }));
     imagingImpressions = imagingImpressions.filter((item) => combinedReports.some((record) => record.id === item.id && usableResult(record, "diagnostic_report")
-      && (record.version_id ?? record.meta?.versionId ?? null) === (item.version_id ?? null)));
+      && (record.version_id ?? record.meta?.versionId ?? null) === (item.version_id ?? null))).map(item => {
+        const selected = resolutions[1].entries.find(e => e.is_current && e.lifecycle.source_id === item.id && e.lifecycle.version_id === (item.version_id ?? null));
+        return { ...item, result_status: selected?.lifecycle.result_status ?? "unknown", change_type: selected?.lifecycle.change_type ?? "unknown" };
+      });
     const changeItems = [];
     for (const entry of resolutions.flatMap((resolution) => resolution.entries)) {
       const { record, lifecycle: state, selection_status: selectionStatus } = entry;
@@ -258,6 +280,7 @@ export class PatientEvolutionEngine {
       title: align.domain_title,
       summary: `【${align.domain_title}】${align.clinical_synthesis} (NIS: ${align.nis_summary} | LIS: ${align.lis_summary} | HIS: ${align.his_summary})`,
       alignment: align,
+      source_references: align.source_references,
       source_type: "MultiSourceCrossAlignment",
       source_id: `align-${align.domain_id}`,
       source_title: "多源跨系统临床对齐图谱 (NIS/LIS/PACS/HIS)",
@@ -431,8 +454,8 @@ export class PatientEvolutionEngine {
 
       let isHigh = false;
       let isLow = false;
-      let isCritical = latest.is_critical || false;
-      let statusLabel = "无参考区间 (仅呈现趋势)";
+      let isCritical = isExplicitCritical(latest);
+      let statusLabel = isCritical ? "来源标记危急；参考区间未确认" : "无参考区间 (仅呈现趋势)";
 
       if (hasReferenceRange && Number.isFinite(latestVal)) {
         isHigh = refHigh != null && latestVal > refHigh;
@@ -470,8 +493,8 @@ export class PatientEvolutionEngine {
               if (normBase.compatible && normBase.comparableValue != null) {
                 const scrDelta = normLatest.comparableValue - normBase.comparableValue;
                 const scrPctRise = normBase.comparableValue > 0 ? scrDelta / normBase.comparableValue : 0;
-                // KDIGO: absolute increase >= 26.5 umol/L (0.3 mg/dL) or relative increase >= 50%
-                if (scrDelta >= 26.5 || scrPctRise >= 0.5) {
+                // Versioned conservative calculation guard; not an AKI diagnosis.
+                if (scrDelta >= stabilityPolicy.absolute_rise_umol_l || scrPctRise >= stabilityPolicy.relative_rise) {
                   isAkiUnstable = true;
                   patientEgfr = null; // Block static eGFR calculation during acute surge
                   // This conservative calculation guard is not a source-reported
@@ -554,24 +577,13 @@ export class PatientEvolutionEngine {
           span: verbatimSpan,
           source_type: "Observation",
           source_id: latest.id || null,
+          source_system: resultLifecycle.source_system,
           source_title: latest.report_name || "检验报告",
           timestamp: latest.effective_time || latest.timestamp || null,
         };
 
         changes.abnormal_labs.push(labItem);
 
-        if (isCritical && !topCriticalValues.some((c) => c.name === testName)) {
-          topCriticalValues.push({
-            observation_id: latest.id || null,
-            name: testName,
-            value: latestVal,
-            unit,
-            report_name: latest.report_name || "检验报告",
-            sample_time: latest.effective_time || latest.timestamp || null,
-            reason: latest.critical_reason || `数值触发检验危急值边界 (${latestVal} ${unit})`,
-            urgency_action: "按医院批准制度完成人工确认与闭环记录；本插件仅追踪阶段",
-          });
-        }
       }
     }
 
@@ -588,7 +600,9 @@ export class PatientEvolutionEngine {
         source_title: "PACS 影像系统",
         timestamp: imp.event_time || imp.study_time || null,
         ordered_at: imp.ordered_at || null,
-        result_status: classifyRecordLifecycle({ status: imp.status }, { sourceType: "diagnostic_report", now: nowMs }).result_status,
+        result_status: imp.result_status,
+        change_type: imp.change_type,
+        version_id: imp.version_id ?? null,
       });
     }
 
@@ -872,6 +886,12 @@ export class PatientEvolutionEngine {
     // ----------------------------------------------------
     // BLOCK 5: 「查看原始证据」 (Source Attribution & Raw Spans)
     // ----------------------------------------------------
+    // Compatibility panels are projections, never independent adapter additions.
+    changes.nursing_vitals_summary = normalizedVitals;
+    changes.fluid_balance_24h = normalizedFluids;
+    changes.critical_values = topCriticalValues;
+    changes.antibiotic_duration_alerts = antibioticAlerts;
+    changes.imaging_impressions = imagingImpressions;
     const allSelectableItems = [
       ...changeItems,
       ...alignmentSelectableItems,
@@ -890,6 +910,7 @@ export class PatientEvolutionEngine {
     ];
 
     const evidenceList = allSelectableItems.map((item) => ({
+      ...inspectEvidenceAnchor(item, [...notes, ...observations, ...medications, ...diagnosticReports, ...orders, ...lisFeed, ...pacsFeed, ...nursingFeed, ...nisFeed]),
       item_id: item.id,
       category: item.category,
       tag: item.tag,
@@ -897,11 +918,15 @@ export class PatientEvolutionEngine {
       span: item.span || null,
       source_type: item.source_type,
       source_id: item.source_id,
+      source_system: item.source_system ?? null,
+      version_id: item.version_id ?? null,
       source_title: item.source_title || "医院业务系统",
       timestamp: item.timestamp || null,
     }));
 
-    return {
+    return detachedFrozenOutput(assertEvolutionConsistency({
+      calculation_provenance: CALCULATION_PROVENANCE,
+      rule_provenance: rulePack ? { pack_id: rulePack.pack_id, version: rulePack.version, sha256: rulePackDigest(rulePack), authority: rulePack.authority } : null,
       patient: {
         id: patient.id,
         name: patient.name || null,
@@ -915,6 +940,7 @@ export class PatientEvolutionEngine {
       time_window: timeWindow,
       generated_at: new Date(nowMs).toISOString(),
       critical_values: topCriticalValues,
+      critical_visibility: assessCriticalVisibility({ sources: sourceAvailability, asOf: new Date(now).toISOString(), flaggedCount: topCriticalValues.length }),
       blocks: {
         record_changes: recordChanges,
         source_availability: sourceAvailability.map((source) => ({ ...source })),
@@ -928,7 +954,7 @@ export class PatientEvolutionEngine {
       },
       total_items_count: allSelectableItems.length,
       selectable_items: allSelectableItems,
-    };
+    }));
   }
 
   /**

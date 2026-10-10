@@ -1,0 +1,12 @@
+import { writeFileSync, mkdirSync } from "node:fs";
+import assert from "node:assert/strict";
+import { summarizeBenefitObservations, TIME_COMPONENTS } from "./observations.mjs";
+const arm = total => ({status:"completed",...Object.fromEntries(TIME_COMPONENTS.map((key,i)=>[key,i===0?total:0]))});
+const result = summarizeBenefitObservations({expected_episode_ids:["synthetic-slower","synthetic-missing"],observations:[{episode_id:"synthetic-slower",control:arm(100),intervention:arm(110)}]});
+assert.equal(result.descriptive_mean_saved_seconds,-10);
+assert.equal(result.missing_episodes,1);
+assert.equal(result.complete_episodes,0);
+assert.equal(result.clinical_evidence_pass,false);
+const dir=new URL("./reports/",import.meta.url); mkdirSync(dir,{recursive:true});
+writeFileSync(new URL("synthetic-measurement-summary.json",dir),JSON.stringify({evaluation_id:"benefit-negative-control-v1",execution_status:"COMPLETED",evidence_class:"synthetic_measurement_negative_control",...result},null,2)+"\n");
+console.log("Benefit measurement negative control: -10 seconds; missing/accuracy/safety retained as unknown. No benefit claim.");

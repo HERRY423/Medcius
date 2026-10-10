@@ -6,7 +6,9 @@
 import { spawnSync } from "node:child_process";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { randomUUID, createHash } from "node:crypto";
+import { assessGateResult } from "./lib/gate-result.mjs";
 import { tmpdir } from "node:os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -15,6 +17,22 @@ const repoRoot = join(__dirname, "..");
 const testDataRoot = mkdtempSync(join(tmpdir(), "medcius-quality-gates-"));
 
 const steps = [
+  { name: "Bound Text Anchors & Critical Visibility Negative Controls", cmd: "node", args: ["tests/test-evidence-visibility.mjs"], successPattern: /(?:ℹ|#) tests [1-9]\d*[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ },
+  { name: "Rule Pack Review Handoff & Unverified Approval Rejection", cmd: "node", args: ["tests/test-rule-pack-review.mjs"] },
+  { name: "Cross-Evaluation Negative Controls: Six Scorers", cmd: "node", args: ["tests/test-evaluation-negative-controls.mjs"], successPattern: /ALL CROSS-EVALUATION NEGATIVE CONTROLS PASSED/ },
+  { name: "Gate Semantics & Configuration Drift Negative Controls", cmd: "node", args: ["tests/test-governance-gates.mjs"] },
+  { name: "Controlled Document Baselines & Content Integrity", cmd: "node", args: ["scripts/validate-controlled-documents.mjs"], successPattern: /CONTROLLED DOCUMENTS VALID/ },
+  { name: "QMS Listed Machine Checks (human review pending)", cmd: "node", args: ["scripts/qms-internal-audit.mjs", "--no-write"], successPattern: /QMS_MACHINE_SUMMARY: 11\/11; scope=ALL_LISTED_MACHINE_CHECKS; review=PENDING/ },
+  { name: "MCP PHI Egress & Public-Key HTTP Authentication", cmd: "node", args: ["tests/test-mcp-egress-and-idp.mjs"] },
+  { name: "PHI Integrity Metadata: Deterministic Collisions, Signatures, Audit & Stdio", cmd: "node", args: ["tests/test-phi-integrity-metadata.mjs"], successPattern: /(?:ℹ|#) tests [1-9]\d*[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ },
+  { name: "Rule Policy, Numeric Boundaries & Exact Evidence Anchors", cmd: "node", args: ["tests/test-rule-policy-and-anchors.mjs"] },
+  { name: "Actual Engine Challenge & Defective Output Controls", cmd: "node", args: ["plugins/medcius/evals/shadow-mode/engine-challenge.mjs"] },
+  { name: "Benefit Measurement Negative Control", cmd: "node", args: ["plugins/medcius/evals/clinical-benefit/run-synthetic.mjs"] },
+  { name: "Doctor UI: Context Invalidation, Late Responses, Source Disclosure & Error Recovery", cmd: "node", args: ["tests/test-doctor-ui.mjs"] },
+  { name: "Clinician Reading Drafts: Scope, PHI, Ownership, Revision & Governance", cmd: "node", args: ["tests/test-clinician-review-session.mjs"], successPattern: /(?:ℹ|#) tests [1-9]\d*[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ },
+  { name: "MCP Review App: Capability Negotiation, Context, Delivery & Stdio", cmd: "node", args: ["tests/test-review-app.mjs"], successPattern: /(?:ℹ|#) tests [1-9]\d*[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ },
+  { name: "Output Consistency: Shared State, Projection Coverage, Provenance & Mutation Guards", cmd: "node", args: ["tests/test-output-consistency.mjs"] },
+  { name: "Research Review: Frozen Evidence, Physician Signature & Benefit Observation Boundaries", cmd: "node", args: ["tests/test-research-review-workflow.mjs"] },
   { name: "Record Changes: Publication, Revision, Cancellation, Arrival & Unknown", cmd: "node", args: ["tests/test-record-change-semantics.mjs"] },
   { name: "Record Versions: Time Boundaries, Replacement Chains & Conflicts", cmd: "node", args: ["tests/test-record-version-edge-cases.mjs"] },
   { name: "Lifecycle Normalizers: Current Imaging & Medication Source States", cmd: "node", args: ["tests/test-lifecycle-normalizers.mjs"] },
@@ -22,7 +40,7 @@ const steps = [
   { name: "Follow-up: Version-Bound Review & Source Availability", cmd: "node", args: ["tests/test-followup-lifecycle.mjs"] },
   { name: "Connectors: Source Lifecycle & Empty / Unavailable Separation", cmd: "node", args: ["tests/test-source-lifecycle.mjs"] },
   { name: "Lifecycle Surface: Summary, Silent Archive & Replay", cmd: "node", args: ["tests/test-lifecycle-surface.mjs"] },
-  { name: "JSON Contract Syntax Validation", cmd: "node", args: ["scripts/validate-json.mjs"] },
+  { name: "JSON Mapped Contracts & Explicit Syntax-Only Checks", cmd: "node", args: ["scripts/validate-json.mjs"], successPattern: /ALL JSON CONTRACTS VALID/ },
   { name: "P0: Boundary, Evidence Status & Frozen Silent Path", cmd: "node", args: ["tests/test-boundary-evidence-silent-path.mjs"] },
   { name: "P0: Exact Evidence Text, Missing Data & Measurement Semantics", cmd: "node", args: ["tests/test-p0-fact-semantics.mjs"] },
   { name: "P0: Field-Aware PHI, Signed Decisions & Audit Integrity", cmd: "node", args: ["tests/test-p0-phi-audit-hardening.mjs"] },
@@ -75,7 +93,32 @@ const steps = [
   { name: "45. Corpus Supply Chain: Official-Source Registry & Freshness SLA (informational)", cmd: "node", args: ["scripts/corpus-freshness.mjs"] },
   { name: "46. Corpus Supply Chain & Regulatory Readiness: Fetch Pipeline, Reconciliation, Classification Gate, Executable Audit", cmd: "node", args: ["tests/test-corpus-supply-chain.mjs"] },
   { name: "47. Runtime Product Form: Container Discipline, Deployer, Resident Probe, LLM Config Management", cmd: "node", args: ["tests/test-deployment-runtime.mjs"] },
+  { name: "Distinct Evaluation Identities & Evidence Index", cmd: "node", args: ["scripts/build-evidence-index.mjs"] },
 ];
+// These programs produce measurements; their exit status is not endpoint attainment.
+const specialSuccess = {
+  "tests/test-research-review-workflow.mjs": /Research review:.*checks passed \(synthetic only\)/,
+  "tests/test-lifecycle-draft-boundary.mjs": /Lifecycle progressive-view and staged-draft boundary regressions passed/,
+  "tests/test-lifecycle-surface.mjs": /PASS: lifecycle surface and frozen replay retain source availability/,
+  "tests/test-p0-phi-audit-hardening.mjs": /P0 PHI \/ AUDIT HARDENING PASSED/,
+  "tests/test-p0-evidence-integrity.mjs": /P0 evidence integrity: [1-9]\d* adversarial groups passed/,
+  "tests/test-p0-authorized-silent-path.mjs": /PASS: authorized silent path, tenant-bound immutable replay archive/,
+  "scripts/validate-host-adapters.mjs": /HOST ADAPTERS VALID/,
+  "plugins/medcius/scripts/compliance-lint.mjs": /COMPLIANCE LINT PASSED/,
+  "scripts/validate-build-isolation.mjs": /BUILD & PACKAGING ISOLATION VALIDATION PASSED/,
+  "scripts/validate-gate.mjs": /GATE VALIDATION PASSED/,
+  "scripts/run-evals.mjs": /results\/: [1-9]\d* pass \/ 0 fail/,
+  "tests/test-shift-handover.mjs": /Handover:.*independent clinical follow-up passed/,
+  "tests/test-consult-preparation.mjs": /Reference consultation UI renders source evidence and safely escapes input/,
+  "tests/test-discharge-readiness.mjs": /Discharge documentation:.*no clinical discharge verdict passed/,
+  "tests/test-clinical-closure.mjs": /Clinical closure tracker, rule-pack fail-closed policy, and heterogeneous read-only bridge passed/,
+};
+const nodeTestFiles = new Set(["test-mcp-egress-and-idp", "test-rule-policy-and-anchors", "test-doctor-ui", "test-output-consistency", "test-record-change-semantics", "test-record-version-edge-cases", "test-lifecycle-normalizers", "test-followup-lifecycle", "test-source-lifecycle", "test-p0-fact-semantics"].map(name=>`tests/${name}.mjs`));
+for (const step of steps) {
+  step.kind = step.args[0].includes("/evals/") || ["scripts/corpus-freshness.mjs", "plugins/medcius/scripts/generate-coverage-report.mjs", "scripts/build-evidence-index.mjs"].includes(step.args[0]) ? "report" : "check";
+  if (step.kind === "check") step.successPattern ??= specialSuccess[step.args[0]] ?? (nodeTestFiles.has(step.args[0]) ? /(?:ℹ|#) tests [1-9]\d*[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ : /ALL [^\r\n]+ PASSED/);
+}
+const receipt = { schema_version: "medcius.quality-gate-execution.v1", run_id: randomUUID(), started_at: new Date().toISOString(), steps: [] };
 
 console.log("================================================================================");
 console.log(" Medcius Full CI Quality Gate & Synthetic Validation Pipeline");
@@ -94,11 +137,15 @@ for (const step of steps) {
     encoding: "utf8",
     env: { ...process.env, CLAUDE_MEDCIUS_DATA: testDataRoot, MEDCIUS_DATA: testDataRoot, NODE_NO_WARNINGS: "1" },
     maxBuffer: 16 * 1024 * 1024,
+    timeout: 120000,
   });
   const elapsed = Date.now() - start;
+  const assessed = assessGateResult(step, res);
+  receipt.steps.push({name:step.name,command:[step.cmd,...step.args],kind:step.kind,duration_ms:elapsed,
+    expected_evidence:step.successPattern?.source ?? null, output_sha256:createHash("sha256").update(`${res.stdout??""}\n${res.stderr??""}`).digest("hex"),...assessed});
 
-  if (res.status === 0) {
-    console.log(`[PASS] (${elapsed}ms)`);
+  if (assessed.ok) {
+    console.log(`[${step.kind === "report" ? "EXECUTED; ENDPOINT NOT ASSERTED" : "CHECK PASSED"}] (${elapsed}ms)`);
     passedCount++;
   } else {
     console.log(`[FAIL] (${elapsed}ms, exit code ${res.status})`);
@@ -109,9 +156,15 @@ for (const step of steps) {
     else engineeringFailures++;
   }
 }
+receipt.completed_at = new Date().toISOString();
+receipt.summary = { completed: passedCount, failed: failedCount, engineering_pass: engineeringFailures === 0,
+  synthetic_execution_pass: syntheticFailures === 0, synthetic_validation_pass: "NOT_ESTABLISHED", clinical_evidence_pass: "BLOCKED" };
+mkdirSync(join(repoRoot,"out"),{recursive:true});
+writeFileSync(join(repoRoot,"out",`quality-gates-${receipt.run_id}.json`),JSON.stringify(receipt,null,2));
+writeFileSync(join(repoRoot,"out","quality-gates-latest.json"),JSON.stringify(receipt,null,2));
 
 console.log("\n================================================================================");
-console.log(` Quality Gate Summary: ${passedCount} Passed, ${failedCount} Failed / Total ${steps.length} Gates`);
+console.log(` Quality Gate Summary: ${passedCount} Completed, ${failedCount} Failed / Total ${steps.length} Steps`);
 console.log("================================================================================");
 console.log(" Three-Tier Pass Status Classification:");
 console.log(` - 1. engineering_pass:          ${engineeringFailures === 0 ? "🟢 PASS (Listed engineering checks passed)" : "🔴 FAIL"}`);

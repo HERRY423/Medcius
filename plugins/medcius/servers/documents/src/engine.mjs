@@ -1,3 +1,4 @@
+import { guardToolOutput } from "../../shared/phi-output.mjs";
 import {
   appendFileSync,
   existsSync,
@@ -429,7 +430,7 @@ function dumpShard(runId, label, ids) {
       continue;
     }
     const path = join(dir, `doc${id}.txt`);
-    writeFileSync(path, doc.content, { mode: 0o600 });
+    writeFileSync(path, guardToolOutput(doc.content), { mode: 0o600 });
     written.push({ doc_id: id, path, chars: doc.content.length, uri: doc.uri, family: doc.family });
   }
   return {
@@ -495,7 +496,7 @@ export function dump(runId, shards, opts = {}) {
       opts.scope_id ?? 0,
     );
     const pp = promptPath(runId, sh.label);
-    writeFileSync(pp, text, { mode: 0o600 });
+    writeFileSync(pp, guardToolOutput(text), { mode: 0o600 });
     return { label: sh.label, prompt_path: pp, ...res };
   });
   return { shards: out };
@@ -529,6 +530,6 @@ const OBSERVATIONS_HEADER = `# /contracts observations
 export function logObservation(entry) {
   const path = join(DATA, "observations.md");
   if (!existsSync(path)) writeFileSync(path, OBSERVATIONS_HEADER, { mode: 0o600 });
-  appendFileSync(path, `\n${entry.trim()}\n`);
+  appendFileSync(path, `\n${guardToolOutput(entry.trim())}\n`);
   return { path };
 }

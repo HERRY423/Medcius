@@ -1,7 +1,7 @@
 // Medcius MCP stdio transport.
 //
-// Line-delimited JSON-RPC 2.0 over stdin/stdout implementing the four methods
-// the plugin servers expose (initialize, ping, tools/list, tools/call). No
+// Line-delimited JSON-RPC 2.0 over stdin/stdout implementing initialize, ping,
+// tools/list and tools/call, plus opt-in packaged static UI resources. No
 // SDK: the schemas arrive as frozen literals and shared/validate.mjs does the
 // argument checking.
 //
@@ -22,6 +22,7 @@
 import { createInterface } from "node:readline";
 
 import { checkAndStrip } from "./validate.mjs";
+import { guardToolOutput, safeToolFailure } from "./phi-output.mjs";
 
 /** @typedef {Record<string, unknown>} Args */
 
@@ -58,7 +59,8 @@ export async function runOnce(cfg, name, rawArgs) {
   const def = cfg.tools.find((t) => t.name === name);
   if (!def)
     throw new Error(`unknown tool "${name}" — one of: ${cfg.tools.map((t) => t.name).join(", ")}`);
-  return cfg.handlers[name](checkAndStrip(name, def.inputSchema, rawArgs));
+  const result = await cfg.handlers[name](checkAndStrip(name, def.inputSchema, rawArgs));
+  return cfg.phiGuard ? guardToolOutput(result) : result;
 }
 
 /** Wrap a plain handler result in the MCP content envelope. */
@@ -100,16 +102,17 @@ export function serve(cfg) {
       const result = await handlers[name](args);
       // Handlers may already return a ready-made content envelope (the FHIR
       // server's text()/json() helpers do) — pass those through untouched.
-      if (result && typeof result === "object" && Array.isArray(result.content)) return result;
+      if (result && typeof result === "object" && Array.isArray(result.content)) return cfg.phiGuard ? guardToolOutput(result) : result;
       let note;
       try {
         note = summarize?.[name]?.(result, args);
       } catch {
         note = undefined;
       }
-      return toContent(result, note);
+      const content = toContent(result, note);
+      return cfg.phiGuard ? guardToolOutput(content) : content;
     } catch (e) {
-      return toError(e);
+      return cfg.phiGuard ? safeToolFailure() : toError(e);
     }
   }
 
@@ -123,7 +126,7 @@ export function serve(cfg) {
           const wanted = msg.params?.protocolVersion ?? PROTOCOL_VERSIONS[0];
           respond(msg.id, {
             protocolVersion: PROTOCOL_VERSIONS.includes(wanted) ? wanted : PROTOCOL_VERSIONS.at(-1),
-            capabilities: { tools: { listChanged: true } },
+            capabilities: { tools: { listChanged: true }, ...(cfg.resources?.length ? { resources: {} } : {}) },
             serverInfo,
             ...(instructions ? { instructions } : {}),
           });
@@ -135,6 +138,19 @@ export function serve(cfg) {
         case "tools/list":
           if (isRequest) respond(msg.id, { tools });
           return;
+        case "resources/list":
+          if (!cfg.resources?.length) { if (isRequest) respondError(msg.id, -32601, "resources unavailable"); return; }
+          if (isRequest) respond(msg.id, { resources: cfg.resources.map(({ text, ...descriptor }) => descriptor) });
+          return;
+        case "resources/read": {
+          if (!isRequest) return;
+          // Only explicit, packaged static resources. Never interpret a caller URI
+          // as a file path or bypass PHI protection for dynamic patient content.
+          const resource = cfg.resources?.find(r => r.uri === msg.params?.uri);
+          if (!resource) { respondError(msg.id, -32602, "resource unavailable"); return; }
+          respond(msg.id, { contents: [{ uri: resource.uri, mimeType: resource.mimeType, text: resource.text, _meta: resource._meta }] });
+          return;
+        }
         case "tools/call":
           if (isRequest) respond(msg.id, await callTool(msg.params?.name, msg.params?.arguments));
           return;
@@ -143,7 +159,7 @@ export function serve(cfg) {
           return;
       }
     } catch (e) {
-      if (isRequest) respondError(msg.id, e.rpcCode ?? -32603, String(e.message ?? e));
+      if (isRequest) respondError(msg.id, e.rpcCode ?? -32603, cfg.phiGuard ? "REQUEST_FAILED" : String(e.message ?? e));
     }
   }
 
@@ -153,7 +169,7 @@ export function serve(cfg) {
     tail = tail
       .then(work)
       .catch((e) => {
-        process.stderr.write(`${serverInfo.name}: dispatch failed: ${String(e?.message ?? e)}\n`);
+        process.stderr.write(`${serverInfo.name}: dispatch failed: ${cfg.phiGuard ? "DETAIL_WITHHELD" : String(e?.message ?? e)}\n`);
         if (e?.code === "EPIPE") process.exit(1);
       });
   };

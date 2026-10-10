@@ -1,0 +1,22 @@
+{
+  "id": "medcius-calculation-reference",
+  "version": "1.0.0",
+  "status": "engineering_reference_not_hospital_approval",
+  "sources": {
+    "egfr": "CKD-EPI 2021 creatinine equation; adult, steady-state only",
+    "news2": "NEWS2 Scale 1; no pediatric or Scale 2 support",
+    "renal_stability": "Conservative calculation guard; not an AKI diagnosis"
+  },
+  "unit_factors": { "creatinine": 88.4, "glucose": 18.018, "hemoglobin": 10, "calcium": 4 },
+  "egfr": { "coefficient": 142, "female_kappa": 0.7, "male_kappa": 0.9, "female_alpha": -0.241, "male_alpha": -0.302, "female_multiplier": 1.012, "max_exponent": -1.2, "age_base": 0.9938, "minimum_age": 18 },
+  "renal_stability": { "absolute_rise_umol_l": 26.5, "relative_rise": 0.5 },
+  "news2": {
+    "respiration_rate": [[8,3],[11,1],[20,0],[24,2],[null,3]],
+    "spo2": [[91,3],[93,2],[95,1],[null,0]],
+    "systolic_bp": [[90,3],[100,2],[110,1],[219,0],[null,3]],
+    "heart_rate": [[40,3],[50,1],[90,0],[110,1],[130,2],[null,3]],
+    "temperature": [[35,3],[36,1],[38,0],[39,1],[null,2]],
+    "oxygen_score": 2, "altered_score": 3, "high_score": 7, "medium_score": 5
+  },
+  "unsupported": ["pediatric dosing", "weight-based dosing", "creatinine clearance", "NEWS2 Scale 2"]
+}

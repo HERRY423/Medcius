@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { getCardiologyWardFixture } from "../../servers/fhir/sandbox/hospital-cardiology-sandbox.mjs";
 import { PatientEvolutionEngine } from "../../lib/patient-evolution-engine.mjs";
-import { containsRawPhi } from "../../servers/phiguard/src/lib.mjs";
+import { scanStructuredValue } from "../../servers/phiguard/src/lib.mjs";
 import { toModelSafe } from "../../lib/clinical-boundary.mjs";
 import { resolveCallerEvidenceStatus } from "../evidence-status.mjs";
 import { canonicalJson, sha256Hex } from "../../servers/shared/crypto.mjs";
@@ -60,7 +60,8 @@ function calculateCohensKappa(matrix) {
 }
 
 // 1. Ingest multi-department cases (Cardiology Ward 2, plus Respiratory & Nephrology fixtures)
-const cardiologyCases = getCardiologyWardFixture();
+const replayAsOf = "2026-08-28T00:00:00.000Z";
+const cardiologyCases = getCardiologyWardFixture({ now: replayAsOf });
 
 // Generate synthetic cross-department cases for broad coverage
 const extendedWardCases = [
@@ -97,6 +98,7 @@ let unverifiedFacts = 0;
 let missingSpans = 0;
 let safetyGapsIdentified = 0;
 const arbitrationLogs = [];
+const anchorCounts = { text: 0, verbatim_verified: 0, text_unverified: 0, structured: 0, resource_linked: 0, structured_unverified: 0, derived: 0, sources_linked: 0, derived_unverified: 0, gap: 0 };
 
 for (const wardCase of extendedWardCases) {
   const summary = PatientEvolutionEngine.analyzePatientEvolution({
@@ -108,10 +110,20 @@ for (const wardCase of extendedWardCases) {
     diagnosticReports: wardCase.diagnosticReports,
     orders: wardCase.orders,
     allergies: wardCase.allergies,
+    now: new Date(replayAsOf),
   });
+  for (const anchor of summary.blocks.evidence) {
+    anchorCounts[anchor.evidence_kind]++;
+    if (anchor.anchor_status === "verbatim_verified") anchorCounts.verbatim_verified++;
+    else if (anchor.evidence_kind === "text") anchorCounts.text_unverified++;
+    if (anchor.anchor_status === "resource_linked") anchorCounts.resource_linked++;
+    else if (anchor.evidence_kind === "structured") anchorCounts.structured_unverified++;
+    if (anchor.anchor_status === "sources_linked") anchorCounts.sources_linked++;
+    else if (anchor.evidence_kind === "derived") anchorCounts.derived_unverified++;
+  }
 
   const modelSafe = toModelSafe(summary);
-  const phiCheck = containsRawPhi(JSON.stringify(modelSafe));
+  const phiCheck = ({ hit: scanStructuredValue(modelSafe).total > 0 });
   if (phiCheck.hit) phiLeakageCount++;
 
   for (const item of summary.selectable_items) {
@@ -203,7 +215,8 @@ const reportMarkdown = `# 多科室合成病例静默回放协议执行报告
 ## 2. 仲裁与不一致记录 (Discrepancy & Arbitration Logs)
 
 - 缺失逐字 span 与未核验 span 合计 **${arbitrationLogs.length} 项**，状态保持未仲裁或缺失，不记为原文匹配。
-- 逐字匹配率不是事实准确率；候选条目包含结构化字段和资料缺口提示，其原始资源关联需另行验证，本统计不能把无 span 等同于临床错误。
+- 逐字匹配率不是事实准确率；上表保留旧版“全部候选”分母，不能把无 span 等同于临床错误。
+- 分类锚点：文本 ${anchorCounts.text} 项，逐字核验 ${anchorCounts.verbatim_verified} 项；结构化 ${anchorCounts.structured} 项，唯一资源关联 ${anchorCounts.resource_linked} 项；派生汇总 ${anchorCounts.derived} 项，组成来源关联 ${anchorCounts.sources_linked} 项；资料缺口 ${anchorCounts.gap} 项。来源关联不证明数值解释或临床正确性。
 - 本表没有第二名独立评分者，因此不报告 Kappa，也不把合成回放写成临床结论。
 - \`clinical_evidence_pass: ${clinicalEvidencePass}\`。终点是否可计算与人工接受是分开的字段。
 
@@ -224,6 +237,8 @@ if (totalExtractedFacts === 0) assert.equal(fidelityCI.computable, false);
 writeFileSync(reportFilePath, reportMarkdown, "utf8");
 writeFileSync(summaryPath, JSON.stringify({
   schema_version: "medcius.eval-summary.v1", execution_status: "COMPLETED",
+  evaluation_id: "engine-anchor-replay-v2", cohort_unit: "synthetic_patient", replay_as_of: replayAsOf,
+  anchor_metrics: anchorCounts,
   input_sha256: sha256Hex(canonicalJson(extendedWardCases)), data_source_verified: false,
   total_cases: extendedWardCases.length, total_candidate_items: totalExtractedFacts,
   span_metric: { matched: verbatimSpanCount, missing: missingSpans, unverified: unverifiedFacts, denominator: totalExtractedFacts, wilson_ci_percent: fidelityCI },

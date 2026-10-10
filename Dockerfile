@@ -1,7 +1,12 @@
 # Medcius 前置机生产镜像（缺口六：运行时产品形态）
-# 零第三方依赖（node:http / better-sqlite3 均为本地源码或内建），镜像只含运行所需文件。
-# 安全基线：非 root 运行、固定版本基镜像、健康检查、数据/密钥全部经挂载注入（不进镜像层）。
+# P0-4 口径：运行代码为 Node 内建模块 + 仓内源码（无 npm install）；如未来引入
+# better-sqlite3 等原生依赖，必须经 lockfile 钉死版本并随 SBOM 发布，本注释不得谎称“内建”。
+# 安全基线：非 root 运行、固定版本基镜像（发布时按 digest 钉死，见下方注释）、健康检查、
+# 数据/密钥全部经挂载注入（不进镜像层）。
+# 发布钉死示例（以实际验收 digest 替换）：
+#   FROM node:22.14.0-alpine3.21@sha256:<release-digest>
 FROM node:22.14.0-alpine3.21
+LABEL org.medcius.image="medcius" org.medcius.version="0.8.0-pilot" org.medcius.sbom="pending-syft"
 
 RUN addgroup -S medcius && adduser -S medcius -G medcius \
     && mkdir -p /opt/medcius/data /opt/medcius/backups \

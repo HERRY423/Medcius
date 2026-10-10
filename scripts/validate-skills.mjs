@@ -15,7 +15,7 @@ const PLUGIN_SCHEMA = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.jso
 const MCP_SCHEMA = "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json";
 const PLUGIN_ALLOWED_KEYS = new Set([
   "$schema", "name", "version", "description", "author", "homepage",
-  "repository", "license", "keywords", "extensions",
+  "repository", "license", "keywords", "extensions", "capabilities",
 ]);
 
 let ok = true;
@@ -130,6 +130,29 @@ function checkPortablePlugin() {
   }
   if (doc.license !== "MIT") {
     console.log(`WARN ${p} — license "${doc.license}" differs from root LICENSE (MIT)`);
+  }
+  // P0-1: capabilities tiering (core/incubating/quarantined_reference + policy).
+  const caps = doc.capabilities;
+  if (!caps || typeof caps !== "object") {
+    console.log(`BAD ${p} — capabilities {core, incubating, quarantined_reference, policy} required (P0-1)`);
+    ok = false;
+  } else {
+    const mustInclude = (arr, v, label) => {
+      if (!Array.isArray(arr) || !arr.includes(v)) {
+        console.log(`BAD ${p} — capabilities.${label} must include '${v}'`);
+        ok = false;
+      }
+    };
+    mustInclude(caps.core, "patient-evolution-summary", "core");
+    for (const s of ["shift-handover", "consult-preparation", "discharge-readiness-check"]) {
+      mustInclude(caps.incubating, s, "incubating");
+    }
+    if (typeof caps.policy !== "string" || !caps.policy.includes("默认冻结")) {
+      console.log(`BAD ${p} — capabilities.policy must state default-frozen policy`);
+      ok = false;
+    } else {
+      console.log(`OK ${p} — capabilities tiering (core/incubating/quarantined) declared`);
+    }
   }
 }
 

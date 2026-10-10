@@ -1,5 +1,8 @@
 # 05 医院系统接入接口规范与报文样例（分类界定附件）
 
+> Product baseline: 0.8.0-pilot; document revision: 1; approval: DRAFT_UNAPPROVED
+
+
 > **归档编号**：MED-CLS-ATT-05 (2026-08)  
 > **论证目标**：向监管机构证明本产品的数据处理对象为医院信息系统已产生的客观记录，接口均为只读访问，不具备自动写回和设备控制能力。
 

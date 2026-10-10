@@ -4,14 +4,46 @@
 import { writeFileSync, mkdirSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { evaluatePhysicianAnnotation } from "./physician-annotation-engine.mjs";
+import { evaluatePhysicianAnnotation, PRIMARY_ENDPOINT_IDS } from "./physician-annotation-engine.mjs";
+import { assertEndpointVerdictConsistent, describeFailedEndpoints } from "../report-consistency.mjs";
 import { canonicalJson, sha256Hex } from "../../servers/shared/crypto.mjs";
+
+const fmtPct = (value) => (typeof value === "number" && Number.isFinite(value) ? `${(value * 100).toFixed(1)}%` : "不可计算");
+
+// One row per endpoint that decides the verdict. Adding an endpoint to the
+// engine without a row here fails loudly at load, instead of silently making
+// the verdict unexplainable.
+const ENDPOINT_SPECS = {
+  sensitivity_target_met: { label: "总体灵敏度 (Sensitivity)", threshold: "$\\ge 95.0\\%$", observed: (r) => r.overall.sensitivity.str },
+  sensitivity_ci_lower_met: { label: "灵敏度置信区间下限", threshold: "$\\ge 90.0\\%$", observed: (r) => fmtPct(r.overall.sensitivity.low) },
+  specificity_target_met: { label: "总体特异度 (Specificity)", threshold: "$\\ge 90.0\\%$", observed: (r) => r.overall.specificity.str },
+  zero_critical_escape_met: { label: "关键演变漏报数 (FN)", threshold: "$= 0$ 例", observed: (r) => `${r.overall.critical_escapes} 例` },
+  zero_fabricated_spans_met: { label: "虚构证据 Span 数", threshold: "$= 0$ 条", observed: (r) => `${r.overall.fake_spans} 条` },
+  inter_annotator_kappa_met: { label: "双医生标注一致性 (Kappa)", threshold: "$\\ge 0.80$", observed: (r) => (r.cohens_kappa == null ? "不可计算" : `$\\kappa = ${r.cohens_kappa}$`) },
+  all_disagreements_adjudicated: { label: "分歧项已全部仲裁", threshold: "未仲裁 $= 0$", observed: (r) => `${r.overall.unadjudicated} 项未仲裁` },
+  evidence_anchors_complete: { label: "证据锚点完整", threshold: "缺失锚点 $= 0$", observed: (r) => `${r.overall.missing_evidence_anchors} 项缺失锚点` },
+  record_keys_complete: { label: "记录键完整", threshold: "缺失记录键 $= 0$", observed: (r) => `${r.key_integrity.missing_keys} 项缺失记录键` },
+  no_abstentions: { label: "无弃答条目", threshold: "弃答 $= 0$", observed: (r) => `${r.overall.abstentions} 项弃答` },
+};
+export const ENDPOINT_LABELS = Object.fromEntries(Object.entries(ENDPOINT_SPECS).map(([id, spec]) => [id, spec.label]));
+const SPEC_GAPS = PRIMARY_ENDPOINT_IDS.filter((id) => !ENDPOINT_SPECS[id]);
+if (SPEC_GAPS.length > 0) throw new Error(`REPORT_SPEC_MISSING: no evidence row defined for ${SPEC_GAPS.join(", ")}`);
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, "..", "..", "..", "..");
 
 export function buildPhysicianAnnotationReport(evalRes) {
   const lines = [];
+
+  // Fail closed before any verdict text is produced.
+  const primaryRows = PRIMARY_ENDPOINT_IDS.map((id) => ({ id, met: evalRes.endpoints[id] === true }));
+  assertEndpointVerdictConsistent({
+    context: "physician-annotation-report",
+    allPrimaryMet: evalRes.allPrimaryMet,
+    primaryEndpointIds: PRIMARY_ENDPOINT_IDS,
+    evidenceRows: primaryRows,
+  });
+  const failedSummary = describeFailedEndpoints(ENDPOINT_LABELS, PRIMARY_ENDPOINT_IDS, primaryRows);
   lines.push(`# Medcius 查房前患者变化摘要 — 标注评测统计报告`);
   lines.push("");
 
@@ -30,30 +62,43 @@ export function buildPhysicianAnnotationReport(evalRes) {
   lines.push(`- **分母**: 金标准阳性 ${evalRes.overall.gold_positive_n}、阴性 ${evalRes.overall.gold_negative_n}；预测阳性 ${evalRes.overall.predicted_positive_n}、阴性 ${evalRes.overall.predicted_negative_n}。阳性类别错分 ${evalRes.overall.misclassifications} 项分别计入 FP 与 FN，但只计一个已评分条目；弃答不计正确。`);
   lines.push(`- **双医生标注一致性 (Cohen's Kappa)**: $\\kappa = ${evalRes.cohens_kappa}$ (${evalRes.endpoints.inter_annotator_kappa_met ? "达成预注册指标 ≥0.80" : "🔴 未达标"})`);
   lines.push(`- **主要终点总体达成**: ${evalRes.allPrimaryMet ? "🟢 全部达标 (Passed)" : "🔴 未达标 (Deficient)"}`);
+  if (failedSummary) lines.push(`- **未达标项**: ${failedSummary}。总体判定由下表全部终点共同决定，任一失败即不通过。`);
   lines.push("");
   lines.push("---");
   lines.push("");
   lines.push("## 0. 三级合规通行证分类认定 (Three-Tier Pass Classification)");
   lines.push("");
+  lines.push("每个评级的状态与评定说明取自同一判定，不使用独立文本。");
+  lines.push("");
   lines.push(`| 通行证评级 | 评级状态 | 评定说明 |`);
   lines.push(`|---|---|---|`);
-  lines.push(`| **1. 工程验证评级 (engineering_pass)** | ${evalRes.passClassification.engineering_pass ? "🟢 通过 (PASS)" : "🔴 未通过"} | 算法公式、分层统计引擎与置信区间运算无误 |`);
-  lines.push(`| **2. 合成管线评级 (synthetic_validation_pass)** | ${evalRes.passClassification.synthetic_validation_pass ? "🟢 通过 (PASS)" : "🔴 未通过"} | 心内科连续沙箱模拟数据满足预设测试终点 |`);
+  const engineeringPass = evalRes.passClassification.engineering_pass;
+  const syntheticPass = evalRes.passClassification.synthetic_validation_pass;
+  const because = failedSummary ?? "无失败终点（报告无效）";
+  lines.push(`| **1. 工程验证评级 (engineering_pass)** | ${engineeringPass ? "🟢 通过 (PASS)" : "🔴 未通过"} | ${engineeringPass ? "本次运行的预注册终点全部达成，统计引擎与置信区间运算未检出异常；不构成独立工程审计。" : `本次运行存在未达成的预注册终点：${because}。该评级在本轮不通过。`} |`);
+  lines.push(`| **2. 合成管线评级 (synthetic_validation_pass)** | ${syntheticPass ? "🟢 通过 (PASS)" : "🔴 未通过"} | ${syntheticPass ? "心内科沙箱合成数据满足全部预注册测试终点。" : `心内科沙箱合成数据未满足全部预注册测试终点：${because}。`} |`);
   lines.push(`| **3. 临床证据评级 (clinical_evidence_pass)** | ${evalRes.passClassification.clinical_evidence_pass ? "🟢 准入通过 (CLINICAL PASS)" : "🔒 严格阻断 (BLOCKED: 沙箱演示严禁作为正式临床证据)"} | 需三甲医院伦理审批、执业医生数字签名与真实连续病例数据 |`);
   lines.push("");
   lines.push("---");
   lines.push("");
   lines.push("## 1. 预注册主要终点核验表 (Pre-registered Endpoints)");
   lines.push("");
-  lines.push("| 临床效能终点 | 预注册合格门槛 | 实际观测值 (95% CI) | 达标判定 |");
+  lines.push("本表列出**全部**参与总体判定的终点；缺任一行即为无效报告。");
+  lines.push("");
+  lines.push("| 临床效能终点 | 预注册合格门槛 | 实际观测值 | 达标判定 |");
   lines.push("|---|---|---|---|");
-  lines.push(`| **总体灵敏度 (Sensitivity)** | $\\ge 95.0\\%$ (CI下限 $\\ge 90.0\\%$) | ${evalRes.overall.sensitivity.str} | ${evalRes.endpoints.sensitivity_target_met && evalRes.endpoints.sensitivity_ci_lower_met ? "✓ 达标" : "✗ 不达标"} |`);
-  lines.push(`| **总体特异度 (Specificity)** | $\\ge 90.0\\%$ | ${evalRes.overall.specificity.str} | ${evalRes.endpoints.specificity_target_met ? "✓ 达标" : "✗ 不达标"} |`);
-  lines.push(`| **关键演变漏报数 (FN)** | $= 0$ 例 (零漏报) | ${evalRes.overall.critical_escapes} 例 | ${evalRes.endpoints.zero_critical_escape_met ? "✓ 达标 (0漏报)" : "✗ 存在漏报"} |`);
-  lines.push(`| **虚构证据 Span 数 (Fake Spans)** | $= 0$ 条 (零虚构) | ${evalRes.overall.fake_spans} 条 | ${evalRes.endpoints.zero_fabricated_spans_met ? "✓ 达标 (0虚构)" : "✗ 存在虚构"} |`);
-  lines.push(`| **双医生标注一致性 (Kappa)** | $\\ge 0.80$ | $\\kappa = ${evalRes.cohens_kappa}$ | ${evalRes.endpoints.inter_annotator_kappa_met ? "✓ 达标" : "✗ 偏低"} |`);
-  lines.push(`| **阳性预测值 (PPV)** | $\\ge 90.0\\%$ | ${evalRes.overall.ppv.str} | ${(evalRes.overall.ppv.point ?? -1) >= 0.90 ? "✓ 达标" : "✗ 未达标或不可计算"} |`);
-  lines.push(`| **阴性预测值 (NPV)** | $\\ge 95.0\\%$ | ${evalRes.overall.npv.str} | ${(evalRes.overall.npv.point ?? -1) >= 0.95 ? "✓ 达标" : "✗ 未达标或不可计算"} |`);
+  for (const id of PRIMARY_ENDPOINT_IDS) {
+    const spec = ENDPOINT_SPECS[id];
+    const met = evalRes.endpoints[id] === true;
+    lines.push(`| **${spec.label}** | ${spec.threshold} | ${spec.observed(evalRes)} | ${met ? "✓ 达标" : "✗ 不达标"} |`);
+  }
+  lines.push("");
+  lines.push("### 1.1 参考指标（不参与总体判定）");
+  lines.push("");
+  lines.push("| 参考指标 | 参考门槛 | 实际观测值 | 判定 |");
+  lines.push("|---|---|---|---|");
+  lines.push(`| 阳性预测值 (PPV) | $\\ge 90.0\\%$ | ${evalRes.overall.ppv.str} | ${(evalRes.overall.ppv.point ?? -1) >= 0.90 ? "✓ 达标" : "✗ 未达标或不可计算"} |`);
+  lines.push(`| 阴性预测值 (NPV) | $\\ge 95.0\\%$ | ${evalRes.overall.npv.str} | ${(evalRes.overall.npv.point ?? -1) >= 0.95 ? "✓ 达标" : "✗ 未达标或不可计算"} |`);
   lines.push("");
   lines.push("---");
   lines.push("");

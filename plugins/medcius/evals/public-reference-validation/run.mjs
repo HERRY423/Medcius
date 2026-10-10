@@ -16,6 +16,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { wilsonScore } from "../clinical-validation/run.mjs";
 import { loadPack, reviewCase, DIMENSIONS } from "./reference-reviewer.mjs";
+import { scoreReferenceResults } from "./scorer.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -24,6 +25,9 @@ const argOf = (k) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : 
 const packPath = argOf("--pack") || join(__dirname, "public-reference-pack.json");
 const casesPath = argOf("--cases") || join(__dirname, "cases", "public-gold.jsonl");
 const outReport = argOf("--out") || join(__dirname, "reports", "public-reference-v1.md");
+// Invalidate any prior success before reading this run's inputs.
+mkdirSync(dirname(outReport), { recursive: true });
+writeFileSync(outReport, "# Public-reference validation: INCOMPLETE\n\nexecution_status: INCOMPLETE\nclinical_evidence_pass: false\n", "utf8");
 
 const pack = loadPack(packPath);
 const cases = readFileSync(casesPath, "utf8")
@@ -43,7 +47,7 @@ for (const testCase of cases) {
 const insufficient = results.filter((r) => r.predicted === "insufficient_data").map((r) => r.case_id);
 
 // ---- Confusion stats over flag/clear pairs (fail-closed samples excluded) --
-const scored = results.filter((r) => r.predicted === "flag" || r.predicted === "clear");
+const scored = results.filter((r) => ["flag", "clear"].includes(r.expected) && ["flag", "clear"].includes(r.predicted));
 function confusion(rows) {
   let tp = 0, fp = 0, fn = 0, tn = 0;
   for (const r of rows) {
@@ -59,27 +63,9 @@ function ciStr(k, n) {
   return n === 0 ? "n/a" : `${(c.point * 100).toFixed(1)}% [${(c.low * 100).toFixed(1)}%, ${(c.high * 100).toFixed(1)}%]`;
 }
 
-let failures = 0;
-for (const r of scored) {
-  if (r.predicted !== r.expected) {
-    failures++;
-    console.error(`MISMATCH ${r.case_id}: expected=${r.expected} predicted=${r.predicted}`);
-  }
-  if (r.expected === "flag") {
-    const expectedIds = cases.find((c) => c.case_id === r.case_id)?.expected_fact_ids || [];
-    const firedIds = (r.review.dimensions[r.dimension]?.facts || []).map((f) => f.fact_id);
-    if (!expectedIds.some((id) => firedIds.includes(id))) {
-      failures++;
-      console.error(`FACT-MISS ${r.case_id}: expected ${JSON.stringify(expectedIds)}, fired ${JSON.stringify(firedIds)} on dimension=${r.dimension}`);
-    }
-  }
-}
-for (const r of results.filter((x) => x.expected === "insufficient_data")) {
-  if (r.predicted !== "insufficient_data") {
-    failures++;
-    console.error(`FAIL-CLOSED MISS ${r.case_id}: predicted=${r.predicted}`);
-  }
-}
+const assessment = scoreReferenceResults(cases, results);
+const failures = assessment.failures;
+for (const failure of assessment.errors) console.error(failure.reason + ' ' + failure.case_id);
 
 // ---- Report ----------------------------------------------------------------
 const overall = confusion(scored);
@@ -89,6 +75,7 @@ lines.push("");
 lines.push(`> **证据层级**：\`public_reference_validation\` —— 工程级公开参考一致性层。用例为围绕**可公开核实药学事实**（说明书公开文本等，来源见 fact pack \`source_version=${pack.source_version}\`）构造的工程场景。**本层不是临床效能证据，不解锁 \`clinical_evidence_pass\`**；真实临床结论仍须由独立药师盲标研究（R15/R16/R29）产生。`);
 lines.push("");
 lines.push(`- 用例总数：${cases.length}（flag/clear 计分 ${scored.length} + fail-closed 单列 ${insufficient.length}）`);
+lines.push(`- 非预期弃答：${assessment.unexpected_abstentions}；计为失败。以下二分类指标仅针对完整二分类对，不能代替全样本一致率。`);
 lines.push(`- 阳性（flag）：${overall.tp + overall.fn}；阴性（clear）：${overall.tn + overall.fp}`);
 lines.push(`- 混淆矩阵：TP=${overall.tp} FP=${overall.fp} FN=${overall.fn} TN=${overall.tn}`);
 lines.push("");

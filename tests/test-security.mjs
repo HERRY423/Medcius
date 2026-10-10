@@ -3,7 +3,8 @@
 import assert from "node:assert/strict";
 import { unlinkSync, existsSync } from "node:fs";
 import { scanText, redactText, pseudonymizeText } from "../plugins/medcius/servers/phiguard/src/lib.mjs";
-import { encryptPayload, decryptPayload, SecureRecordStore, resolveKeyHex } from "../plugins/medcius/servers/shared/secure-store.mjs";
+import { encryptPayload, decryptPayload, SecureRecordStore, resolveKeyHex, describeKeySource, isProductionStoreProfile } from "../plugins/medcius/servers/shared/secure-store.mjs";
+import { EnhancedPhiGuard, PHI_BARE_NAME_LIMITATION } from "../plugins/medcius/lib/enhanced-phi-guard.mjs";
 
 console.log("== Testing Enhanced PHI Guard ==");
 
@@ -83,5 +84,64 @@ assert.deepEqual(loaded, sensitiveData, "Loaded data from secure store must matc
 // Clean up
 unlinkSync(testFile);
 console.log("✓ AES-256-GCM Secure Storage tests passed");
+
+console.log("\n== Testing key domain separation & production fail-closed (P0-2) ==");
+// Test 6: production without dedicated key must fail closed (salt/ephemeral rejected).
+{
+  const savedNodeEnv = process.env.NODE_ENV;
+  const savedProfile = process.env.MEDCIUS_PROFILE;
+  const savedKey = process.env.CLAUDE_MEDCIUS_ENCRYPTION_KEY;
+  const savedSalt = process.env.CLAUDE_MEDCIUS_PHI_SALT;
+  try {
+    process.env.NODE_ENV = "production";
+    delete process.env.CLAUDE_MEDCIUS_ENCRYPTION_KEY;
+    process.env.CLAUDE_MEDCIUS_PHI_SALT = "dev-only-salt-1234";
+    assert.equal(isProductionStoreProfile(), true, "production profile must be detected");
+    assert.equal(describeKeySource(undefined), "missing-production");
+    assert.throws(() => resolveKeyHex(undefined), /SECURE_STORE_KEY_REQUIRED/, "production salt-derived fallback must fail closed");
+    assert.throws(() => new SecureRecordStore("./tests/temp-prod-store.json"), /SECURE_STORE_KEY_REQUIRED/);
+    assert.throws(() => encryptPayload({ a: 1 }), /SECURE_STORE_KEY_REQUIRED/);
+    // Explicit 64hex key remains legal in production.
+    assert.doesNotThrow(() => resolveKeyHex(explicitKey));
+  } finally {
+    if (savedNodeEnv === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = savedNodeEnv;
+    if (savedProfile === undefined) delete process.env.MEDCIUS_PROFILE; else process.env.MEDCIUS_PROFILE = savedProfile;
+    if (savedKey === undefined) delete process.env.CLAUDE_MEDCIUS_ENCRYPTION_KEY; else process.env.CLAUDE_MEDCIUS_ENCRYPTION_KEY = savedKey;
+    if (savedSalt === undefined) delete process.env.CLAUDE_MEDCIUS_PHI_SALT; else process.env.CLAUDE_MEDCIUS_PHI_SALT = savedSalt;
+  }
+  // Test 7: non-production salt-derived fallback is labeled dev-only, never production_safe.
+  {
+    const sSalt = process.env.CLAUDE_MEDCIUS_PHI_SALT;
+    const sKey = process.env.CLAUDE_MEDCIUS_ENCRYPTION_KEY;
+    try {
+      delete process.env.CLAUDE_MEDCIUS_ENCRYPTION_KEY;
+      process.env.CLAUDE_MEDCIUS_PHI_SALT = "dev-only-salt-1234";
+      const encDev = encryptPayload({ b: 2 });
+      assert.equal(encDev.key_source, "derived-salt-dev-only");
+      assert.equal(encDev.production_safe, false);
+    } finally {
+      if (sKey === undefined) delete process.env.CLAUDE_MEDCIUS_ENCRYPTION_KEY; else process.env.CLAUDE_MEDCIUS_ENCRYPTION_KEY = sKey;
+      if (sSalt === undefined) delete process.env.CLAUDE_MEDCIUS_PHI_SALT; else process.env.CLAUDE_MEDCIUS_PHI_SALT = sSalt;
+    }
+  }
+  console.log("✓ Key domain separation & production fail-closed tests passed");
+}
+
+console.log("\n== Testing PHI bare-name limitation honesty (P0-3) ==");
+{
+  // 裸姓名（无“患者：/姓名：”标签）在叙事文本中不保证检出：启发式如实暴露缺口，不伪装全覆盖。
+  const bareNameText = "王建国因胸痛入院，昨日行冠脉造影（合成演示文本，无标签人名）。";
+  const bareScan = scanText(bareNameText, { contextual: true });
+  console.log(`Bare-name scan total: ${bareScan.total} (expected 0: limitation honestly exposed)`);
+  assert.equal(bareScan.total, 0, "Bare narrative name must NOT be claimed as detected by heuristics");
+  assert.ok(typeof PHI_BARE_NAME_LIMITATION === "string" && PHI_BARE_NAME_LIMITATION.includes("bare names"), "Bare-name limitation string must be exported");
+  const labeled = EnhancedPhiGuard.sanitize("患者：张三峰因胸痛入院（合成）。", { salt: "test-phi-salt-2026" });
+  assert.equal(labeled.phi_safe, true);
+  assert.equal(labeled.assurance, "heuristic_scan_only");
+  assert.equal(labeled.bare_name_limited, true, "sanitize must flag bare_name_limited even when labeled PHI passes");
+  assert.ok(labeled.sanitized.includes("[PSN:"), "Labeled name must still be pseudonymized");
+  assert.ok(!labeled.sanitized.includes("张三峰"));
+  console.log("✓ Bare-name limitation honesty tests passed");
+}
 
 console.log("\nALL SECURITY TESTS PASSED!");

@@ -1,8 +1,10 @@
+import { assessCriticalVisibility } from "./critical-visibility.mjs";
 // Staged Draft & Progressive View Service (受控草稿箱与三层渐进式工作流服务)
 // Supports:
 // 1. Level 1 (3s Glance Capsule) -> Level 2 (15s Evolution Digest Card) -> Level 3 (Deep-dive Drilldown)
 // 2. Human-in-the-loop Staged Draft Sandbox (Read-only at storage level, CA signature in native EMR)
 
+import { assertEvolutionConsistency, detachedFrozenOutput } from "./output-consistency.mjs";
 const copy = (value) => structuredClone(value);
 const list = (value) => Array.isArray(value) ? value : [];
 const SOURCE_LABELS = { available: "接口已返回记录", available_empty: "接口成功返回空结果", unavailable: "接口不可用", unknown: "接口状态未知" };
@@ -32,6 +34,9 @@ export class StagedDraftService {
    * Generates a 3-tier progressive disclosure payload directly from PatientEvolutionEngine summary.
    */
   static generateProgressiveViewsFromSummary(evolutionSummary, { patient = {}, timeWindow = null } = {}) {
+    if (patient.id && evolutionSummary?.patient?.id && patient.id !== evolutionSummary.patient.id) throw new Error("OUTPUT_CONSISTENCY_FAILED: VIEW_PATIENT_MISMATCH");
+    if (timeWindow && evolutionSummary?.time_window && timeWindow !== evolutionSummary.time_window) throw new Error("OUTPUT_CONSISTENCY_FAILED: VIEW_TIME_WINDOW_MISMATCH");
+    if (evolutionSummary?.total_items_count != null) assertEvolutionConsistency(evolutionSummary);
     const blocks = evolutionSummary?.blocks || {};
     const whatChanged = blocks.what_changed || {};
     const criticals = evolutionSummary?.critical_values || [];
@@ -40,6 +45,7 @@ export class StagedDraftService {
     const alignments = blocks.structured_multisource_alignment || [];
     const evidenceList = blocks.evidence || [];
     const sourceAvailability = list(blocks.source_availability);
+    const visibility = evolutionSummary?.critical_visibility || assessCriticalVisibility({ sources: sourceAvailability, asOf: evolutionSummary?.generated_at, flaggedCount: criticals.length });
     const recordChanges = blocks.record_changes || { items: [], counts: {} };
     const followup = blocks.high_risk_followup || { items: [], counts: {} };
     const uncertainSources = sourceAvailability.length === 0 || sourceAvailability.some((source) => !["available", "available_empty"].includes(source.status));
@@ -66,7 +72,9 @@ export class StagedDraftService {
     }
     if (uncertainSources || gaps.length > 0) glanceHeadline += " 资料或接口状态不完整，不据此判断病情平稳。";
 
+    glanceHeadline += ` ${visibility.message}`;
     const level1Glance = {
+      critical_visibility: copy(visibility),
       tier: "LEVEL_1_GLANCE",
       status: glanceStatus,
       color: glanceColor,
@@ -117,6 +125,7 @@ export class StagedDraftService {
         })),
         record_changes: copy(recordChanges),
         source_availability: copy(sourceAvailability),
+        critical_visibility: copy(visibility),
         high_risk_followup: copy(followup),
       },
     };
@@ -138,14 +147,15 @@ export class StagedDraftService {
         source_title: e.source_title,
         timestamp: e.timestamp,
       })),
-      verbatim_spans_available: evidenceList.filter((e) => e.span != null).length,
+      verbatim_spans_available: evidenceList.filter((e) => e.anchor_status === "verbatim_verified").length,
+      unverified_evidence_count: evidenceList.filter((e) => ["unverified", "ambiguous"].includes(e.anchor_status)).length,
     };
 
-    return {
+    return detachedFrozenOutput({
       glance: level1Glance,
       digest: level2Card,
       drilldown: level3Drilldown,
-    };
+    });
   }
 
   /**
@@ -245,6 +255,8 @@ export class StagedDraftService {
     const fluid = selection ? selectedVitals?.fluids : blocks ? changes.vitals_and_fluids?.fluids ?? changes.fluid_balance_24h : null;
     const states = blocks ? [
       "### 记录状态与来源可用性",
+      blocks.critical_visibility?.message || "危急值覆盖未确认；不能排除遗漏。",
+      blocks.critical_visibility?.action || "请核对院内原始系统与危急值通知通道。",
       renderItems(blocks.record_changes?.items) || "未提供记录变更状态。",
       list(blocks.source_availability).map((source) => `- ${source.kind || source.connector_id || "来源"}: ${SOURCE_LABELS[source.status] || "接口状态未知"}`).join("\n") || "来源接口状态未提供。",
       ...list(blocks.high_risk_followup?.items).map((item) => `- ${item.label || item.title || item.test_name || item.source_id || item.id || "随访事项"}: ${CLOSURE_LABELS[item.closure_status] || "闭环状态未知"} [来源: ${sourceReference(item) || list(item.evidence).map(sourceReference).filter(Boolean).join("；") || "待核对"}]`),

@@ -55,8 +55,18 @@ export function validateLlmConfig(config) {
     errors.push("LLM_ENDPOINT_INVALID: endpoint must be an http(s) URL");
   }
   if (LLM_TOPOLOGIES[topology]?.desensitization_required) {
+    // P0-3: B 档默认关闭。四项缺一即 fail-closed（裸姓名启发式缺口不可默认出域）。
     if (config.desensitization_attestation !== true) {
       errors.push("LLM_B_ATTESTATION_REQUIRED: B 档必须声明 desensitization_attestation=true（出域文本已过 PHI 出口守卫）");
+    }
+    if (typeof config.phi_exit_guard_version !== "string" || !config.phi_exit_guard_version.trim()) {
+      errors.push("LLM_B_PHI_GUARD_VERSION_REQUIRED: B 档必须声明 phi_exit_guard_version（PHI 守卫版本/config digest，可追溯）");
+    }
+    if (config.egress_human_sampling_attested !== true) {
+      errors.push("LLM_B_HUMAN_SAMPLING_REQUIRED: B 档必须声明 egress_human_sampling_attested=true（出域文本人工抽检计划已落实）");
+    }
+    if (config.bare_name_limitation_acknowledged !== true) {
+      errors.push("LLM_B_BARE_NAME_ACK_REQUIRED: B 档必须声明 bare_name_limitation_acknowledged=true（已知启发式对无标签裸姓名不保证，需本地 NER 二道+抽检）");
     }
     if (config.provider_registration_ref && !/^(R20|gen-ai filing)\b/i.test(String(config.provider_registration_ref)) && String(config.provider_registration_ref).length < 4) {
       errors.push("LLM_PROVIDER_REG_REF_INVALID: provider_registration_ref 须引用服务商生成式 AI 备案核验记录（R20）");
@@ -106,8 +116,12 @@ export function createLlmInferenceClient({ config, transport, timeoutMs = 30000 
      */
     async extract({ text, schemaVersion = "unversioned", timeoutMs: perCallTimeout } = {}) {
       if (typeof text !== "string" || !text.trim()) throw new Error("LLM_EXTRACT_TEXT_REQUIRED");
-      if (LLM_TOPOLOGIES[config.topology].desensitization_required && config.desensitization_attestation !== true) {
-        throw new Error("LLM_B_ATTESTATION_REQUIRED");
+      if (LLM_TOPOLOGIES[config.topology].desensitization_required) {
+        // Runtime re-check: B 档四项在调用时仍需全满足（防配置热替换降级）。
+        if (config.desensitization_attestation !== true) throw new Error("LLM_B_ATTESTATION_REQUIRED");
+        if (typeof config.phi_exit_guard_version !== "string" || !config.phi_exit_guard_version.trim()) throw new Error("LLM_B_PHI_GUARD_VERSION_REQUIRED");
+        if (config.egress_human_sampling_attested !== true) throw new Error("LLM_B_HUMAN_SAMPLING_REQUIRED");
+        if (config.bare_name_limitation_acknowledged !== true) throw new Error("LLM_B_BARE_NAME_ACK_REQUIRED");
       }
       if (inflight >= maxConcurrency) {
         const err = new Error("LLM_CONCURRENCY_BUDGET_EXCEEDED: 并发预算已满（fail-closed，不排队堆积）");
@@ -117,14 +131,15 @@ export function createLlmInferenceClient({ config, transport, timeoutMs = 30000 
       const effectiveTimeout = Math.min(perCallTimeout ?? timeoutMs, timeoutMs);
       const started = Date.now();
       inflight += 1;
+      let timeout;
       try {
         const result = await Promise.race([
           transport({ endpoint: config.endpoint, model: config.model_id, prompt: text, timeoutMs: effectiveTimeout }),
-          new Promise((_resolve, reject) => setTimeout(() => {
+          new Promise((_resolve, reject) => { timeout = setTimeout(() => {
             const err = new Error(`LLM_TIMEOUT: ${effectiveTimeout}ms（fail-closed：超时不降级、不补造）`);
             err.code = "LLM_TIMEOUT";
             reject(err);
-          }, effectiveTimeout)),
+          }, effectiveTimeout); }),
         ]);
         const latencyMs = Date.now() - started;
         if (budgetP95 != null && latencyMs > budgetP95) {
@@ -133,6 +148,7 @@ export function createLlmInferenceClient({ config, transport, timeoutMs = 30000 
         }
         return { text: String(result?.text ?? ""), latency_ms: latencyMs, latency_budget_breached: false, model_id: config.model_id, model_version: config.model_version, prompt_pack_version: config.prompt_pack_version, schema_version: schemaVersion, config_digest: validation.config_digest };
       } finally {
+        clearTimeout(timeout);
         inflight -= 1;
       }
     },

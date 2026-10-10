@@ -5,11 +5,10 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { canonicalJson, sha256Hex } from "../servers/shared/crypto.mjs";
 import { replayPreRoundResearchSnapshot } from "./hospital-agent-adapter.mjs";
-import { containsRawPhi } from "../servers/phiguard/src/lib.mjs";
 import { containsRawStructuredPhi } from "./clinical-boundary.mjs";
 
 export const FROZEN_RECORD_SCHEMA = "medcius.frozen-research-record.v2";
-export const CODE_VERSION = "0.7.0-pilot";
+export const CODE_VERSION = JSON.parse(readFileSync(new URL("../.codex-plugin/plugin.json", import.meta.url), "utf8")).version;
 const digest = (value) => sha256Hex(canonicalJson(value));
 
 function loadedAlgorithmIdentity() {
@@ -78,7 +77,9 @@ function assertIntegrity(record, caseId, tenantId) {
     degraded_records: record.degraded_records, failures: record.failures,
     engine_input: record.engine_input, replay_input: record.replay_input, annotation_output: record.annotation_output,
   };
-  if (containsRawStructuredPhi(guardedContent).hit || containsRawPhi(canonicalJson(guardedContent)).hit) throw new Error("FROZEN_RECORD_PHI_REJECTED");
+  // The structured detector also scans keys and serialized JSON children.
+  // Flattening again would lose the validated integrity-field semantics.
+  if (containsRawStructuredPhi(guardedContent).hit) throw new Error("FROZEN_RECORD_PHI_REJECTED");
   return record;
 }
 

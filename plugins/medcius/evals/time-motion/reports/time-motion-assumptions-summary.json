@@ -1,0 +1,58 @@
+{
+  "evaluation_id": "time-motion-assumptions-v1",
+  "execution_status": "COMPLETED",
+  "evidence_class": "assumed_workflow_model",
+  "cohort_unit": "assumed_patient_workflow",
+  "inputs": {
+    "protocol_name": "Medcius Inpatient Pre-Round Time-Motion Evaluation Protocol",
+    "status": "PROTOCOL_SIMULATION_BENCHMARK",
+    "ward": "心血管内科病区模拟环境 (16 Beds)",
+    "beds": 16,
+    "target_physicians": [
+      {
+        "role": "主治医师",
+        "target_sample": 5
+      },
+      {
+        "role": "住院医师",
+        "target_sample": 10
+      },
+      {
+        "role": "规培医师",
+        "target_sample": 10
+      }
+    ],
+    "baseline_control": {
+      "method": "传统手工翻阅 EHR (EMR + LIS + PACS + 医嘱系统)",
+      "simulated_chart_nav_seconds": 210,
+      "simulated_trend_calc_seconds": 132,
+      "simulated_typing_seconds": 168,
+      "simulated_total_seconds": 510,
+      "simulated_ward_total_minutes": 136,
+      "historical_benchmark_metrics": {
+        "abnormal_lab_omission_rate": 0.062,
+        "pending_report_oversight_rate": 0.094,
+        "unnoticed_safety_gap_rate": 0.125
+      }
+    },
+    "medcius_intervention": {
+      "method": "Medcius 查房前“患者变化摘要”插件 (一屏式 4 块 + 结构化草稿)",
+      "simulated_prefetch_seconds": 48,
+      "simulated_trend_review_seconds": 24,
+      "simulated_draft_seconds": 36,
+      "simulated_total_seconds": 108,
+      "simulated_ward_total_minutes": 28.8,
+      "simulated_target_metrics": {
+        "abnormal_lab_omission_rate": 0,
+        "pending_report_oversight_rate": 0,
+        "unnoticed_safety_gap_rate": 0
+      }
+    },
+    "usability_target_benchmark": {
+      "target_sus_score": 88.5,
+      "cognitive_load_target_reduction": "80%+"
+    }
+  },
+  "assumed_saved_percentage": 78.8,
+  "clinical_evidence_pass": false
+}

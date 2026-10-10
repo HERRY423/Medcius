@@ -3,6 +3,7 @@
 > **证据层级**：`public_reference_validation` —— 工程级公开参考一致性层。用例为围绕**可公开核实药学事实**（说明书公开文本等，来源见 fact pack `source_version=public-ref-v1-2026-08-25`）构造的工程场景。**本层不是临床效能证据，不解锁 `clinical_evidence_pass`**；真实临床结论仍须由独立药师盲标研究（R15/R16/R29）产生。
 
 - 用例总数：37（flag/clear 计分 36 + fail-closed 单列 1）
+- 非预期弃答：0；计为失败。以下二分类指标仅针对完整二分类对，不能代替全样本一致率。
 - 阳性（flag）：24；阴性（clear）：12
 - 混淆矩阵：TP=24 FP=0 FN=0 TN=12
 

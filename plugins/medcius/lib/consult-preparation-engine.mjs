@@ -1,213 +1,165 @@
-// Specialist Consultation Preparation Engine (专科会诊前资料整理引擎)
-// Synthesizes clinical milestones, specialty-relevant lab timelines, active regimens,
-// and pending reports into a targeted pre-consultation evidence dossier.
+import { createTextAnchor } from "./evidence-anchors.mjs";
+import { requiresRecordReconciliation } from "./record-lifecycle.mjs";
+// Read-only evidence retrieval; never generates a specialist opinion.
+import { createConsultSnapshot, assertConsultSnapshot } from "./consult-snapshot.mjs";
+import { canonicalJson, sha256Hex } from "../servers/shared/crypto.mjs";
+import { scanStructuredValue } from "../servers/phiguard/src/lib.mjs";
+import { isExplicitCritical } from "./high-risk-followup-tracker.mjs";
+import { assertConsultConsistency, detachedFrozenOutput } from "./output-consistency.mjs";
+
+// Retrieval vocabulary, not diagnostic rules. Short Latin terms match whole tokens.
+const profiles = [
+  [/肾|透析/, ["肌酐", "scr", "尿素", "bun", "egfr", "血钾", "k+", "k", "钠", "na", "利尿", "水肿", "尿量", "肾", "ckd", "aki", "bnp", "nt-probnp"]],
+  [/心|循环/, ["肌钙蛋白", "ctni", "ctnt", "bnp", "nt-probnp", "心电图", "超声心动", "胸闷", "胸痛", "心衰", "冠脉"]],
+  [/呼吸|肺/, ["气促", "咳嗽", "痰", "胸片", "血气", "spo2", "氧分压", "哮喘", "慢阻肺", "肺"]],
+  [/感染/, ["发热", "体温", "pct", "crp", "wbc", "培养", "药敏", "头孢", "美罗培南", "万古霉素"]],
+  [/消化|内镜/, ["腹痛", "便血", "呕血", "胃镜", "肠镜", "胆红素", "转氨酶", "黑便", "腹胀"]],
+  [/神经/, ["头晕", "意识", "偏瘫", "失语", "脑", "抽搐"]],
+];
+const vocabulary = [...new Set(profiles.flatMap(([, terms]) => terms))];
+function match(text, term) {
+  if (/^[a-z0-9+_-]+$/i.test(term)) {
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`(?<![a-z0-9])${escaped}(?![a-z0-9])`, "i").exec(text);
+  }
+  const index = text.toLowerCase().indexOf(term.toLowerCase());
+  return index < 0 ? null : { index, 0: term };
+}
+const present = (value) => typeof value === "string" && value.trim().length > 0;
+const label = (r) => r.test_name || r.study_name || r.drug_name || r.title || (typeof r.code === "string" ? r.code : r.code?.text) || "名称未提供";
+const nursingFields = { temperature: ["体温", "℃"], systolic_bp: ["收缩压", "mmHg"], diastolic_bp: ["舒张压", "mmHg"],
+  heart_rate: ["心率", "次/分"], spo2: ["SpO2", "%"], respiratory_rate: ["呼吸频率", "次/分"],
+  intake_ml: ["入量", "ml"], output_ml: ["出量", "ml"], oral_intake_ml: ["口服入量", "ml"], iv_intake_ml: ["静脉入量", "ml"], urine_output_ml: ["尿量", "ml"], drain_output_ml: ["引流量", "ml"] };
+const textOf = (r) => [label(r), r.text, r.impression, r.impression_text, r.findings,
+  ...Object.entries(nursingFields).filter(([key]) => r[key] != null).map(([, [name]]) => name)].filter(Boolean).join(" ");
+const stateLabels = { final: "最终报告", revised: "已更正", preliminary: "初步结果，待最终报告", cancelled: "已取消", entered_in_error: "录入错误", unknown: "状态未确认", ordered: "已开立，执行未确认", scheduled: "已安排", collected: "已采集" };
 
 export class ConsultPreparationEngine {
-  /**
-   * Analyze patient records and prepare a targeted dossier for specialist consultation.
-   * 
-   * @param {Object} params
-   * @param {Object} params.patient - Demographic & admission info
-   * @param {Object} params.encounter - Encounter context
-   * @param {Object} params.consultRequest - { department, purpose, question, urgency }
-   * @param {Array} params.notes - Hospital progress notes
-   * @param {Array} params.observations - Normalized LIS observations & labs
-   * @param {Array} params.diagnosticReports - Imaging, pathology, and endoscopy reports
-   * @param {Array} params.medications - Active medications
-   * @param {Array} params.allergies - Known drug allergies
-   */
-  static prepareConsultDossier({
-    patient = {},
-    encounter = {},
-    consultRequest = {},
-    notes = [],
-    observations = [],
-    diagnosticReports = [],
-    medications = [],
-    allergies = null,
-  }) {
-    if (!patient.id) {
-      throw new Error("FAIL_CLOSED: Missing patient_id for consultation preparation");
-    }
-    const targetDept = consultRequest.department || "专科会诊";
-    const consultPurpose = consultRequest.purpose || consultRequest.title || "专科诊疗意见与方案指导";
+  static createSnapshot(params) { return createConsultSnapshot(params); }
 
-    // 1. Consultation Objective & Core Clinical Problem
-    const header = {
-      patient_id: patient.id,
-      patient_name: patient.name || "脱敏患者",
-      bed_number: patient.bed_number || "床位",
-      age: patient.age,
-      gender: patient.gender,
-      primary_diagnosis: patient.primary_diagnosis || "未记录",
-      target_department: targetDept,
-      purpose: consultPurpose,
-      urgency: consultRequest.urgency || "常规会诊 (24h内完成)",
-      requested_at: consultRequest.requested_at || new Date().toISOString(),
-    };
-
-    // 2. Specialty Relevance Keyword Filter
-    let specialtyKeywords = [];
-    if (/肾|透析|利尿/i.test(targetDept)) {
-      specialtyKeywords = ["肌酐", "scr", "尿素", "bun", "egfr", "钾", "k+", "k", "钠", "na", "利尿", "水肿", "尿量", "肾", "ckd", "aki", "bnp", "probnp", "nt-probnp", "nt_probnp"];
-    } else if (/心|循环/i.test(targetDept)) {
-      specialtyKeywords = ["心肌酶", "肌钙蛋白", "ctni", "ctnt", "bnp", "probnp", "nt-probnp", "ecg", "心电图", "超声心动", "胸闷", "胸痛", "心衰", "冠脉"];
-    } else if (/呼吸|肺/i.test(targetDept)) {
-      specialtyKeywords = ["气促", "咳嗽", "痰", "胸片", "ct", "血气", "spo2", "氧分压", "哮喘", "慢阻肺", "感染"];
-    } else if (/感染|抗生素/i.test(targetDept)) {
-      specialtyKeywords = ["发热", "体温", "pct", "crp", "wbc", "培养", "药敏", "头孢", "美罗培南", "万古霉素"];
-    } else if (/消化|内镜/i.test(targetDept)) {
-      specialtyKeywords = ["腹痛", "便血", "呕血", "胃镜", "肠镜", "胆红素", "转氨酶", "黑便", "腹胀"];
-    } else if (/神经/i.test(targetDept)) {
-      specialtyKeywords = ["头晕", "意识", "偏瘫", "失语", "ct", "mri", "脑梗", "出血", "抽搐"];
-    } else {
-      specialtyKeywords = [targetDept];
-    }
-
-    // 3. Extract Relevant Clinical Notes & Spans
-    const relevantNotes = [];
-    for (const note of notes) {
-      const text = note.text || "";
-      const matches = specialtyKeywords.some((kw) => text.includes(kw));
-      if (matches || /会诊|主诉|现病史/i.test(note.title || "")) {
-        relevantNotes.push({
-          note_id: note.id,
-          title: note.title || "病程记录",
-          timestamp: note.timestamp,
-          excerpt: text.slice(0, 120),
-        });
-      }
-    }
-
-    // 4. Targeted Laboratory & Diagnostic Timeline
-    const targetedLabs = [];
-    for (const obs of observations) {
-      const name = (obs.name || obs.test_name || obs.code || "").toLowerCase();
-      const isTargeted = specialtyKeywords.some((kw) => name.includes(kw.toLowerCase()));
-      if (isTargeted || obs.is_critical) {
-        targetedLabs.push({
-          test_name: obs.name || obs.test_name || obs.code,
-          value: obs.value,
-          unit: obs.unit || "",
-          effective_time: obs.effective_time || obs.timestamp || null,
-          is_critical: obs.is_critical || false,
-          reference_range: obs.referenceRange || null,
-        });
-      }
-    }
-
-    // Sort labs chronologically
-    targetedLabs.sort((a, b) => new Date(b.effective_time || 0).getTime() - new Date(a.effective_time || 0).getTime());
-
-    // 5. Relevant Diagnostic Reports (PACS / Pathology / Cultures)
-    const relevantReports = [];
-    const pendingReports = [];
-    for (const rep of diagnosticReports) {
-      const repName = rep.name || rep.study_name || "检查报告";
-      const isFinal = rep.status === "final";
-      if (isFinal) {
-        relevantReports.push({
-          report_name: repName,
-          ordered_at: rep.ordered_at,
-          impression: rep.impression || "未见明显异常",
-        });
-      } else {
-        pendingReports.push({
-          report_name: repName,
-          status: rep.status,
-          ordered_at: rep.ordered_at,
-          status_desc: "尚未出具最终报告",
-        });
-      }
-    }
-
-    // 6. Active Medication Regimen Relevant to Specialty
-    const activeMeds = medications.map((m) => ({
-      drug_name: m.drug_name || m.name,
-      dosage: m.dosage || "",
-      route: m.route || "po",
-      frequency: m.frequency || "qd",
-      authored_on: m.authored_on || null,
-      is_antibiotic: m.antibiotic_info != null,
-    }));
-
-    const hasAllergyRecord = allergies != null && (!Array.isArray(allergies) || allergies.length > 0);
-    const allergyStatus = hasAllergyRecord
-      ? (Array.isArray(allergies) ? allergies.join("、") : allergies)
-      : "未明确记录 (缺口)";
-
-    return {
-      success: true,
-      header,
-      allergy_status: allergyStatus,
-      relevant_clinical_notes: relevantNotes,
-      targeted_labs_timeline: targetedLabs,
-      relevant_imaging_reports: relevantReports,
-      pending_specialty_reports: pendingReports,
-      active_medications: activeMeds,
-      data_gaps: hasAllergyRecord ? [] : ["ALLERGY_MISSING: 过敏史记录缺失"],
-    };
+  static prepareConsultViews({ snapshot, consultRequests }) {
+    assertConsultSnapshot(snapshot);
+    if (!Array.isArray(consultRequests) || !consultRequests.length) throw new Error("FAIL_CLOSED: Missing consultation requests");
+    return { snapshot_id: snapshot.snapshot_id, as_of: snapshot.as_of,
+      views: consultRequests.map((consultRequest) => this.prepareConsultDossier({ snapshot, consultRequest })) };
   }
 
-  /**
-   * Generate structured consultation dossier text for physician review.
-   */
-  static generateConsultBriefText({ consultDossier, requestingDoctor = "申请医师" }) {
-    const { header, allergy_status, relevant_clinical_notes, targeted_labs_timeline, relevant_imaging_reports, pending_specialty_reports, active_medications } = consultDossier;
-
-    const lines = [];
-    lines.push(`【${header.target_department}会诊前资料摘要包】`);
-    lines.push(`患者姓名：${header.patient_name} (${header.age}岁/${header.gender})  |  床位：${header.bed_number}  |  主诊断：${header.primary_diagnosis}`);
-    lines.push(`申请科室/医师：${requestingDoctor}  |  会诊时效：${header.urgency}  |  生成时间：${new Date().toISOString().replace("T", " ").slice(0, 16)}`);
-    lines.push("");
-
-    lines.push(`一、会诊目的与拟解决核心问题`);
-    lines.push(`  • 会诊诉求：${header.purpose}`);
-    lines.push(`  • 过敏史状态：${allergy_status}`);
-    lines.push("");
-
-    lines.push(`二、本专科重点病程演变与病历摘录`);
-    if (relevant_clinical_notes.length > 0) {
-      relevant_clinical_notes.forEach((n) => lines.push(`  • [${n.title}] ${n.excerpt}...`));
-    } else {
-      lines.push(`  • 暂无直接匹配的专科病程摘录`);
+  static prepareConsultDossier({ snapshot, consultRequest = {}, ...input }) {
+    if (!consultRequest || typeof consultRequest !== "object") throw new Error("FAIL_CLOSED: Invalid consultation request");
+    if (!present(consultRequest.department)) throw new Error("FAIL_CLOSED: Missing target department");
+    if (!present(consultRequest.purpose)) throw new Error("FAIL_CLOSED: Missing explicit consultation purpose");
+    if (scanStructuredValue(consultRequest).total > 0) throw new Error("FAIL_CLOSED_PHI_VIOLATION: Consultation request requires PHI Guard");
+    for (const field of ["question", "urgency", "requested_at"]) {
+      if (consultRequest[field] != null && typeof consultRequest[field] !== "string") throw new Error("FAIL_CLOSED: Invalid consultation field");
     }
-    lines.push("");
-
-    lines.push(`三、针对性专科检验指标时间轴`);
-    if (targeted_labs_timeline.length > 0) {
-      targeted_labs_timeline.slice(0, 8).forEach((l) => {
-        lines.push(`  • ${l.test_name}: ${l.value} ${l.unit} ${l.is_critical ? "🚨[危急值]" : ""} (${l.effective_time ? l.effective_time.slice(0, 10) : "近期"})`);
-      });
-    } else {
-      lines.push(`  • 暂无相关专项检验记录`);
+    if (consultRequest.focus_terms != null && (!Array.isArray(consultRequest.focus_terms) || consultRequest.focus_terms.length > 20 || consultRequest.focus_terms.some((term) => !present(term) || term.length > 80))) throw new Error("FAIL_CLOSED: Invalid focus terms");
+    snapshot = snapshot ? assertConsultSnapshot(snapshot) : createConsultSnapshot(input);
+    const profile = profiles.find(([pattern]) => pattern.test(consultRequest.department));
+    const intent = [consultRequest.purpose, consultRequest.question].filter(Boolean).join(" ");
+    const focus = [...new Set([...(consultRequest.focus_terms || []).map(term => term.trim()), ...vocabulary.filter((term) => match(intent, term))])];
+    const specialty = profile?.[1] || [];
+    const sections = { relevant_clinical_notes: [], targeted_labs_timeline: [], nursing_observations: [], relevant_imaging_reports: [],
+      pending_specialty_reports: [], active_medications: [], medication_records_to_verify: [], record_status_changes: [], additional_records: [] };
+    const gaps = [];
+    const allergyKnown = snapshot.allergies != null && (!Array.isArray(snapshot.allergies) || snapshot.allergies.length > 0);
+    if (!allergyKnown) gaps.push("ALLERGY_MISSING: 过敏史记录缺失；不等于无过敏");
+    else gaps.push("ALLERGY_PROVENANCE_UNVERIFIED: 过敏史输入尚未绑定资源与时间，需回源核对，未作为已证实事实展示");
+    if (!profile) gaps.push("SPECIALTY_PROFILE_MISSING: 无此专科检索模板，按诉求词检索并保留其他资料入口");
+    if (!focus.length) gaps.push("FOCUS_UNMAPPED: 诉求尚未映射到检索词；请补充关注指标或资料词，当前仅按专科整理");
+    if (!snapshot.source_availability.length) gaps.push("SOURCE_COVERAGE_UNKNOWN: 来源覆盖范围未提供");
+    if (Object.values(snapshot.records).flat().some(entry => entry.evidence.ownership_basis === "feed_context")) {
+      gaps.push("FEED_CONTEXT_ONLY: 部分记录仅绑定输入资料包上下文，记录级患者与就诊归属未独立核验");
     }
-    lines.push("");
-
-    lines.push(`四、相关已出影像与专科检查结论`);
-    if (relevant_imaging_reports.length > 0) {
-      relevant_imaging_reports.forEach((r) => lines.push(`  • 【${r.report_name}】${r.impression}`));
-    } else {
-      lines.push(`  • 暂无近期相关专科影像报告`);
+    for (const source of snapshot.source_availability) {
+      if (source.status !== "available") gaps.push(`SOURCE_COVERAGE: ${source.source_type || source.kind || source.connector_id || "来源"}：${({ available_empty: "接口成功但返回为空", unavailable: "接口不可用", unknown: "完整性未知" })[source.status] || "状态未知"}`);
     }
-    lines.push("");
-
-    if (pending_specialty_reports.length > 0) {
-      lines.push(`五、尚未回报的专科待办检查`);
-      pending_specialty_reports.forEach((p) => lines.push(`  • [待出报告] ${p.report_name} (${p.status_desc})`));
-      lines.push("");
+    if (snapshot.excluded.length) gaps.push(`SOURCE_RECORDS_EXCLUDED: ${snapshot.excluded.length} 条非当前、冲突或缺少来源/时间的记录不进入当前事实`);
+    for (const [kind, entries] of Object.entries(snapshot.records)) for (const entry of entries) {
+      if (!entry.eligible) continue;
+      const { record: r, lifecycle: state, evidence } = entry;
+      const text = textOf(r);
+      const purposeMatches = focus.filter((term) => match(text, term));
+      const specialtyMatches = specialty.filter((term) => match(text, term));
+      const critical = isExplicitCritical(r);
+      const reason = purposeMatches.length ? "consult_question" : specialtyMatches.length ? "specialty_context" : critical ? "source_critical" : "other_source_record";
+      const common = { title: label(r), evidence, result_status: state.result_status,
+        status_label: stateLabels[state.result_status], relevance: { reason, matched_terms: purposeMatches.length ? purposeMatches : specialtyMatches },
+        timestamp: state.event_time ?? state.change_time ?? r.ordered_at, source_critical: critical };
+      if (requiresRecordReconciliation(state.result_status)) { sections.record_status_changes.push(common); continue; }
+      if (kind === "medications") {
+        const med = { ...common, drug_name: label(r), dosage: r.dosage ?? null, route: r.route ?? null,
+          frequency: r.frequency ?? null, authored_on: r.authored_on ?? null, execution_status: "unknown" };
+        (r.status === "active" ? sections.active_medications : sections.medication_records_to_verify).push(med);
+        continue;
+      }
+      if (reason === "other_source_record") { sections.additional_records.push(common); continue; }
+      if (kind === "notes") {
+        const noteText = r.text || "";
+        const terms = purposeMatches.length ? purposeMatches : specialtyMatches;
+        const hit = terms.map((term) => match(noteText, term)).find(Boolean);
+        const start = Math.max(0, (hit?.index ?? 0) - 45), end = Math.min(noteText.length, start + 220);
+        sections.relevant_clinical_notes.push({ ...common, note_id: evidence.source_id, excerpt: noteText.slice(start, end),
+          evidence: { ...evidence, span: createTextAnchor(r, { start, end }), text_anchor: createTextAnchor(r, { start, end }) } });
+      } else if (kind === "observations") {
+        sections.targeted_labs_timeline.push({ ...common, test_name: label(r), value: r.value ?? r.valueQuantity?.value ?? null,
+          unit: r.unit ?? r.valueQuantity?.unit ?? null, effective_time: state.event_time, is_critical: critical,
+          reference_range: r.referenceRange ?? null, interpretation: "not_evaluated" });
+      } else if (kind === "nursing") {
+        sections.nursing_observations.push({ ...common, title: r.title || "护理原始记录", measurements: Object.entries(nursingFields)
+          .filter(([key]) => r[key] != null).map(([field, [label, unit]]) => ({ field, label, unit, value: r[field] })),
+          period: r.period ?? null, interpretation: "not_evaluated" });
+      } else if (kind === "diagnosticReports") {
+        const report = { ...common, report_name: label(r), impression: r.impression ?? r.impression_text ?? null, ordered_at: r.ordered_at ?? null };
+        (["final", "revised"].includes(state.result_status) ? sections.relevant_imaging_reports : sections.pending_specialty_reports).push(report);
+      } else if (kind === "orders") sections.pending_specialty_reports.push({ ...common, report_name: label(r), impression: null,
+        status_label: "检查医嘱；与报告关联及执行情况待核对", ordered_at: r.ordered_at ?? null });
     }
+    const rank = { consult_question: 0, source_critical: 1, specialty_context: 2, other_source_record: 3 };
+    for (const rows of Object.values(sections)) rows.sort((a, b) => rank[a.relevance.reason] - rank[b.relevance.reason]
+      || new Date(b.timestamp) - new Date(a.timestamp) || a.evidence.content_sha256.localeCompare(b.evidence.content_sha256));
+    const result = { success: true, snapshot_id: snapshot.snapshot_id, as_of: snapshot.as_of,
+      header: { patient_id: snapshot.context.patient_id, encounter_id: snapshot.context.encounter_id,
+        target_department: consultRequest.department.trim(), purpose: consultRequest.purpose.trim(),
+        question: consultRequest.question?.trim() || null, urgency: consultRequest.urgency || null, requested_at: consultRequest.requested_at || null },
+      allergy_status: allergyKnown ? "过敏史来源待核对" : "未明确记录 (缺口)",
+      allergy_evidence: { source_type: "snapshot_allergy_feed", source_id: null, status: "resource_provenance_unverified" },
+      retrieval: { strategy: "explicit_terms_v1", focus_terms: focus, specialty_terms: specialty, clinical_relevance_validated: false },
+      ...sections, data_gaps: gaps, source_availability: snapshot.source_availability, source_visibility: snapshot.source_visibility,
+      evidence_records: Object.values(snapshot.records).flat().filter((entry) => entry.selection_status !== "future"
+        && !snapshot.excluded.some((item) => item.reason === "future" && item.evidence.content_sha256 === entry.evidence.content_sha256))
+        .map(({ record, evidence, selection_status, selection_reasons }) => ({ record, evidence, selection_status, selection_reasons })),
+      excluded_records: snapshot.excluded, boundary: "仅整理来源资料；未匹配不等于不存在；不生成会诊意见，不确认诊疗或给药执行。" };
+    result.views = { glance: { purpose: result.header.purpose, question: result.header.question,
+      counts: Object.fromEntries(Object.entries(sections).map(([key, rows]) => [key, rows.length])), data_gaps: gaps },
+      digest: Object.fromEntries(Object.entries(sections).map(([key, rows]) => {
+        const items = rows.filter((row, index) => index < 5 || row.source_critical);
+        return [key, { items, total: rows.length, remaining: rows.length - items.length }];
+      })),
+      drilldown: { snapshot_id: snapshot.snapshot_id, sections, excluded_records: snapshot.excluded },
+    };
+    result.dossier_sha256 = sha256Hex(canonicalJson(result));
+    return detachedFrozenOutput(assertConsultConsistency(result));
+  }
 
-    lines.push(`六、当前主要用药方案`);
-    if (active_medications.length > 0) {
-      lines.push(`  • ${active_medications.map((m) => `${m.drug_name} ${m.dosage}`).join("、")}`);
-    } else {
-      lines.push(`  • 暂无活动用药医嘱`);
-    }
-    lines.push("");
-
-    lines.push(`特别提示：本资料包为病历与检查信息结构化汇聚，供会诊专科医师床旁查体与制定会诊意见参考，不替代专科医生独立临床诊疗判断。`);
-
+  static generateConsultBriefText({ consultDossier: d }) {
+    assertConsultConsistency(d);
+    const lines = [`【${d.header.target_department}会诊前资料摘要包】`, `资料截至：${d.as_of}`, "一、会诊目的与拟解决核心问题",
+      `会诊诉求：${d.header.purpose}`, `具体问题：${d.header.question || "未另行填写"}`, "二、本专科重点病程演变与病历摘录"];
+    const add = (rows, describe) => {
+      if (!rows.length) lines.push("当前输入未检索到资料；不等于不存在。");
+      for (const row of rows) lines.push(`• ${describe(row)} [${row.status_label}] (${row.timestamp}) [来源 ${row.evidence.locator}; 版本 ${row.evidence.version_id ?? "未提供"}]`);
+    };
+    add(d.relevant_clinical_notes, (r) => r.excerpt);
+    lines.push("三、针对性专科检验指标时间轴");
+    add(d.targeted_labs_timeline, (r) => `${r.test_name}: ${r.value ?? "未提供"} ${r.unit ?? "单位未提供"}`);
+    lines.push("相关护理原始记录（记录区间未确认时不汇总）");
+    add(d.nursing_observations, (r) => r.measurements.map(m => `${m.label} ${m.value} ${m.unit}`).join("；"));
+    lines.push("四、相关已出影像与专科检查结论"); add(d.relevant_imaging_reports, (r) => `${r.report_name}：${r.impression ?? "结论未提供"}`);
+    lines.push("五、初步结果与状态待核对资料"); add(d.pending_specialty_reports, (r) => `${r.report_name}：${r.impression ?? "结论未提供"}`);
+    lines.push("六、当前主要用药方案（医嘱，实际给药未确认）"); add(d.active_medications, (r) => `${r.drug_name} ${r.dosage ?? "剂量未提供"}`);
+    lines.push("用药状态待核对"); add(d.medication_records_to_verify, (r) => `${r.drug_name} ${r.dosage ?? "剂量未提供"}`);
+    lines.push("撤销或录入错误"); add(d.record_status_changes, (r) => r.title);
+    lines.push(`其他资料入口：${d.additional_records.length} 条；可在完整视图核对。`, ...d.data_gaps, d.boundary);
     return lines.join("\n");
   }
 }

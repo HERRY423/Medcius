@@ -15,8 +15,8 @@ export const HOSPITAL_SANDBOX_METADATA = {
 };
 
 /** Generate 16 consecutive realistic cardiology ward patients */
-export function getCardiologyWardFixture() {
-  const now = Date.now();
+export function getCardiologyWardFixture({ now: asOf = Date.now() } = {}) {
+  const now = new Date(asOf).getTime();
   const h = (hours) => new Date(now - hours * 3600000).toISOString();
 
   const patients = [
@@ -167,9 +167,9 @@ export function getCardiologyWardFixture() {
 }
 
 /** Generate multi-source feeds (NIS, LIS, PACS, HIS) for the cardiology ward */
-export function getCardiologyMultiSourceFeeds() {
-  const cases = getCardiologyWardFixture();
-  const now = Date.now();
+export function getCardiologyMultiSourceFeeds({ now: asOf = Date.now() } = {}) {
+  const now = new Date(asOf).getTime();
+  const cases = getCardiologyWardFixture({ now });
   const h = (hours) => new Date(now - hours * 3600000).toISOString();
 
   return cases.map((c, index) => {

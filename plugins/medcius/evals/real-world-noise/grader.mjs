@@ -26,7 +26,7 @@ export function gradeFieldSpec(name, spec, field) {
   if (spec.presence && field?.presence !== spec.presence) failures.push(`${name}.presence=${field?.presence} want ${spec.presence}`);
   if (spec.temporality && field?.temporality !== spec.temporality) failures.push(`${name}.temporality=${field?.temporality} want ${spec.temporality}`);
   if (spec.span_contains) {
-    for (const needle of spec.span_contains) if (!has(field?.span, needle) && !has(value, needle)) failures.push(`${name} span missing ${needle}`);
+    for (const needle of spec.span_contains) if (!has(field?.span, needle)) failures.push(`${name} span missing ${needle}`);
   }
   if (spec.null_or_none) {
     const empty = value == null || value === "" || value === "无" || value === "无手术";

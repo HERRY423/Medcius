@@ -241,7 +241,7 @@ async function runCli(tool, jsonArg) {
     raw = readFileSync(0, "utf8");
   }
   const args = raw === undefined ? {} : parseArgs(raw);
-  return runOnce({ tools: TOOLS, handlers: HANDLERS }, tool, args);
+  return runOnce({ tools: TOOLS, handlers: HANDLERS, phiGuard: true }, tool, args);
 }
 
 const argv = process.argv.slice(2);
@@ -254,6 +254,7 @@ if (argv.length > 2) {
 const [tool, jsonArg] = argv;
 if (tool === undefined) {
   serve({
+    phiGuard: true,
     serverInfo: SERVER_INFO,
     instructions: INSTRUCTIONS,
     tools: TOOLS,
@@ -265,7 +266,7 @@ if (tool === undefined) {
     const result = await runCli(tool, jsonArg);
     process.stdout.write(JSON.stringify(result ?? { ok: true }) + "\n");
   } catch (e) {
-    process.stderr.write(`mcp-server-documents: ${String(e.message ?? e)}\n`);
+    process.stderr.write("mcp-server-documents: TOOL_FAILED_OR_PHI_OUTPUT_BLOCKED\n");
     process.exit(1);
   }
 }

@@ -1,0 +1,101 @@
+{
+  "evaluation_id": "engine-policy-challenge-v1",
+  "execution_status": "COMPLETED",
+  "evidence_class": "synthetic_engineering_fixture",
+  "input_sha256": "13a4dee78ba21e463f5d97b2dec907be61d78abccc8cd9185cbf0ef3695522c7",
+  "reference_sha256": "17bc82a2ed47b875a615ad433cbdf83d8dd14c49b5f3f77c0a082369ea07bd67",
+  "reference_kind": "authored_software_contract_expectations_not_clinician_gold",
+  "rule_pack_sha256": "bac8396af111bb69b646c8b1bcb0df4d099b94d4b8405f484c868f20db382137",
+  "summary": {
+    "n": 8,
+    "mismatches": 0,
+    "tp": 3,
+    "fp": 0,
+    "fn": 0,
+    "tn": 3,
+    "expected_abstentions": 2
+  },
+  "negative_controls": {
+    "always_clear": {
+      "n": 8,
+      "mismatches": 5,
+      "tp": 0,
+      "fp": 0,
+      "fn": 3,
+      "tn": 3,
+      "expected_abstentions": 2
+    },
+    "always_flag": {
+      "n": 8,
+      "mismatches": 5,
+      "tp": 3,
+      "fp": 3,
+      "fn": 0,
+      "tn": 0,
+      "expected_abstentions": 2
+    },
+    "inverted": {
+      "n": 8,
+      "mismatches": 6,
+      "tp": 0,
+      "fp": 3,
+      "fn": 3,
+      "tn": 0,
+      "expected_abstentions": 2
+    },
+    "unsafe_missing_as_clear": {
+      "n": 8,
+      "mismatches": 2,
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "tn": 3,
+      "expected_abstentions": 2
+    }
+  },
+  "rows": [
+    {
+      "id": "k-normal",
+      "predicted": "clear",
+      "expected": "clear"
+    },
+    {
+      "id": "k-high",
+      "predicted": "flag",
+      "expected": "flag"
+    },
+    {
+      "id": "k-boundary",
+      "predicted": "flag",
+      "expected": "flag"
+    },
+    {
+      "id": "k-below",
+      "predicted": "clear",
+      "expected": "clear"
+    },
+    {
+      "id": "na-low",
+      "predicted": "flag",
+      "expected": "flag"
+    },
+    {
+      "id": "na-normal",
+      "predicted": "clear",
+      "expected": "clear"
+    },
+    {
+      "id": "missing-unit",
+      "predicted": "abstain",
+      "expected": "abstain"
+    },
+    {
+      "id": "wrong-unit",
+      "predicted": "abstain",
+      "expected": "abstain"
+    }
+  ],
+  "engineering_pass": true,
+  "clinical_evidence_pass": false,
+  "independent_validation": false
+}

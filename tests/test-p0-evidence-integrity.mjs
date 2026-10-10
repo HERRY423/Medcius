@@ -4,9 +4,10 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { resolveCallerEvidenceStatus } from "../plugins/medcius/evals/evidence-status.mjs";
-import { computeClinicianCohensKappa, evaluatePhysicianAnnotation } from "../plugins/medcius/evals/physician-annotation/physician-annotation-engine.mjs";
-import { buildPhysicianAnnotationReport } from "../plugins/medcius/evals/physician-annotation/physician-annotation-report.mjs";
-import { computeCohensKappa, evaluateShadowStudy, buildShadowReport } from "../plugins/medcius/evals/shadow-mode/shadow-study.mjs";
+import { computeClinicianCohensKappa, evaluatePhysicianAnnotation, PRIMARY_ENDPOINT_IDS } from "../plugins/medcius/evals/physician-annotation/physician-annotation-engine.mjs";
+import { buildPhysicianAnnotationReport, ENDPOINT_LABELS } from "../plugins/medcius/evals/physician-annotation/physician-annotation-report.mjs";
+import { computeCohensKappa, evaluateShadowStudy, buildShadowReport, generateSampleShadowCases, PRIMARY_ENDPOINT_IDS as SHADOW_PRIMARY_ENDPOINT_IDS, ENDPOINT_LABELS as SHADOW_ENDPOINT_LABELS } from "../plugins/medcius/evals/shadow-mode/shadow-study.mjs";
+import { assertEndpointVerdictConsistent } from "../plugins/medcius/evals/report-consistency.mjs";
 import { evaluateStopwatchProtocol } from "../plugins/medcius/evals/time-motion/stopwatch-protocol.mjs";
 import { TimeMotionAnalyzer } from "../plugins/medcius/evals/time-motion/time-motion-analyzer.mjs";
 import { pairValidationRows, wilsonScore, mcnemarExact } from "../plugins/medcius/evals/clinical-validation/run.mjs";
@@ -179,6 +180,44 @@ test("failed CLI invalidates an earlier successful report at the same path", () 
   const invalid = readFileSync(report, "utf8");
   assert.match(invalid, /status: INVALID/);
   assert.doesNotMatch(invalid, /100.0%/);
+});
+
+test("a report may not state a verdict its own evidence table cannot explain", () => {
+  const ids = ["a_met", "b_met"];
+  const failing = [{ id: "a_met", met: true }, { id: "b_met", met: false }];
+  assert.equal(assertEndpointVerdictConsistent({ context: "t", allPrimaryMet: false, primaryEndpointIds: ids, evidenceRows: failing }).failed.length, 1);
+  assert.throws(() => assertEndpointVerdictConsistent({ context: "t", allPrimaryMet: false, primaryEndpointIds: ids, evidenceRows: [failing[0]] }), /DECIDING_ENDPOINT_NOT_RENDERED/);
+  assert.throws(() => assertEndpointVerdictConsistent({ context: "t", allPrimaryMet: false, primaryEndpointIds: ids, evidenceRows: [{ id: "a_met", met: true }, { id: "b_met", met: true }] }), /VERDICT_WITHOUT_EVIDENCE/);
+  assert.throws(() => assertEndpointVerdictConsistent({ context: "t", allPrimaryMet: true, primaryEndpointIds: ids, evidenceRows: failing }), /VERDICT_ABOVE_FAILING_EVIDENCE/);
+  assert.throws(() => assertEndpointVerdictConsistent({ context: "t", allPrimaryMet: true, primaryEndpointIds: [], evidenceRows: [] }), /NO_PRIMARY_ENDPOINT_IDS/);
+});
+
+test("every endpoint deciding a verdict is printed by the report that states it", () => {
+  // The shipped annotation fixture fails exactly one endpoint. Before this
+  // guard, that endpoint had no row, so the report showed "not met" above a
+  // table in which every printed row said "met".
+  const cases = JSON.parse(readFileSync(join(root, "plugins/medcius/evals/physician-annotation/ward-annotation-cases.json"), "utf8"));
+  const ann = evaluatePhysicianAnnotation(cases, { isDemo: true });
+  const annReport = buildPhysicianAnnotationReport(ann);
+  for (const id of PRIMARY_ENDPOINT_IDS) {
+    assert.ok(annReport.includes(ENDPOINT_LABELS[id]), "annotation report omits deciding endpoint: " + id);
+  }
+  assert.equal(ann.allPrimaryMet, false);
+  assert.equal(ann.endpoints.evidence_anchors_complete, false);
+  assert.match(annReport, /未达标项.*evidence_anchors_complete/);
+  assert.match(annReport, /✗ 不达标/);
+  assert.doesNotMatch(annReport, /算法公式、分层统计引擎与置信区间运算无误/);
+
+  // Perfect same-source labels must never establish discriminative validity.
+  const shadow = evaluateShadowStudy(generateSampleShadowCases());
+  const shadowReport = buildShadowReport(shadow);
+  for (const id of SHADOW_PRIMARY_ENDPOINT_IDS) {
+    assert.ok(shadowReport.includes(SHADOW_ENDPOINT_LABELS[id]), "shadow report omits deciding endpoint: " + id);
+  }
+  assert.equal(shadow.allPrimaryMet, false);
+  assert.equal(shadow.endpoints.prediction_independence_established, false);
+  assert.match(shadowReport, /未达标/);
+  assert.match(shadowReport, /✗ 不达标/);
 });
 
 console.log(`P0 evidence integrity: ${checks} adversarial groups passed (synthetic only).`);

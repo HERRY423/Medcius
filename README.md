@@ -165,10 +165,12 @@ Medcius Agent Plugin
 | 合成验证 | 已有合成病例和参考工作流评测 | 可验证软件契约和失败路径 |
 | 真实 EHR 接入 | P1 FHIR / P2 CDA PoC + **P3 视图库只读连接器**；一线入口改为 HIS 内嵌/院内 SSO | 仍无院端生产联调；Codex 不是临床入口 |
 | 临床事实准确性 | 方案已定稿 (IRB/影子研究/双盲标注)，待真实入组数据 | 不能声称减少遗漏或提高准确率 |
-| 医生效率与人因 | 秒表协议已预注册「非劣 + 均节省 ≥90 秒」；合成 79% 被硬阻断为非临床证据 | 不能声称已在真实对照组中验证 |
+| 医生效率与人因 | 有秒表协议草案、独立列示的假设模型和合成计时输入；见[当前证据索引](docs/evidence/CURRENT-EVIDENCE.md) | 不能声称已在真实对照组中验证 |
 | 临床安全、泛化与监管 | 门禁严格阻断 (`clinical_evidence_pass: 🔒 BLOCKED`) | 不能声称临床就绪或规模化可用 |
 
 任何 `engineering_pass` 或 `synthetic_validation_pass` 都不能升级为 `clinical_evidence_pass`。
+
+所有当前数值统一从[评测证据索引](docs/evidence/CURRENT-EVIDENCE.md)读取；[截图问题整改记录](docs/evidence/SCREENSHOT-REMEDIATION.md)列出修复、复测、尚未具备的医院证据及配置边界。FHIR/documents 的 MCP 和文档 CLI 出口现强制经过 PHI Guard；未能扫描的二进制导出阻断。启发式检测覆盖有限，不等于完整去标识化认证。
 
 ## 插件扩展准入
 

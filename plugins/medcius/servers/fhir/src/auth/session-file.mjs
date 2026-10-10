@@ -1,3 +1,4 @@
+import { writeSafeDiagnostic } from "../../../shared/phi-output.mjs";
 // Medcius session persistence.
 //
 // The connection (base URL + access token) is cached on disk so it survives a
@@ -103,7 +104,7 @@ export function restoreSession() {
       }
       if (configuredOrigin !== baseUrl.origin) {
         token = null;
-        process.stderr.write(
+        writeSafeDiagnostic(
           `mcp-server-fhir: restored session for ${baseUrl.origin} carried the FHIR_BEARER_TOKEN env credential, which is bound to ${configuredOrigin ?? "no configured server (FHIR_BASE_URL unset)"} — token dropped from the restored session\n`,
         );
       }
@@ -113,7 +114,7 @@ export function restoreSession() {
     // can't rethrow here (module load would crash), but the signal must not
     // vanish — the write path throws, so the read path at least reports
     if (e instanceof OwnershipError)
-      process.stderr.write(`mcp-server-fhir: ignoring session file: ${e.message}\n`);
+      writeSafeDiagnostic(`mcp-server-fhir: ignoring session file: ${e.message}\n`);
     return null;
   }
 }

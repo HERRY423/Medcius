@@ -78,7 +78,7 @@ export class IdpJwksVerifier {
 
       // 1. Check Algorithm
       const alg = header.alg;
-      if (!alg || (alg !== "RS256" && alg !== "ES256" && alg !== "none_mock")) {
+      if (!alg || (alg !== "RS256" && alg !== "ES256")) {
         return { isValid: false, error: `Unsupported or prohibited signing algorithm: ${alg}` };
       }
 
@@ -98,15 +98,19 @@ export class IdpJwksVerifier {
 
       // 4. Check Expiration & Not Before
       const nowSec = Math.floor(Date.now() / 1000);
-      if (payload.exp && payload.exp < nowSec) {
-        return { isValid: false, error: `Token expired at ${new Date(payload.exp * 1000).toISOString()}` };
+      if (!Number.isFinite(payload.exp) || payload.exp <= nowSec) {
+        return { isValid: false, error: "Token expired or exp missing/invalid" };
       }
-      if (payload.nbf && payload.nbf > nowSec) {
+      if (payload.nbf != null && (!Number.isFinite(payload.nbf) || payload.nbf > nowSec)) {
         return { isValid: false, error: `Token not valid before ${new Date(payload.nbf * 1000).toISOString()}` };
       }
 
       // 5. Check Multi-Tenant Isolation
-      const tokenTenant = payload.tenant_id || payload.hospital_id || issuer.tenantId;
+      const tokenTenant = payload.tenant_id || payload.hospital_id;
+      if (typeof payload.sub !== "string" || !payload.sub.trim() || typeof tokenTenant !== "string" || !tokenTenant.trim()) {
+        return { isValid: false, error: "Subject and explicit tenant required" };
+      }
+      if (issuer.tenantId && tokenTenant !== issuer.tenantId) return { isValid: false, error: "Issuer tenant mismatch" };
       if (context.expectedTenant && tokenTenant !== context.expectedTenant) {
         return { isValid: false, error: `Tenant isolation violation: expected ${context.expectedTenant}, token has ${tokenTenant}` };
       }
@@ -115,21 +119,26 @@ export class IdpJwksVerifier {
       }
 
       // 6. Cryptographic Signature Verification (if not mock test)
-      if (alg !== "none_mock") {
+      {
         const kid = header.kid;
-        const publicKeyPem = issuer.keys.get(kid) || issuer.staticKeys[kid];
+        const publicKeyPem = issuer.keys.get(kid) || (Object.hasOwn(issuer.staticKeys, kid) ? issuer.staticKeys[kid] : null);
         if (!publicKeyPem) {
           return { isValid: false, error: `Key ID (kid: ${kid}) not found for issuer ${issuerUrl}` };
         }
 
-        const verify = createVerify("RSA-SHA256");
+        const publicKey = typeof publicKeyPem === "object" && publicKeyPem.type === "public" ? publicKeyPem : createPublicKey(publicKeyPem);
+        if (alg === "RS256" && publicKey.asymmetricKeyType !== "rsa") return { isValid: false, error: "Algorithm/key mismatch" };
+        if (alg === "ES256" && (publicKey.asymmetricKeyType !== "ec" || publicKey.asymmetricKeyDetails?.namedCurve !== "prime256v1")) return { isValid: false, error: "Algorithm/key mismatch" };
+        if (!/^[A-Za-z0-9_-]+$/.test(signature)) return { isValid: false, error: "Malformed signature" };
+        const verify = createVerify("SHA256");
         verify.update(signedData);
-        const isSigValid = verify.verify(publicKeyPem, Buffer.from(signature, "base64url"));
+        const isSigValid = verify.verify({ key: publicKey, ...(alg === "ES256" ? { dsaEncoding: "ieee-p1363" } : {}) }, Buffer.from(signature, "base64url"));
         if (!isSigValid) {
           return { isValid: false, error: "Cryptographic signature verification failed" };
         }
       }
 
+      if (payload.roles != null && (!Array.isArray(payload.roles) || payload.roles.some((role) => typeof role !== "string"))) return { isValid: false, error: "Invalid roles" };
       // 7. Check Required Roles/Scopes
       if (context.requiredRole) {
         const userRoles = payload.roles || (payload.scope ? payload.scope.split(" ") : []);

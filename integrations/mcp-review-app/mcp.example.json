@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "medcius-review-app": {
+      "command": "node",
+      "args": ["/absolute/path/to/Medcius/plugins/medcius/servers/review-app/src/index.mjs"]
+    }
+  }
+}

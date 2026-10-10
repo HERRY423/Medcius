@@ -1,0 +1,45 @@
+{
+  "status": "DRAFT_NOT_APPROVED_FOR_STUDY_EXECUTION",
+  "expected_episode_ids": [],
+  "observations": [],
+  "record_template_not_an_observation": {
+    "episode_id": null,
+    "packet_sha256": null,
+    "review_event_id": null,
+    "reference": {
+      "source_first": null,
+      "rater_a": null,
+      "rater_b": null,
+      "adjudication_complete": null,
+      "reference_sha256": null
+    },
+    "control": null,
+    "intervention": null
+  },
+  "arm_template_not_an_observation": {
+    "status": "not_observed",
+    "retrieval_seconds": null,
+    "reading_seconds": null,
+    "verification_seconds": null,
+    "correction_seconds": null,
+    "documentation_seconds": null,
+    "waiting_seconds": null,
+    "accuracy": {
+      "reference_facts": null,
+      "matched_facts": null,
+      "omitted_facts": null,
+      "incorrect_facts": null,
+      "unsupported_facts": null
+    },
+    "safety": {
+      "assessed": null,
+      "critical_opportunities": null,
+      "critical_omissions": null,
+      "wrong_patient": null,
+      "wrong_time": null,
+      "wrong_unit": null,
+      "false_closure": null,
+      "adverse_events": null
+    }
+  }
+}

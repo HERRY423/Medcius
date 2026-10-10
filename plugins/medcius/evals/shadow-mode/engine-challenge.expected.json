@@ -1,0 +1,4 @@
+{
+  "reference_kind": "authored_software_contract_expectations_not_clinician_gold",
+  "expected": {"k-normal":"clear","k-high":"flag","k-boundary":"flag","k-below":"clear","na-low":"flag","na-normal":"clear","missing-unit":"abstain","wrong-unit":"abstain"}
+}

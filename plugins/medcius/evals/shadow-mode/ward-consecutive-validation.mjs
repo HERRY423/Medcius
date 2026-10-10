@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import { getCardiologyWardFixture, HOSPITAL_SANDBOX_METADATA } from "../../servers/fhir/sandbox/hospital-cardiology-sandbox.mjs";
 import { PatientEvolutionEngine } from "../../lib/patient-evolution-engine.mjs";
-import { containsRawPhi } from "../../servers/phiguard/src/lib.mjs";
+import { scanStructuredValue } from "../../servers/phiguard/src/lib.mjs";
 
 console.log("================================================================================");
 console.log(` Medcius Cardiology Ward 2 Consecutive Inpatient Silent Validation`);
@@ -43,9 +43,8 @@ for (const wardCase of wardCases) {
   processedCount++;
 
   // 1. Check PHI Guard on generated summary
-  const summaryJson = JSON.stringify(summary24h);
-  const phiCheck = containsRawPhi(summaryJson);
-  if (phiCheck.hit) {
+  const phiCheck = scanStructuredValue(summary24h);
+  if (phiCheck.total > 0) {
     phiLeakageCount++;
   }
 

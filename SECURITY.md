@@ -1,8 +1,11 @@
 # Medcius 安全策略与漏洞披露规范 (Security Policy)
 
-> **版本**：`0.2.0-pilot`  
-> **适用范围**：Medcius 核心插件、只读数据桥接器（ReadOnlyHospitalDataBridge）、本地 MCP 服务与宿主适配层  
-> **最后修订**：2026-08-28
+> Product baseline: 0.8.0-pilot; document revision: 1; approval: DRAFT_UNAPPROVED
+
+
+> **版本**：`0.8.0-pilot`
+> **适用范围**：Medcius 核心插件、只读数据桥接器（ReadOnlyHospitalDataBridge）、本地 MCP 服务与宿主适配层
+> **最后修订**：2026-10-06
 
 ---
 
@@ -12,7 +15,7 @@ Medcius 目前处于工程试点与科研沙箱验证阶段。安全补丁与安
 
 | 版本系列 | 版本号 | 支持状态 | 说明 |
 |---|---|---|---|
-| **0.2.x** | `0.2.0-pilot` | 🟢 积极支持 (Active) | 当前工程试点与架构收敛主线 |
+| **0.8.x** | `0.8.0-pilot` | 🟢 积极支持 (Active) | 当前工程试点与架构收敛主线 |
 | **0.1.x** | `<= 0.1.9` | 🔴 已终止支持 (End of Life) | 遗留早期概念验证版本，不建议在任何环境中运行 |
 
 ---
@@ -53,9 +56,9 @@ Medcius 在架构上强制执行以下不可违背的安全契约。任何导致
 ### 3.1 报告渠道 (Reporting Channel)
 如果您发现了潜在的安全漏洞、PHI 泄露隐患或只读边界绕过缺陷，**请不要在公开的 GitHub Issue 中公开发布**。请通过以下途径提交私密报告：
 
-1. **GitHub 官方私密安全通报**：  
+1. **GitHub 官方私密安全通报**：
    前往仓库 [Security Advisories](https://github.com/HERRY423/Medcius/security/advisories) 页面，点击 **"Report a vulnerability"** 提交私密报告。
-2. **安全团队专用邮箱**：  
+2. **安全团队专用邮箱**：
    发送加密邮件至：`security-team@medcius.local`（如需 PGP 加密，请在邮件中索取公钥）。
 
 ### 3.2 报告内容建议
@@ -81,7 +84,7 @@ Medcius 在架构上强制执行以下不可违背的安全契约。任何导致
 
 ### 修复与公开披露流程
 1. **私密确认**：安全团队在收到报告后完成漏洞定级与复现；
-2. **补丁开发与验证**：在隔离分支中开发修复代码，并通过 37 项 CI 质量门禁；
+2. **补丁开发与验证**：在隔离分支中开发修复代码，并通过全量 CI 质量门禁（步数以 `scripts/run-all-checks.mjs` 的 `steps` 数组为准，实际执行数见 `out/quality-gates-latest.json`；禁止在文档中手写固定数字）；
 3. **协同发布**：推送安全补丁版本并发布 GitHub Security Advisory，向报告者致谢（经报告者同意）。
 
 ---
@@ -100,6 +103,6 @@ node tests/test-real-connectors.mjs
 # 3. 运行本地 AES-256-GCM 存储与审计链测试
 node tests/test-security.mjs
 
-# 4. 运行全量 37 项安全与合规门禁
+# 4. 运行全量安全与合规门禁（步数以 scripts/run-all-checks.mjs 为准）
 node scripts/run-all-checks.mjs
 ```

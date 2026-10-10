@@ -139,10 +139,12 @@ console.log("\n[Test 6] QMS internal audit runner (subset + attestation)...");
 const subset = spawnSync("node", ["scripts/qms-internal-audit.mjs", "--only", "m01,m06", "--no-write"], { cwd: REPO, encoding: "utf8", env: { ...process.env, NODE_NO_WARNINGS: "1" } });
 assert.equal(subset.status, 0, `subset audit failed: ${subset.stderr}`);
 assert.match(subset.stdout, /m01/);
-assert.match(subset.stdout, /pass_with_pending_attestation/);
+assert.match(subset.stdout, /machine_checks_pass_review_pending/);
+assert.match(subset.stdout, /PARTIAL_MACHINE_CHECKS/);
 const attested = spawnSync("node", ["scripts/qms-internal-audit.mjs", "--only", "m06", "--no-write", "--attest-item", "a01", "张三（合成）:管理者代表:首轮管理评审已召开"], { cwd: REPO, encoding: "utf8", env: { ...process.env, NODE_NO_WARNINGS: "1" } });
 assert.equal(attested.status, 0);
-assert.match(attested.stdout, /✅ 已签认/);
+assert.match(attested.stdout, /声明待核验/);
+assert.doesNotMatch(attested.stdout, /已签认/);
 assert.match(attested.stdout, /⬜ 待签认/, "其余未签认项必须显式待签");
 // audit machine failure path: corrupt a version file temporarily is too invasive; trust exit-code logic covered by m-checks
 console.log("✓ Audit runner: machine subset + attestation separation verified");

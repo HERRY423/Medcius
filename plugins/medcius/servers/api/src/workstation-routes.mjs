@@ -27,6 +27,7 @@ import { globalGovernance } from "../../../lib/governance-mode.mjs";
 import { isClinicalLandingEnabled } from "../../../lib/clinical-landing-policy.mjs";
 import { HANDLERS as auditHandlers } from "../../audit/src/tools.mjs";
 import { computeDecisionDigest } from "../../shared/digital-signature.mjs";
+import { ClinicianReviewSessions } from "../../../lib/clinician-review-session.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const isProduction = () => process.env.NODE_ENV === "production" || process.env.MEDCIUS_PROFILE === "production";
@@ -35,6 +36,15 @@ const isProduction = () => process.env.NODE_ENV === "production" || process.env.
 let configuredDirectoryAuth = null;
 let configuredGovernance = globalGovernance;
 let configuredCaAdapter = null;
+let configuredHandoverEventVerifier = null;
+let configuredHandoverHistoryVerifier = null;
+// Deployment-only injection. A request JSON flag can never activate this authority.
+export function setWorkstationHandoverEventVerifier(verifier, historyVerifier = null) {
+  if (verifier != null && typeof verifier !== "function") throw new Error("HANDOVER_VERIFIER_INVALID");
+  if (historyVerifier != null && typeof historyVerifier !== "function") throw new Error("HANDOVER_HISTORY_VERIFIER_INVALID");
+  configuredHandoverEventVerifier = verifier;
+  configuredHandoverHistoryVerifier = historyVerifier;
+}
 // Workstation-issued session revocation (logout). The shared JWT verifier cannot
 // know about directory revocation, so the workstation layer enforces it here.
 const revokedTokens = new Set();
@@ -107,10 +117,11 @@ function pickExplicit(body) {
   return out;
 }
 
-function reportEnvelope(workflow, payload) {
+function reportEnvelope(workflow, payload, patientContext = null) {
   return {
     workflow,
     payload,
+    patient_context: patientContext,
     payload_digest: computeDecisionDigest(payload),
     signable: true,
     note: "payload_digest 绑定医生所见报告的精确字节；签核即确认该摘要。",
@@ -120,6 +131,7 @@ function reportEnvelope(workflow, payload) {
 const defaultCa = createCaSignatureAdapter();
 
 export function createWorkstationHandler({ directoryAuth = null, governance = null, caAdapter = null } = {}) {
+  const reviewSessions = new ClinicianReviewSessions();
   const ca = () => caAdapter ?? configuredCaAdapter ?? defaultCa;
   const gov = () => governance ?? configuredGovernance ?? globalGovernance;
 
@@ -202,12 +214,31 @@ export function createWorkstationHandler({ directoryAuth = null, governance = nu
     }
 
     // ---- Workflow endpoints (permission-gated, feed-resolved) ----
+    // Reading drafts share the same identity, permission and silent-pilot boundary
+    // as their originating report. They never enter the CA/signoff pathway.
+    if (method === "POST" && ["/workstation/review/action", "/workstation/review/read"].includes(pathname)) {
+      if (!requireSession(auth, sendJson)) return;
+      if (isProduction() || isClinicalLandingEnabled() || gov().getCurrentStage()?.id === "silent_pilot") {
+        return sendJson(403, { error: "P0_CLINICIAN_SURFACE_SUPPRESSED" });
+      }
+      const permission = guardedAuthorize("round:summary");
+      if (!permission.allowed) return sendJson(permission.status, { error: permission.error });
+      try {
+        const state = pathname.endsWith("/read") ? reviewSessions.read(body?.session_id, auth) : reviewSessions.act(body, auth);
+        return sendJson(200, { review_session: state });
+      } catch (error) {
+        return sendJson(error.code === "REVIEW_STALE" ? 409 : 400, { error: error.code || "REVIEW_FAILED" });
+      }
+    }
+
     const workflowDefs = [
       {
         path: "/workstation/evolution",
         permission: "round:summary",
         run: (feeds, extra) => PatientEvolutionEngine.analyzePatientEvolution({
           patient: feeds.patient,
+          context: { tenant_id: auth.tenantId, doctor_id: auth.user, patient_id: extra.patient_id || feeds.patient?.id, encounter_id: extra.encounter_id || feeds.encounter?.id },
+          now: extra.as_of || new Date().toISOString(),
           timeWindow: extra.time_window || "24h",
           notes: feeds.notes || [],
           observations: feeds.observations || feeds.lis || [],
@@ -224,13 +255,21 @@ export function createWorkstationHandler({ directoryAuth = null, governance = nu
         path: "/workstation/shift-handover",
         permission: "round:summary",
         run: (feeds, extra) => ShiftHandoverEngine.analyzePatientHandover({
+          context: { tenant_id: auth.tenantId, patient_id: extra.patient_id || feeds.patient?.id, encounter_id: extra.encounter_id || feeds.encounter?.id },
+          asOf: extra.as_of || new Date().toISOString(),
+          windowStart: extra.window_start || new Date(new Date(extra.as_of || Date.now()).getTime() - 24 * 3600_000).toISOString(),
+          handoverContext: extra.handover_context || {}, handoverEvents: extra.handover_events || [],
+          verifyHandoverEvent: configuredHandoverEventVerifier, eventsAsOf: extra.events_as_of,
+          verifyHandoverHistory: configuredHandoverHistoryVerifier,
           patient: feeds.patient,
           encounter: feeds.encounter || {},
           notes: feeds.notes || [],
-          vitals: feeds.vitals || { vitals_summary: feeds.nis?.vitals_summary, fluid_balance: feeds.nis?.fluid_balance },
+          nursing: feeds.nursing || feeds.nis || [],
           observations: feeds.observations || feeds.lis || [],
-          medications: feeds.medications || (feeds.his_orders || []),
-          orders: feeds.orders || feeds.his_orders || [],
+          diagnosticReports: feeds.diagnosticReports || feeds.pacs || [],
+          medications: feeds.medications || (feeds.his_orders || []).filter(order => order.is_medication),
+          orders: feeds.orders || (feeds.his_orders || []).filter(order => !order.is_medication),
+          sourceAvailability: feeds.source_availability || [],
           allergies: feeds.allergies ?? null,
           shiftType: extra.shift_type,
         }),
@@ -239,28 +278,41 @@ export function createWorkstationHandler({ directoryAuth = null, governance = nu
         path: "/workstation/consult-preparation",
         permission: "round:summary",
         run: (feeds, extra) => ConsultPreparationEngine.prepareConsultDossier({
+          context: { tenant_id: auth.tenantId, patient_id: extra.patient_id || feeds.patient?.id, encounter_id: extra.encounter_id || feeds.encounter?.id },
+          asOf: extra.as_of || new Date().toISOString(),
           patient: feeds.patient,
           encounter: feeds.encounter || {},
           consultRequest: extra.consult_request || {},
           notes: feeds.notes || [],
           observations: feeds.observations || feeds.lis || [],
           diagnosticReports: feeds.diagnosticReports || feeds.pacs || [],
-          medications: feeds.medications || feeds.his_orders || [],
+          medications: feeds.medications || (feeds.his_orders || []).filter((order) => order.is_medication),
+          orders: feeds.orders || (feeds.his_orders || []).filter((order) => !order.is_medication),
+          sourceAvailability: feeds.source_availability || [],
+          nursing: feeds.nursing || feeds.nis || [],
           allergies: feeds.allergies ?? null,
         }),
       },
       {
         path: "/workstation/discharge-readiness",
         permission: "round:summary",
-        run: (feeds) => DischargeReadinessEngine.evaluateDischargeReadiness({
+        run: (feeds, extra) => DischargeReadinessEngine.evaluateDischargeReadiness({
+          context: { tenant_id: auth.tenantId, patient_id: extra.patient_id || feeds.patient?.id, encounter_id: extra.encounter_id || feeds.encounter?.id },
+          asOf: extra.as_of || new Date().toISOString(),
           patient: feeds.patient,
           encounter: feeds.encounter || {},
           diagnosticReports: feeds.diagnosticReports || feeds.pacs || [],
           inpatientMedications: feeds.medications || (feeds.his_orders || []).filter((o) => o.is_medication),
-          dischargeMedications: feeds.dischargeMedications || [],
+          orders: feeds.orders || (feeds.his_orders || []).filter((o) => !o.is_medication),
+          observations: feeds.observations || feeds.lis || [],
+          sourceAvailability: feeds.source_availability || [],
+          dischargeMedications: extra.dischargeMedications ?? feeds.dischargeMedications ?? [],
+          medicationTransitions: extra.medicationTransitions ?? feeds.medicationTransitions ?? [],
+          followUpPlans: extra.followUpPlans ?? feeds.followUpPlans ?? [],
+          patientInstructions: extra.patientInstructions ?? feeds.patientInstructions ?? [],
           notes: feeds.notes || [],
           allergies: feeds.allergies ?? null,
-          financialAccessRecords: feeds.financialAccessRecords || [],
+          financialAccessRecords: extra.financialAccessRecords ?? feeds.financialAccessRecords ?? [],
         }),
       },
     ];
@@ -279,7 +331,14 @@ export function createWorkstationHandler({ directoryAuth = null, governance = nu
       if (!feeds) return;
       try {
         const payload = workflowDef.run(feeds, body ?? {});
-        return sendJson(200, reportEnvelope(workflowDef.path.replace("/workstation/", ""), payload));
+        if (body?.encounter_id && feeds.encounter?.id !== body.encounter_id) throw new Error("ENCOUNTER_CONTEXT_MISMATCH");
+        const envelope = reportEnvelope(workflowDef.path.replace("/workstation/", ""), payload, {
+          patient_id: feeds.patient?.id ?? null, encounter_id: feeds.encounter?.id ?? null,
+        });
+        if (envelope.workflow === "evolution" && envelope.patient_context.encounter_id) {
+          envelope.review_session = reviewSessions.create(envelope, auth);
+        }
+        return sendJson(200, envelope);
       } catch (err) {
         return sendJson(400, { error: `WORKFLOW_FAILED: ${err.message}`, code: "WORKFLOW_FAILED" });
       }

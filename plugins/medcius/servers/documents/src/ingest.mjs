@@ -1,3 +1,4 @@
+import { writeSafeDiagnostic } from "../../shared/phi-output.mjs";
 // PLUMBING: bytes on disk → documents.content. Nothing here knows what a
 // contract is.
 //
@@ -212,11 +213,11 @@ async function preprocessFiles(files, force) {
     const n = done + skipped + failed + empty;
     const rate = done / Math.max(1, (now - t0) / 1000);
     const eta = done > 0 && n < total ? ` · ~${Math.ceil((total - n) / rate)}s remaining` : "";
-    process.stderr.write(
+    writeSafeDiagnostic(
       `preprocess: ${n}/${total} (${done} extracted, ${skipped} cached, ${empty} empty, ${failed} failed) · ${rate.toFixed(1)} docs/s${eta}\n`,
     );
   };
-  if (total > 0) process.stderr.write(`preprocess: ${total} source files · ${extractor.tool}\n`);
+  if (total > 0) writeSafeDiagnostic(`preprocess: ${total} source files · ${extractor.tool}\n`);
 
   const queue = [...sources];
   // A corpus can hold the same bytes at two paths. Without this, both lanes
@@ -249,7 +250,7 @@ async function preprocessFiles(files, force) {
       status.set(f.srcSha, "ok");
       warnings.push(`${f.rel}: kept cached extraction — ${why}`);
       progress();
-      return void process.stderr.write(`preprocess: KEEP  ${f.rel} — ${why}\n`);
+      return void writeSafeDiagnostic(`preprocess: KEEP  ${f.rel} — ${why}\n`);
     };
     mkdirSync(join(PARSED, f.srcSha.slice(0, 2)), { recursive: true });
     if (!lit && !/\.pdf$/i.test(f.rel)) {
@@ -263,7 +264,7 @@ async function preprocessFiles(files, force) {
           `liteparse required for ${extname(f.rel)}; install liteparse (lit on PATH or $LITEPARSE_PATH), or supply ${f.rel.replace(PREPROCESS_EXT, ".txt")}`,
         ),
       );
-      return void process.stderr.write(
+      return void writeSafeDiagnostic(
         `preprocess: SKIP  ${f.rel} — liteparse required for .docx/.xlsx/.pptx\n`,
       );
     }
@@ -273,7 +274,7 @@ async function preprocessFiles(files, force) {
       failed++;
       status.set(f.srcSha, "failed");
       writeFileSync(out, failText(`parse error on ${f.rel}`));
-      return void process.stderr.write(`preprocess: FAIL  ${f.rel}\n`);
+      return void writeSafeDiagnostic(`preprocess: FAIL  ${f.rel}\n`);
     }
     if (visibleChars(text) < MIN_EXTRACTED_CHARS) {
       if (prior === "ok")
@@ -281,7 +282,7 @@ async function preprocessFiles(files, force) {
       empty++;
       status.set(f.srcSha, "empty");
       writeFileSync(out, emptyText("page may be blank or unreadable after OCR", text));
-      return void process.stderr.write(
+      return void writeSafeDiagnostic(
         `preprocess: EMPTY ${f.rel} (liteparse/OCR returned no text)\n`,
       );
     }
@@ -310,7 +311,7 @@ async function preprocessFiles(files, force) {
   // unscannable when it is merely unread.
   const needs_ocr = !extractor.ocr && empty > 0;
   if (needs_ocr)
-    process.stderr.write(
+    writeSafeDiagnostic(
       `preprocess: ${empty} document(s) extracted to nothing and OCR is unavailable — install liteparse (see the skill's README) and re-run with force\n`,
     );
   const elapsed_ms = Math.round(performance.now() - t0);

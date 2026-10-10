@@ -358,7 +358,7 @@
   <!-- Critical Value Alarm Banner -->
   <div class="critical-banner" id="critical-banner">
     <div class="critical-banner-title">
-      <span>🚨 检验危急值强提醒 (需30分钟内完成闭环处置)</span>
+      <span>来源危急标记与数据覆盖（遵循医院危急值制度）</span>
     </div>
     <div id="critical-items-list"></div>
   </div>
@@ -558,6 +558,9 @@
       const critBanner = document.getElementById('critical-banner');
       const critList = document.getElementById('critical-items-list');
       critList.innerHTML = '';
+      const coverage = document.createElement('p');
+      coverage.textContent = (data.critical_visibility?.message || '危急值覆盖未确认，不能排除遗漏。') + ' 固定快照，不是实时监测；请核对院内 LIS 与危急值通知通道。';
+      critList.appendChild(coverage);
       if (data.critical_values && data.critical_values.length > 0) {
         critBanner.style.display = 'block';
         data.critical_values.forEach(cv => {
@@ -567,7 +570,7 @@
           critList.appendChild(div);
         });
       } else {
-        critBanner.style.display = 'none';
+        critBanner.style.display = 'block';
       }
 
       selectedItemIds.clear();

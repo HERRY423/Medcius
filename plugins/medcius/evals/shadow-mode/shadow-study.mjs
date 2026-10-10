@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Medcius Multi-Center Shadow-Mode Study Engine
-// Implements: Double-blind independent pharmacist annotation, 3rd person adjudication,
+// Scores supplied annotation columns; does not produce independent annotations.
 // multi-center/department/drug stratification, and pre-registered endpoint verification.
 
 import { writeFileSync, mkdirSync, readFileSync, existsSync } from "node:fs";
@@ -9,6 +9,39 @@ import { fileURLToPath } from "node:url";
 import { wilsonScore, mcnemarExact } from "../clinical-validation/run.mjs";
 import { canonicalJson, sha256Hex } from "../../servers/shared/crypto.mjs";
 import { inspectEvaluationKeys, resolveCallerEvidenceStatus } from "../evidence-status.mjs";
+import { assertEndpointVerdictConsistent, describeFailedEndpoints } from "../report-consistency.mjs";
+
+// Endpoints that decide `allPrimaryMet`, declared once. The report must render
+// every one of them.
+export const PRIMARY_ENDPOINT_IDS = Object.freeze([
+  "sensitivity_target_met",
+  "sensitivity_ci_lower_met",
+  "specificity_target_met",
+  "specificity_ci_lower_met",
+  "zero_critical_escape_met",
+  "inter_annotator_kappa_met",
+  "all_disagreements_adjudicated",
+  "no_abstentions",
+  "record_keys_complete",
+  "prediction_independence_established",
+]);
+
+const fmtPct = (value) => (typeof value === "number" && Number.isFinite(value) ? `${(value * 100).toFixed(1)}%` : "不可计算");
+const ENDPOINT_SPECS = {
+  prediction_independence_established: { label: "预测与参考标签独立性", threshold: "独立核验", observed: () => "未建立；同源统计夹具不可作为判别力证据" },
+  sensitivity_target_met: { label: "总体灵敏度 (Sensitivity)", threshold: "$\\ge 95.0\\%$", observed: (r) => r.overall.sensitivity.str },
+  sensitivity_ci_lower_met: { label: "灵敏度置信区间下限", threshold: "$\\ge 90.0\\%$", observed: (r) => fmtPct(r.overall.sensitivity.low) },
+  specificity_target_met: { label: "总体特异度 (Specificity)", threshold: "$\\ge 90.0\\%$", observed: (r) => r.overall.specificity.str },
+  specificity_ci_lower_met: { label: "特异度置信区间下限", threshold: "$\\ge 85.0\\%$", observed: (r) => fmtPct(r.overall.specificity.low) },
+  zero_critical_escape_met: { label: "严重禁忌漏报数 (FN)", threshold: "$= 0$ 例", observed: (r) => `${r.overall.fn} 例 / 未仲裁 ${r.overall.pending} 项` },
+  inter_annotator_kappa_met: { label: "双药师盲标一致性 (Kappa)", threshold: "$\\ge 0.80$", observed: (r) => (r.cohens_kappa == null ? "不可计算" : `$\\kappa = ${r.cohens_kappa}$`) },
+  all_disagreements_adjudicated: { label: "分歧项已全部仲裁", threshold: "未仲裁 $= 0$", observed: (r) => `${r.overall.pending} 项未仲裁` },
+  no_abstentions: { label: "无弃答/无效预测", threshold: "弃答 $= 0$", observed: (r) => `${r.overall.abstentions} 项弃答` },
+  record_keys_complete: { label: "记录键完整", threshold: "缺失记录键 $= 0$", observed: (r) => `${r.key_integrity.missing_keys} 项缺失记录键` },
+};
+export const ENDPOINT_LABELS = Object.fromEntries(Object.entries(ENDPOINT_SPECS).map(([id, spec]) => [id, spec.label]));
+const SPEC_GAPS = PRIMARY_ENDPOINT_IDS.filter((id) => !ENDPOINT_SPECS[id]);
+if (SPEC_GAPS.length > 0) throw new Error(`REPORT_SPEC_MISSING: no evidence row defined for ${SPEC_GAPS.join(", ")}`);
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, "..", "..", "..", "..");
@@ -165,22 +198,20 @@ export function evaluateShadowStudy(records, options = {}) {
     all_disagreements_adjudicated: unadjudicatedCount === 0,
     no_abstentions: overall.abstentions === 0,
     record_keys_complete: keyIntegrity.complete,
+    // This scorer has no trusted independent acquisition/attestation channel.
+    // Caller metadata cannot upgrade it. Statistics remain descriptive.
+    prediction_independence_established: false,
   };
 
-  const allPrimaryMet =
-    endpoints.sensitivity_target_met &&
-    endpoints.sensitivity_ci_lower_met &&
-    endpoints.specificity_target_met &&
-    endpoints.specificity_ci_lower_met &&
-    endpoints.zero_critical_escape_met &&
-    endpoints.inter_annotator_kappa_met &&
-    endpoints.all_disagreements_adjudicated &&
-    endpoints.no_abstentions &&
-    endpoints.record_keys_complete;
+  // Derived from the declared list, so the verdict and every report that
+  // renders it cannot drift apart.
+  const allPrimaryMet = PRIMARY_ENDPOINT_IDS.every((id) => endpoints[id] === true);
 
   return {
     isDemo,
     studyMetadata,
+    evaluation_kind: "supplied_label_statistics",
+    independence_status: "NOT_ESTABLISHED",
     total_cases: resolved.length,
     key_integrity: keyIntegrity,
     unadjudicated_cases_count: unadjudicatedCount,
@@ -190,6 +221,7 @@ export function evaluateShadowStudy(records, options = {}) {
     deptStats,
     drugStats,
     endpoints,
+    primary_endpoint_ids: PRIMARY_ENDPOINT_IDS,
     allPrimaryMet,
     passClassification: resolveCallerEvidenceStatus({ isDemo, metadata: studyMetadata, allPrimaryMet }),
     resolved,
@@ -319,8 +351,18 @@ export function generateSampleShadowCases() {
  * Generate Markdown Report for Multi-Center Shadow Study
  */
 export function buildShadowReport(evalRes) {
+  // Fail closed before any verdict text is produced: the printed table must be
+  // able to explain the headline.
+  const primaryRows = PRIMARY_ENDPOINT_IDS.map((id) => ({ id, met: evalRes.endpoints[id] === true }));
+  assertEndpointVerdictConsistent({
+    context: "shadow-study-report",
+    allPrimaryMet: evalRes.allPrimaryMet,
+    primaryEndpointIds: PRIMARY_ENDPOINT_IDS,
+    evidenceRows: primaryRows,
+  });
+  const failedSummary = describeFailedEndpoints(ENDPOINT_LABELS, PRIMARY_ENDPOINT_IDS, primaryRows);
   const lines = [];
-  lines.push(`# Medcius 静默评测统计报告（来源未独立核验）`);
+  lines.push(`# Medcius 标签统计夹具报告（非摘要引擎判别力评测）`);
   lines.push("");
 
   {
@@ -337,6 +379,7 @@ export function buildShadowReport(evalRes) {
   lines.push(`- **统计完整性**: 已解析金标准 ${evalRes.overall.scored_n}，未仲裁/无效评分 ${evalRes.overall.pending}，弃答/无效预测 ${evalRes.overall.abstentions}，缺失记录键 ${evalRes.key_integrity.missing_keys}。上述项目全部保留在输入总数中，并阻止终点通过。`);
   lines.push(`- **双药师一致性 (Cohen's Kappa)**: $\\kappa = ${evalRes.cohens_kappa}$ (${evalRes.endpoints.inter_annotator_kappa_met ? "达成预注册指标 ≥0.80" : "🔴 低于预设指标 0.80"})`);
   lines.push(`- **主要终点总体达成**: ${evalRes.allPrimaryMet ? "🟢 全部达标 (Passed)" : "🔴 未达标 (Deficient)"}`);
+  if (failedSummary) lines.push(`- **未达标项**: ${failedSummary}。总体判定由下表全部终点共同决定，任一失败即不通过。`);
   lines.push("");
   lines.push("---");
   lines.push("");
@@ -344,22 +387,33 @@ export function buildShadowReport(evalRes) {
   lines.push("");
   lines.push(`| 通行证评级 | 评级状态 | 评定说明 |`);
   lines.push(`|---|---|---|`);
-  lines.push(`| **1. 工程验证评级 (engineering_pass)** | ${evalRes.passClassification.engineering_pass ? "🟢 通过 (PASS)" : "🔴 未通过"} | 算法公式、分层统计引擎与置信区间运算无误 |`);
-  lines.push(`| **2. 合成管线评级 (synthetic_validation_pass)** | ${evalRes.passClassification.synthetic_validation_pass ? "🟢 通过 (PASS)" : "🔴 未通过"} | 合成模拟数据满足预设测试终点 |`);
+  const engineeringPass = evalRes.passClassification.engineering_pass;
+  const syntheticPass = evalRes.passClassification.synthetic_validation_pass;
+  const because = failedSummary ?? "无失败终点（报告无效）";
+  lines.push(`| **1. 工程验证评级 (engineering_pass)** | ${engineeringPass ? "🟢 通过 (PASS)" : "🔴 未通过"} | ${engineeringPass ? "本次运行的预注册终点全部达成，统计引擎与置信区间运算未检出异常；不构成独立工程审计。" : `本次运行存在未达成的预注册终点：${because}。该评级在本轮不通过。`} |`);
+  lines.push(`| **2. 合成管线评级 (synthetic_validation_pass)** | ${syntheticPass ? "🟢 通过 (PASS)" : "🔴 未通过"} | ${syntheticPass ? "合成模拟数据满足全部预注册测试终点。" : `合成模拟数据未满足全部预注册测试终点：${because}。`} |`);
   lines.push(`| **3. 临床证据评级 (clinical_evidence_pass)** | ${evalRes.passClassification.clinical_evidence_pass ? "🟢 准入通过 (CLINICAL PASS)" : "🔒 严格阻断 (BLOCKED: 演示数据严禁作为临床证据)"} | 真实医院 IRB 批件、双药师执业资格与独立盲标裁决 |`);
   lines.push("");
   lines.push("---");
   lines.push("");
   lines.push("## 1. 预注册主要终点核验表 (Pre-registered Endpoints)");
   lines.push("");
-  lines.push("| 临床效能终点 | 预注册合格门槛 | 实际观测值 (95% CI) | 达标判定 |");
+  lines.push("本表列出**全部**参与总体判定的终点；缺任一行即为无效报告。");
+  lines.push("");
+  lines.push("| 临床效能终点 | 预注册合格门槛 | 实际观测值 | 达标判定 |");
   lines.push("|---|---|---|---|");
-  lines.push(`| **总体灵敏度 (Sensitivity)** | $\\ge 95.0\\%$ (CI下限 $\\ge 90.0\\%$) | ${evalRes.overall.sensitivity.str} | ${evalRes.endpoints.sensitivity_target_met && evalRes.endpoints.sensitivity_ci_lower_met ? "✓ 达标" : "✗ 不达标"} |`);
-  lines.push(`| **总体特异度 (Specificity)** | $\\ge 90.0\\%$ (CI下限 $\\ge 85.0\\%$) | ${evalRes.overall.specificity.str} | ${evalRes.endpoints.specificity_target_met && evalRes.endpoints.specificity_ci_lower_met ? "✓ 达标" : "✗ 不达标"} |`);
-  lines.push(`| **严重禁忌漏报数 (FN)** | $= 0$ 例 (零漏报) | ${evalRes.overall.fn} 例 | ${evalRes.endpoints.zero_critical_escape_met ? "✓ 达标 (0漏报)" : "✗ 存在漏报"} |`);
-  lines.push(`| **双药师盲标一致性 (Kappa)** | $\\ge 0.80$ | $\\kappa = ${evalRes.cohens_kappa}$ | ${evalRes.endpoints.inter_annotator_kappa_met ? "✓ 达标" : "✗ 偏低 (需专家仲裁)"} |`);
-  lines.push(`| **阳性预测值 (PPV)** | $\\ge 85.0\\%$ | ${evalRes.overall.ppv.str} | ${(evalRes.overall.ppv.point ?? -1) >= 0.85 ? "✓ 达标" : "✗ 未达标或不可计算"} |`);
-  lines.push(`| **阴性预测值 (NPV)** | $\\ge 95.0\\%$ | ${evalRes.overall.npv.str} | ${(evalRes.overall.npv.point ?? -1) >= 0.95 ? "✓ 达标" : "✗ 未达标或不可计算"} |`);
+  for (const id of PRIMARY_ENDPOINT_IDS) {
+    const spec = ENDPOINT_SPECS[id];
+    const met = evalRes.endpoints[id] === true;
+    lines.push(`| **${spec.label}** | ${spec.threshold} | ${spec.observed(evalRes)} | ${met ? "✓ 达标" : "✗ 不达标"} |`);
+  }
+  lines.push("");
+  lines.push("### 1.1 参考指标（不参与总体判定）");
+  lines.push("");
+  lines.push("| 参考指标 | 参考门槛 | 实际观测值 | 判定 |");
+  lines.push("|---|---|---|---|");
+  lines.push(`| 阳性预测值 (PPV) | $\\ge 85.0\\%$ | ${evalRes.overall.ppv.str} | ${(evalRes.overall.ppv.point ?? -1) >= 0.85 ? "✓ 达标" : "✗ 未达标或不可计算"} |`);
+  lines.push(`| 阴性预测值 (NPV) | $\\ge 95.0\\%$ | ${evalRes.overall.npv.str} | ${(evalRes.overall.npv.point ?? -1) >= 0.95 ? "✓ 达标" : "✗ 未达标或不可计算"} |`);
   lines.push("");
   lines.push("---");
   lines.push("");
@@ -412,6 +466,8 @@ if (process.argv[1] && (process.argv[1].endsWith("shadow-study.mjs") || process.
     writeFileSync(outPath, reportMd, "utf8");
     writeFileSync(summaryPath, JSON.stringify({
       schema_version: "medcius.eval-summary.v1", execution_status: "COMPLETED",
+      evaluation_id: "label-statistics-fixture-v1", evaluation_kind: res.evaluation_kind,
+      independence_status: res.independence_status, cohort_unit: "generated_label_row",
       input_sha256: sha256Hex(canonicalJson(cases)), data_source_verified: false,
       total_cases: res.total_cases, overall: res.overall, endpoints: res.endpoints,
       pass_classification: res.passClassification,

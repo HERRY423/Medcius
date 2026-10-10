@@ -82,7 +82,7 @@ await llm.extract({ text });  // 只有 extract() —— 对象上不存在 deci
 ## 6. 升级检查单（每次升级逐项打勾）
 
 - [ ] `node scripts/deploy.mjs status` 全 PASS
-- [ ] `node scripts/run-all-checks.mjs` 全绿（44+ 门）
+- [ ] `node scripts/run-all-checks.mjs` 全绿（步数以该文件 steps 数组为准，见 out/quality-gates-latest.json）
 - [ ] 升级前 `upgrade` 已自动备份（manifest sha256 校验通过）
 - [ ] `medcius.env` 密钥未变化或经密钥系统轮换（轮换需治理窗口，见运维手册 §7）
 - [ ] `resident-probe --once` 无 P1/P2

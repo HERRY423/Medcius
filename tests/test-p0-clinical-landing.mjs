@@ -213,7 +213,7 @@ try {
       dataFeeds: feeds,
     }),
   });
-  assert.equal(captureRes.status, 200);
+  assert.equal(captureRes.status, 200, await captureRes.clone().text());
   const captureJson = await captureRes.json();
   assert.equal(captureJson.silent, true);
   assert.deepEqual(captureJson.cards, []);

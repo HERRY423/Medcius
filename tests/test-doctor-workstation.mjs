@@ -185,6 +185,52 @@ try {
   assert.equal(evolutionJson.workflow, "evolution");
   assert.ok(evolutionJson.payload_digest);
   assert.ok(evolutionJson.payload, "engine payload must be present");
+  assert.equal(evolutionJson.patient_context.patient_id, evolutionJson.payload.patient.id);
+  assert.ok(evolutionJson.patient_context.encounter_id);
+  const wrongEvolutionEncounter = await fetch(`${baseUrl}/workstation/evolution`, { method: "POST", headers: authHeadersFor(sessionToken),
+    body: JSON.stringify({ demo_ward: true, encounter_id: "wrong" }) });
+  assert.equal(wrongEvolutionEncounter.status, 400);
+
+  // Consultation endpoint must use the same evidence engine and authenticated tenant.
+  const consultRes = await fetch(`${baseUrl}/workstation/consult-preparation`, { method: "POST", headers: authHeadersFor(sessionToken),
+    body: JSON.stringify({ demo_ward: true, bed: "02床", consult_request: { department: "肾内科", purpose: "整理血钾变化" } }) });
+  assert.equal(consultRes.status, 200);
+  const consultJson = await consultRes.json();
+  assert.ok(consultJson.payload.snapshot_id);
+  assert.equal(consultJson.payload.views.drilldown.snapshot_id, consultJson.payload.snapshot_id);
+  assert.equal(consultJson.payload.medication_records_to_verify.length, 2);
+  const noPurpose = await fetch(`${baseUrl}/workstation/consult-preparation`, { method: "POST", headers: authHeadersFor(sessionToken),
+    body: JSON.stringify({ demo_ward: true, consult_request: { department: "肾内科" } }) });
+  assert.equal(noPurpose.status, 400);
+  const wrongEncounter = await fetch(`${baseUrl}/workstation/consult-preparation`, { method: "POST", headers: authHeadersFor(sessionToken),
+    body: JSON.stringify({ demo_ward: true, encounter_id: "wrong", consult_request: { department: "肾内科", purpose: "血钾" } }) });
+  assert.equal(wrongEncounter.status, 400);
+
+  const handoverRequest = { demo_ward: true, shift_type: "day_to_night" };
+  const handoverRes = await fetch(`${baseUrl}/workstation/shift-handover`, { method: "POST", headers: authHeadersFor(sessionToken), body: JSON.stringify(handoverRequest) });
+  assert.equal(handoverRes.status, 200);
+  const handoverJson = await handoverRes.json();
+  assert.equal(handoverJson.payload.responsibility.status, "not_proposed");
+  assert.equal(handoverJson.payload.sbar.recommendation.contingency_plans.length, 0);
+  assert.ok(handoverJson.payload.packet_digest);
+  const forgedHandover = await fetch(`${baseUrl}/workstation/shift-handover`, { method: "POST", headers: authHeadersFor(sessionToken),
+    body: JSON.stringify({ ...handoverRequest, handover_events: [{ event_id: "forged", type: "transfer_accepted", verified: true }] }) });
+  assert.equal(forgedHandover.status, 400, "JSON verified flag must not authorize a human handover event");
+
+  const dischargeRes = await fetch(`${baseUrl}/workstation/discharge-readiness`, { method: "POST", headers: authHeadersFor(sessionToken),
+    body: JSON.stringify({ demo_ward: true, dischargeMedications: [{ drug_name: "unbound-source-med" }] }) });
+  assert.equal(dischargeRes.status, 200);
+  const dischargeJson = await dischargeRes.json();
+  assert.equal(dischargeJson.payload.clinical_suitability.is_suitable_for_discharge, null);
+  assert.equal(dischargeJson.payload.readiness_verdict.is_ready, null);
+  assert.ok(dischargeJson.payload.excluded_records.documents.dischargeMedications.some(r => r.reason === "SOURCE_REFERENCE_MISSING"));
+  assert.equal(dischargeJson.payload.domains.follow_up.status, "unknown");
+  const wrongDischargeEncounter = await fetch(`${baseUrl}/workstation/discharge-readiness`, { method: "POST", headers: authHeadersFor(sessionToken),
+    body: JSON.stringify({ demo_ward: true, encounter_id: "wrong" }) });
+  assert.equal(wrongDischargeEncounter.status, 400);
+  const phiDischarge = await fetch(`${baseUrl}/workstation/discharge-readiness`, { method: "POST", headers: authHeadersFor(sessionToken),
+    body: JSON.stringify({ demo_ward: true, patientInstructions: [{ text: "电话 13800138000" }] }) });
+  assert.equal(phiDischarge.status, 400);
 
   // record quality workflow
   const rqRes = await fetch(`${baseUrl}/workstation/record-quality`, { method: "POST", headers: authHeadersFor(sessionToken), body: JSON.stringify({ note_text: "出院记录\n性别：男 年龄：67岁\n入院日期：2024-08-01 出院日期：2024-08-10\n住院天数：3天\n离院方式：7\n出院诊断：新生儿肺炎" }) });

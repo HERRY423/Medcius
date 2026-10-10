@@ -1,5 +1,8 @@
 # 02 产品描述与技术架构说明书（分类界定送审草案）
 
+> Product baseline: 0.8.0-pilot; document revision: 1; approval: DRAFT_UNAPPROVED
+
+
 > 依据《医疗器械软件注册审查指导原则（2022年修订版）》与《人工智能医用软件产品分类界定指导原则》编制。
 
 ---

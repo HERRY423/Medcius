@@ -157,6 +157,8 @@ export class ReadOnlyHospitalDataBridge {
       sourceAvailability.push({
         connector_id: connector.id, kind: connector.kind,
         status: hasDegradedRecords || hasParseWarnings || incomplete ? "unknown" : records.length === 0 ? "available_empty" : "available",
+        synchronized_through: envelope.synchronized_through ?? null,
+        query_read_complete: envelope.complete === true && !hasDegradedRecords && !hasParseWarnings && !incomplete,
         fetched_at: envelope.fetched_at, source_version: envelope.source_version ?? null,
         record_count: records.length, accepted_record_count: owned.length,
         reason_code: hasDegradedRecords ? "SOURCE_RECORDS_UNCONFIRMED" : hasParseWarnings ? "SOURCE_PARSE_DEGRADED" : incomplete ? "SOURCE_READ_INCOMPLETE" : null,

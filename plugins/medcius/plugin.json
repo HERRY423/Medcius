@@ -10,6 +10,26 @@
   "homepage": "https://github.com/HERRY423/Medcius",
   "repository": "https://github.com/HERRY423/Medcius",
   "license": "MIT",
+  "capabilities": {
+    "core": [
+      "patient-evolution-summary",
+      "fhir",
+      "clinical-note-extract",
+      "doc-extract"
+    ],
+    "incubating": [
+      "shift-handover",
+      "consult-preparation",
+      "discharge-readiness-check"
+    ],
+    "quarantined_reference": [
+      "patient-affordability-context",
+      "nhsa-record-quality",
+      "settlement-from-note",
+      "drg-dip-reconciliation"
+    ],
+    "policy": "core 默认启用；incubating 默认冻结，需治理决议+具名规则包+显式启用的三件套方可试点，不因安装自动激活；quarantined_reference 不是临床工作流技能，需独立预期用途与法规/法务审批，默认禁用，不得进入默认工作流判定链。"
+  },
   "keywords": [
     "临床医生 Agent 插件",
     "临床工作流技能",

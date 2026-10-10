@@ -1,5 +1,7 @@
 # 软件需求规格（SRS · 中国技能线）
 
+> Product baseline: 0.8.0-pilot; document revision: 1; approval: DRAFT_UNAPPROVED
+
 > **状态**：骨架 v1——系统级需求（ARCH 层）已具文，技能行为层需求由 `TRACEABILITY.md`（63 条，自动生成）承载。
 > **依据**：《医疗器械软件注册审查指导原则（2022 年修订版）》（器审中心通告 2022 年第 9 号）「软件需求规范文档」要求；GB/T 42062-2022 风险管理接口见同目录 `RISK-MANAGEMENT.md`。
 > **编号规则**：`ARCH-nn` = 系统级架构需求；`REQ-<用例id>` = 技能行为层需求（见追溯矩阵）。每条需求的验证列指向可执行证据。
@@ -8,10 +10,10 @@
 
 ### 1.1 目的与范围
 
-本文规定 Medcius 中国临床生产技能线（`patient-evolution-summary`、`shift-handover`、`consult-preparation`、`discharge-readiness-check`、`clinical-note-extract`、`fhir`）及其本地只读 MCP 基础设施的需求。
+本文登记 Medcius 工程需求与历史实验用例。当前医院试点仅含 `patient-evolution-summary`；交接班、会诊和出院核对为 P0-FROZEN 工程储备。编码、审方及其他实验用例不属于本次临床预期用途。范围以 `docs/ops/FIRST-HOSPITAL-SILENT-PILOT.md` 和运行时策略为准。
 
 > ⚠️ **技能分级与隔离机制**：
-> 1. **生产核心技能线 (Production Line)**：以一线住院医生查房前演变、交接班备忘、会诊资料包、出院核对为核心，以非辅助决策的信息整理与多源确定性对齐为法定边界。
+> 1. **当前试点范围**：仅查房前患者演变静默研究；其余工作流的实现与测试不代表临床启用或分类结论。
 > 2. **实验研究技能线 (Experimental Line)**：原 `nhsa-coding`、`prescription-review`、`nmpa-drugs`、`china-clinical-trials` 等技能已移入 `experimental/` 隔离评测区，默认在生产环境中关闭并禁止即兴调用。
 
 ### 1.2 预期用途边界（需求之上的约束）

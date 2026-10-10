@@ -1,8 +1,8 @@
+import { requiresRecordReconciliation } from "./record-lifecycle.mjs";
 import { canonicalJson } from "../servers/shared/crypto.mjs";
 import { classifyRecordLifecycle } from "./record-lifecycle.mjs";
 
 const RESULT_STATUSES = new Set(["final", "revised"]);
-const RECONCILIATION_STATUSES = new Set(["cancelled", "entered_in_error"]);
 const CURRENT_TIME_STATUSES = new Set(["in_window", "historical"]);
 const FOLLOWUP_SOURCE_KINDS = new Set(["his", "his_orders", "order", "lis", "laboratory", "observation", "pacs", "imaging", "diagnostic_report"]);
 
@@ -50,7 +50,7 @@ function recordPriority(record) {
   return lower(record?.priority || record?.urgency || record?.order_priority);
 }
 
-function isExplicitCritical(record) {
+export function isExplicitCritical(record) {
   return record?.is_critical === true || record?.is_critical_reported === true || lower(record?.interpretation) === "critical";
 }
 
@@ -165,13 +165,16 @@ function stateForGroup(entries, nowMs) {
     (lifecycle?.version_id != null && String(lifecycle.acknowledged_version_id) === String(lifecycle.version_id));
   const revisionRequiresVersionBinding = lifecycle?.change_type === "revision";
   const revisionBound = !revisionRequiresVersionBinding || (lifecycle.version_id != null && lifecycle.acknowledged_version_id != null && boundToVersion);
+  const acknowledgementConflict = selected?.record?.acknowledged === false && ackMs != null;
+  if (acknowledgementConflict) uncertainty.push("ACKNOWLEDGEMENT_CONFLICT");
   // An acknowledgement must belong to the selected result and occur no earlier
   // than that result's actual change. Order acknowledgement never flows to results.
-  if (temporalKnown && ackMs != null && changeMs != null && ackMs >= changeMs && ackMs <= nowMs && boundToId && boundToVersion && revisionBound) reviewStatus = "acknowledged";
+  if (acknowledgementConflict) reviewStatus = "unknown";
+  else if (temporalKnown && ackMs != null && changeMs != null && ackMs >= changeMs && ackMs <= nowMs && boundToId && boundToVersion && revisionBound) reviewStatus = "acknowledged";
   else if (temporalKnown && ((selected?.record?.acknowledged === true && ackMs == null) || (ackMs != null && boundToVersion && !revisionBound))) reviewStatus = "unknown";
   const resultStatus = lifecycle?.result_status || "unknown";
-  const closureStatus = !temporalKnown ? "unknown"
-    : RECONCILIATION_STATUSES.has(resultStatus) ? "requires_reconciliation"
+  const closureStatus = !temporalKnown || acknowledgementConflict ? "unknown"
+    : requiresRecordReconciliation(resultStatus) ? "requires_reconciliation"
       : RESULT_STATUSES.has(resultStatus) && selected.sourceType !== "order" && reviewStatus === "acknowledged" ? "closed" : "open";
   return {
     source_type: selected?.sourceType || unique[0]?.sourceType || "unknown",
@@ -237,7 +240,7 @@ function aggregateStates(states, availability) {
   const resultStates = states.filter((state) => state.source_type !== "order");
   const considered = resultStates.length ? resultStates : states;
   const reasons = [...new Set(states.flatMap((state) => state.uncertainty_reasons))];
-  const terminals = states.filter((state) => RECONCILIATION_STATUSES.has(state.result_status));
+  const terminals = states.filter((state) => requiresRecordReconciliation(state.result_status));
   const unknown = states.some((state) => state.closure_status === "unknown");
   const unresolved = considered.filter((state) => state.closure_status !== "closed");
   const representative = (unresolved.length ? unresolved : considered).slice().sort((a, b) => (timeValue(a.stage_timestamp) ?? Infinity) - (timeValue(b.stage_timestamp) ?? Infinity))[0];
@@ -295,6 +298,11 @@ function sourceReportedRules(trajectories) {
     });
   }
   return rules;
+}
+
+// Expose the same source-review interpretation for ordinary result documentation checks.
+export function getSourceRecordFollowupState(record, { sourceType = "diagnostic_report", now = new Date() } = {}) {
+  return stateForGroup([{ record, sourceType, lifecycle: classifyRecordLifecycle(record, { sourceType, now }) }], new Date(now).getTime());
 }
 
 export function trackHighRiskFollowup({

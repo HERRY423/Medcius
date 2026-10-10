@@ -17,6 +17,7 @@ npm-debug.log*
 dist/
 build/
 out/
+output/
 *.tsbuildinfo
 
 # Python

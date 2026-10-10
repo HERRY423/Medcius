@@ -71,7 +71,7 @@
 |---|---|---|
 | 配置与语料就绪 | `node scripts/doctor.mjs` | 每次部署后 + 每日 |
 | MCP 工具面 | `node scripts/smoke-mcp.mjs` | 每次部署后 |
-| 全量质量门禁 | `node scripts/run-all-checks.mjs`（30 步，含性能基线第 29 步与安全加固第 30 步） | 每次变更 + CI |
+| 全量质量门禁 | `node scripts/run-all-checks.mjs`（步数以该文件 `steps` 数组为准，含性能基线与安全加固门；实际步数见 `out/quality-gates-latest.json`） | 每次变更 + CI |
 | 性能基线对比 | `plugins/medcius/evals/performance-baseline/reports/performance-baseline.md` 与上一发布版报告对比 | 每次发布 |
 
 院内常驻探针**已落地**：`scripts/resident-probe.mjs`（规则确定性可单测，`--once` 供 CI/巡检、`--daemon --metrics-out` 供常驻，Prometheus `medcius_probe_*` 供院方监控平台采集）。传输边缘限流/锁定状态为进程内存态，多实例部署时上移至 mTLS 网关（`docs/compliance/SECURITY-ARCHITECTURE.md` §6）。

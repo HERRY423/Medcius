@@ -1,19 +1,34 @@
 {
   "schema_version": "medcius.eval-summary.v1",
   "execution_status": "COMPLETED",
-  "input_sha256": "ef2f03af3abca97e988cbafdd829715f839f788ac94b5dcef9ab9ba0d103e1db",
+  "evaluation_id": "engine-anchor-replay-v2",
+  "cohort_unit": "synthetic_patient",
+  "replay_as_of": "2026-08-28T00:00:00.000Z",
+  "anchor_metrics": {
+    "text": 4,
+    "verbatim_verified": 4,
+    "text_unverified": 0,
+    "structured": 151,
+    "resource_linked": 151,
+    "structured_unverified": 0,
+    "derived": 21,
+    "sources_linked": 21,
+    "derived_unverified": 0,
+    "gap": 35
+  },
+  "input_sha256": "ef626929bafb05365ac84d677117547c8a725d8e741fa13e04f5fca3410c1b03",
   "data_source_verified": false,
   "total_cases": 18,
-  "total_candidate_items": 207,
+  "total_candidate_items": 211,
   "span_metric": {
     "matched": 4,
-    "missing": 203,
+    "missing": 207,
     "unverified": 0,
-    "denominator": 207,
+    "denominator": 211,
     "wilson_ci_percent": {
-      "point": 1.93,
-      "lower": 0.75,
-      "upper": 4.86
+      "point": 1.9,
+      "lower": 0.74,
+      "upper": 4.77
     }
   },
   "cohens_kappa": null,

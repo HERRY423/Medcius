@@ -1,0 +1,94 @@
+{
+  "schema_version": "medcius.evidence-index.v1",
+  "clinical_evidence_pass": false,
+  "entries": [
+    {
+      "id": "cross-evaluation-negative-controls-v1",
+      "path": "out/evaluation-negative-controls.json",
+      "scope": "六个现有评分器的错误输出与无效输入检测；不建立金标准独立性",
+      "status": "SYNTHETIC_ONLY",
+      "sha256": "e1c53756b0715a08dd98bb73a4106ed603b5255758b773957a81866411e400e3",
+      "input_sha256": null,
+      "metrics": "6 类评测 / 38 项负对照；未检出 0",
+      "clinical_evidence_pass": false
+    },
+    {
+      "id": "label-statistics-fixture-v1",
+      "path": "out/shadow-mode-multicenter-summary.json",
+      "scope": "生成标签行；不运行摘要引擎",
+      "status": "SYNTHETIC_ONLY",
+      "sha256": "fff015150ed53d3350f043dc97e4586332170109834694228081f271447de41a",
+      "input_sha256": "da448009e5d4feb266988f02e38314e6acbd6eeb15106b98a0c90ccc9476650a",
+      "metrics": "1188 行；独立性 NOT_ESTABLISHED; 终点通过 false",
+      "clinical_evidence_pass": false
+    },
+    {
+      "id": "engine-anchor-replay-v2",
+      "path": "plugins/medcius/evals/shadow-mode/reports/real-world-shadow-study-summary.json",
+      "scope": "固定时间的合成患者回放",
+      "status": "SYNTHETIC_ONLY",
+      "sha256": "2861b2172e267958db86df04c02b80c80baf9c73fab628a1336a473387d8298c",
+      "input_sha256": "ef626929bafb05365ac84d677117547c8a725d8e741fa13e04f5fca3410c1b03",
+      "metrics": "18 例 / 211 候选；锚点分类 {\"text\":4,\"verbatim_verified\":4,\"text_unverified\":0,\"structured\":151,\"resource_linked\":151,\"structured_unverified\":0,\"derived\":21,\"sources_linked\":21,\"derived_unverified\":0,\"gap\":35}",
+      "clinical_evidence_pass": false
+    },
+    {
+      "id": "engine-policy-challenge-v1",
+      "path": "plugins/medcius/evals/shadow-mode/reports/engine-challenge-summary.json",
+      "scope": "软件契约预期；非独立医师金标准",
+      "status": "SYNTHETIC_ONLY",
+      "sha256": "6c8d4fd190be1d702e6a31d9f64c415e91a2df3dae2846e2fea5d5cdc16ac9c0",
+      "input_sha256": "13a4dee78ba21e463f5d97b2dec907be61d78abccc8cd9185cbf0ef3695522c7",
+      "metrics": "8 例；不匹配 0；负对照 4",
+      "clinical_evidence_pass": false
+    },
+    {
+      "id": "time-motion-assumptions-v1",
+      "path": "plugins/medcius/evals/time-motion/reports/time-motion-assumptions-summary.json",
+      "scope": "预设工作流时间模型",
+      "status": "SYNTHETIC_ONLY",
+      "sha256": "f2a09679953bbd77fec16c6eefd4d9d51d6afb994c8c024fbf26cb664ac05885",
+      "input_sha256": null,
+      "metrics": "假设节省 78.8%",
+      "clinical_evidence_pass": false
+    },
+    {
+      "id": "time-motion-four-row-simulation-v1",
+      "path": "plugins/medcius/evals/time-motion/reports/time-motion-statistical-summary.json",
+      "scope": "另一个四行合成输入；不与预设模型合并",
+      "status": "SYNTHETIC_ONLY",
+      "sha256": "53cd49b1c7a14eca57ff4ca76212f3d0e4a9cb840a00c771799e18fcbb8d4588",
+      "input_sha256": "6d2345424c2d535322ec414121a4a01697aa6fe4930536288d81e5cb45207264",
+      "metrics": "4 行；描述性节省 79.4%",
+      "clinical_evidence_pass": false
+    },
+    {
+      "id": "noise-fixture-v1",
+      "path": "plugins/medcius/evals/real-world-noise/reports/noise-robustness-baseline.json",
+      "scope": "固定噪声夹具；非真实临床泛化",
+      "status": "SYNTHETIC_ONLY",
+      "sha256": "5c72ec0046bcf4d88e29bc1fe0ea5ea9539d1409dae72e3491c4611ed0e6a588",
+      "input_sha256": null,
+      "metrics": "clean: 100.0% [88.6%~100.0%]；heading_variants: 100.0% [88.6%~100.0%]；whitespace_chaos: 96.7% [83.3%~99.4%]；section_reorder: 100.0% [88.6%~100.0%]；ocr_confusion: 100.0% [88.6%~100.0%]；abbreviation_dialect: 73.3% [55.6%~85.8%]；scan_artifacts: 100.0% [88.6%~100.0%]；combined: 66.7% [48.8%~80.8%]",
+      "clinical_evidence_pass": false
+    },
+    {
+      "id": "benefit-negative-control-v1",
+      "path": "plugins/medcius/evals/clinical-benefit/reports/synthetic-measurement-summary.json",
+      "scope": "反向计时与缺失测量负对照",
+      "status": "SYNTHETIC_ONLY",
+      "sha256": "c6f623a6387b7c8b4963afd6b80dc3086dce15b616fc2283d1b6fd461c661ee6",
+      "input_sha256": null,
+      "metrics": "描述性节省 -10 秒；缺失 1；获益 null",
+      "clinical_evidence_pass": false
+    },
+    {
+      "id": "public-benchmark",
+      "path": "plugins/medcius/evals/public-benchmarks/README.md",
+      "scope": "未运行公开数据集评测；转换器不计为评测结果",
+      "status": "NOT_RUN",
+      "sha256": null,
+      "metrics": null
+    }
+  ]
+}

@@ -1,7 +1,10 @@
 # Medcius 临床安全声明与使用边界规范 (Clinical Safety & Non-CDS Policy)
 
-> **版本**：`0.2.0-pilot`  
-> **法定定位**：非辅助决策的信息整理与多源时序对齐工具（Non-CDS Clinical Information Collation Tool）  
+> Product baseline: 0.8.0-pilot; document revision: 1; approval: DRAFT_UNAPPROVED
+
+
+> **版本**：`0.8.0-pilot`
+> **法定定位**：非辅助决策的信息整理与多源时序对齐工具（Non-CDS Clinical Information Collation Tool）
 > **最后修订**：2026-08-28
 
 ---
@@ -48,7 +51,7 @@ Medcius 是一个面向一线临床住院医生的 **Agent 插件（Plugin）**�
 |---|---|---|---|
 | **Level 1 走廊胶囊**<br>*(Corridor Capsule)* | **~3 秒** | 平稳 (STABLE) / 波动 (CHANGED) / 危急 (CRITICAL)；查房路线提示 | **仅由确定性危急值/极值规则驱动**。<br>标明：*「工作流提示，非医疗医嘱或分诊结论」*，绝非模型凭空抒情。 |
 | **Level 2 演变卡片**<br>*(Evolution Card)* | **~15 秒** | 四区块结构化事实：变了什么、待办事项、资料缺口、跨源对齐 | **四区块纯事实呈现**。<br>任何并列观察必须平衡展示支持、反驳与未评估项，禁止概率排序。 |
-| **Level 3 床旁深挖**<br>*(Bedside Drilldown)* | **床旁需要时** | 逐条原文高亮 Span、FHIR 资源 ID、LIS/PACS 原始编号、时间戳 | **穿透回溯至真实证据**。<br>医生点击可直接定位到检验原始值或病程原始句子。 |
+| **Level 3 床旁深挖**<br>*(Bedside Drilldown)* | **床旁需要时** | 文本逐字核验及原文偏移、结构化资源关联、派生汇总的组成来源、明确缺口 | 仅 `verbatim_verified` 可提供原文定位；`resource_linked` / `sources_linked` 仅证明记录关联，不证明临床准确性。未核验项不高亮；医院原文跳转须由宿主集成并另行验收。 |
 
 ---
 
@@ -60,8 +63,8 @@ Medcius 坚决反对过度宣称。代码工程测试通过绝不等于具备真
 ================================================================================
  Medcius 三层成熟度与验证状态说明 (Three-Tier Pass Status)
 ================================================================================
- - 1. engineering_pass:          🟢 PASS (单元测试、只读接口、PHI脱敏通过)
- - 2. synthetic_validation_pass:  🟢 PASS (合成数据集、陷阱用例、评测管线通过)
+ - 1. engineering_pass:          以本次自动化检查日志为准
+ - 2. synthetic_validation_pass:  NOT_ESTABLISHED（脚本执行成功不代表所有评测终点通过）
  - 3. clinical_evidence_pass:    🔒 BLOCKED (需经伦理审批的真实多中心双盲临床证据)
 ================================================================================
 ```

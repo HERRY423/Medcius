@@ -1,3 +1,4 @@
+import { writeSafeDiagnostic } from "../../shared/phi-output.mjs";
 // Medcius tool handlers for the FHIR server.
 //
 // One handler per tool in schemas.mjs. The wire contract (input schemas,
@@ -209,7 +210,7 @@ export const HANDLERS = {
     /** @type {string | undefined} */
     let withheld;
     if (!token && !client_id) ({ token, withheld } = resolveEnvBearerToken(baseUrl));
-    if (withheld) process.stderr.write(`mcp-server-fhir: ${withheld}\n`);
+    if (withheld) writeSafeDiagnostic(`mcp-server-fhir: ${withheld}\n`);
     const requestedScope = scope ?? DEFAULT_SCOPE;
 
     if (!token && cid) {
@@ -502,8 +503,8 @@ export const HANDLERS = {
     json(await getDocumentContent(requireSession(), /** @type {string} */ (a.doc_ref_id))),
 
   // writes a local temp file, so its frozen schema carries no readOnlyHint — it should prompt
-  save_document_for_extraction: async (a) =>
-    json(await saveDocumentForExtraction(requireSession(), /** @type {string} */ (a.doc_ref_id))),
+  save_document_for_extraction: async () =>
+    json({ status: "BLOCKED", reason: "PHI_UNSCANNABLE_ATTACHMENT_EXPORT", path: null }),
 
   // Writes — registered without readOnlyHint so they always prompt. They will
   // 403 unless the user passed a write scope (e.g. user/*.cruds) to connect();

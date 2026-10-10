@@ -49,11 +49,12 @@ assert.throws(
 );
 
 // 1f. Patient mismatch
-const sampleFeeds = getCardiologyMultiSourceFeeds();
+const AS_OF = "2026-10-06T10:00:00.000Z";
+const sampleFeeds = getCardiologyMultiSourceFeeds({ now: AS_OF });
 assert.throws(
   () => HospitalAgentAdapter.executePreRoundWorkflow({
     host: HOST_TYPES.HOSPITAL_CUSTOM_AGENT,
-    context: { tenant_id: "hosp_a", doctor_id: "DOC-01", patient_id: "pat-wrong-id", encounter_id: "enc-01" },
+    context: { as_of: AS_OF, tenant_id: "hosp_a", doctor_id: "DOC-01", patient_id: "pat-wrong-id", encounter_id: "enc-01" },
     dataFeeds: sampleFeeds[0],
   }),
   /FAIL_CLOSED: Patient record mismatch/,
@@ -68,7 +69,7 @@ const feedWithRawPhi = {
 assert.throws(
   () => HospitalAgentAdapter.executePreRoundWorkflow({
     host: HOST_TYPES.HOSPITAL_CUSTOM_AGENT,
-    context: { tenant_id: "hosp_a", doctor_id: "DOC-01", patient_id: "pat-cardio-001", encounter_id: "enc-01" },
+    context: { as_of: AS_OF, tenant_id: "hosp_a", doctor_id: "DOC-01", patient_id: "pat-cardio-001", encounter_id: "enc-01" },
     dataFeeds: feedWithRawPhi,
   }),
   /FAIL_CLOSED_PHI_VIOLATION/,
@@ -85,7 +86,7 @@ console.log("\n[Test 2] Testing multi-source workflow execution for custom Hospi
 const bed1Feed = sampleFeeds[0];
 const resBed1 = HospitalAgentAdapter.executePreRoundWorkflow({
   host: HOST_TYPES.HOSPITAL_CUSTOM_AGENT,
-  context: {
+  context: { as_of: AS_OF,
     tenant_id: "hospital_pku_cardio",
     doctor_id: "DOC-PKU-8801",
     doctor_name: "林德明 (主任医师)",
@@ -113,6 +114,7 @@ assert.ok(whatChanged.imaging_impressions?.length > 0);
 // Verify provenance envelope
 assert.ok(resBed1.provenance.envelope_sha256);
 assert.equal(resBed1.provenance.envelope_sha256.length, 64);
+assert.match(resBed1.provenance.envelope_sha256, /^[a-f0-9]{64}$/);
 assert.ok(resBed1.provenance.evidence_count >= 5);
 
 console.log(`✓ Hospital Agent execution succeeded (Total items: ${resBed1.summary.total_items_count}, SHA-256: ${resBed1.provenance.envelope_sha256.slice(0, 12)}...)`);
@@ -125,7 +127,7 @@ console.log("\n[Test 3] Testing restricted/special antibiotic duration tracking 
 const bed3Feed = sampleFeeds[2];
 const resBed3 = HospitalAgentAdapter.executePreRoundWorkflow({
   host: HOST_TYPES.CDS_HOOKS_ADAPTER,
-  context: {
+  context: { as_of: AS_OF,
     tenant_id: "hospital_pku_cardio",
     doctor_id: "DOC-PKU-8801",
     doctor_name: "林德明 (主任医师)",
@@ -155,7 +157,7 @@ const selectedItemIds = [
 ].filter(Boolean);
 
 const draftRes = HospitalAgentAdapter.generateProgressNoteDraft({
-  context: {
+  context: { as_of: AS_OF,
     tenant_id: "hospital_pku_cardio",
     doctor_id: "DOC-PKU-8801",
     doctor_name: "林德明 (主任医师)",
@@ -212,7 +214,7 @@ const routedPreRound = HospitalAgentAdapter.routeAndExecuteWorkflow({
   skillId: "patient-evolution-summary",
   catalog: sampleCatalog,
   mode: "production",
-  context: {
+  context: { as_of: AS_OF,
     tenant_id: "hospital_pku_cardio",
     doctor_id: "DOC-PKU-8801",
     patient_id: "pat-cardio-001",
@@ -233,7 +235,7 @@ assert.throws(
     skillId: "unapproved-improvised-diagnostics",
     catalog: sampleCatalog,
     mode: "production",
-    context: { tenant_id: "hosp_a", doctor_id: "doc_1", patient_id: "pat-cardio-001", encounter_id: "enc-01" },
+    context: { as_of: AS_OF, tenant_id: "hosp_a", doctor_id: "doc_1", patient_id: "pat-cardio-001", encounter_id: "enc-01" },
     dataFeeds: bed1Feed,
   }),
   /FAIL_CLOSED_SKILL_UNAPPROVED/,
@@ -246,7 +248,7 @@ assert.throws(
     skillId: "quarantined-experimental-skill",
     catalog: sampleCatalog,
     mode: "production",
-    context: { tenant_id: "hosp_a", doctor_id: "doc_1", patient_id: "pat-cardio-001", encounter_id: "enc-01" },
+    context: { as_of: AS_OF, tenant_id: "hosp_a", doctor_id: "doc_1", patient_id: "pat-cardio-001", encounter_id: "enc-01" },
     dataFeeds: bed1Feed,
   }),
   /FAIL_CLOSED_SKILL_UNAPPROVED/,
@@ -259,7 +261,7 @@ assert.throws(
     skillId: "improvised-multiagent-differential-diagnostician",
     catalog: sampleCatalog,
     mode: "production",
-    context: { tenant_id: "hosp_a", doctor_id: "doc_1", patient_id: "pat-cardio-001", encounter_id: "enc-01" },
+    context: { as_of: AS_OF, tenant_id: "hosp_a", doctor_id: "doc_1", patient_id: "pat-cardio-001", encounter_id: "enc-01" },
     dataFeeds: bed1Feed,
   }),
   /FAIL_CLOSED_SKILL_UNAPPROVED/,
