@@ -1,0 +1,412 @@
+{
+  "evaluation_id": "cross-evaluation-negative-controls-v1",
+  "execution_status": "COMPLETED",
+  "evidence_class": "synthetic_scorer_sensitivity",
+  "independent_validation": false,
+  "clinical_evidence_pass": false,
+  "limitation": "Mutant detection validates the measuring code; it does not establish independent gold, clinical validity, or real benefit. Annotation verbatim flags remain supplied declarations.",
+  "suites": [
+    {
+      "evaluation_id": "label-statistics-fixture-v1",
+      "input_sha256": "da448009e5d4feb266988f02e38314e6acbd6eeb15106b98a0c90ccc9476650a",
+      "baseline": {
+        "n": 1188,
+        "tp": 648,
+        "tn": 540,
+        "independence": "NOT_ESTABLISHED"
+      },
+      "controls": [
+        {
+          "id": "always_clear",
+          "detected": true,
+          "observation": {
+            "fn": 648,
+            "n": 1188
+          }
+        },
+        {
+          "id": "always_flag",
+          "detected": true,
+          "observation": {
+            "fp": 540,
+            "n": 1188
+          }
+        },
+        {
+          "id": "inverted",
+          "detected": true,
+          "observation": {
+            "fn": 648,
+            "n": 1188
+          }
+        },
+        {
+          "id": "all_abstain",
+          "detected": true,
+          "observation": {
+            "abstentions": 1188,
+            "n": 1188
+          }
+        },
+        {
+          "id": "unadjudicated",
+          "detected": true,
+          "observation": {
+            "pending": 108
+          }
+        },
+        {
+          "id": "duplicate_row",
+          "detected": true,
+          "observation": {
+            "rejected": true,
+            "reason": "DUPLICATE_SHADOW_KEY"
+          }
+        },
+        {
+          "id": "caller_claimed_independence",
+          "detected": true,
+          "observation": {
+            "independence": "NOT_ESTABLISHED"
+          }
+        }
+      ]
+    },
+    {
+      "evaluation_id": "physician-annotation-fixture-v1",
+      "input_sha256": "62cd5750b208d51beebe40f1ebaa6153ef617670d1eb5419603ceec956701cfe",
+      "baseline": {
+        "n": 55,
+        "tp": 50,
+        "tn": 5
+      },
+      "controls": [
+        {
+          "id": "always_clear",
+          "detected": true,
+          "observation": {
+            "fn": 50,
+            "n": 55
+          }
+        },
+        {
+          "id": "wrong_positive_category",
+          "detected": true,
+          "observation": {
+            "misclassifications": 50,
+            "n": 55
+          }
+        },
+        {
+          "id": "all_abstain",
+          "detected": true,
+          "observation": {
+            "abstentions": 55,
+            "n": 55
+          }
+        },
+        {
+          "id": "missing_spans",
+          "detected": true,
+          "observation": {
+            "missing_evidence_anchors": 55,
+            "n": 55
+          }
+        },
+        {
+          "id": "declared_nonverbatim",
+          "detected": true,
+          "observation": {
+            "fake_spans": 15,
+            "n": 55
+          }
+        },
+        {
+          "id": "missing_rater",
+          "detected": true,
+          "observation": {
+            "unadjudicated": 55,
+            "n": 55
+          }
+        },
+        {
+          "id": "duplicate_row",
+          "detected": true,
+          "observation": {
+            "rejected": true,
+            "reason": "DUPLICATE_ANNOTATION_KEY"
+          }
+        }
+      ]
+    },
+    {
+      "evaluation_id": "time-motion-four-row-simulation-v1",
+      "input_sha256": "6d2345424c2d535322ec414121a4a01697aa6fe4930536288d81e5cb45207264",
+      "baseline": {
+        "n": 4,
+        "saved": 418.7
+      },
+      "controls": [
+        {
+          "id": "reversed_arms",
+          "detected": true,
+          "observation": {
+            "avg_manual_seconds": 108.8,
+            "avg_medcius_seconds": 527.5,
+            "time_saved_seconds": -418.7,
+            "time_saved_percentage": -384.8
+          }
+        },
+        {
+          "id": "identical_arms",
+          "detected": true,
+          "observation": {
+            "avg_manual_seconds": 527.5,
+            "avg_medcius_seconds": 527.5,
+            "time_saved_seconds": 0,
+            "time_saved_percentage": 0
+          }
+        },
+        {
+          "id": "missing_duration",
+          "detected": true,
+          "observation": {
+            "saved": null,
+            "missing": {
+              "manual.duration_seconds": 0,
+              "medcius.duration_seconds": 1,
+              "manual.navigation_clicks": 0,
+              "medcius.navigation_clicks": 0,
+              "manual.nasa_tlx_score": 0,
+              "medcius.nasa_tlx_score": 0,
+              "manual.critical_omissions": 0,
+              "medcius.critical_omissions": 0
+            }
+          }
+        },
+        {
+          "id": "worse_safety",
+          "detected": true,
+          "observation": {
+            "manual_omissions": 4,
+            "medcius_omissions": 396,
+            "is_non_inferior": null,
+            "descriptive_omission_comparison_pass": false,
+            "status": "NOT_EVALUATED"
+          }
+        },
+        {
+          "id": "negative_time",
+          "detected": true,
+          "observation": {
+            "rejected": true,
+            "reason": "MEASUREMENT_INVALID"
+          }
+        },
+        {
+          "id": "empty",
+          "detected": true,
+          "observation": {
+            "rejected": true,
+            "reason": "No session"
+          }
+        }
+      ]
+    },
+    {
+      "evaluation_id": "noise-fixture-v1",
+      "input_sha256": "dd944d88c24c976e70903e1c6e7c9e8f0210033565bb9bf63bd826363ac84f9e",
+      "baseline": {
+        "n": 10,
+        "clean_exact": 10
+      },
+      "controls": [
+        {
+          "id": "empty_record",
+          "detected": true,
+          "observation": {
+            "failed": 10,
+            "n": 10
+          }
+        },
+        {
+          "id": "corrupt_values",
+          "detected": true,
+          "observation": {
+            "failed": 10,
+            "n": 10
+          }
+        },
+        {
+          "id": "value_cannot_replace_span",
+          "detected": true,
+          "observation": {
+            "failures": [
+              "allergy_history span missing 否认过敏"
+            ]
+          }
+        },
+        {
+          "id": "negative_not_unknown",
+          "detected": true,
+          "observation": {
+            "failures": [
+              "allergy_history.presence=unknown want absent"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "evaluation_id": "clinical-validation-batch01-fixture",
+      "input_sha256": "e2a93f9f67765cd3f8ff2adb138fd69f93db910cd63341eaca06941192ea59ae",
+      "baseline": {
+        "n": 300,
+        "tp": 95,
+        "fp": 21,
+        "fn": 7,
+        "tn": 177
+      },
+      "controls": [
+        {
+          "id": "always_clear",
+          "detected": true,
+          "observation": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 102,
+            "tn": 198
+          }
+        },
+        {
+          "id": "always_flag",
+          "detected": true,
+          "observation": {
+            "tp": 102,
+            "fp": 198,
+            "fn": 0,
+            "tn": 0
+          }
+        },
+        {
+          "id": "inverted",
+          "detected": true,
+          "observation": {
+            "tp": 7,
+            "fp": 177,
+            "fn": 95,
+            "tn": 21
+          }
+        },
+        {
+          "id": "missing_prediction",
+          "detected": true,
+          "observation": {
+            "rejected": true,
+            "reason": "UNPAIRED"
+          }
+        },
+        {
+          "id": "duplicate_prediction",
+          "detected": true,
+          "observation": {
+            "rejected": true,
+            "reason": "DUPLICATE"
+          }
+        },
+        {
+          "id": "invalid_label",
+          "detected": true,
+          "observation": {
+            "rejected": true,
+            "reason": "LABEL_INVALID"
+          }
+        }
+      ]
+    },
+    {
+      "evaluation_id": "public-reference-fixture-v1",
+      "input_sha256": "f0c60a69778ba21b834c0c89581c3779baa55d336aac24168320bf1891b2f9e2",
+      "baseline": {
+        "n": 37,
+        "failures": 0
+      },
+      "controls": [
+        {
+          "id": "always_clear",
+          "detected": true,
+          "observation": {
+            "failures": 25,
+            "unexpected_abstentions": 0,
+            "n": 37
+          }
+        },
+        {
+          "id": "always_flag",
+          "detected": true,
+          "observation": {
+            "failures": 13,
+            "unexpected_abstentions": 0,
+            "n": 37
+          }
+        },
+        {
+          "id": "inverted",
+          "detected": true,
+          "observation": {
+            "failures": 37,
+            "unexpected_abstentions": 0,
+            "n": 37
+          }
+        },
+        {
+          "id": "all_abstain",
+          "detected": true,
+          "observation": {
+            "failures": 36,
+            "unexpected_abstentions": 36,
+            "n": 37
+          }
+        },
+        {
+          "id": "missing_facts",
+          "detected": true,
+          "observation": {
+            "failures": 24,
+            "unexpected_abstentions": 0,
+            "n": 37
+          }
+        },
+        {
+          "id": "missing_prediction",
+          "detected": true,
+          "observation": {
+            "rejected": true,
+            "reason": "PAIRING_INVALID"
+          }
+        },
+        {
+          "id": "duplicate_prediction",
+          "detected": true,
+          "observation": {
+            "rejected": true,
+            "reason": "PAIRING_INVALID"
+          }
+        },
+        {
+          "id": "cli_abstention_and_stale_success",
+          "detected": true,
+          "observation": {
+            "unexpected_abstention_exit": 1,
+            "stale_success_invalidated": true
+          }
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "evaluations": 6,
+    "controls": 38,
+    "undetected": 0
+  }
+}

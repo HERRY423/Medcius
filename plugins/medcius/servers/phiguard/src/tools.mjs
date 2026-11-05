@@ -1,4 +1,8 @@
 import { scanText, redactText, pseudonymizeText } from "./lib.mjs";
+import { requiresProductionPhi } from '../../../lib/production-phi-policy.mjs';
+import { resolvePhiDetector } from '../../../lib/phi-runtime.mjs';
+import { createPhiRequestSession } from '../../../lib/phi-entity-session.mjs';
+import { guardFreeTextEgress } from '../../../lib/local-phi-egress.mjs';
 
 const EPHEMERAL = `ephemeral-${Math.random().toString(36).slice(2)}`;
 
@@ -9,7 +13,7 @@ function saltSource(explicit) {
 }
 
 /** @type {Record<string, (a: Record<string, unknown>) => unknown>} */
-export const HANDLERS = {
+const LEGACY_HANDLERS = {
   scan({ text }) {
     return { ...scanText(text), limitation: "姓名仅识别“患者：/姓名：/家属：/联系人：”标签上下文；无标签的裸名字不检测——不要据此断言无 PHI。" };
   },
@@ -46,3 +50,21 @@ export const HANDLERS = {
     };
   },
 };
+
+async function productionOperation(name, args) {
+  const { text } = structuredClone(args);
+  const detector = await resolvePhiDetector();
+  if (name === 'status') return { algorithms: { detection: 'session_dictionary+local_cpu_ner+rules' },
+    ner_status: 'READY', complete_deidentification: 'NOT_ESTABLISHED' };
+  const { session, context } = createPhiRequestSession();
+  try {
+    const result = await guardFreeTextEgress(text, { detector, entitySession: session, context });
+    // Production never releases partial identifiers, including keep_last/mask.
+    if (name === 'scan') return { changed: result.text !== text, receipt: result.receipt,
+      complete_deidentification: 'NOT_ESTABLISHED' };
+    return { text: result.text, receipt: result.receipt, mode: 'full_redaction',
+      stable: false, complete_deidentification: 'NOT_ESTABLISHED' };
+  } finally { session.dispose(); }
+}
+export const HANDLERS = Object.freeze(Object.fromEntries(Object.entries(LEGACY_HANDLERS).map(([name, handler]) =>
+  [name, args => requiresProductionPhi() ? productionOperation(name, args) : handler(args)])));

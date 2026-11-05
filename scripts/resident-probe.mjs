@@ -105,7 +105,7 @@ async function localChecks() {
   // the fail-closed defaults (chain broken / corpus missing) and surfaces as an alert.
   try {
     const { HANDLERS } = await import(pathToFileURL(join(REPO, "plugins/medcius/servers/audit/src/tools.mjs")).href);
-    auditChainOk = HANDLERS.verify_chain({}).ok === true;
+    auditChainOk = (await HANDLERS.verify_chain({})).ok === true;
   } catch { auditChainOk = false; }
   try {
     const { HANDLERS } = await import(pathToFileURL(join(REPO, "plugins/medcius/servers/china-codes/src/tools.mjs")).href);

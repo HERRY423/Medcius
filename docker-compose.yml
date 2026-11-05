@@ -6,7 +6,7 @@
 
 services:
   medcius-sandbox:
-    image: medcius:0.8.0-pilot
+    image: medcius:0.10.0-pilot
     build: .
     profiles: ["sandbox"]
     ports:
@@ -21,13 +21,13 @@ services:
       MEDCIUS_LLM_MODEL_VERSION: "dev"
       MEDCIUS_LLM_PROMPT_PACK_VERSION: "dev"
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test: ["CMD", "node", "scripts/healthcheck.mjs"]
       interval: 30s
       timeout: 5s
       retries: 3
 
   medcius:
-    image: medcius:0.8.0-pilot
+    image: medcius:0.10.0-pilot
     build: .
     profiles: ["hospital"]
     restart: unless-stopped
@@ -40,8 +40,9 @@ services:
       - /opt/medcius/backups:/opt/medcius/backups
       - /opt/medcius/tls:/opt/medcius/tls:ro         # 院方签发证书（TLS 强制）
       - /opt/medcius/rules:/opt/medcius/rules:ro     # 院内审批规则包（具名/版本化）
+      - /opt/medcius/models:/opt/medcius/models:ro   # 独立部署的、清单校验通过的 NER 资产
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('https://127.0.0.1:8443/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test: ["CMD", "node", "scripts/healthcheck.mjs"]
       interval: 30s
       timeout: 5s
       start-period: 20s

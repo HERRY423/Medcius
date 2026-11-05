@@ -82,7 +82,7 @@ console.log("✓ Freshness states computed deterministically with actions");
 // Test 4: DRG/DIP reconciliation contract
 // ----------------------------------------------------
 console.log("\n[Test 4] DRG/DIP reconciliation: clean / blocked / incomplete + fail-closed...");
-const cleanNote = "出院记录\n性别：女 年龄：35岁\n入院日期：2026-08-01 出院日期：2026-08-08\n住院天数：8天\n离院方式：1 医嘱离院\n出院诊断：急性阑尾炎\n手术及操作：腹腔镜阑尾切除术";
+const cleanNote = "出院记录\n性别：女 年龄：35岁\n入院日期：2026-08-01 出院日期：2026-08-08\n住院天数：7天\n离院方式：1 医嘱离院\n出院诊断：急性阑尾炎\n手术及操作：腹腔镜阑尾切除术";
 const cleanReport = buildRecordQualityReport(cleanNote);
 const cleanRec = buildDrgDipReconciliation({
   recordQualityReport: cleanReport,
@@ -113,7 +113,7 @@ const noPrimary = buildDrgDipReconciliation({
 });
 assert.equal(noPrimary.status, "grouping_blocked");
 assert.ok(noPrimary.data_quality_risks.some((r) => r.payment_risk === "grouping_blocked" && r.finding_code === "PRIMARY_DISCHARGE_DIAGNOSIS_MISSING"));
-assert.equal(noPrimary.reconciliation.grouping_affected, true);
+assert.equal(noPrimary.reconciliation.grouping_affected, null, 'quality defect does not establish actual grouping/payment impact');
 
 assert.throws(() => buildDrgDipReconciliation({ hospitalGrouping: { scheme: "drg", code: "X" } }), /RECORD_QUALITY_REPORT_REQUIRED/);
 assert.throws(() => buildDrgDipReconciliation({ recordQualityReport: cleanReport, hospitalGrouping: {} }), /GROUPING_RESULT_REQUIRED/);

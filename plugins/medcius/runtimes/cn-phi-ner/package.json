@@ -1,0 +1,14 @@
+{
+  "name": "@medcius/local-cn-phi-ner",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Mandatory production CPU Chinese PHI detector; locked runtime and offline model assets",
+  "license": "MIT",
+  "dependencies": {
+    "onnx-proto": "8.0.1",
+    "onnxruntime-node": "1.23.2",
+    "pinyin-pro": "3.29.5"
+  },
+  "overrides": { "protobufjs": "8.8.1" }
+}

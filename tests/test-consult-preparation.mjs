@@ -192,7 +192,7 @@ assert.ok(conflicted.excluded_records.every(r => r.reason === "conflict"));
 for (const patch of [{ context: { ...context, tenant_id: "" } }, { encounter: { id: "other" } }, { asOf: null },
   { observations: [{ ...lab, patient_id: "other" }] }, { observations: [{ ...lab, subject: { reference: "Patient/other" } }] },
   { notes: [{ id: "phi", text: "电话：13800138000", timestamp: asOf }] }]) {
-  assert.throws(() => ConsultPreparationEngine.createSnapshot({ ...base, ...patch }), /FAIL_CLOSED/);
+  assert.throws(() => ConsultPreparationEngine.createSnapshot({ ...base, ...patch }), /FAIL_CLOSED|PHI_SESSION_CONTEXT_REQUIRED|PHI_SESSION_CONTEXT_MISMATCH/);
 }
 for (const invalid of [{ department: "肾内科" }, { department: "  ", purpose: "血钾" }, { ...request, focus_terms: [""] }]) {
   assert.throws(() => ConsultPreparationEngine.prepareConsultDossier({ snapshot, consultRequest: invalid }), /FAIL_CLOSED/);

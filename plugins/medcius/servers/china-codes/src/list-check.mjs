@@ -9,18 +9,23 @@ export function checkSettlementList({ sex, age, items }) {
 
   for (const it of rows) {
     const reasons = [];
+    let evaluated = false;
     const code = it.code;
     if (it.role === "discharge_primary" && it.is_main_diag_allowed === false) {
       reasons.push("不可作为主要诊断");
+      evaluated = true;
     }
-    if (code) {
+    // The legacy rule table stores ICD-10 diagnosis rules only; code strings
+    // from a different or unknown system cannot inherit those rules.
+    if (code && !it.code_version && it.kind === 'diagnosis' && ['ICD-10', '医保版ICD-10'].includes(it.code_system)) {
       let g = null;
       try {
         g = db.prepare("SELECT sex_required FROM gender_code_rules WHERE code=?").get(code);
       } catch {
         g = null;
       }
-      if (g?.sex_required && sexNorm && g.sex_required !== sexNorm) {
+      if (g?.sex_required && ['male', 'female'].includes(sexNorm)) evaluated = true;
+      if (g?.sex_required && ['male', 'female'].includes(sexNorm) && g.sex_required !== sexNorm) {
         reasons.push(`性别限制：编码要求${g.sex_required === "male" ? "男" : "女"}，病历为${SEX_CN[sexNorm] ?? sexNorm}`);
       }
     }
@@ -28,7 +33,9 @@ export function checkSettlementList({ sex, age, items }) {
       term: it.term,
       role: it.role,
       code: code ?? null,
-      ok: reasons.length === 0,
+      code_system: it.code_system ?? 'unknown',
+      ok: reasons.length ? false : evaluated ? true : null,
+      rule_status: evaluated ? 'local_rule_evaluated' : 'not_evaluated',
       reasons,
     });
   }
@@ -62,7 +69,8 @@ export function checkSettlementList({ sex, age, items }) {
     age: typeof age === "number" ? age : null,
     checks,
     procedure_dx_match: matchNotes,
-    fail_count: checks.filter((c) => !c.ok).length,
+    fail_count: checks.filter((c) => c.ok === false).length,
+    unevaluated_count: checks.filter((c) => c.ok === null).length,
     disclaimer: "清单机检（主诊断资格、性别限制、手术-诊断关键词）。不是 DRG 分组器。",
   };
 }
@@ -136,11 +144,7 @@ export function checkCatalogRestriction({ drug_name, diagnosis_terms, include_sa
     rows = db
       .prepare("SELECT * FROM nhsa_drug_catalog WHERE generic_name=? ORDER BY id ASC")
       .all(String(drug_name).trim());
-    if (!rows.length) {
-      rows = db
-        .prepare("SELECT * FROM nhsa_drug_catalog WHERE generic_name LIKE ? ORDER BY length(generic_name) ASC LIMIT 1")
-        .all(`%${String(drug_name).trim()}%`);
-    }
+
   } catch (e) {
     return { error: "nhsa_drug_catalog table missing", hint: String(e.message) };
   }
@@ -169,6 +173,8 @@ export function checkCatalogRestriction({ drug_name, diagnosis_terms, include_sa
     retrieved_at: r.ingested_at,
     source: src?.name ?? "local china-codes",
     data_class: r.data_class,
+    payment_eligibility: "NOT_EVALUATED",
+    source_url: src?.url ?? null,
     diagnosis_terms: terms,
   };
   if (!restriction) {

@@ -94,6 +94,7 @@ const contextBeta = {
 };
 
 const cdaConnector = createCdaDocumentConnector({
+  fixedTenantId: contextBeta.tenant_id,
   id: "cda-channel-beta",
   sourceVersion: cdaFixture.source_version,
   async listDocuments(ctx) {

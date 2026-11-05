@@ -6,7 +6,7 @@
 export const TOOLS = [
   {
     name: "scan",
-    description: "Detect PHI candidates in text (CN resident ID w/ checksum, mobile phone, email, labeled MRN, label-context names). Returns spans + masked samples. Name detection is heuristic (label-context only).",
+    description: "Scan text for PHI. Production requires verified local CPU NER plus the session dictionary and rules; returns a change flag and execution receipt. Development uses heuristic spans. A clean scan does not establish complete de-identification.",
     inputSchema: {
       $schema: "http://json-schema.org/draft-07/schema#",
       type: "object",
@@ -16,7 +16,7 @@ export const TOOLS = [
   },
   {
     name: "redact",
-    description: "Redact detected PHI. mode='mask' keeps edge chars; mode='hash' replaces with [type:sha8]. Run before ANY free text enters logs, prompts, or exports.",
+    description: "Redact PHI before free text enters logs, prompts, or exports. Production requires verified local CPU NER plus dictionary and rules, always fully removes identifiers and ignores partial mask/keep_last options. Development supports mask/hash modes. Missing or failed production NER blocks the call.",
     inputSchema: {
       $schema: "http://json-schema.org/draft-07/schema#",
       type: "object",
@@ -30,7 +30,7 @@ export const TOOLS = [
   },
   {
     name: "pseudonymize",
-    description: "Stable pseudonymization: identifiers → [PSN:hmac32] (32 hexadecimal HMAC-SHA256 characters) keyed by salt. Same value maps to same token within a salt domain. Salt resolution: arg > env CLAUDE_MEDCIUS_PHI_SALT > ephemeral (warns: unstable across restarts).",
+    description: "Production uses mandatory dual-track full redaction (stable=false); it does not promise stable HMAC tokens. Development supports salt-keyed HMAC-SHA256 pseudonyms. A verified local CPU NER model is mandatory in production; missing or failed NER blocks the call.",
     inputSchema: {
       $schema: "http://json-schema.org/draft-07/schema#",
       type: "object",
@@ -43,7 +43,7 @@ export const TOOLS = [
   },
   {
     name: "status",
-    description: "Salt source (env|ephemeral|none), algorithms in use, known limitations.",
+    description: "Production verifies local CPU NER readiness and reports detection algorithms and assurance limits; fails closed if the model is unavailable. Development reports salt source, heuristic algorithms and known limitations.",
     inputSchema: { $schema: "http://json-schema.org/draft-07/schema#", type: "object", properties: {} },
   },
 ];

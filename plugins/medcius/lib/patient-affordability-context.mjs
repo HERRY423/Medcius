@@ -1,6 +1,8 @@
 // Patient affordability and access context for bounded clinical workflows.
 // This module reports source-bound facts and gaps. It never calculates benefits,
 // predicts out-of-pocket cost, recommends treatment substitutions, or decides discharge.
+import { buildChinaMedicationCoverage, loadChinaPharmacyCatalog } from "./china-pharmacy-catalog.mjs";
+import { requiresProductionPhi } from "./production-phi-policy.mjs";
 
 const KINDS = new Set([
   "affordability_screen",
@@ -112,7 +114,8 @@ function actionFor(fact) {
   return null;
 }
 
-export function buildPatientAffordabilityContext({ records = [], dischargeMedicationCount = 0 } = {}) {
+export function buildPatientAffordabilityContext({ records = [], dischargeMedicationCount = 0, medications = [], pharmacyCatalog,
+  context = {}, region, asOf } = {}) {
   if (!Array.isArray(records)) throw new Error("AFFORDABILITY_RECORDS_ARRAY_REQUIRED");
 
   const verifiedFacts = [];
@@ -140,6 +143,13 @@ export function buildPatientAffordabilityContext({ records = [], dischargeMedica
   }
 
   const actionItems = verifiedFacts.map(actionFor).filter(Boolean);
+  const coverage = medications.length ? buildChinaMedicationCoverage({ medications,
+    catalog: pharmacyCatalog || loadChinaPharmacyCatalog({ production: requiresProductionPhi(context) }),
+    context: { region, hospital_id: context.tenant_id, as_of: asOf, production: requiresProductionPhi(context) } }) : [];
+  for (const item of coverage) {
+    actionItems.push({ code: item.action, category: "medication", medication_id: item.medication_id });
+    for (const gap of item.gaps) dataGaps.push({ code: "CHINA_MEDICATION_ACCESS_NOT_VERIFIED", medication_id: item.medication_id, ...gap });
+  }
   const hasReportedBarrier = screens.some((fact) => fact.status === "barrier_reported");
   const hasExplicitNoBarrier = screens.some((fact) => fact.status === "no_barrier_reported");
 
@@ -154,6 +164,7 @@ export function buildPatientAffordabilityContext({ records = [], dischargeMedica
     assessment_status: assessmentStatus,
     follow_up_required: actionItems.length > 0 || dataGaps.length > 0,
     verified_facts: verifiedFacts,
+    medication_coverage_context: coverage,
     action_items: actionItems,
     data_gaps: dataGaps,
     boundary: {

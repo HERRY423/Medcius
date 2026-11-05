@@ -1,0 +1,8 @@
+# Keep hash-bound evidence and vendored source bytes stable on Windows/Linux.
+scripts/vendor/openai-plugin-validator/** text eol=lf
+docs/evidence/*.json text eol=lf
+docs/evidence/reports/*.json text eol=lf
+docs/engineering/verification/** text eol=lf
+plugins/medcius/evals/**/reports/*.json text eol=lf
+
+*.png binary

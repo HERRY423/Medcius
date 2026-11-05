@@ -1,7 +1,11 @@
 import { canonicalJson, sha256Hex } from "../servers/shared/crypto.mjs";
 import { ownershipAccepted } from "./clinical-boundary.mjs";
+import { requiresProductionPhi } from './production-phi-policy.mjs';
+import { resolvePhiDetector } from './phi-runtime.mjs';
+import { createPhiEntitySession } from './phi-entity-session.mjs';
+import { guardPatientSourceInput } from './patient-source-phi.mjs';
 
-const ALLOWED_KINDS = new Set(["patient", "encounter", "notes", "nis", "lis", "pacs", "his", "financial_access"]);
+const ALLOWED_KINDS = new Set(["patient", "encounter", "notes", "nis", "lis", "pacs", "his", "financial_access", "clinical_quality"]);
 const WRITE_CAPABILITY_NAMES = new Set(["write", "create", "update", "delete", "patch", "execute", "order", "create_resource", "update_resource", "delete_resource", "write_back"]);
 const WRITE_METHOD_PREFIX_RE = /^(?:write|create|update|delete|patch|put|post|remove|execute|order|create_resource|update_resource|delete_resource|write_back)/i;
 
@@ -69,17 +73,24 @@ function safeErrorCode(error) {
 }
 
 export class ReadOnlyHospitalDataBridge {
-  constructor({ connectors = [], requiredKinds = ["patient", "encounter"] } = {}) {
+  constructor({ connectors = [], requiredKinds = ["patient", "encounter"], localPhiDetector } = {}) {
     if (!Array.isArray(connectors) || connectors.length === 0) throw new Error("BRIDGE_CONNECTORS_REQUIRED");
     connectors.forEach(validateConnector);
     const ids = connectors.map((connector) => connector.id);
     if (new Set(ids).size !== ids.length) throw new Error("BRIDGE_CONNECTOR_IDS_MUST_BE_UNIQUE");
     this.connectors = [...connectors];
     this.requiredKinds = new Set(requiredKinds);
+    this.localPhiDetector = localPhiDetector;
+    this.production = requiresProductionPhi();
   }
 
-  async readPatientSnapshot(context) {
+  async readPatientSnapshot(context, { localPhiDetector = this.localPhiDetector, signal } = {}) {
+    context = structuredClone(context);
     requireContext(context);
+    const dual = this.production || requiresProductionPhi(context) || !!localPhiDetector;
+    if (dual) localPhiDetector = await resolvePhiDetector({ detector: localPhiDetector, context: this.production ? { ...context, profile: 'production' } : context });
+    const entitySession = dual ? createPhiEntitySession({ context, patient: { id: context.patient_id }, encounter: { id: context.encounter_id } }) : null;
+    try {
     const feeds = {
       patient: null,
       encounter: null,
@@ -90,6 +101,7 @@ export class ReadOnlyHospitalDataBridge {
       his_orders: [],
       allergies: null,
       financial_access: [],
+      clinical_quality: [],
     };
     const sourceManifest = [];
     const unavailable = [];
@@ -106,9 +118,11 @@ export class ReadOnlyHospitalDataBridge {
           encounter_id: context.encounter_id,
           as_of: context.as_of,
           time_window: context.time_window,
-        });
+        }, { entitySession, localPhiDetector, signal });
         validateEnvelope(envelope, connector, context);
       } catch (error) {
+        // PHI failures are fatal even for optional clinical sources.
+        if ([error?.message,error?.code].some(v => /^(?:PHI_|LOCAL_(?:NER|PHI)_)/.test(v || ''))) throw new Error('PHI_BRIDGE_GUARD_FAILED');
         const code = safeErrorCode(error);
         if (/PATIENT_MISMATCH|ENCOUNTER_MISMATCH|TENANT_MISMATCH/.test(code)) {
           throw new Error(`BRIDGE_IDENTITY_REJECTED: ${code}`);
@@ -191,7 +205,7 @@ export class ReadOnlyHospitalDataBridge {
       if (!sourceManifest.some((entry) => entry.kind === kind)) throw new Error(`BRIDGE_REQUIRED_KIND_MISSING: ${kind}`);
     }
 
-    return {
+    const output = {
       schema_version: "medcius.read-only-source-envelope.v1",
       context: {
         tenant_id: context.tenant_id,
@@ -211,5 +225,12 @@ export class ReadOnlyHospitalDataBridge {
         note: "Raw hospital data remain inside the bounded workflow until PHI Guard and output policy checks complete.",
       },
     };
+    if (!dual) return output;
+    const { input: guarded, receipt } = await guardPatientSourceInput({ ...feeds, context,
+      bridge_metadata: { ...output, dataFeeds: null } }, { detector: localPhiDetector, entitySession, signal });
+    const { context: _context, bridge_metadata: metadata, ...dataFeeds } = guarded;
+    return { ...metadata, dataFeeds: { ...dataFeeds, source_availability: metadata.source_availability }, phi_guard: receipt,
+      security_contract: { read_only_enforced: true, model_safe: true, assurance: 'dual_track_executed', complete_deidentification: 'NOT_ESTABLISHED' } };
+    } finally { entitySession?.dispose(); }
   }
 }

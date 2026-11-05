@@ -1,0 +1,534 @@
+{
+  "schema_version": 1,
+  "mapping_id": "synthetic-cn-views",
+  "version": "1.0.0",
+  "tenant_id": "synthetic-site",
+  "data_class": "synthetic",
+  "review_ref": null,
+  "timezone_offset": "+08:00",
+  "views": [
+    {
+      "id": "cn_patient",
+      "kind": "patient",
+      "table": "V_PATIENT",
+      "scope": "encounter",
+      "limit": 200,
+      "order_by": "RECORD_ID ASC",
+      "fields": {
+        "id": {
+          "column": "RECORD_ID",
+          "type": "string",
+          "required": true
+        },
+        "patient_id": {
+          "column": "PATIENT_ID",
+          "type": "string",
+          "required": true
+        },
+        "encounter_id": {
+          "column": "VISIT_ID",
+          "type": "string",
+          "required": true
+        },
+        "tenant_id": {
+          "column": "SITE_ID",
+          "type": "string",
+          "required": true
+        },
+        "name": {
+          "column": "PATIENT_NAME",
+          "type": "string"
+        },
+        "gender": {
+          "column": "SEX",
+          "type": "enum",
+          "values": {
+            "M": "male",
+            "F": "female",
+            "U": "unknown"
+          }
+        }
+      }
+    },
+    {
+      "id": "cn_encounter",
+      "kind": "encounter",
+      "table": "V_INPATIENT_VISIT",
+      "scope": "encounter",
+      "limit": 200,
+      "order_by": "RECORD_ID ASC",
+      "fields": {
+        "id": {
+          "column": "RECORD_ID",
+          "type": "string",
+          "required": true
+        },
+        "patient_id": {
+          "column": "PATIENT_ID",
+          "type": "string",
+          "required": true
+        },
+        "encounter_id": {
+          "column": "VISIT_ID",
+          "type": "string",
+          "required": true
+        },
+        "tenant_id": {
+          "column": "SITE_ID",
+          "type": "string",
+          "required": true
+        },
+        "status": {
+          "column": "VISIT_STATUS",
+          "type": "enum",
+          "values": {
+            "IN": "in-progress",
+            "OUT": "finished"
+          }
+        },
+        "period_start": {
+          "column": "ADMITTED_AT",
+          "type": "datetime",
+          "format": "local_datetime"
+        }
+      }
+    },
+    {
+      "id": "cn_orders",
+      "kind": "his",
+      "table": "V_HIS_INPATIENT_ORDER",
+      "scope": "encounter",
+      "limit": 200,
+      "order_by": "RECORD_ID ASC",
+      "fields": {
+        "id": {
+          "column": "RECORD_ID",
+          "type": "string",
+          "required": true
+        },
+        "patient_id": {
+          "column": "PATIENT_ID",
+          "type": "string",
+          "required": true
+        },
+        "encounter_id": {
+          "column": "VISIT_ID",
+          "type": "string",
+          "required": true
+        },
+        "tenant_id": {
+          "column": "SITE_ID",
+          "type": "string",
+          "required": true
+        },
+        "record_kind": {
+          "column": "ROW_KIND",
+          "type": "enum",
+          "values": {
+            "ORDER": "order"
+          }
+        },
+        "drug_name": {
+          "column": "DRUG_NAME",
+          "type": "string"
+        },
+        "status": {
+          "column": "ORDER_STATUS",
+          "type": "enum",
+          "values": {
+            "ACTIVE": "active",
+            "STOPPED": "stopped",
+            "VOID": "entered-in-error"
+          }
+        },
+        "order_kind": {
+          "column": "ORDER_KIND",
+          "type": "enum",
+          "values": {
+            "LONG": "long_term",
+            "TEMP": "temporary"
+          }
+        },
+        "execution_status": {
+          "column": "EXEC_STATE",
+          "type": "enum",
+          "values": {
+            "NEW": "ordered",
+            "UNVERIFIED": "nurse_unverified",
+            "VERIFIED": "nurse_verified",
+            "REVIEWED": "pharmacy_reviewed",
+            "DISPENSED": "dispensed",
+            "RETURNED": "pharmacy_returned",
+            "GIVEN": "administered",
+            "STOPPED": "stopped",
+            "VOID": "voided"
+          }
+        },
+        "authored_on": {
+          "column": "ORDER_TIME",
+          "type": "datetime",
+          "format": "local_datetime"
+        },
+        "dosage": {
+          "column": "DOSE_TEXT",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "id": "cn_administrations",
+      "kind": "his",
+      "table": "V_MAR_EXECUTION",
+      "scope": "encounter",
+      "limit": 200,
+      "order_by": "RECORD_ID ASC",
+      "fields": {
+        "id": {
+          "column": "RECORD_ID",
+          "type": "string",
+          "required": true
+        },
+        "patient_id": {
+          "column": "PATIENT_ID",
+          "type": "string",
+          "required": true
+        },
+        "encounter_id": {
+          "column": "VISIT_ID",
+          "type": "string",
+          "required": true
+        },
+        "tenant_id": {
+          "column": "SITE_ID",
+          "type": "string",
+          "required": true
+        },
+        "record_kind": {
+          "column": "ROW_KIND",
+          "type": "enum",
+          "values": {
+            "MAR": "administration"
+          }
+        },
+        "order_id": {
+          "column": "ORDER_ID",
+          "type": "string",
+          "required": true
+        },
+        "execution_status": {
+          "column": "EXEC_STATE",
+          "type": "enum",
+          "values": {
+            "GIVEN": "administered",
+            "RETURNED": "pharmacy_returned",
+            "VOID": "voided"
+          }
+        },
+        "status": {
+          "column": "RESULT_STATUS",
+          "type": "enum",
+          "values": {
+            "VALID": "final",
+            "VOID": "entered-in-error"
+          }
+        },
+        "performed_at": {
+          "column": "EXECUTED_AT",
+          "type": "datetime",
+          "format": "local_datetime"
+        },
+        "version_id": {
+          "column": "VERSION",
+          "type": "string"
+        },
+        "updated_at": {
+          "column": "UPDATED_AT",
+          "type": "datetime",
+          "format": "local_datetime"
+        },
+        "administered_volume_ml": {
+          "column": "ACTUAL_VOLUME_ML",
+          "type": "number"
+        }
+      }
+    },
+    {
+      "id": "cn_nursing",
+      "kind": "nis",
+      "table": "V_NIS_VITAL_SIGNS",
+      "scope": "encounter",
+      "limit": 200,
+      "order_by": "RECORD_ID ASC",
+      "fields": {
+        "id": {
+          "column": "RECORD_ID",
+          "type": "string",
+          "required": true
+        },
+        "patient_id": {
+          "column": "PATIENT_ID",
+          "type": "string",
+          "required": true
+        },
+        "encounter_id": {
+          "column": "VISIT_ID",
+          "type": "string",
+          "required": true
+        },
+        "tenant_id": {
+          "column": "SITE_ID",
+          "type": "string",
+          "required": true
+        },
+        "record_kind": {
+          "column": "ROW_KIND",
+          "type": "enum",
+          "values": {
+            "MEASURED": "nursing_measurement",
+            "PLAN": "planned_infusion",
+            "MAR": "administration"
+          }
+        },
+        "execution_status": {
+          "column": "EXEC_STATE",
+          "type": "enum",
+          "values": {
+            "GIVEN": "administered",
+            "UNVERIFIED": "nurse_unverified"
+          }
+        },
+        "order_id": {
+          "column": "ORDER_ID",
+          "type": "string"
+        },
+        "administration_id": {
+          "column": "EXEC_ID",
+          "type": "string"
+        },
+        "temperature": {
+          "column": "TEMPERATURE_C",
+          "type": "number"
+        },
+        "systolic_bp": {
+          "column": "SBP_MMHG",
+          "type": "number"
+        },
+        "diastolic_bp": {
+          "column": "DBP_MMHG",
+          "type": "number"
+        },
+        "iv_intake_ml": {
+          "column": "ACTUAL_IV_ML",
+          "type": "number"
+        },
+        "urine_output_ml": {
+          "column": "URINE_ML",
+          "type": "number"
+        },
+        "timestamp": {
+          "column": "MEASURED_AT",
+          "type": "datetime",
+          "format": "local_datetime"
+        }
+      }
+    },
+    {
+      "id": "cn_labs",
+      "kind": "lis",
+      "table": "V_LIS_CRITICAL_VALUE",
+      "scope": "encounter",
+      "limit": 200,
+      "order_by": "RECORD_ID ASC",
+      "fields": {
+        "id": {
+          "column": "RECORD_ID",
+          "type": "string",
+          "required": true
+        },
+        "patient_id": {
+          "column": "PATIENT_ID",
+          "type": "string",
+          "required": true
+        },
+        "encounter_id": {
+          "column": "VISIT_ID",
+          "type": "string",
+          "required": true
+        },
+        "tenant_id": {
+          "column": "SITE_ID",
+          "type": "string",
+          "required": true
+        },
+        "code": {
+          "column": "ITEM_CODE",
+          "type": "string"
+        },
+        "test_name": {
+          "column": "ITEM_NAME",
+          "type": "string"
+        },
+        "result_value": {
+          "column": "RESULT_VALUE",
+          "type": "number"
+        },
+        "unit": {
+          "column": "UNIT",
+          "type": "string"
+        },
+        "ref_low": {
+          "column": "REF_LOW",
+          "type": "number"
+        },
+        "ref_high": {
+          "column": "REF_HIGH",
+          "type": "number"
+        },
+        "is_critical": {
+          "column": "CRITICAL_FLAG",
+          "type": "boolean",
+          "values": {
+            "Y": true,
+            "N": false
+          }
+        },
+        "status": {
+          "column": "RESULT_STATUS",
+          "type": "enum",
+          "values": {
+            "F": "final",
+            "P": "preliminary",
+            "C": "corrected",
+            "X": "cancelled"
+          }
+        },
+        "sample_time": {
+          "column": "SAMPLED_AT",
+          "type": "datetime",
+          "format": "local_datetime"
+        }
+      }
+    },
+    {
+      "id": "cn_imaging",
+      "kind": "pacs",
+      "table": "V_PACS_REPORT",
+      "scope": "encounter",
+      "limit": 200,
+      "order_by": "RECORD_ID ASC",
+      "fields": {
+        "id": {
+          "column": "RECORD_ID",
+          "type": "string",
+          "required": true
+        },
+        "patient_id": {
+          "column": "PATIENT_ID",
+          "type": "string",
+          "required": true
+        },
+        "encounter_id": {
+          "column": "VISIT_ID",
+          "type": "string",
+          "required": true
+        },
+        "tenant_id": {
+          "column": "SITE_ID",
+          "type": "string",
+          "required": true
+        },
+        "name": {
+          "column": "STUDY_NAME",
+          "type": "string"
+        },
+        "modality": {
+          "column": "MODALITY",
+          "type": "string"
+        },
+        "status": {
+          "column": "REPORT_STATUS",
+          "type": "enum",
+          "values": {
+            "F": "final",
+            "P": "preliminary",
+            "C": "corrected",
+            "X": "cancelled"
+          }
+        },
+        "study_time": {
+          "column": "STUDY_TIME",
+          "type": "datetime",
+          "format": "local_datetime"
+        },
+        "findings": {
+          "column": "FINDINGS",
+          "type": "string"
+        },
+        "impression": {
+          "column": "IMPRESSION",
+          "type": "string"
+        },
+        "study_uid": {
+          "column": "STUDY_INSTANCE_UID",
+          "type": "string"
+        },
+        "version_id": {
+          "column": "VERSION",
+          "type": "string"
+        },
+        "updated_at": {
+          "column": "UPDATED_AT",
+          "type": "datetime",
+          "format": "local_datetime"
+        }
+      }
+    },
+    {
+      "id": "cn_notes",
+      "kind": "notes",
+      "table": "V_EMR_NARRATIVE",
+      "scope": "encounter",
+      "limit": 200,
+      "order_by": "RECORD_ID ASC",
+      "fields": {
+        "id": {
+          "column": "RECORD_ID",
+          "type": "string",
+          "required": true
+        },
+        "patient_id": {
+          "column": "PATIENT_ID",
+          "type": "string",
+          "required": true
+        },
+        "encounter_id": {
+          "column": "VISIT_ID",
+          "type": "string",
+          "required": true
+        },
+        "tenant_id": {
+          "column": "SITE_ID",
+          "type": "string",
+          "required": true
+        },
+        "text": {
+          "column": "NARRATIVE",
+          "type": "string"
+        },
+        "title": {
+          "column": "DOCUMENT_TITLE",
+          "type": "string"
+        },
+        "event_time": {
+          "column": "AUTHORED_AT",
+          "type": "datetime",
+          "format": "local_datetime"
+        },
+        "version_id": {
+          "column": "VERSION",
+          "type": "string"
+        }
+      }
+    }
+  ]
+}

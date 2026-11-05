@@ -37,8 +37,8 @@ const {
   clearAuthorizedHospitalSource,
 } = await import("../plugins/medcius/lib/authorized-hospital-source.mjs");
 const {
-  readFrozenResearchRecord,
-  replayFrozenResearchRecord,
+  readFrozenResearchRecordAsync,
+  replayFrozenResearchRecordAsync,
 } = await import("../plugins/medcius/lib/silent-research-archive.mjs");
 const { generateToken, ROLES } = await import("../plugins/medcius/servers/api/src/auth-middleware.mjs");
 const { routeRequest } = await import("../plugins/medcius/servers/api/src/rest-routes.mjs");
@@ -490,11 +490,11 @@ assert.deepEqual(libraryCapture.cards, []);
 assert.equal(libraryCapture.replayable, true);
 assert.match(libraryCapture.research_record_id, /^frr-[a-f0-9]{20}$/);
 assert.equal(libraryCapture.source_bridge.dataFeeds, undefined);
-const frozen = readFrozenResearchRecord(libraryCapture.research_record_id, { tenantId: CONTEXT.tenant_id });
+const frozen = await readFrozenResearchRecordAsync(libraryCapture.research_record_id, { tenantId: CONTEXT.tenant_id });
 assert.ok(frozen.annotation_output);
 assert.ok(frozen.engine_input);
 assert.equal(frozen.output_sha256, libraryCapture.output_sha256);
-const replay = replayFrozenResearchRecord(libraryCapture.research_record_id, { tenantId: CONTEXT.tenant_id });
+const replay = await replayFrozenResearchRecordAsync(libraryCapture.research_record_id, { tenantId: CONTEXT.tenant_id });
 assert.equal(replay.match, true);
 
 const physicianToken = generateToken({

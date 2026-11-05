@@ -24,6 +24,13 @@ import { TOOLS } from "./schemas.mjs";
 // ---------------------------------------------------------------------------
 
 const SERVER_INFO = { name: "mcp-server-documents", version: "0.0.1" };
+// In these two frozen schemas `name` is a corpus label, not a HumanName.
+// Preserve all values for NER; only correct the structured identity semantics.
+const phiInputView = (tool, args) => {
+  if (!['corpus_register','corpus_prepare'].includes(tool)) return args;
+  const { name, ...rest } = args;
+  return { corpus: name, ...rest };
+};
 const INSTRUCTIONS =
   "Backs the /contracts skill. Do not surface tool or schema internals to end users — the skill translates.";
 
@@ -241,7 +248,7 @@ async function runCli(tool, jsonArg) {
     raw = readFileSync(0, "utf8");
   }
   const args = raw === undefined ? {} : parseArgs(raw);
-  return runOnce({ tools: TOOLS, handlers: HANDLERS, phiGuard: true }, tool, args);
+  return runOnce({ tools: TOOLS, handlers: HANDLERS, phiGuard: true, phiRejectInput: true, phiInputView }, tool, args);
 }
 
 const argv = process.argv.slice(2);
@@ -254,7 +261,7 @@ if (argv.length > 2) {
 const [tool, jsonArg] = argv;
 if (tool === undefined) {
   serve({
-    phiGuard: true,
+    phiGuard: true, phiRejectInput: true, phiInputView,
     serverInfo: SERVER_INFO,
     instructions: INSTRUCTIONS,
     tools: TOOLS,

@@ -20,14 +20,17 @@
 // Fail-closed: missing context (workflow/payload/signer/tenant) is rejected;
 // any payload byte change invalidates the record (tamper evidence).
 
-import { canonicalJson, sha256Hex } from "../servers/shared/crypto.mjs";
+import { randomUUID } from "node:crypto";
+import { isProductionStoreProfile } from "../servers/shared/secure-store.mjs";
+import { sha256Hex } from "../servers/shared/crypto.mjs";
 import { generateKeyPair, signDecision, verifyDecisionSignature, computeDecisionDigest } from "../servers/shared/digital-signature.mjs";
 
-export const SIGNATURE_RECORD_SCHEMA = "medcius.clinician-signature-record.v1";
+export const SIGNATURE_RECORD_SCHEMA = "medcius.clinician-signature-record.v2";
 
 /**
  * Built-in ECDSA P-256 provider. `privateKeys` may be pre-seeded
- * { [signerId]: privateKeyPem } for deterministic tests / KMS-backed deployment.
+ * Map<signerId, { privateKeyPem, publicKeyPem, keyId }> for test key reuse.
+ * This provider remains test_only even when keys are supplied.
  */
 export function internalEcCaProvider({ privateKeys = new Map(), signerIds = [] } = {}) {
   const keys = new Map(privateKeys);
@@ -42,6 +45,11 @@ export function internalEcCaProvider({ privateKeys = new Map(), signerIds = [] }
 
   return {
     id: "internal-ec-p256",
+    assurance: "test_only",
+    async getSigningIdentity({ signerId }) {
+      const key = ensureKey(signerId);
+      return { key_ref: key.keyId, algorithm: "ECDSA_P256_SHA256", certificate_fingerprint: sha256Hex(key.publicKeyPem) };
+    },
     async sign({ payloadDigest, signerId, role }) {
       const key = ensureKey(signerId);
       const signed = signDecision({
@@ -55,7 +63,7 @@ export function internalEcCaProvider({ privateKeys = new Map(), signerIds = [] }
         signature: signed.signature,
         key_ref: key.keyId,
         algorithm: signed.signature_algorithm,
-        certificate_fingerprint: sha256Hex(key.publicKeyPem).slice(0, 16),
+        certificate_fingerprint: sha256Hex(key.publicKeyPem),
         // internal provider issues no X.509 certificate — explicit, not hidden
         certificate: null,
       };
@@ -79,13 +87,16 @@ export function internalEcCaProvider({ privateKeys = new Map(), signerIds = [] }
  * Create the CA signature adapter.
  *
  * @param {object} options
- * @param {{ id: string, sign: Function, verify: Function }} [options.provider] - hospital CA SDK adapter.
+ * @param {{ id: string, assurance: string, getSigningIdentity: Function, sign: Function, verify: Function }} [options.provider] - hospital CA SDK adapter.
  * @param {string} [options.providerId]
+ * @param {'synthetic'|'hospital'} [options.profile]
+ * @param {string|null} [options.requiredAlgorithm] exact deployment-approved algorithm identifier
  */
-export function createCaSignatureAdapter({ provider, providerId } = {}) {
+export function createCaSignatureAdapter({ provider, providerId, profile = "synthetic", requiredAlgorithm = null } = {}) {
+  if (!["synthetic", "hospital"].includes(profile)) throw new Error("CA_PROFILE_INVALID");
   const ca = provider ?? internalEcCaProvider();
-  if (!ca || typeof ca.sign !== "function" || typeof ca.verify !== "function") {
-    throw new Error("CA_PROVIDER_INTERFACE_INVALID: provider must implement sign() and verify()");
+  if (!ca || typeof ca.sign !== "function" || typeof ca.verify !== "function" || typeof ca.getSigningIdentity !== "function") {
+    throw new Error("CA_PROVIDER_INTERFACE_INVALID: provider must implement getSigningIdentity(), sign() and verify()");
   }
   const resolvedProviderId = providerId ?? ca.id ?? "custom-ca";
 
@@ -97,7 +108,7 @@ export function createCaSignatureAdapter({ provider, providerId } = {}) {
     if (typeof tenantId !== "string" || !tenantId.trim()) throw new Error("CA_TENANT_REQUIRED");
   }
 
-  return {
+  const adapter = {
     provider_id: resolvedProviderId,
 
     /**
@@ -106,28 +117,38 @@ export function createCaSignatureAdapter({ provider, providerId } = {}) {
      */
     async createSignatureRecord({ workflow, payload, signerId, role, tenantId, signerNote = null }) {
       requireContext({ workflow, payload, signerId, role, tenantId });
+      const hospital = profile === "hospital" || isProductionStoreProfile();
+      if (hospital && ca.assurance !== "hospital_ca") throw new Error("CA_HOSPITAL_PROVIDER_REQUIRED");
       const payloadDigest = computeDecisionDigest(payload);
-      const signed = await ca.sign({ payloadDigest, signerId, role });
-      if (!signed?.signature) throw new Error("CA_SIGN_FAILED");
-      const record = {
-        schema_version: SIGNATURE_RECORD_SCHEMA,
-        workflow,
-        payload_digest: payloadDigest,
+      let identity;
+      try { identity = await ca.getSigningIdentity({ signerId, role, tenantId }); }
+      catch { throw new Error("CA_IDENTITY_LOOKUP_FAILED"); }
+      if (!identity?.key_ref || !identity.algorithm || !identity.certificate_fingerprint
+          || (requiredAlgorithm && identity.algorithm !== requiredAlgorithm)) throw new Error("CA_SIGNING_IDENTITY_INVALID");
+      if (hospital && !/^[a-f0-9]{64}$/i.test(identity.certificate_fingerprint)) throw new Error("CA_CERTIFICATE_FINGERPRINT_REQUIRED");
+      const unsigned = {
+        schema_version: SIGNATURE_RECORD_SCHEMA, workflow, payload_digest: payloadDigest,
         payload_algorithm: "sha256(canonical-json)",
         signer: { id: signerId, role, tenant_id: tenantId },
-        signer_note: typeof signerNote === "string" && signerNote.trim() ? signerNote.trim() : null,
-        provider: resolvedProviderId,
-        key_ref: signed.key_ref ?? null,
-        certificate_fingerprint: signed.certificate_fingerprint ?? null,
-        certificate: signed.certificate ?? null,
-        algorithm: signed.algorithm ?? "unknown",
-        signature: signed.signature,
-        signed_at: new Date().toISOString(),
-        boundary: {
-          is_ehr_writeback: false,
-          note: "签名仅确认「报告内容由签名人核对确认」，不构成 EHR 写回；写回仍受治理阶梯 Level 4 与医院 CA 证书体系约束。",
-        },
+        // Retain no arbitrary free text in a signature or audit record.
+        signer_note: null,
+        signer_note_digest: typeof signerNote === "string" && signerNote.trim() ? sha256Hex(signerNote) : null,
+        provider: resolvedProviderId, key_ref: identity.key_ref,
+        certificate_fingerprint: identity.certificate_fingerprint, certificate: null,
+        algorithm: identity.algorithm, signed_at: new Date().toISOString(), nonce: randomUUID(),
+        assurance: hospital ? "hospital_provider_verification_required" : "engineering_only",
+        boundary: { is_ehr_writeback: false, note: "签名绑定此资料核对记录；不代表临床任务完成或 EHR 写回。" },
       };
+      let signed;
+      try { signed = await ca.sign({ payloadDigest: computeDecisionDigest(unsigned), signerId, role, tenantId, keyRef: identity.key_ref }); }
+      catch { throw new Error("CA_SIGN_FAILED"); }
+      if (typeof signed?.signature !== "string" || !signed.signature) throw new Error("CA_SIGN_FAILED");
+      for (const key of ["key_ref", "algorithm", "certificate_fingerprint"]) {
+        if (signed[key] != null && signed[key] !== unsigned[key]) throw new Error("CA_IDENTITY_CHANGED_DURING_SIGNING");
+      }
+      const record = { ...unsigned, signature: signed.signature };
+      if (hospital && !(await adapter.verifySignatureRecord({ record, payload })).valid) throw new Error("CA_HOSPITAL_VERIFICATION_FAILED");
+
       return {
         signature_record: record,
         audit_event: {
@@ -152,16 +173,28 @@ export function createCaSignatureAdapter({ provider, providerId } = {}) {
           return { valid: false, reason: "CA_PAYLOAD_DIGEST_MISMATCH: payload changed after signing (tamper evidence)" };
         }
       }
-      const result = await ca.verify({
-        payloadDigest: record.payload_digest,
+      if (record.provider !== resolvedProviderId || (requiredAlgorithm && record.algorithm !== requiredAlgorithm)) return { valid: false, reason: "CA_PROVIDER_OR_ALGORITHM_MISMATCH" };
+      const { signature, ...unsigned } = record;
+      const hospital = profile === "hospital" || isProductionStoreProfile();
+      if (hospital && (ca.assurance !== "hospital_ca" || record.assurance !== "hospital_provider_verification_required")) return { valid: false, reason: "CA_HOSPITAL_PROVIDER_REQUIRED" };
+      let result;
+      try { result = await ca.verify({
+        payloadDigest: computeDecisionDigest(unsigned),
         signature: record.signature,
         signerId: record.signer?.id,
         role: record.signer?.role,
-        keyRef: record.key_ref,
-      });
+        keyRef: record.key_ref, tenantId: record.signer?.tenant_id,
+        algorithm: record.algorithm, certificateFingerprint: record.certificate_fingerprint,
+        signedAt: record.signed_at,
+      }); } catch { return { valid: false, reason: "CA_VERIFY_FAILED" }; }
+      if (hospital && (result?.certificate_chain_valid !== true || result.revocation_status !== "good"
+          || result.signer_id !== record.signer?.id || result.tenant_id !== record.signer?.tenant_id
+          || !Number.isFinite(Date.parse(result.checked_at)) || Math.abs(Date.now() - Date.parse(result.checked_at)) > 300000)) {
+        return { valid: false, reason: "CA_TRUST_OR_REVOCATION_UNVERIFIED" };
+      }
       return {
-        valid: result.valid === true,
-        reason: result.reason,
+        valid: result?.valid === true,
+        reason: result?.valid === true ? "CA_ENVELOPE_VERIFIED" : "CA_SIGNATURE_INVALID",
         record: {
           workflow: record.workflow,
           signer: record.signer,
@@ -172,4 +205,5 @@ export function createCaSignatureAdapter({ provider, providerId } = {}) {
       };
     },
   };
+  return adapter;
 }

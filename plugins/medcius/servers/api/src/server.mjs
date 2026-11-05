@@ -7,6 +7,8 @@ import { createServer as createHttpsServer } from "node:https";
 import { readFileSync, existsSync } from "node:fs";
 import { routeRequest } from "./rest-routes.mjs";
 import { applySecurityHeaders } from "./security-hardening.mjs";
+import { resolvePhiDetector } from '../../../lib/phi-runtime.mjs';
+import { requiresProductionPhi } from '../../../lib/production-phi-policy.mjs';
 
 const MAX_BODY_BYTES = 10 * 1024 * 1024; // 10MB limit
 
@@ -45,18 +47,20 @@ export function createServer(options = {}) {
       try {
         await routeRequest(req, res, body);
       } catch (err) {
-        console.error("routeRequest unhandled error:", err);
+        // Exception bodies/stacks may contain source text or transport bodies.
+        const code = /^[A-Z][A-Z0-9_]{2,80}(?=[:\s]|$)/.exec(String(err?.message))?.[0] || 'REQUEST_FAILED';
+        console.error("routeRequest unhandled error:", code);
         if (!res.headersSent) {
           res.writeHead(500, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ error: `Internal Server Error: ${err.message}` }));
+          res.end(JSON.stringify({ error: code }));
         }
       }
     });
 
-    req.on("error", (err) => {
+    req.on("error", () => {
       if (!res.headersSent) {
         res.writeHead(400, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: `Request Error: ${err.message}` }));
+        res.end(JSON.stringify({ error: 'REQUEST_STREAM_FAILED' }));
       }
     });
   };
@@ -91,8 +95,9 @@ function getEnvTlsConfig() {
   return null;
 }
 
-export function startServer(port = 8080, host = "0.0.0.0", options = {}) {
+export async function startServer(port = 8080, host = "0.0.0.0", options = {}) {
   const server = createServer(options);
+  if (requiresProductionPhi()) await resolvePhiDetector();
   const isTls = Boolean(options.tls || getEnvTlsConfig());
   const protocol = isTls ? "https" : "http";
 

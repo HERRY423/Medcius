@@ -1,11 +1,31 @@
 // PHI Guard detection + transformation library. Pure functions, no I/O.
 // Heuristics tuned for CN clinical text: 18-digit resident ID (with checksum),
 // CN mobile numbers, emails, labeled MRNs (住院号/门诊号/病历号/登记号), and
-// label-context names (患者：/姓名：…). Name detection WITHOUT a label is
-// deliberately NOT attempted — document this limitation, don't fake it.
+// label/context names (患者：/姓名：… and bounded clinician/relative cues).
+// Unconstrained bare-name recall is not guaranteed; remote extraction also
+// requires the deployment-local detector in lib/local-phi-egress.mjs.
 
 import { sha256Hex, hmacHex } from "../../shared/crypto.mjs";
 import { isIntegrityMetadata } from "../../shared/integrity-metadata.mjs";
+import { AsyncLocalStorage } from 'node:async_hooks';
+const scanScopes=new AsyncLocalStorage();
+// Memoize only a deterministic clean regex scan, within one awaited operation.
+// This does not attest NER or session-dictionary clearance. Those independent
+// gates are still required, including after dictionary injection.
+export function withPhiTextScanScope(work) {
+  const scope={active:true,clean:new Set(),fields:new Map(),bytes:0};
+  return scanScopes.run(scope,async()=>{
+    try { return await work(); }
+    finally { scope.active=false;scope.clean.clear();scope.fields.clear();scope.bytes=0; }
+  });
+}
+export function normalizedPhiFieldKey(key) {
+  const scope=scanScopes.getStore();
+  if(scope?.active && scope.fields.has(key)) return scope.fields.get(key);
+  const normalized=key.replace(/[_\s-]/g,'').toLowerCase();
+  if(scope?.active && key.length<=256 && scope.fields.size<2048) scope.fields.set(key,normalized);
+  return normalized;
+}
 
 export const RE_ID18 = /\d{17}[\dXx]/g;
 export const RE_PHONE = /(?<!\d)1[3-9]\d{9}(?!\d)/g;
@@ -21,9 +41,14 @@ export const RE_DOCTOR_LABEL = /(主管医师|主治医师|主任医师|住院�
 export const RE_BED_WARD = /(病区|病房|床位|床号)\s*[：:]\s*([A-Za-z0-9\u4e00-\u9fa5\-]{1,15})/g;
 export const RE_ADDRESS_LABEL = /(住址|现住址|家庭地址|户籍地址|联系地址|通讯地址)\s*[：:]\s*([^\n，,。；;]{4,60})/g;
 export const RE_UNLABELED_ADDRESS = /([\u4e00-\u9fa5]{2,6}(?:省|自治区|市))?([\u4e00-\u9fa5]{2,6}(?:市|区|县|旗))([\u4e00-\u9fa5]{2,10}(?:镇|乡|街道|路|街|巷|大道))(?:\d{1,5}(?:号|弄|栋|幢|单元|室))/g;
+// A specific street and house number need no city/label to be identifying.
+export const RE_STREET_ADDRESS = /[\u4e00-\u9fa5]{2,16}?(?:大道|大街|路|街|巷|弄)(?:\s*[0-9０-９一二三四五六七八九十百甲乙丙-]+(?:号|弄|栋|幢|单元|楼|层|室))+/g;
 
 const ID_WEIGHTS = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2];
 const ID_CHECK = ["1", "0", "X", "9", "8", "7", "6", "5", "4", "3", "2"];
+// Contextual candidates need a surname cue; arbitrary clinical words after
+// 患者 (e.g. 患者咳嗽) are not names. This remains incomplete heuristic coverage.
+const CONTEXT_NAME = '(?:欧阳|司马|上官|诸葛|东方|皇甫|尉迟|公孙|慕容|[赵钱孙李周吴郑王冯陈褚卫蒋沈韩杨朱秦尤许何吕施张孔曹严华金魏陶姜戚谢邹喻柏水窦章云苏潘葛范彭郎鲁韦昌马苗方俞任袁柳史唐费薛雷贺倪汤滕殷罗毕郝安常乐于傅皮卞齐康伍余顾孟平黄和穆萧尹姚邵湛汪祁毛狄米贝明臧计伏成戴宋茅庞熊纪舒屈项祝董梁杜阮蓝闵席季麻强贾路娄江童颜郭梅盛林刁钟徐邱骆高夏蔡田樊胡凌霍万卢莫房解应宗丁宣邓单洪包左石崔吉龚程邢裴陆荣翁荀羊惠甄曲封储焦段侯全宁武刘景詹龙叶白赖卓谭庄晏瞿耿满聂晁冷辛简曾沙关查游权盖桓公])([\\u4e00-\\u9fa5]{1,3}?)';
 
 /** GB 11643 checksum for an 18-digit resident ID string. */
 export function idChecksumOk(id18) {
@@ -61,17 +86,20 @@ function maskValue(value, keepLast) {
  * Scan text for PHI candidates. Overlapping matches resolved longest-first /
  * earliest-start. Returns spans so callers can render or transform.
  */
-export function scanText(text, { contextual = false } = {}) {
+export function scanText(text, { contextual = true } = {}) {
   text = String(text ?? "");
+  const scope=scanScopes.getStore(), cacheKey=scope?.active ? `${contextual?'1':'0'}${text}` : null;
+  if(cacheKey!==null && scope.clean.has(cacheKey)) return {findings:[],counts:{},total:0};
   // Token digests may contain long numeric runs. Do not reinterpret generated
   // tokens as new phone/ID spans and corrupt them on a second boundary pass.
   const protectedSpans = [...text.matchAll(/\[(?:ID:[A-Za-z0-9_-]+:(?:[a-f0-9]{32}|REDACTED)|PSN:(?:[a-f0-9]{8}|[a-f0-9]{32}|[a-f0-9]{64})|REDACTED:[A-Za-z0-9_]+)\]/g)]
     .map((match) => ({ start: match.index, end: match.index + match[0].length }));
   const found = [];
-  const push = (re, type, extra) => {
+  const push = (re, type, extra, accept) => {
     re.lastIndex = 0;
     let m;
     while ((m = re.exec(text))) {
+      if (accept && !accept(m)) continue;
       if (protectedSpans.some((span) => m.index >= span.start && m.index + m[0].length <= span.end)) continue;
       found.push({
         type,
@@ -89,6 +117,7 @@ export function scanText(text, { contextual = false } = {}) {
   push(RE_BED_WARD, "bed_ward", (m) => ({ sub_type: m[1] }));
   push(RE_ADDRESS_LABEL, "address_label", (m) => ({ sub_type: m[1] }));
   push(RE_UNLABELED_ADDRESS, "address_unlabeled");
+  push(RE_STREET_ADDRESS, "address_street_number");
   push(RE_ID18, "id_card", (m) => ({ checksum_valid: idChecksumOk(m[0]) }));
   push(RE_BANK_CARD, "bank_card", (m) => ({ luhn_valid: luhnCheckOk(m[0]) }));
   push(RE_PHONE, "phone_cn_mobile");
@@ -97,8 +126,12 @@ export function scanText(text, { contextual = false } = {}) {
   if (contextual) {
     // Optional legacy context profile, shared by both detection and transform.
     // Deliberately bounded to names adjacent to introductions/actions.
-    push(/(?:患者|病人|患儿)([\u4e00-\u9fa5]{2,4})(?=[，,]|诉|因|于|今日|昨日|入院|出院)/g, "context_patient");
-    push(/(?:由其[子女]|陪护人(?:家属)?(?:姓名)?[：:]?|家属(?:姓名)?[：:]?)([\u4e00-\u9fa5]{2,4})(?=[，,。]|送入|陪同|代诉|诉称)/g, "context_relative");
+    const clinicalWords = new Set(['高热', '高血压', '高血糖', '高血脂', '高龄', '包块', '焦虑', '白血病', '黄疸', '心悸']);
+    const plausibleName = m => !clinicalWords.has(m[1]);
+    push(new RegExp(`(?:患者|病人|患儿)(${CONTEXT_NAME})(?=[，,]|诉|因|于|今日|昨日|入院|出院)`, 'g'), "context_patient", null, plausibleName);
+    push(new RegExp(`(?:由其[子女]|陪护人(?:家属)?(?:姓名)?[：:]?|家属(?:姓名)?[：:]?)(${CONTEXT_NAME})(?=[，,。]|送入|陪同|代诉|诉称)`, 'g'), "context_relative", null, plausibleName);
+    push(new RegExp(`(?:妻子|丈夫|配偶|儿子|女儿|父亲|母亲|兄长|姐姐|弟弟|妹妹)\\s*(${CONTEXT_NAME})(?=陪同|代诉|签字|签名|送入|表示|诉称|[，,。；;])`, 'g'), "context_relative", null, plausibleName);
+    push(/(?<![\u4e00-\u9fa5])([\u4e00-\u9fa5]{2,4})(?:主任医师|副主任医师|主治医师|住院医师|医生|医师|护士|教授)(?=查房|会诊|建议|签名|签字|[，,。；;\s]|$)/g, "context_clinician");
     push(/(?:患者系|就职于|任职于|担任)(?:某|原)?(?:市委|省委|局长|科长|主任|书记|董事长|总经理|校长|院长)/g, "context_title");
     push(/病案号[：:]\s*[A-Za-z0-9_-]{4,25}/g, "mrn_label");
   }
@@ -111,6 +144,9 @@ export function scanText(text, { contextual = false } = {}) {
     if (f.start < lastEnd) continue;
     out.push(f);
     lastEnd = f.end;
+  }
+  if(!out.length && scope?.active && scope.clean.size<2048 && scope.bytes+cacheKey.length*2<=2_000_000) {
+    scope.clean.add(cacheKey);scope.bytes+=cacheKey.length*2;
   }
   return {
     findings: out,
@@ -172,7 +208,7 @@ export function redactText(text, { mode = "mask", keepLast = 2 } = {}) {
  * type+value, so the same person/number maps to the same token within one salt
  * domain without revealing the original.
  */
-export function pseudonymizeText(text, { salt, contextual = false }) {
+export function pseudonymizeText(text, { salt, contextual = true }) {
   if (!salt || typeof salt !== "string" || salt.length < 8)
     throw new Error("pseudonymizeText: salt required (>=8 chars); set CLAUDE_MEDCIUS_PHI_SALT for stability");
   const { findings } = scanText(text, { contextual });

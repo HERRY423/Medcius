@@ -1,0 +1,243 @@
+{
+  "schema_version": "medcius.record-review-policy.v1",
+  "id": "jiangsu-evidence-review-reference",
+  "version": "1",
+  "data_class": "reference",
+  "source": "本项目工程参考配置；非江苏医保官方诊断标准或MCC/CC表",
+  "sources": [
+    {
+      "kind": "notes",
+      "system": "EMR"
+    },
+    {
+      "kind": "observations",
+      "system": "LIS"
+    },
+    {
+      "kind": "diagnosticReports",
+      "system": "EMR-ASSESSMENT"
+    },
+    {
+      "kind": "orders",
+      "system": "HIS"
+    }
+  ],
+  "conditions": [
+    {
+      "id": "hypokalemia",
+      "terms": [
+        "低钾血症",
+        "重度低钾血症",
+        "严重低钾血症"
+      ],
+      "objective": [
+        {
+          "id": "potassium",
+          "kind": "observations",
+          "system": "LIS",
+          "concepts": [
+            "potassium"
+          ],
+          "unit": "mmol/L",
+          "context_keys": [
+            "specimen"
+          ],
+          "source_locator": "院内项目映射与检验上下文待核验；此参考配置不是诊断标准",
+          "signal": {
+            "operator": "critical_low"
+          },
+          "context_allowed": {
+            "specimen": [
+              "serum",
+              "plasma"
+            ]
+          }
+        }
+      ],
+      "treatments": [
+        "potassium_replacement"
+      ]
+    },
+    {
+      "id": "respiratory_failure",
+      "terms": [
+        "呼吸衰竭",
+        "I型呼吸衰竭",
+        "II型呼吸衰竭",
+        "Ⅰ型呼吸衰竭",
+        "Ⅱ型呼吸衰竭"
+      ],
+      "objective": [
+        {
+          "id": "arterial_pao2",
+          "kind": "observations",
+          "system": "LIS",
+          "concepts": [
+            "PaO2"
+          ],
+          "unit": "mmHg",
+          "context_keys": [
+            "specimen",
+            "fio2",
+            "oxygen_device"
+          ],
+          "source_locator": "院内项目映射与检验上下文待核验；此参考配置不是诊断标准",
+          "context_allowed": {
+            "specimen": [
+              "arterial"
+            ]
+          },
+          "context_ranges": {
+            "fio2": {
+              "min": 0.21,
+              "max": 1
+            }
+          }
+        },
+        {
+          "id": "arterial_paco2",
+          "kind": "observations",
+          "system": "LIS",
+          "concepts": [
+            "PaCO2"
+          ],
+          "unit": "mmHg",
+          "context_keys": [
+            "specimen",
+            "fio2",
+            "oxygen_device"
+          ],
+          "source_locator": "院内项目映射与检验上下文待核验；此参考配置不是诊断标准",
+          "context_allowed": {
+            "specimen": [
+              "arterial"
+            ]
+          },
+          "context_ranges": {
+            "fio2": {
+              "min": 0.21,
+              "max": 1
+            }
+          }
+        }
+      ],
+      "treatments": [
+        "oxygen_support",
+        "ventilatory_support"
+      ]
+    },
+    {
+      "id": "heart_failure",
+      "terms": [
+        "心力衰竭",
+        "心衰",
+        "急性心力衰竭",
+        "慢性心力衰竭"
+      ],
+      "objective": [
+        {
+          "id": "bnp",
+          "kind": "observations",
+          "system": "LIS",
+          "concepts": [
+            "BNP"
+          ],
+          "unit": "ng/L",
+          "context_keys": [
+            "specimen"
+          ],
+          "source_locator": "院内项目映射与检验上下文待核验；此参考配置不是诊断标准",
+          "context_allowed": {
+            "specimen": [
+              "serum",
+              "plasma"
+            ]
+          }
+        },
+        {
+          "id": "ntprobnp",
+          "kind": "observations",
+          "system": "LIS",
+          "concepts": [
+            "NT-proBNP"
+          ],
+          "unit": "ng/L",
+          "context_keys": [
+            "specimen"
+          ],
+          "source_locator": "院内项目映射与检验上下文待核验；此参考配置不是诊断标准",
+          "context_allowed": {
+            "specimen": [
+              "serum",
+              "plasma"
+            ]
+          }
+        },
+        {
+          "id": "cardiac_assessment",
+          "kind": "diagnosticReports",
+          "system": "EMR-ASSESSMENT",
+          "concepts": [
+            "cardiac_assessment"
+          ],
+          "context_keys": [],
+          "source_locator": "医师综合评估/影像报告，仅关联原始资料，不代判心衰"
+        }
+      ],
+      "treatments": [
+        "heart_failure_treatment"
+      ]
+    },
+    {
+      "id": "hypoalbuminemia",
+      "terms": [
+        "低白蛋白血症",
+        "低蛋白血症"
+      ],
+      "objective": [
+        {
+          "id": "albumin",
+          "kind": "observations",
+          "system": "LIS",
+          "concepts": [
+            "albumin"
+          ],
+          "unit": "g/L",
+          "context_keys": [
+            "specimen"
+          ],
+          "source_locator": "院内项目映射与检验上下文待核验；此参考配置不是诊断标准",
+          "context_allowed": {
+            "specimen": [
+              "serum",
+              "plasma"
+            ]
+          }
+        }
+      ],
+      "treatments": []
+    },
+    {
+      "id": "severe_malnutrition",
+      "terms": [
+        "重度营养不良",
+        "严重营养不良"
+      ],
+      "objective": [
+        {
+          "id": "nutrition_assessment",
+          "kind": "diagnosticReports",
+          "system": "EMR-ASSESSMENT",
+          "concepts": [
+            "nutrition_assessment"
+          ],
+          "context_keys": [],
+          "source_locator": "营养评估记录；白蛋白不代替营养不良评估"
+        }
+      ],
+      "treatments": [
+        "nutrition_support"
+      ]
+    }
+  ]
+}

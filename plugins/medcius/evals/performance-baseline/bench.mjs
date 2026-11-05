@@ -8,10 +8,9 @@
 //   4. audit-chain crypto primitives (canonicalJson + sha256 + chainHash)
 //   5. public-reference reviewer (six-dimension rule evaluation)
 //
-// Gate semantics: mean op latency must stay under budget * MEDCIUS_PERF_
-// BUDGET_FACTOR. The factor exists ONLY to absorb slow CI machines and is
-// clamped to >= 1 — lowering it below 1 is rejected so the gate can never be
-// silently weakened. Budgets are stability ceilings, not SLOs; regressions vs
+// Gate semantics: mean op latency must stay under the fixed budget. The legacy
+// budget-factor setting accepts only 1; it cannot relax the 80 ms pre-round gate.
+// Budgets are stability ceilings, not SLOs; regressions vs
 // the recorded baseline report should be reviewed even inside budget.
 
 import { writeFileSync, mkdirSync } from "node:fs";
@@ -31,8 +30,8 @@ const argOf = (k) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : 
 const outReport = argOf("--out") || join(__dirname, "reports", "performance-baseline.md");
 
 const budgetFactor = Number(process.env.MEDCIUS_PERF_BUDGET_FACTOR || 1);
-if (!Number.isFinite(budgetFactor) || budgetFactor < 1) {
-  console.error("MEDCIUS_PERF_BUDGET_FACTOR must be a number >= 1 (gate cannot be weakened below nominal budgets).");
+if (budgetFactor !== 1) {
+  console.error("MEDCIUS_PERF_BUDGET_FACTOR must be exactly 1; fixed performance gates cannot be relaxed.");
   process.exit(1);
 }
 
@@ -112,36 +111,31 @@ function measure(label, iterations, warmup, fn) {
   return { label, iterations, mean, p50: p(0.5), p95: p(0.95), opsPerSec: 1000 / totalMs * iterations };
 }
 
+async function measureAsync(label, iterations, warmup, fn) {
+  for (let i=0;i<warmup;i++) await fn();
+  const samples = [];
+  for (let i=0;i<iterations;i++) {
+    const start=process.hrtime.bigint(); await fn();
+    samples.push(Number(process.hrtime.bigint()-start)/1e6);
+  }
+  samples.sort((a,b)=>a-b);
+  const mean=samples.reduce((a,b)=>a+b,0)/iterations;
+  return {label,iterations,mean,p50:samples[Math.floor(0.5*iterations)],p95:samples[Math.floor(0.95*iterations)],opsPerSec:1000/mean};
+}
+
 async function main() {
   const results = [];
 
   // 1. Bridge snapshot assembly
   const bridge = buildBridge();
-  results.push({
-    ...measure("bridge_snapshot", 200, 20, () => bridge.readPatientSnapshot(context).catch(() => {})),
-    isAsync: true,
-  });
-  // Re-measure properly awaited (async paths need await inside the loop).
-  {
-    for (let i = 0; i < 20; i++) await bridge.readPatientSnapshot(context);
-    const samples = [];
-    const t0 = process.hrtime.bigint();
-    for (let i = 0; i < 200; i++) await bridge.readPatientSnapshot(context);
-    const totalMs = Number(process.hrtime.bigint() - t0) / 1e6;
-    const mean = totalMs / 200;
-    results[results.length - 1] = { label: "bridge_snapshot", iterations: 200, mean, p50: mean, p95: mean, opsPerSec: 200 / (totalMs / 1000) };
-  }
+  results.push(await measureAsync('bridge_snapshot',200,20,()=>bridge.readPatientSnapshot(context)));
 
   // 2. Full pre-round workflow over the bridge
   {
-    let last;
-    for (let i = 0; i < 10; i++) last = await HospitalAgentAdapter.executePreRoundFromBridge({ context, bridge });
-    if (!last?.summary) throw new Error("preround workflow returned no summary — fixture drift");
-    const t0 = process.hrtime.bigint();
-    for (let i = 0; i < 100; i++) await HospitalAgentAdapter.executePreRoundFromBridge({ context, bridge });
-    const totalMs = Number(process.hrtime.bigint() - t0) / 1e6;
-    const mean = totalMs / 100;
-    results.push({ label: "preround_workflow", iterations: 100, mean, p50: mean, p95: mean, opsPerSec: 100 / (totalMs / 1000) });
+    results.push(await measureAsync('preround_workflow',100,10,async()=>{
+      const result=await HospitalAgentAdapter.executePreRoundFromBridge({context,bridge});
+      if (!result?.summary) throw new Error('preround workflow returned no summary — fixture drift');
+    }));
   }
 
   // 3. PHI Guard pseudonymization
@@ -183,7 +177,7 @@ async function main() {
   lines.push("> **用途**：记录关键路径在当前机器上的延迟基线并作为 CI 回归门禁。预算值为稳定性上限（约典型值的 ~10 倍），不是 SLO；超出基线报告的显著回退即使在预算内也应人工评审。");
   lines.push("");
   lines.push(`- 环境：Node ${process.version} / ${os.platform()} ${os.arch()} / ${os.cpus().length} vCPU`);
-  lines.push(`- 预算系数：MEDCIUS_PERF_BUDGET_FACTOR=${budgetFactor}（仅吸收慢 CI 机，强制 >=1）`);
+  lines.push(`- 预算系数：MEDCIUS_PERF_BUDGET_FACTOR=${budgetFactor}（固定为 1；查房门槛固定 80 ms）`);
   lines.push("");
   lines.push("| 基准 | 迭代 | 平均 (ms/op) | p50 | p95 | ops/s | 预算 (ms) | 结果 |");
   lines.push("|---|---|---|---|---|---|---|---|");

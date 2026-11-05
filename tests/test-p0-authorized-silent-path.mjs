@@ -16,7 +16,7 @@ delete process.env.MEDCIUS_HOSPITAL_SOURCE_MODULE;
 const { setAuthorizedHospitalSource, clearAuthorizedHospitalSource, assembleAuthorizedHospitalSourceFromEnv, resolveAuthorizedHospitalSource } = await import("../plugins/medcius/lib/authorized-hospital-source.mjs");
 const { HospitalAgentAdapter, getPreRoundResearchSnapshot } = await import("../plugins/medcius/lib/hospital-agent-adapter.mjs");
 const { executeHisEmbedPreRound } = await import("../plugins/medcius/lib/his-embed-adapter.mjs");
-const { saveFrozenResearchRecord, readFrozenResearchRecord, replayFrozenResearchRecord } = await import("../plugins/medcius/lib/silent-research-archive.mjs");
+const { saveFrozenResearchRecord, replayFrozenResearchRecord, saveFrozenResearchRecordAsync, readFrozenResearchRecordAsync, replayFrozenResearchRecordAsync } = await import("../plugins/medcius/lib/silent-research-archive.mjs");
 const { generateToken, extractAuthContext } = await import("../plugins/medcius/servers/api/src/auth-middleware.mjs");
 const { routeRequest, resetTransportEdgeGuards } = await import("../plugins/medcius/servers/api/src/rest-routes.mjs");
 const { HANDLERS: audit } = await import("../plugins/medcius/servers/audit/src/tools.mjs");
@@ -92,14 +92,14 @@ assert.equal(lastContext.tenant_id, TENANT);
 assert.equal(lastContext.as_of, AS_OF);
 assert.equal(lastContext.time_window, "24h");
 const caseId = captured.json.research_record_id;
-const record = readFrozenResearchRecord(caseId, { tenantId: TENANT });
+const record = await readFrozenResearchRecordAsync(caseId, { tenantId: TENANT });
 assert.equal(record.engine_input.now, AS_OF);
 assert.equal(record.replay_input.context.as_of, AS_OF);
 assert.ok(record.algorithm_identity.sources.some((source) => source.path === "lib/patient-evolution-engine.mjs"));
 assert.match(record.algorithm_identity.sources_sha256, /^[a-f0-9]{64}$/);
 assert.ok(record.annotation_output.blocks.what_changed.nursing_vitals_summary);
 assert.equal(JSON.stringify(record).includes("合成张三"), false);
-assert.equal(replayFrozenResearchRecord(caseId, { tenantId: TENANT }).match, true);
+assert.equal((await replayFrozenResearchRecordAsync(caseId, { tenantId: TENANT })).match, true);
 const originalNodeVersion = process.versions.node;
 let differentRuntimeArchive;
 try {
@@ -108,31 +108,31 @@ try {
 } finally {
   Object.defineProperty(process.versions, "node", { value: originalNodeVersion, configurable: true });
 }
-assert.throws(() => differentRuntimeArchive.replayFrozenResearchRecord(caseId, { tenantId: TENANT }), /ALGORITHM_MISMATCH/);
-assert.throws(() => readFrozenResearchRecord(caseId), /TENANT_REQUIRED/);
-assert.equal(readFrozenResearchRecord(caseId, { tenantId: "tenant-synthetic-b" }), null);
+await assert.rejects(() => differentRuntimeArchive.replayFrozenResearchRecordAsync(caseId, { tenantId: TENANT }), /ALGORITHM_MISMATCH/);
+await assert.rejects(() => readFrozenResearchRecordAsync(caseId), /TENANT_REQUIRED/);
+assert.equal(await readFrozenResearchRecordAsync(caseId, { tenantId: "tenant-synthetic-b" }), null);
 assert.equal((await call("GET", `/api/v1/research/frozen-record?case_id=${caseId}`, physician)).status, 403);
 assert.equal((await call("GET", `/api/v1/research/frozen-record?case_id=${caseId}`, otherAuditor, null, "tenant-synthetic-b")).status, 404);
 assert.equal((await call("GET", `/api/v1/research/frozen-record?case_id=${caseId}`, auditor)).status, 200);
 assert.equal((await call("POST", "/api/v1/research/frozen-record/replay", auditor, { case_id: caseId })).json.match, true);
 const repeated = await call("POST", "/api/v1/his/embed/silent-capture", physician, { context: requestContext });
 assert.equal(repeated.json.research_record_id, caseId);
-assert.equal(readFrozenResearchRecord(caseId, { tenantId: TENANT }).created_at, record.created_at);
+assert.equal((await readFrozenResearchRecordAsync(caseId, { tenantId: TENANT })).created_at, record.created_at);
 assert.equal(repeated.json.record_sha256, captured.json.record_sha256);
-const otherResearch = getPreRoundResearchSnapshot(HospitalAgentAdapter.executePreRoundWorkflow({ host: "his_embed",
+const otherResearch = getPreRoundResearchSnapshot(await HospitalAgentAdapter.executePreRoundWorkflowAsync({ host: "his_embed",
   context: { ...lastContext, tenant_id: "tenant-synthetic-b" }, dataFeeds: JSON.parse(JSON.stringify(feeds).replaceAll(TENANT, "tenant-synthetic-b")) }));
-const savedOther = saveFrozenResearchRecord({ tenantId: "tenant-synthetic-b", patientId: record.patient_id, encounterId: record.encounter_id,
+const savedOther = await saveFrozenResearchRecordAsync({ tenantId: "tenant-synthetic-b", patientId: record.patient_id, encounterId: record.encounter_id,
   asOf: AS_OF, governanceStage: record.governance_stage, sourceMode: record.source_mode, sourceManifest: record.source_manifest,
   ...otherResearch });
 assert.notEqual(savedOther.case_id, caseId, "identical clinical content in different tenants must not share an archive id");
 assert.equal((await call("GET", `/api/v1/research/frozen-record?case_id=${savedOther.case_id}`, otherAuditor, null, "tenant-synthetic-b")).json.error,
   "FROZEN_RECORD_AUDIT_ANCHOR_REQUIRED", "uncommitted archive files cannot be exported");
-const model = HospitalAgentAdapter.executePreRoundWorkflow({ host: "his_embed", context: lastContext, dataFeeds: feeds });
+const model = await HospitalAgentAdapter.executePreRoundWorkflowAsync({ host: "his_embed", context: lastContext, dataFeeds: feeds });
 assert.equal(model.engine_input, undefined);
 assert.equal(model.engine_output, undefined);
 assert.equal(model.annotation_summary, undefined);
 assert.equal(JSON.stringify(model).includes("合成张三"), false);
-const pacsTimed = HospitalAgentAdapter.executePreRoundWorkflow({ host: "his_embed", context: lastContext,
+const pacsTimed = await HospitalAgentAdapter.executePreRoundWorkflowAsync({ host: "his_embed", context: lastContext,
   dataFeeds: { ...feeds, pacs: [
     { id: "pacs-future", ...owned, modality: "CT", name: "胸部CT", status: "final", ordered_at: "2026-10-03T12:00:00Z", study_time: "2099-01-01T00:00:00Z", impression: "未来影像印象不可进入摘要" },
     { id: "pacs-unknown", ...owned, modality: "CT", name: "胸部CT", status: "final", impression: "未知时间印象不可进入摘要" },
@@ -146,7 +146,7 @@ assert.ok(pacsTimed.summary.blocks.what_changed.imaging_impressions.some((item) 
 // is a clinical title, and antibiotic-rule names must survive frozen PHI exits.
 const sandboxRules = loadSpecialtyRulePack("cardiology-inpatient-sandbox", { production: false });
 const cardiologyFixtures = getCardiologyMultiSourceFeeds();
-assert.throws(() => HospitalAgentAdapter.executePreRoundWorkflow({ host: "his_embed", context: lastContext, dataFeeds: feeds, frozenRulePack: sandboxRules }), /RULE_PACK_REJECTED/,
+await assert.rejects(() => HospitalAgentAdapter.executePreRoundWorkflowAsync({ host: "his_embed", context: lastContext, dataFeeds: feeds, frozenRulePack: sandboxRules }), /RULE_PACK_REJECTED/,
   "a caller-supplied sandbox pack cannot bypass production validation");
 // The following cases explicitly exercise synthetic archival compatibility,
 // not production approval of the sandbox rules.
@@ -174,15 +174,15 @@ for (const route of ["/api/v1/patient/evolution-summary", "/api/v1/patient/progr
 }
 const defaultTenant = generateToken({ sub: "synthetic", tenant_id: "default", roles: ["auditor"] });
 assert.equal(extractAuthContext({ headers: { authorization: `Bearer ${defaultTenant}`, "x-tenant-id": TENANT } }).isAuthenticated, false);
-assert.equal(audit.verify_chain({}).ok, true);
+assert.equal((await audit.verify_chain({})).ok, true);
 
 const archiveRoot = join(process.env.CLAUDE_MEDCIUS_DATA, "research-archive");
 const recordPath = readdirSync(archiveRoot).map((dir) => join(archiveRoot, dir, `${caseId}.json`)).find((path) => { try { readFileSync(path); return true; } catch { return false; } });
 const tampered = JSON.parse(readFileSync(recordPath, "utf8"));
 tampered.annotation_output.patient.name = "synthetic-tamper";
 writeFileSync(recordPath, JSON.stringify(tampered));
-assert.throws(() => readFrozenResearchRecord(caseId, { tenantId: TENANT }), /INTEGRITY_FAILED/);
-assert.throws(() => replayFrozenResearchRecord(caseId, { tenantId: TENANT }), /INTEGRITY_FAILED/);
+await assert.rejects(() => readFrozenResearchRecordAsync(caseId, { tenantId: TENANT }), /INTEGRITY_FAILED/);
+await assert.rejects(() => replayFrozenResearchRecordAsync(caseId, { tenantId: TENANT }), /INTEGRITY_FAILED/);
 assert.equal((await call("GET", `/api/v1/research/frozen-record?case_id=${caseId}`, auditor)).status, 400);
 assert.equal((await call("POST", "/api/v1/his/embed/silent-capture", physician, { context: requestContext })).status, 400, "existing corrupted capture is never overwritten");
 clearAuthorizedHospitalSource();

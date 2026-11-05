@@ -35,7 +35,7 @@ assert.equal(validateControlledDocuments(root).ok,true);
 const doc=registry.documents[0].path, original=readFileSync(join(root,doc),"utf8");
 writeFileSync(join(root,doc),original+"\nUnreviewed change\n");
 assert.ok(validateControlledDocuments(root).errors.some(e=>e.startsWith("DOCUMENT_CONTENT_CHANGED")));
-writeFileSync(join(root,doc),original.replaceAll("0.8.0-pilot","0.2.0-pilot"));
+writeFileSync(join(root,doc),original.replaceAll(registry.product_version,"0.2.0-pilot"));
 assert.ok(validateControlledDocuments(root).errors.some(e=>e.startsWith("DOCUMENT_VERSION_DRIFT")));
 writeFileSync(join(root,doc),original);
 const component=registry.components[0].path, value=JSON.parse(readFileSync(join(root,component),"utf8"));

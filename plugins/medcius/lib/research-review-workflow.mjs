@@ -1,7 +1,7 @@
 // Research-only review of a frozen snapshot. Never acknowledges a live EHR
 // result, changes a source record, or promotes clinical evidence.
 import { canonicalJson, sha256Hex } from "../servers/shared/crypto.mjs";
-import { readFrozenResearchRecord } from "./silent-research-archive.mjs";
+import { readFrozenResearchRecord, readFrozenResearchRecordAsync } from "./silent-research-archive.mjs";
 import { classifyRecordLifecycle } from "./record-lifecycle.mjs";
 import { HANDLERS as audit, encodeAuditDigest, decodeAuditDigest, encodeAuditResearchReference } from "../servers/audit/src/tools.mjs";
 import { buildSignoffEnvelope } from "../servers/shared/digital-signature.mjs";
@@ -17,14 +17,13 @@ function requireResearchIdentity(auth, physician = false) {
       || (physician && !auth.roles.includes("physician"))) throw new Error("RESEARCH_REVIEW_FORBIDDEN");
 }
 
-function auditedRecord(caseId, auth) {
+async function auditedRecord(caseId, auth, record) {
   requireResearchIdentity(auth);
-  if (!audit.verify_chain({}).ok) throw new Error("RESEARCH_REVIEW_AUDIT_INVALID");
-  const record = readFrozenResearchRecord(caseId, { tenantId: auth.tenantId });
+  if (!(await audit.verify_chain({})).ok) throw new Error("RESEARCH_REVIEW_AUDIT_INVALID");
   if (!record) throw new Error("FROZEN_RECORD_NOT_FOUND");
-  const events = audit.query_events({ action: "his_embed_silent_capture", tenant_id: auth.tenantId,
-    subject_ref: encodeAuditResearchReference(caseId), limit: 1 }).events;
-  const anchor = events.length ? audit.get_event({ event_id: events[0].id }) : null;
+  const events = (await audit.query_events({ action: "his_embed_silent_capture", tenant_id: auth.tenantId,
+    subject_ref: encodeAuditResearchReference(caseId), limit: 1 })).events;
+  const anchor = events.length ? await audit.get_event({ event_id: events[0].id }) : null;
   if (!anchor || decodeAuditDigest(anchor.payload.record_sha256) !== record.record_sha256
       || decodeAuditDigest(anchor.payload.input_sha256) !== record.input_sha256
       || decodeAuditDigest(anchor.payload.output_sha256) !== record.output_sha256) throw new Error("RESEARCH_REVIEW_ANCHOR_REQUIRED");
@@ -32,7 +31,15 @@ function auditedRecord(caseId, auth) {
 }
 
 export function getResearchReviewPacket(caseId, auth) {
-  const record = auditedRecord(caseId, auth);
+  return getResearchReviewPacketAsync(caseId, auth);
+}
+
+export async function getResearchReviewPacketAsync(caseId, auth) {
+  requireResearchIdentity(auth);
+  return packetForRecord(await auditedRecord(caseId, auth, await readFrozenResearchRecordAsync(caseId, { tenantId: auth.tenantId })), caseId);
+}
+
+function packetForRecord(record, caseId) {
   const input = record.engine_input;
   const cutoffTime = new Date(Date.parse(record.as_of) - (input.timeWindow === "72h" ? 72 : 24) * 3600000).toISOString();
   const sourceRecords = [];
@@ -70,9 +77,15 @@ export function getResearchReviewPacket(caseId, auth) {
   return { ...packet, packet_sha256: digest(packet) };
 }
 
-export function prepareResearchReview({ case_id, packet_sha256, assessments }, auth) {
+export function prepareResearchReview(args, auth) {
+  return prepareResearchReviewAsync(args, auth);
+}
+export async function prepareResearchReviewAsync(args, auth) {
   requireResearchIdentity(auth, true);
-  const packet = getResearchReviewPacket(case_id, auth);
+  args = structuredClone(args);
+  return prepareWithPacket(args, auth, await getResearchReviewPacketAsync(args.case_id, auth));
+}
+async function prepareWithPacket({ case_id, packet_sha256, assessments }, auth, packet) {
   if (packet_sha256 !== packet.packet_sha256) throw new Error("RESEARCH_REVIEW_STALE_PACKET");
   if (!Array.isArray(assessments) || !assessments.length) throw new Error("RESEARCH_REVIEW_ASSESSMENTS_REQUIRED");
   const seen = new Set();
@@ -86,7 +99,7 @@ export function prepareResearchReview({ case_id, packet_sha256, assessments }, a
       ...Object.fromEntries(REVIEW_AXES.map(axis => [axis, assessment[axis]])) };
   });
   // No clinical text in the audit record. PHI Guard remains mandatory there.
-  const event = audit.record_event({ actor: auth.user, action: "research_item_review", tenant_id: auth.tenantId,
+  const event = await audit.record_event({ actor: auth.user, action: "research_item_review", tenant_id: auth.tenantId,
     subject_ref: encodeAuditResearchReference(case_id), payload: { purpose: "research_annotation_only",
       record_digest: encodeAuditDigest(packet.record_sha256), packet_digest: encodeAuditDigest(packet_sha256),
       output_digest: encodeAuditDigest(packet.output_sha256), assessments: checked,
@@ -98,9 +111,14 @@ export function prepareResearchReview({ case_id, packet_sha256, assessments }, a
 }
 
 export function getResearchReviewStatus({ case_id, event_id }, auth) {
-  const packet = getResearchReviewPacket(case_id, auth);
+  return getResearchReviewStatusAsync({ case_id, event_id }, auth);
+}
+export async function getResearchReviewStatusAsync({ case_id, event_id }, auth) {
+  return statusWithPacket({ case_id, event_id }, auth, await getResearchReviewPacketAsync(case_id, auth));
+}
+async function statusWithPacket({ case_id, event_id }, auth, packet) {
   if (!Number.isSafeInteger(event_id) || event_id < 1) throw new Error("RESEARCH_REVIEW_EVENT_INVALID");
-  const event = audit.get_event({ event_id });
+  const event = await audit.get_event({ event_id });
   if (event.action !== "research_item_review" || event.tenant_id !== auth.tenantId
       || event.subject_ref !== encodeAuditResearchReference(case_id)
       || decodeAuditDigest(event.payload.packet_digest) !== packet.packet_sha256
@@ -113,20 +131,27 @@ export function getResearchReviewStatus({ case_id, event_id }, auth) {
     clinical_acknowledgement: false, clinical_evidence_pass: false };
 }
 
-export function confirmResearchReview({ case_id, event_id, signature, key_id, envelope }, auth) {
+export function confirmResearchReview(args, auth) {
+  return confirmResearchReviewAsync(args, auth);
+}
+export async function confirmResearchReviewAsync(args, auth) {
   requireResearchIdentity(auth, true);
-  const status = getResearchReviewStatus({ case_id, event_id }, auth);
+  args = structuredClone(args);
+  return confirmWithPacket(args, auth, await getResearchReviewPacketAsync(args.case_id, auth));
+}
+async function confirmWithPacket({ case_id, event_id, signature, key_id, envelope }, auth, packet) {
+  const status = await statusWithPacket({ case_id, event_id }, auth, packet);
   if (status.reviewer_id !== auth.user) throw new Error("RESEARCH_REVIEW_SIGNER_MISMATCH");
   if (status.review_state !== "pending_signature") throw new Error("RESEARCH_REVIEW_ALREADY_SIGNED");
   if (!signature || !envelope) throw new Error("RESEARCH_REVIEW_SIGNATURE_REQUIRED");
-  const event = audit.get_event({ event_id });
+  const event = await audit.get_event({ event_id });
   const expected = buildSignoffEnvelope({ eventId: event_id, eventDigest: event.event_digest, tenantId: auth.tenantId,
     signer: auth.user, role: "physician", decision: "agree", reason: REASON,
     signedAt: envelope.signed_at, replayId: envelope.replay_id });
   if (canonicalJson(expected.envelope) !== canonicalJson(envelope)) throw new Error("RESEARCH_REVIEW_SIGNED_CONTENT_MISMATCH");
   const signedAt = Date.parse(envelope.signed_at);
   if (signedAt < Date.parse(`${event.ts.replace(" ", "T")}Z`) || signedAt > Date.now() + 30000) throw new Error("RESEARCH_REVIEW_SIGNING_TIME_INVALID");
-  audit.signoff({ event_id, signer: auth.user, role: "physician", decision: "agree", reason: REASON,
+  await audit.signoff({ event_id, signer: auth.user, role: "physician", decision: "agree", reason: REASON,
     tenant_id: auth.tenantId, signature, key_id, envelope });
-  return getResearchReviewStatus({ case_id, event_id }, auth);
+  return statusWithPacket({ case_id, event_id }, auth, packet);
 }

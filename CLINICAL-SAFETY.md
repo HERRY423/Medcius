@@ -1,9 +1,9 @@
 # Medcius 临床安全声明与使用边界规范 (Clinical Safety & Non-CDS Policy)
 
-> Product baseline: 0.8.0-pilot; document revision: 1; approval: DRAFT_UNAPPROVED
+> Product baseline: 0.10.0-pilot; document revision: 2; approval: DRAFT_UNAPPROVED
 
 
-> **版本**：`0.8.0-pilot`
+> **版本**：`0.10.0-pilot`
 > **法定定位**：非辅助决策的信息整理与多源时序对齐工具（Non-CDS Clinical Information Collation Tool）
 > **最后修订**：2026-08-28
 

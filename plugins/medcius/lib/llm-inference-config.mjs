@@ -9,7 +9,7 @@
  *   A 全本地  — private model inside the hospital network. Target state.
  *   B 混合    — hosted API processes ONLY desensitized extraction text; the
  *               judge chain (PASS/FLAG/verdicts) stays local. Requires explicit
- *               attestations in config.
+ *               attestations AND an executing deployment-local PHI detector.
  *   C 全托管  — judge chain leaves the hospital. **REJECTED at validation**
  *               (fail-closed, not a warning).
  *
@@ -23,6 +23,10 @@
  */
 
 import { canonicalJson, sha256Hex } from "../servers/shared/crypto.mjs";
+import { assertLocalPhiDetector, guardFreeTextEgress } from './local-phi-egress.mjs';
+import { requiresProductionPhi } from './production-phi-policy.mjs';
+import { resolvePhiDetector, assertProductionDetector } from './phi-runtime.mjs';
+import { assertPhiEntitySession } from './phi-entity-session.mjs';
 
 export const LLM_TOPOLOGIES = {
   A: { id: "A", name_cn: "全本地（院内私有化推理）", judge_chain_local: true, desensitization_required: false },
@@ -91,8 +95,10 @@ export function validateLlmConfig(config) {
  * @param {(req: {endpoint: string, model: string, prompt: string, timeoutMs: number}) => Promise<{text: string}>} [options.transport]
  *        injected transport (OpenAI-compatible / vLLM / Ollama adapter provided by deployment); tests inject fakes
  * @param {number} [options.timeoutMs] default 30000; hard fail-closed ceiling
+ * @param {object} [options.localPhiDetector] required for B; see local-phi-egress.mjs
  */
-export function createLlmInferenceClient({ config, transport, timeoutMs = 30000 } = {}) {
+export function createLlmInferenceClient({ config, transport, localPhiDetector, timeoutMs = 30000 } = {}) {
+  config = structuredClone(config);
   const validation = validateLlmConfig(config);
   if (!validation.ok) {
     const err = new Error(`LLM_CONFIG_INVALID: ${validation.errors.join("; ")}`);
@@ -101,6 +107,14 @@ export function createLlmInferenceClient({ config, transport, timeoutMs = 30000 
     throw err;
   }
   if (typeof transport !== "function") throw new Error("LLM_TRANSPORT_REQUIRED");
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 600000) throw new Error('LLM_TIMEOUT_INVALID');
+  if (config.topology === 'B') {
+    if (localPhiDetector || !requiresProductionPhi(config)) assertLocalPhiDetector(localPhiDetector);
+    const url = new URL(config.endpoint);
+    if (url.protocol !== 'https:' || url.username || url.password) throw new Error('LLM_B_HTTPS_REQUIRED');
+  }
+  const productionAtCreation = requiresProductionPhi(config);
+  if (productionAtCreation && localPhiDetector) assertProductionDetector(localPhiDetector);
 
   let inflight = 0;
   const maxConcurrency = config.capacity?.max_concurrency ?? 8;
@@ -114,8 +128,12 @@ export function createLlmInferenceClient({ config, transport, timeoutMs = 30000 
      * Extraction ONLY. There is deliberately no decide()/adjudicate() method
      * on this object — the judge chain cannot route through the LLM (D1).
      */
-    async extract({ text, schemaVersion = "unversioned", timeoutMs: perCallTimeout } = {}) {
+    async extract({ text, schemaVersion = "unversioned", timeoutMs: perCallTimeout, entitySession, context } = {}) {
       if (typeof text !== "string" || !text.trim()) throw new Error("LLM_EXTRACT_TEXT_REQUIRED");
+      context = context == null ? context : structuredClone(context);
+      const production = productionAtCreation || requiresProductionPhi(config, context);
+      const mustGuard = production || config.topology === 'B';
+      if (production) assertPhiEntitySession(entitySession, context);
       if (LLM_TOPOLOGIES[config.topology].desensitization_required) {
         // Runtime re-check: B 档四项在调用时仍需全满足（防配置热替换降级）。
         if (config.desensitization_attestation !== true) throw new Error("LLM_B_ATTESTATION_REQUIRED");
@@ -129,13 +147,36 @@ export function createLlmInferenceClient({ config, transport, timeoutMs = 30000 
         throw err;
       }
       const effectiveTimeout = Math.min(perCallTimeout ?? timeoutMs, timeoutMs);
+      if (!Number.isInteger(effectiveTimeout) || effectiveTimeout < 1) throw new Error('LLM_TIMEOUT_INVALID');
       const started = Date.now();
       inflight += 1;
       let timeout;
+      const controller = new AbortController();
+      let egressReceipt = null;
+      // Keep the concurrency slot until the underlying work actually stops.
+      // A timed-out provider or detector may ignore AbortSignal.
+      const pending = (async () => {
+        let prompt = text;
+        const detector = mustGuard ? await resolvePhiDetector({ detector: localPhiDetector, context }) : null;
+        if (production) assertProductionDetector(detector);
+        if (mustGuard) {
+          const guarded = await guardFreeTextEgress(text, { detector, signal: controller.signal, entitySession, context });
+          prompt = guarded.text; egressReceipt = guarded.receipt;
+        }
+        if (controller.signal.aborted) throw new Error('LLM_TIMEOUT');
+        let result;
+        try { result = await transport({ endpoint: config.endpoint, model: config.model_id, prompt, timeoutMs: effectiveTimeout, signal: controller.signal }); }
+        catch { throw new Error('LLM_TRANSPORT_FAILED'); }
+        if (controller.signal.aborted) throw new Error('LLM_TIMEOUT');
+        if (typeof result?.text !== 'string') throw new Error('LLM_EXTRACT_RESPONSE_INVALID');
+        if (mustGuard) return { text: (await guardFreeTextEgress(result.text, { detector, signal: controller.signal, entitySession, context })).text };
+        return { text: result.text };
+      })().finally(() => { inflight -= 1; });
       try {
         const result = await Promise.race([
-          transport({ endpoint: config.endpoint, model: config.model_id, prompt: text, timeoutMs: effectiveTimeout }),
+          pending,
           new Promise((_resolve, reject) => { timeout = setTimeout(() => {
+            controller.abort();
             const err = new Error(`LLM_TIMEOUT: ${effectiveTimeout}ms（fail-closed：超时不降级、不补造）`);
             err.code = "LLM_TIMEOUT";
             reject(err);
@@ -144,12 +185,11 @@ export function createLlmInferenceClient({ config, transport, timeoutMs = 30000 
         const latencyMs = Date.now() - started;
         if (budgetP95 != null && latencyMs > budgetP95) {
           // Not an error: latency budget breach is a capacity signal, surfaced for the probe.
-          return { ...result, latency_ms: latencyMs, latency_budget_breached: true, model_id: config.model_id, model_version: config.model_version, prompt_pack_version: config.prompt_pack_version, schema_version: schemaVersion, config_digest: validation.config_digest };
+          return { ...result, egress_receipt: egressReceipt, latency_ms: latencyMs, latency_budget_breached: true, model_id: config.model_id, model_version: config.model_version, prompt_pack_version: config.prompt_pack_version, schema_version: schemaVersion, config_digest: validation.config_digest };
         }
-        return { text: String(result?.text ?? ""), latency_ms: latencyMs, latency_budget_breached: false, model_id: config.model_id, model_version: config.model_version, prompt_pack_version: config.prompt_pack_version, schema_version: schemaVersion, config_digest: validation.config_digest };
+        return { text: String(result?.text ?? ""), egress_receipt: egressReceipt, latency_ms: latencyMs, latency_budget_breached: false, model_id: config.model_id, model_version: config.model_version, prompt_pack_version: config.prompt_pack_version, schema_version: schemaVersion, config_digest: validation.config_digest };
       } finally {
         clearTimeout(timeout);
-        inflight -= 1;
       }
     },
 

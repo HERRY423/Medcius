@@ -10,6 +10,7 @@ const SHA256_FIELDS = new Set([
   'row_sha256', 'source_sha256', 'sources_sha256', 'summary_sha256',
   'chain_hash', 'content_hash', 'context_hash', 'envelope_hash', 'evidence_hash', 'head_hash',
   'item_hash', 'payload_hash', 'prev_hash', 'provenance_hash', 'signed_hash', 'signoff_head_hash', 'snapshot_hash',
+  'head', 'signoff_head',
   'config_digest', 'document_snapshot_digest', 'event_digest', 'event_history_digest', 'fluid_digest',
   'history_digest', 'output_digest', 'packet_digest', 'payload_digest', 'reason_digest', 'record_digest',
   'row_digest', 'snapshot_digest', 'vitals_digest',

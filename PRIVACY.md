@@ -1,9 +1,9 @@
 # Medcius 隐私与数据保护规范 (Privacy & Data Protection Policy)
 
-> Product baseline: 0.8.0-pilot; document revision: 1; approval: DRAFT_UNAPPROVED
+> Product baseline: 0.10.0-pilot; document revision: 2; approval: DRAFT_UNAPPROVED
 
 
-> **版本**：`0.8.0-pilot`
+> **版本**：`0.10.0-pilot`
 > **合规基准**：《中华人民共和国个人信息保护法》(PIPL)、《医疗卫生机构网络安全管理办法》、WS/T 303-2009、HIPAA Safe Harbor
 > **最后修订**：2026-08-28
 

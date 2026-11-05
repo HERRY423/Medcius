@@ -78,7 +78,7 @@
 | REQ-prescription-19-morphine-limit | prescription-review | `controlled_days` | 吗啡门诊超量须 over_limit | 2 | 1 | `prescription-19-morphine-limit` |
 | REQ-rq-01-primary-diagnosis-missing | nhsa-record-quality | `primary_dx_missing` | 出院主诊断缺失必须显式输出要素缺口，不得默认通过 | 3 | 2 | `rq-01-primary-diagnosis-missing` |
 | REQ-rq-02-discharge-method-illegal | nhsa-record-quality | `discharge_method_illegal_value` | 离院方式取值必须在合法值域内（1/2/3/4/5/9），越界值必须报冲突 | 3 | 2 | `rq-02-discharge-method-illegal` |
-| REQ-rq-03-stay-days-algebra | nhsa-record-quality | `stay_days_algebra_mismatch` | 住院天数必须与出入院日期代数一致（出院-入院+1） | 3 | 2 | `rq-03-stay-days-algebra` |
+| REQ-rq-03-stay-days-algebra | nhsa-record-quality | `stay_days_algebra_mismatch` | 住院天数必须与出入院日期代数一致（出院-入院，同日按1天） | 3 | 2 | `rq-03-stay-days-algebra` |
 | REQ-rq-04-death-method-no-record | nhsa-record-quality | `death_method_without_death_record` | 离院方式=死亡但无死亡记录文书时必须报冲突 | 3 | 2 | `rq-04-death-method-no-record` |
 | REQ-rq-05-obstetric-sex-conflict | nhsa-record-quality | `obstetric_dx_sex_conflict` | 男性患者出现妊娠/分娩（O 章节）诊断必须报人群-章节冲突 | 3 | 2 | `rq-05-obstetric-sex-conflict` |
 | REQ-rq-06-fee-algebra | nhsa-record-quality | `fee_total_unbalanced` | 费用总额必须等于分类费用代数和（确定性对账，不估算） | 3 | 2 | `rq-06-fee-algebra` |

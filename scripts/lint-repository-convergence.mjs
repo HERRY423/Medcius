@@ -177,7 +177,8 @@ console.log("\n▶ [Gate 5] Checking quality-gate count / dependency口径 (P0-4
   }
   const dockerfile = readFileSync(join(repoRoot, "Dockerfile"), "utf8");
   assert.ok(!/better-sqlite3\s*均为本地源码或内建/.test(dockerfile), "P0-4: Dockerfile must not falsely claim better-sqlite3 is built-in");
-  assert.ok(/FROM node:22\.\d+.*alpine/.test(dockerfile), "Dockerfile base must stay version-pinned alpine");
+  assert.ok(/FROM node:22\.\d+\.\d+-bookworm-slim/.test(dockerfile), "Dockerfile CPU NER base must stay version-pinned glibc");
+  assert.ok(/npm ci.*--ignore-scripts.*--omit=dev/.test(dockerfile), "Dockerfile must install locked runtime dependencies without install hooks");
   assert.ok(/USER medcius/.test(dockerfile) && /HEALTHCHECK/.test(dockerfile), "Dockerfile must keep non-root + healthcheck");
   console.log("  ✓ Gate counts reference the runner; Dockerfile dependency claim honest and pinned.");
 }

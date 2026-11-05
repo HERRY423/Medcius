@@ -49,7 +49,7 @@
         "required": ["finding_code", "pool", "severity", "payment_risk", "note"],
         "properties": {
           "finding_code": { "type": "string", "minLength": 1 },
-          "pool": { "enum": ["element_gaps", "algebra_conflicts", "legality_conflicts"] },
+          "pool": { "enum": ["element_gaps", "algebra_conflicts", "legality_conflicts", "advisory_hints", "evidence_reconciliation"] },
           "severity": { "enum": ["HIGH", "MEDIUM", "LOW"] },
           "payment_risk": { "type": "string", "minLength": 1 },
           "note": { "type": "string" },
@@ -64,7 +64,8 @@
       "properties": {
         "quality_gate": { "enum": ["pass", "action_needed"] },
         "recommended_owner": { "type": ["string", "null"] },
-        "grouping_affected": { "type": "boolean" }
+        "grouping_affected": { "type": ["boolean", "null"], "description": "null until an authoritative grouper determines actual impact; quality findings alone are insufficient" },
+        "payment_impact": { "const": "NOT_ASSESSED" }
       },
       "additionalProperties": false
     },

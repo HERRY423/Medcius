@@ -2,8 +2,17 @@ import { readFileSync } from "node:fs";
 import { validateContract } from "./lib/schema-contract.mjs";
 import { validateSpecialtyRulePack } from "../plugins/medcius/lib/specialty-rule-pack.mjs";
 
+import { validateSiteViewMapping } from "../plugins/medcius/lib/connectors/site-view-mapping.mjs";
+import { validateRecordReviewPolicy } from '../plugins/medcius/lib/record-evidence-reconciliation.mjs';
+import { validateGrouperProfile } from '../plugins/medcius/lib/local-grouper-precheck.mjs';
+
 const files = [
+  'plugins/medcius/config/record-review/jiangsu-reference.v1.json',
+  'plugins/medcius/config/groupers/jiangsu-unconfigured.v1.json',
+  "plugins/medcius/contracts/site-view-mapping.v1.schema.json",
+  "plugins/medcius/config/site-mappings/synthetic-cn-views.v1.json",
   "plugins/medcius/rule-packs/calculation-reference.v1.json",
+  "plugins/medcius/rule-packs/china-clinical-reference.v1.json",
   "plugins/medcius/evals/shadow-mode/engine-challenge.cases.json",
   "plugins/medcius/evals/shadow-mode/engine-challenge.expected.json",
   "plugins/medcius/evals/clinical-benefit/observation-template.json",
@@ -27,7 +36,16 @@ let ok = true;
 for (const f of files) {
   try {
     const value=JSON.parse(readFileSync(f, "utf8"));
-    if(f.includes("/specialties/")) {
+    if (f.includes('/config/record-review/')) {
+      validateRecordReviewPolicy(value); console.log(`✓ CONTRACT ${f}`);
+    } else if (f.includes('/config/groupers/')) {
+      if (value.province !== 'CN-32' || value.acceptance !== 'NOT_ESTABLISHED' || validateGrouperProfile(value).configured) throw new Error('Expected explicit unconfigured Jiangsu profile');
+      console.log(`✓ UNCONFIGURED_PROFILE (expected) ${f}`);
+    } else if(f.includes("/config/site-mappings/")) {
+      validateContract(JSON.parse(readFileSync("plugins/medcius/contracts/site-view-mapping.v1.schema.json", "utf8")),value);
+      validateSiteViewMapping(value);
+      console.log(`✓ CONTRACT ${f}`);
+    } else if(f.includes("/specialties/")) {
       validateContract(JSON.parse(readFileSync("plugins/medcius/rule-packs/schema/medcius-specialty-rule-pack.v1.schema.json","utf8")),value);
       const check=validateSpecialtyRulePack(value); if(!check.ok) throw new Error(check.errors.join(","));
       console.log(`✓ CONTRACT ${f}`);

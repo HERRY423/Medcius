@@ -139,10 +139,16 @@ function renderTree(value){
 function evidenceDetails(e,record=null,label="查看原始依据"){return `<details><summary>${esc(label)}</summary><p class="source-meta">${esc(e?.locator || e?.source_reference?.resource_id || e?.source_id || '来源标识未提供')} · 版本 ${esc(e?.version_id ?? e?.source_version)} · ${esc(displayTime(e?.event_time || e?.recorded_at || e?.timestamp))}</p>${e?.text_anchor ? '<p>引文仅绑定生成时的脱敏快照；原病历修改后须重新核对，旧偏移不得用于实时病历。</p>' : ''}${record ? renderTree(record) : renderTree(e)}</details>`;}
 function section(title,rows,render,limit=4){return `<section><h3>${esc(title)} <span class="muted">${rows.length} 条</span></h3>${rows.slice(0,limit).map(render).join('') || '<p class="muted">当前输入未见记录，不等于不存在。</p>'}${rows.length>limit ? `<details><summary>展开其余 ${rows.length-limit} 条</summary>${rows.slice(limit).map(render).join('')}</details>`:''}</section>`;}
 function visibilityNotice(v){return `<div class="card attention" role="status"><h3>数据可见范围 · 不能用于排除危急值</h3><p>${esc(v?.message || '来源同步完整性未确认；未检索到不等于不存在。')}</p><p>摘要截止：${esc(displayTime(v?.as_of))} · 固定快照，不是实时监测</p><p>${esc(v?.action || '请核对院内 LIS 与危急值通知通道。')}</p>${(v?.sources || []).map(s=>`<p>${esc(s.kind || '来源')}：读取 ${esc(displayTime(s.fetched_at))}；来源报告同步至 ${esc(displayTime(s.synchronized_through))}；${s.reasons?.length ? '同步或完整性仍有缺口' : '仅来源报告，未经独立核验'}</p>`).join('')}</div>`;}
+function pacsLink(viewer){
+  if(!viewer?.available || viewer.read_only_requested!==true) return "";
+  try { const u=new URL(viewer.href); if(u.protocol!=="https:" || u.username || u.password) return "";
+    return `<a href="${esc(u.href)}" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">打开院内影像（需 PACS 授权）</a>`;
+  } catch { return ""; }
+}
 function renderEvolution(d){
   const b=d.blocks,c=b.what_changed,p=b.whats_pending,follow=b.high_risk_followup?.items || [],open=follow.filter(r=>r.closure_status!=='closed');
   const changed=b.record_changes.items.filter(r=>r.selection_status==='current'), exceptional=changed.filter(r=>['revision','cancellation','entered_in_error','unknown'].includes(r.change_type) && !(r.change_type==='revision' && [...c.abnormal_labs,...c.imaging_changes].some(x=>x.source_id===r.source_id && x.version_id===r.version_id)));
-  const row=r=>`<div class="clinical-row"><b>${esc(r.title || r.test_name || r.drug_name || r.report_name || '来源记录')}</b><p>${esc(r.summary || r.display_text)}</p>${evidenceDetails(b.evidence.find(e=>e.item_id===r.id)||r,r.span ? {text:r.span}:null)}</div>`;
+  const row=r=>`<div class="clinical-row"><b>${esc(r.title || r.test_name || r.drug_name || r.report_name || '来源记录')}</b><p>${esc(r.summary || r.display_text)}</p>${pacsLink(r.viewer)}${evidenceDetails(b.evidence.find(e=>e.item_id===r.id)||r,r.span ? {text:r.span}:null)}</div>`;
   const followRow=r=>`<div class="clinical-row"><b>${esc(r.label)}</b><p>${esc(stateNames[r.closure_status] || '状态未知')} · ${esc(stateNames[r.review_status] || '复核未知')}</p>${evidenceDetails(null,r.evidence)}</div>`;
   return `<h2 class="report-title">变化与待跟进</h2><p class="muted">近 ${d.time_window==='72h'?'72':'24'} 小时来源记录；数量用于资料导航，不代表病情轻重。</p><div class="overview"><a href="#round-changes"><strong>${changed.length}</strong><span>本次整理的当前来源变化</span></a><a href="#round-followup"><strong>${open.length}</strong><span>规则识别的待跟进事项</span></a><a href="#round-gaps"><strong>${b.data_gaps.length}</strong><span>资料缺口</span></a></div>
   ${visibilityNotice(d.critical_visibility)}

@@ -4,7 +4,13 @@ Medcius 是面向一线临床医生的 **Agent 插件**。它安装到 Codex、T
 
 Medcius 不是独立临床软件或医院信息平台，也不是自主诊疗的临床 Agent。宿主 Agent 负责对话和任务编排，Medcius 负责受约束的能力与工具，医院系统提供原始事实，医生核对证据并作出最终决定。
 
-当前版本为 **`0.8.0-pilot` 工程试点版**，不具备真实临床有效性或生产医院部署证明。P0 临床入口是 HIS 内嵌/院内 SSO 上的查房演变摘要静默试点；Codex 不是一线入口。
+当前版本为 **`0.10.0-pilot` 工程试点版**，不具备真实临床有效性或生产医院部署证明。P0 临床入口是 HIS 内嵌/院内 SSO 上的查房演变摘要静默试点；Codex 不是一线入口。
+
+插件图标位于 `assets/`：展示图标为 512×512，输入区图标为 128×128。生产路径需要单独准备本地 CPU NER 依赖与模型，见 [安装与验证](runtimes/cn-phi-ner/README.md)。本次完整变更及检查状态见 [整合记录](../../docs/engineering/INTEGRATION-2026-11-05.md)。
+
+2026-11-02 的[本地化工程修复与迁移说明](../../docs/engineering/CHINA-LOCALIZATION-HARDENING-2026-11-02.md)记录中文断言/量值、PHI 执行门禁、数据库方言、代码体系隔离、签名 v2 与评测输入改动，以及仍需院端验收的条件。
+
+院内异构接入支持组合 CDA 与只读视图，无需先转换为 FHIR；详见[接入实现、配置与验收边界](../../docs/engineering/HOSPITAL-INGESTION-2026-11-02.md)。这仍是本地工程实现，院端驱动、厂商映射和临床使用需分别验收。
 
 ## 插件生产面
 
@@ -25,7 +31,7 @@ Medcius 不是独立临床软件或医院信息平台，也不是自主诊疗的
 | `lib/specialty-rule-pack.mjs`、`rule-packs/` | 专科病区规则包校验、版本、审批和回滚元数据 |
 | `lib/read-only-hospital-data-bridge.mjs` | NIS/LIS/PACS/HIS/EMR 异构来源只读桥接与上下文绑定 |
 | `servers/api` | 参考侧边栏、医生端内网工作台（`/workstation`，目录登录 + 治理阶梯感知 + CA 签核）、REST 与 CDS Hooks 适配器 |
-| `lib/clinician-directory-auth.mjs`、`lib/ca-signature-adapter.mjs` | 医院目录身份适配与 CA 电子签名适配层（无隐式特权、签名防篡改、零 PHI 入审计链） |
+| `lib/clinician-directory-auth.mjs`、`lib/ca-signature-adapter.mjs` | 目录身份与 v2 签名上下文绑定；hospital 模式拒绝内置测试证书，真实医院 CA 接入待验收 |
 
 “查房前患者变化摘要”用于证明插件内核如何支撑一个真实临床工作流，但不再代表 Medcius 的全部产品边界。后续工作流必须以独立技能包扩展，并分别定义用户、触发时点、权限、证据、失败行为和验证方案。
 

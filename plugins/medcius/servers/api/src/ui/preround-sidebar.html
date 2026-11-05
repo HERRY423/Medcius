@@ -655,7 +655,7 @@
       (b1.medication_diff?.added || []).forEach(item => {
         b1Count++;
         selectedItemIds.add(item.id);
-        changedDiv.appendChild(createRow(item, 'tag-added', '+ 新增用药'));
+        changedDiv.appendChild(createRow(item, 'tag-added', '+ 新增医嘱'));
       });
       (b1.medication_diff?.discontinued || []).forEach(item => {
         b1Count++;
@@ -720,6 +720,8 @@
       updateSelectedCount();
     }
 
+    function escapeSource(value) { return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+
     function createRow(item, tagClass, tagText, extraHtml = '') {
       const row = document.createElement('div');
       row.className = 'item-row';
@@ -742,13 +744,24 @@
       body.innerHTML = `
         <div>
           <span class="tag ${tagClass}">${tagText}</span>
-          <span class="item-text">${item.summary}</span>
+          <span class="item-text">${escapeSource(item.summary)}</span>
           ${extraHtml}
         </div>
-        <div class="item-source">来源: ${item.source_title || item.source_type} | 对应证据: "${item.span ? item.span.slice(0, 40) : (item.summary || '')}"</div>
+        <div class="item-source">来源: ${escapeSource(item.source_title || item.source_type)} | 对应证据: "${escapeSource(item.span ? item.span.slice(0, 40) : (item.summary || ''))}"</div>
       `;
 
       row.appendChild(cb);
+      if (item.viewer?.available && item.viewer.read_only_requested === true) {
+        try {
+          const url = new URL(item.viewer.href);
+          if (url.protocol === 'https:' && !url.username && !url.password) {
+            const a = document.createElement('a'); a.href = url.href; a.target = '_blank';
+            a.rel = 'noopener noreferrer'; a.referrerPolicy = 'no-referrer';
+            a.textContent = '打开院内影像（需 PACS 授权）'; a.onclick = e => e.stopPropagation();
+            body.appendChild(a);
+          }
+        } catch { /* Invalid viewer metadata stays unavailable. */ }
+      }
       row.appendChild(body);
       return row;
     }
@@ -757,14 +770,14 @@
       const p = document.getElementById('evidence-panel');
       p.innerHTML = `
         <div style="background:#0d1117; padding:10px; border:1px solid var(--border); border-radius:6px;">
-          <div style="font-weight:700; color:#fff; margin-bottom:4px;">${item.tag || '【事实证据】'} ${item.title || item.summary}</div>
+          <div style="font-weight:700; color:#fff; margin-bottom:4px;">${escapeSource(item.tag || '【事实证据】')} ${escapeSource(item.title || item.summary)}</div>
           <div style="color:var(--accent); font-family:monospace; background:#161b22; padding:6px; border-radius:4px; margin:6px 0;">
-            证据 Span / 描述: "${item.span || item.summary}"
+            证据 Span / 描述: "${escapeSource(item.span || item.summary)}"
           </div>
           <div style="font-size:11px; color:var(--text-muted);">
-            • 来源系统/文档: ${item.source_title || item.source_type}<br/>
-            • 资源标识 (ID): ${item.source_id || 'N/A'}<br/>
-            • 发生时间: ${item.timestamp || '近 24 小时'}
+            • 来源系统/文档: ${escapeSource(item.source_title || item.source_type)}<br/>
+            • 资源标识 (ID): ${escapeSource(item.source_id || 'N/A')}<br/>
+            • 发生时间: ${escapeSource(item.timestamp || '近 24 小时')}
           </div>
         </div>
       `;

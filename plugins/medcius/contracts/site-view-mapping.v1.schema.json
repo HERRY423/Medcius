@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Site-specific read-only view mapping; semantic checks also required",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "mapping_id",
+    "version",
+    "tenant_id",
+    "data_class",
+    "views"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "mapping_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tenant_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "data_class": {
+      "enum": [
+        "synthetic",
+        "site"
+      ]
+    },
+    "review_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "timezone_offset": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "views": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "kind",
+          "table",
+          "fields"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,62}$"
+          },
+          "kind": {
+            "enum": [
+              "patient",
+              "encounter",
+              "notes",
+              "nis",
+              "lis",
+              "his",
+              "pacs"
+            ]
+          },
+          "table": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,62}$"
+          },
+          "schema": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,62}$"
+          },
+          "scope": {
+            "enum": [
+              "patient",
+              "encounter"
+            ]
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "order_by": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": [
+                "column",
+                "type"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "column": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,62}$"
+                },
+                "type": {
+                  "enum": [
+                    "string",
+                    "number",
+                    "boolean",
+                    "enum",
+                    "datetime"
+                  ]
+                },
+                "required": {
+                  "type": "boolean"
+                },
+                "values": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": [
+                      "string",
+                      "boolean"
+                    ]
+                  }
+                },
+                "format": {
+                  "enum": [
+                    "iso8601",
+                    "local_datetime"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

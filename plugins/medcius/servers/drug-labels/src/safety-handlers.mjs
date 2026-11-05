@@ -8,7 +8,8 @@ export const SAFETY_HANDLERS = {
     const iv = iv_together === false ? [] : ivHits(list);
     const tcm = tcmHits(list);
     const controlled = controlledHits(list, encounter ?? "outpatient", days_supply);
-    const stewardship = stewardshipHits(list);
+    const stewardship = stewardshipHits(list).map(hit => ({ ...hit, authority: "reference_candidate_only",
+      local_grade_verified: false, required_follow_up: "check_cn_clinical_with_current_hospital_catalog" }));
     const flags = [];
     if (cross.length) flags.push("cross_allergy");
     if (iv.length) flags.push("iv_incompatibility");

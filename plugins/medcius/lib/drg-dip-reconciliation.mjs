@@ -20,9 +20,9 @@ export const RECONCILIATION_SCHEMA = "medcius.drg-dip-reconciliation.v1";
 /** finding code → 支付对账风险类别（确定性映射，供病案/医保办复核排序）。 */
 const PAYMENT_RISK_BY_FINDING = {
   PRIMARY_DISCHARGE_DIAGNOSIS_MISSING: { risk: "grouping_blocked", note: "主要诊断缺失将直接导致分组器无法入组" },
-  UNCERTAIN_PRIMARY_DIAGNOSIS: { risk: "grouping_instability", note: "疑似/待查主诊断不得编码，入组结果不稳定" },
-  STAY_DAYS_MISMATCH: { risk: "days_billing_mismatch", note: "住院天数与日期代数不一致，按天计费/权重核算将出现对账差异" },
-  FEE_TOTAL_UNBALANCED: { risk: "fee_billing_mismatch", note: "费用总额与分类代数和不平，结算清单收费栏会被退回" },
+  UNCERTAIN_PRIMARY_DIAGNOSIS: { risk: "grouping_instability", note: "疑似/待查主诊断须结合出院情境及适用编码规则复核，不能仅凭疑似字样判为禁止编码" },
+  STAY_DAYS_MISMATCH: { risk: "days_billing_mismatch", note: "住院天数与日期代数不一致，需核对日期口径；支付影响须由当期规则确认" },
+  FEE_TOTAL_UNBALANCED: { risk: "fee_billing_mismatch", note: "费用总额与分类代数和不平，需复核收费栏；是否退回由经办系统确认" },
   DISCHARGE_METHOD_ILLEGAL: { risk: "settlement_field_invalid", note: "离院方式取值非法，清单机检将拒绝" },
   DEATH_METHOD_WITHOUT_DEATH_RECORD: { risk: "documentation_review", note: "死亡离院缺死亡记录，DRG 伴随结局变量不可信" },
   OBSTETRIC_DIAGNOSIS_SEX_CONFLICT: { risk: "coding_review", note: "人群-章节冲突须病案复核后才能入组" },
@@ -31,7 +31,7 @@ const PAYMENT_RISK_BY_FINDING = {
   ENCOUNTER_DATE_MISSING: { risk: "grouping_instability", note: "出入院日期缺失，住院天数要素缺失" },
   RECORDED_STAY_DAYS_MISSING: { risk: "grouping_instability", note: "住院天数未记载" },
   PROCEDURE_WITHOUT_SUPPORTING_DIAGNOSIS: { risk: "grouping_instability", note: "手术操作缺诊断支持，外科组入组存疑" },
-  TUMOR_PATHOLOGY_HINT: { risk: "documentation_review", note: "肿瘤诊断缺病理支持，MCC/CC 判定可能受影响" },
+  TUMOR_PATHOLOGY_HINT: { risk: "documentation_review", note: "核对既往/外院病理或其他诊断依据；MCC/CC 须由所选地方版本确认" },
   EXTERNAL_CAUSE_HINT: { risk: "documentation_review", note: "损伤中毒缺外部原因记载" },
   DISCHARGE_METHOD_MISSING: { risk: "settlement_field_invalid", note: "离院方式未记载" },
 };
@@ -53,6 +53,8 @@ export function buildDrgDipReconciliation({ recordQualityReport, hospitalGroupin
     ...(recordQualityReport.element_gaps ?? []).map((f) => ({ pool: "element_gaps", ...f })),
     ...(recordQualityReport.algebra_conflicts ?? []).map((f) => ({ pool: "algebra_conflicts", ...f })),
     ...(recordQualityReport.legality_conflicts ?? []).map((f) => ({ pool: "legality_conflicts", ...f })),
+    ...(recordQualityReport.advisory_hints ?? []).map((f) => ({ pool: 'advisory_hints', ...f })),
+    ...(recordQualityReport.evidence_reconciliation?.findings ?? []).map(f => ({ ...f, severity: 'LOW', pool: 'evidence_reconciliation' })),
   ];
   const dataQualityRisks = findings
     .map((f) => ({
@@ -89,13 +91,14 @@ export function buildDrgDipReconciliation({ recordQualityReport, hospitalGroupin
       version: hospitalGrouping.version ?? null,
       weight_or_score: hospitalGrouping.weight_or_score ?? null,
       source: hospitalGrouping.source ?? "医院当期分组器",
-      note: "分组结果按原样回显带出处；Medcius 不复算、不预测、不解释分组合理性。",
+      note: "旧版外部结果回显，未验证请求/统筹区/规则版本绑定；本地预审使用 local-grouper-precheck。Medcius 不复算、不预测。",
     },
     data_quality_risks: dataQualityRisks,
     reconciliation: {
       quality_gate: elementsComplete ? "pass" : "action_needed",
       recommended_owner: elementsComplete ? null : "病案/医保办复核（排序见 data_quality_risks）",
-      grouping_affected: !elementsComplete,
+      grouping_affected: null,
+      payment_impact: 'NOT_ASSESSED',
     },
     boundary: {
       is_drg_dip_grouper: false,

@@ -4,6 +4,8 @@ tests
 docs
 experimental
 node_modules
+**/node_modules
+**/__pycache__
 staging
 out
 output

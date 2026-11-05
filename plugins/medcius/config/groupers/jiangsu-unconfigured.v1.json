@@ -1,0 +1,37 @@
+{
+  "schema_version": "medcius.local-grouper-profile.v1",
+  "id": "jiangsu-local-precheck",
+  "version": "unconfigured",
+  "province": "CN-32",
+  "region": null,
+  "scheme": null,
+  "grouping_version": null,
+  "adapter_id": null,
+  "effective_from": null,
+  "effective_until": null,
+  "rule_source": null,
+  "rule_digest": null,
+  "data_class": "site_reviewed",
+  "code_releases": {
+    "diagnosis": {
+      "system": null,
+      "version": null
+    },
+    "procedure": {
+      "system": null,
+      "version": null
+    }
+  },
+  "required_fields": [
+    "age_years",
+    "sex",
+    "stay_days",
+    "discharge_method"
+  ],
+  "acceptance": "NOT_ESTABLISHED",
+  "public_context_sources": [
+    "https://www.nhsa.gov.cn/art/2024/7/23/art_104_13313.html",
+    "https://ylbzj.yancheng.gov.cn/art/2025/6/3/art_21567_4327202.html"
+  ],
+  "note": "江苏已选；统筹区、当期版本、规则包及医院本地适配器仍须明确。不得将盐城示例外推全省或自动使用过期2.0规则。"
+}

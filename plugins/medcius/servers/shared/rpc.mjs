@@ -22,7 +22,10 @@
 import { createInterface } from "node:readline";
 
 import { checkAndStrip } from "./validate.mjs";
-import { guardToolOutput, safeToolFailure } from "./phi-output.mjs";
+import { guardToolOutputAsync, safeToolFailure } from "./phi-output.mjs";
+import { requiresProductionPhi } from '../../lib/production-phi-policy.mjs';
+import { resolvePhiDetector } from '../../lib/phi-runtime.mjs';
+import { guardPhiValue } from '../../lib/phi-value-guard.mjs';
 
 /** @typedef {Record<string, unknown>} Args */
 
@@ -56,11 +59,21 @@ const PROTOCOL_VERSIONS = ["2024-11-05", "2025-06-18"];
  * @returns {Promise<unknown>}
  */
 export async function runOnce(cfg, name, rawArgs) {
+  try {
   const def = cfg.tools.find((t) => t.name === name);
   if (!def)
     throw new Error(`unknown tool "${name}" — one of: ${cfg.tools.map((t) => t.name).join(", ")}`);
-  const result = await cfg.handlers[name](checkAndStrip(name, def.inputSchema, rawArgs));
-  return cfg.phiGuard ? guardToolOutput(result) : result;
+  const args = checkAndStrip(name, def.inputSchema, rawArgs);
+  if (requiresProductionPhi()) await resolvePhiDetector();
+  if (requiresProductionPhi() && cfg.phiRejectInput) await guardPhiValue(cfg.phiInputView?.(name,args) ?? args, { reject: true });
+  const result = await cfg.handlers[name](args);
+  return cfg.phiGuard || requiresProductionPhi() ? await guardToolOutputAsync(result, { reject: cfg.phiRejectOutput }) : result;
+  } catch (error) {
+    // CLI consumers may log thrown errors. Do not echo unchecked arguments or
+    // handler exceptions on a synchronous diagnostic path in production.
+    if (requiresProductionPhi()) throw new Error('TOOL_FAILED_OR_PHI_OUTPUT_BLOCKED');
+    throw error;
+  }
 }
 
 /** Wrap a plain handler result in the MCP content envelope. */
@@ -99,10 +112,13 @@ export function serve(cfg) {
     if (!def) throw Object.assign(new Error(`unknown tool: ${name}`), { rpcCode: -32602 });
     try {
       const args = checkAndStrip(name, def.inputSchema, rawArgs);
+      // Runtime policy cannot be disabled by cfg.phiGuard=false or request flags.
+      if (requiresProductionPhi()) await resolvePhiDetector();
+      if (requiresProductionPhi() && cfg.phiRejectInput) await guardPhiValue(cfg.phiInputView?.(name,args) ?? args, { reject: true });
       const result = await handlers[name](args);
       // Handlers may already return a ready-made content envelope (the FHIR
       // server's text()/json() helpers do) — pass those through untouched.
-      if (result && typeof result === "object" && Array.isArray(result.content)) return cfg.phiGuard ? guardToolOutput(result) : result;
+      if (result && typeof result === "object" && Array.isArray(result.content)) return cfg.phiGuard || requiresProductionPhi() ? await guardToolOutputAsync(result, { reject: cfg.phiRejectOutput }) : result;
       let note;
       try {
         note = summarize?.[name]?.(result, args);
@@ -110,9 +126,9 @@ export function serve(cfg) {
         note = undefined;
       }
       const content = toContent(result, note);
-      return cfg.phiGuard ? guardToolOutput(content) : content;
+      return cfg.phiGuard || requiresProductionPhi() ? await guardToolOutputAsync(content, { reject: cfg.phiRejectOutput }) : content;
     } catch (e) {
-      return cfg.phiGuard ? safeToolFailure() : toError(e);
+      return cfg.phiGuard || requiresProductionPhi() ? safeToolFailure() : toError(e);
     }
   }
 
@@ -155,11 +171,11 @@ export function serve(cfg) {
           if (isRequest) respond(msg.id, await callTool(msg.params?.name, msg.params?.arguments));
           return;
         default:
-          if (isRequest) respondError(msg.id, -32601, `method not found: ${msg.method}`);
+          if (isRequest) respondError(msg.id, -32601, cfg.phiGuard || requiresProductionPhi() ? 'METHOD_NOT_FOUND' : `method not found: ${msg.method}`);
           return;
       }
     } catch (e) {
-      if (isRequest) respondError(msg.id, e.rpcCode ?? -32603, cfg.phiGuard ? "REQUEST_FAILED" : String(e.message ?? e));
+      if (isRequest) respondError(msg.id, e.rpcCode ?? -32603, cfg.phiGuard || requiresProductionPhi() ? "REQUEST_FAILED" : String(e.message ?? e));
     }
   }
 
@@ -169,7 +185,7 @@ export function serve(cfg) {
     tail = tail
       .then(work)
       .catch((e) => {
-        process.stderr.write(`${serverInfo.name}: dispatch failed: ${cfg.phiGuard ? "DETAIL_WITHHELD" : String(e?.message ?? e)}\n`);
+        process.stderr.write(`${serverInfo.name}: dispatch failed: ${cfg.phiGuard || requiresProductionPhi() ? "DETAIL_WITHHELD" : String(e?.message ?? e)}\n`);
         if (e?.code === "EPIPE") process.exit(1);
       });
   };

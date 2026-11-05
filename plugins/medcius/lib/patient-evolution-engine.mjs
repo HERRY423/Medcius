@@ -3,8 +3,8 @@ import { assessCriticalVisibility } from "./critical-visibility.mjs";
 // Enhanced: Multi-source data fusion (NIS vitals/fluids, LIS critical values, PACS impressions, HIS antibiotics),
 // Dynamic eGFR (CKD-EPI), and Clinical Safety / Quality Control rules hardening.
 
-import { splitSections, extractConTextAssertion } from "./parse-cn-note.mjs";
-import { inspectEvidenceAnchor } from "./evidence-anchors.mjs";
+import { splitSectionSpans, extractConTextAssertions } from "./parse-cn-note.mjs";
+import { inspectEvidenceAnchor, createTextAnchor } from "./evidence-anchors.mjs";
 import { CALCULATION_PROVENANCE, renalStabilityPolicy } from "./calculation-reference.mjs";
 import { rulePackDigest, validateSpecialtyRulePack } from "./specialty-rule-pack.mjs";
 import { HospitalDataAdapter, calculateEgfrCkdEpi, normalizeLabUnit } from "./hospital-data-adapter.mjs";
@@ -13,6 +13,9 @@ import { PostHocClaimVerifier } from "./post-hoc-verifier.mjs";
 import { classifySourceTime } from "./clinical-boundary.mjs";
 import { classifyRecordLifecycle, resolveRecordVersions, describeRecordLifecycle } from "./record-lifecycle.mjs";
 import { assertEvolutionConsistency, detachedFrozenOutput } from "./output-consistency.mjs";
+import { assertSyncPhiAllowed, requiresProductionPhi } from './production-phi-policy.mjs';
+import { guardPatientSourceInput } from './patient-source-phi.mjs';
+import { evaluateChinaClinicalRules, formatChinaClinicalCheck } from './china-clinical-rules.mjs';
 
 export const ITEM_CATEGORIES = {
   FACT: "FACT",           // 【原文事实】
@@ -28,11 +31,38 @@ export const CATEGORY_LABELS = {
   [ITEM_CATEGORIES.DATA_GAP]: "【资料不足】",
 };
 
+import { createPacsViewerLink } from './imaging-report.mjs';
+import { normalizeOrderExecution } from './order-execution.mjs';
+
 export class PatientEvolutionEngine {
+  static analyzePatientEvolution(input) {
+    assertSyncPhiAllowed(input?.context);
+    return this.#analyzePatientEvolution(input);
+  }
+
+  static async analyzePatientEvolutionAsync(input, { localPhiDetector, signal } = {}) {
+    const source = structuredClone(input);
+    if (source.now instanceof Date) source.now = source.now.toISOString();
+    // `name` is an identity key. Preserve explicitly typed drug rule names.
+    if (source.rulePack?.clinical_rules?.restricted_antibiotics) {
+      source.rulePack.clinical_rules.restricted_antibiotics = source.rulePack.clinical_rules.restricted_antibiotics
+        .map(({ name, ...rule }) => ({ ...rule, drug_name: name }));
+    }
+    const { input: guarded, session } = await guardPatientSourceInput({ ...source,
+      encounter: { id: source.context?.encounter_id } }, { detector: localPhiDetector, signal });
+    try {
+      const safe = structuredClone(guarded);
+      if (safe.rulePack?.clinical_rules?.restricted_antibiotics) {
+        safe.rulePack.clinical_rules.restricted_antibiotics = safe.rulePack.clinical_rules.restricted_antibiotics
+          .map(({ drug_name, ...rule }) => ({ ...rule, name: drug_name }));
+      }
+      return this.#analyzePatientEvolution(safe);
+    } finally { session.dispose(); }
+  }
   /**
    * Analyze patient evolution across 24h or 72h window with multi-source feeds.
    */
-  static analyzePatientEvolution({
+  static #analyzePatientEvolution({
     patient = {},
     context = null,
     timeWindow = "24h", // '24h' | '72h'
@@ -50,6 +80,8 @@ export class PatientEvolutionEngine {
     sourceManifest = null,
     sourceAvailability = [],
     recordHistory = {},
+    pacsViewerProfile = null,
+    chinaClinical = null,
     now = new Date(),
   }) {
     const patientId = patient?.id || context?.patient_id;
@@ -76,7 +108,7 @@ export class PatientEvolutionEngine {
     const nowMs = new Date(now).getTime();
     if (!Number.isFinite(nowMs)) throw new Error("INVALID_TIME_CONTEXT: now must be a valid timestamp");
     const cutoffTime = nowMs - windowHours * 60 * 60 * 1000;
-    const production = process.env.NODE_ENV === "production" || process.env.MEDCIUS_PROFILE === "production";
+    const production = requiresProductionPhi(context);
     if (production && rulePack) {
       const validation = validateSpecialtyRulePack(rulePack, { production, hospitalScope: context?.tenant_id, now });
       if (!validation.ok) throw new Error(`RULE_PACK_REJECTED: ${validation.errors.join(",")}`);
@@ -347,33 +379,23 @@ export class PatientEvolutionEngine {
         continue;
       }
       {
-        const sections = splitSections(note.text || "");
+        const sections = splitSectionSpans(note.text || "");
         const docName = note.title || note.note_type || "病程记录";
-
-        const progressSec = sections["病程记录"] || sections["现病史"] || sections["主诉"] || sections["诊疗经过"];
-        if (progressSec) {
-          const sentences = progressSec.split(/[。\n；;]/).map((s) => s.trim()).filter((s) => s.length >= 4);
-          for (const s of sentences) {
-            if (/体温|热|发热|最高|血压|心率|胸闷|气促|喘|呼吸|腹痛|咳嗽|咳痰|水肿|出入量|尿量/.test(s)) {
-              const noteText = note.text || "";
-              const spanVerified = noteText.includes(s) ? s : null;
-              const conText = extractConTextAssertion(s);
-
+        const selected = ["病程记录", "现病史", "主诉", "诊疗经过"].find(name => sections.some(s => s.name === name));
+        for (const section of sections.filter(s => s.name === selected || s.name === "体格检查")) {
+          for (const clause of extractConTextAssertions(section.text)) {
+            const s = clause.text;
+            if (/体温|热|发热|最高|血压|心率|胸闷|胸痛|气促|喘|呼吸|腹痛|咳嗽|咳痰|水肿|出入量|尿量|啰音|神清语利/.test(s)) {
+              const start = section.start + clause.start;
+              const end = section.start + clause.end;
+              const { text, span, start: localStart, end: localEnd, ...conText } = clause;
               changes.clinical_symptoms.push({
-                id: genId("SYM"),
-                category: ITEM_CATEGORIES.FACT,
-                tag: conText.presence_label,
-                title: "症状/体征演变",
-                summary: s,
-                span: spanVerified,
-                assertion: conText,
-                presence: conText.presence,
-                temporality: conText.temporality,
-                experiencer: conText.experiencer,
-                source_type: "ClinicalNote",
-                source_id: note.id || null,
-                source_title: docName,
-                timestamp: noteEventTime || null,
+                id: genId("SYM"), category: ITEM_CATEGORIES.FACT, tag: conText.presence_label,
+                title: "症状/体征演变", summary: s, span: s,
+                text_anchor: createTextAnchor(note, { field: "text", start, end }),
+                assertion: conText, presence: conText.presence, temporality: conText.temporality,
+                experiencer: conText.experiencer, source_type: "ClinicalNote", source_id: note.id || null,
+                source_title: docName, timestamp: noteEventTime || null,
               });
             }
           }
@@ -587,22 +609,29 @@ export class PatientEvolutionEngine {
       }
     }
 
-    // 1d. PACS Imaging Comparative Impressions
-    for (const imp of imagingImpressions) {
+    // Findings and impression share a source report, never a semantic fallback.
+    for (const report of combinedReports) {
+      const state = classifyRecordLifecycle(report, { sourceType: 'diagnostic_report', now: nowMs, cutoffTime });
+      if (!['final', 'preliminary', 'revised'].includes(state.result_status) || state.event_time_status !== 'in_window'
+        || !(report.findings || report.impression || report.unclassified_text)) continue;
       changes.imaging_changes.push({
         id: genId("PACS-IMP"),
         category: ITEM_CATEGORIES.FACT,
         tag: CATEGORY_LABELS[ITEM_CATEGORIES.FACT],
-        title: "影像诊断与演变印象",
-        summary: `【${imp.report_name}】${imp.impression_summary}`,
+        title: '影像报告',
+        summary: `【${report.name}】所见：${report.findings || '未提供'}；印象：${report.impression || '未提供'}`
+          + (report.unclassified_text ? `；未分区原文：${report.unclassified_text}` : ''),
+        findings: report.findings ?? null,
+        impression: report.impression ?? null,
+        viewer: createPacsViewerLink(report, context, pacsViewerProfile),
         source_type: "DiagnosticReport",
-        source_id: imp.id || null,
+        source_id: report.id || null,
         source_title: "PACS 影像系统",
-        timestamp: imp.event_time || imp.study_time || null,
-        ordered_at: imp.ordered_at || null,
-        result_status: imp.result_status,
-        change_type: imp.change_type,
-        version_id: imp.version_id ?? null,
+        timestamp: state.event_time,
+        ordered_at: report.ordered_at || null,
+        result_status: state.result_status,
+        change_type: state.change_type,
+        version_id: state.version_id,
       });
     }
 
@@ -618,6 +647,12 @@ export class PatientEvolutionEngine {
       const route = med.route || "";
       const freq = med.frequency || "";
       const fullDose = [dose, route, freq].filter(Boolean).join(" ");
+      const execution = normalizeOrderExecution(med, { now: nowMs });
+      const orderKindLabel = ({long_term:'长期',temporary:'临时'})[execution.order_kind] || '类型未确认';
+      const executionLabel = ({ordered:'已开立',nurse_unverified:'护士未核对',nurse_verified:'护士已核对',
+        pharmacy_reviewed:'药房已审方',dispensed:'药房已发药',pharmacy_returned:'药房已退回',
+        administered:'来源标记已执行',stopped:'已停止',voided:'已作废'})[execution.execution_status] || '执行状态未知';
+      const executionNote = `${orderKindLabel}医嘱；${executionLabel}；${execution.administrations.length} 条有时间依据的执行记录，覆盖范围未确认`;
       const verbatimSpan = med.span || null;
       const changeTimestamp = med.change_type === "discontinued" || med.status === "stopped" || med.status === "cancelled"
         ? (med.end_date || med.changed_at || null) : (med.changed_at || med.authored_on || null);
@@ -638,9 +673,12 @@ export class PatientEvolutionEngine {
           category: ITEM_CATEGORIES.FACT,
           tag: CATEGORY_LABELS[ITEM_CATEGORIES.FACT],
           drug_name: medName,
-          change_type: "新增用药",
+          change_type: '新增医嘱',
+          order_kind: execution.order_kind,
+          execution_status: execution.execution_status,
+          administration_records: execution.administrations,
           dosage_instruction: fullDose,
-          summary: `新增: ${medName} ${fullDose}`,
+          summary: `新增: ${medName} ${fullDose}（${executionNote}）`,
           span: verbatimSpan,
           source_type: "MedicationRequest",
           source_id: med.id || null,
@@ -892,6 +930,22 @@ export class PatientEvolutionEngine {
     changes.critical_values = topCriticalValues;
     changes.antibiotic_duration_alerts = antibioticAlerts;
     changes.imaging_impressions = imagingImpressions;
+    const chinaChecks = chinaClinical != null || rulePack?.clinical_rules?.china_reference_checks === true
+      ? evaluateChinaClinicalRules({ records: chinaClinical?.records || [], patient, context, asOf: new Date(nowMs).toISOString(),
+        region: chinaClinical?.region, medications: combinedMedications.filter(m => ["active", "in-progress"].includes(m.status)),
+        pharmacyCatalog: chinaClinical?.pharmacy_catalog,
+        renalInstabilityDetected: gaps.some(g => g.gap_type === "CREATININE_NON_STEADY_STATE") }) : null;
+    for (const check of chinaChecks?.checks || []) {
+      const isGap = check.status === "unknown";
+      const evidence = check.evidence[0];
+      const item = { id: genId(isGap ? "GAP-CN" : "RULE-CN"), category: isGap ? ITEM_CATEGORIES.DATA_GAP : ITEM_CATEGORIES.RULE_ALERT,
+        tag: CATEGORY_LABELS[isGap ? ITEM_CATEGORIES.DATA_GAP : ITEM_CATEGORIES.RULE_ALERT], title: check.title,
+        summary: formatChinaClinicalCheck(check),
+        check_code: check.code, check_status: check.status, rule_source: check.rule_source, evidence: check.evidence, details: check.details,
+        source_type: "ClinicalQualityRecord", source_id: evidence?.source_id ?? null, source_system: evidence?.source_system ?? null,
+        timestamp: evidence?.recorded_at ?? null, span: null };
+      (isGap ? gaps : ruleReminders).push(item);
+    }
     const allSelectableItems = [
       ...changeItems,
       ...alignmentSelectableItems,
@@ -910,7 +964,7 @@ export class PatientEvolutionEngine {
     ];
 
     const evidenceList = allSelectableItems.map((item) => ({
-      ...inspectEvidenceAnchor(item, [...notes, ...observations, ...medications, ...diagnosticReports, ...orders, ...lisFeed, ...pacsFeed, ...nursingFeed, ...nisFeed]),
+      ...inspectEvidenceAnchor(item, [...notes, ...observations, ...medications, ...diagnosticReports, ...orders, ...lisFeed, ...pacsFeed, ...nursingFeed, ...nisFeed, ...(chinaClinical?.records || [])]),
       item_id: item.id,
       category: item.category,
       tag: item.tag,
@@ -936,6 +990,8 @@ export class PatientEvolutionEngine {
         admission_date: patient.admission_date || null,
         primary_diagnosis: patient.primary_diagnosis || patient.diagnosis || null,
         egfr: patientEgfr,
+        chinese_mdrd: chinaChecks?.calculations.chinese_mdrd ?? null,
+        china_adult_bmi: chinaChecks?.calculations.china_adult_bmi ?? null,
       },
       time_window: timeWindow,
       generated_at: new Date(nowMs).toISOString(),
@@ -948,6 +1004,7 @@ export class PatientEvolutionEngine {
         what_changed: changes,
         whats_pending: pending,
         rule_reminders: ruleReminders,
+        china_clinical_checks: chinaChecks,
         high_risk_followup: highRiskFollowup,
         data_gaps: gaps,
         evidence: evidenceList,

@@ -4,8 +4,10 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { canonicalJson, sha256Hex } from "../servers/shared/crypto.mjs";
-import { replayPreRoundResearchSnapshot } from "./hospital-agent-adapter.mjs";
+import { replayPreRoundResearchSnapshot, replayPreRoundResearchSnapshotAsync } from "./hospital-agent-adapter.mjs";
 import { containsRawStructuredPhi } from "./clinical-boundary.mjs";
+import { assertSyncPhiAllowed } from './production-phi-policy.mjs';
+import { guardPatientSourceInput } from './patient-source-phi.mjs';
 
 export const FROZEN_RECORD_SCHEMA = "medcius.frozen-research-record.v2";
 export const CODE_VERSION = JSON.parse(readFileSync(new URL("../.codex-plugin/plugin.json", import.meta.url), "utf8")).version;
@@ -83,10 +85,10 @@ function assertIntegrity(record, caseId, tenantId) {
   return record;
 }
 
-export function saveFrozenResearchRecord({ tenantId, patientId, encounterId, asOf, governanceStage, sourceMode,
+function prepareRecord({ tenantId, patientId, encounterId, asOf, governanceStage, sourceMode,
   sourceManifest = [], unavailableSources = [], degradedRecords = [], engineInput, engineOutput, replayInput,
   sourceAvailability = replayInput?.sourceAvailability ?? engineInput?.sourceAvailability ?? [], failures = [] } = {}) {
-  const dir = archiveDir(tenantId);
+  archiveDir(tenantId);
   if (!engineInput || !engineOutput || !replayInput) throw new Error("FROZEN_RECORD_OUTPUT_REQUIRED");
   if (!patientId || !encounterId || !Number.isFinite(Date.parse(asOf))) throw new Error("FROZEN_RECORD_CONTEXT_REQUIRED");
   // Freeze the actual JSON representation before hashing or replaying it.
@@ -111,21 +113,26 @@ export function saveFrozenResearchRecord({ tenantId, patientId, encounterId, asO
   record.created_at = new Date().toISOString();
   record.record_sha256 = digest(record);
   assertIntegrity(record, caseId, tenantId);
-  if (digest(replayPreRoundResearchSnapshot(replayInput)) !== record.output_sha256) throw new Error("FROZEN_RECORD_REPLAY_MISMATCH");
+  return record;
+}
+
+function persistRecord(record) {
+  const { case_id: caseId, tenant_id: tenantId } = record;
+  const dir = archiveDir(tenantId);
   mkdirSync(dir, { recursive: true, mode: 0o700 });
   let saved = record;
   try {
     writeFileSync(join(dir, `${caseId}.json`), canonicalJson(record), { encoding: "utf8", flag: "wx", mode: 0o600 });
   } catch (error) {
     if (error?.code !== "EEXIST") throw new Error("FROZEN_RECORD_WRITE_FAILED");
-    saved = readFrozenResearchRecord(caseId, { tenantId });
+    saved = loadFrozenRecord(caseId, { tenantId });
     if (!saved || canonicalJson(identity(saved)) !== canonicalJson(identity(record))) throw new Error("FROZEN_RECORD_COLLISION");
   }
   return { case_id: caseId, record_sha256: saved.record_sha256, output_sha256: saved.output_sha256,
     input_sha256: saved.input_sha256, replayable: true };
 }
 
-export function readFrozenResearchRecord(caseId, { tenantId } = {}) {
+function loadFrozenRecord(caseId, { tenantId } = {}) {
   const dir = archiveDir(tenantId);
   if (!caseId || !/^frr-[a-f0-9]{20}$/.test(caseId)) return null;
   try {
@@ -136,11 +143,64 @@ export function readFrozenResearchRecord(caseId, { tenantId } = {}) {
   }
 }
 
+export function saveFrozenResearchRecord(args = {}) {
+  assertSyncPhiAllowed(args.replayInput?.context);
+  const record = prepareRecord(args);
+  if (digest(replayPreRoundResearchSnapshot(record.replay_input)) !== record.output_sha256) throw new Error('FROZEN_RECORD_REPLAY_MISMATCH');
+  return persistRecord(record);
+}
+
+export function readFrozenResearchRecord(caseId, options = {}) {
+  assertSyncPhiAllowed();
+  return loadFrozenRecord(caseId, options);
+}
+
+// Verify the exact frozen representation; never re-anchor or silently rewrite
+// an old record when a newer guard finds additional PHI.
+async function assertDualGuardedRecord(record, { localPhiDetector, signal } = {}) {
+  const context = record.replay_input.context;
+  const { input, session } = await guardPatientSourceInput({ context,
+    patient: { id: context.patient_id }, encounter: { id: context.encounter_id },
+    archive: { engine_input: record.engine_input, replay_input: record.replay_input,
+      annotation_output: record.annotation_output, source_manifest: record.source_manifest,
+      source_availability: record.source_availability, unavailable_sources: record.unavailable_sources,
+      degraded_records: record.degraded_records, failures: record.failures, source_mode: record.source_mode } },
+    { detector: localPhiDetector, signal });
+  try {
+    for (const [key, value] of Object.entries(input.archive)) {
+      if (digest(value) !== digest(record[key])) throw new Error('FROZEN_RECORD_PHI_REJECTED');
+    }
+  } finally { session.dispose(); }
+}
+
+export async function saveFrozenResearchRecordAsync(args = {}, options = {}) {
+  const record = prepareRecord(args);
+  await assertDualGuardedRecord(record, options);
+  if (digest(await replayPreRoundResearchSnapshotAsync(record.replay_input, options)) !== record.output_sha256) throw new Error('FROZEN_RECORD_REPLAY_MISMATCH');
+  return persistRecord(record);
+}
+
+export async function readFrozenResearchRecordAsync(caseId, options = {}) {
+  const record = loadFrozenRecord(caseId, options);
+  if (record) await assertDualGuardedRecord(record, options);
+  return record;
+}
+
 export function replayFrozenResearchRecord(caseId, { tenantId } = {}) {
   const record = readFrozenResearchRecord(caseId, { tenantId });
   if (!record) throw new Error("FROZEN_RECORD_NOT_FOUND");
   if (digest(record.algorithm_identity) !== digest(LOADED_ALGORITHM)) throw new Error("FROZEN_RECORD_ALGORITHM_MISMATCH");
   const outputSha = digest(replayPreRoundResearchSnapshot(record.replay_input));
+  return { case_id: caseId, replayable: true, match: outputSha === record.output_sha256,
+    output_sha256: outputSha, expected_sha256: record.output_sha256, record_sha256: record.record_sha256 };
+}
+
+export async function replayFrozenResearchRecordAsync(caseId, options = {}) {
+  const record = loadFrozenRecord(caseId, options);
+  if (!record) throw new Error('FROZEN_RECORD_NOT_FOUND');
+  if (digest(record.algorithm_identity) !== digest(LOADED_ALGORITHM)) throw new Error('FROZEN_RECORD_ALGORITHM_MISMATCH');
+  await assertDualGuardedRecord(record, options);
+  const outputSha = digest(await replayPreRoundResearchSnapshotAsync(record.replay_input, options));
   return { case_id: caseId, replayable: true, match: outputSha === record.output_sha256,
     output_sha256: outputSha, expected_sha256: record.output_sha256, record_sha256: record.record_sha256 };
 }

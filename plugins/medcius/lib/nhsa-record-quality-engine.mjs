@@ -27,12 +27,12 @@ import {
   splitSections,
   DISCHARGE_METHOD_NAMES,
 } from "./parse-cn-note.mjs";
+import { assertRecordEvidenceReview } from './record-evidence-reconciliation.mjs';
 
 const VALID_DISCHARGE_METHODS = new Set([1, 2, 3, 4, 5, 9]);
 const FEE_TOLERANCE = 0.01;
 
 const OBSTETRIC_TERM_RE = /妊娠|分娩|产褥|剖宫产|剖腹产|宫内孕|异位妊娠|宫外孕|流产|羊水|胎盘|胎膜|胎位/;
-const NEONATAL_TERM_RE = /新生儿|围产期|早产儿|足月儿/;
 const TUMOR_TERM_RE = /恶性肿瘤|癌|淋巴瘤|白血病/;
 const TRAUMA_TERM_RE = /骨折|损伤|烧伤|烫伤|冻伤|中毒|电击伤|挤压伤/;
 
@@ -84,6 +84,7 @@ function allDxText(parsed) {
  *        结算流程已解析出的诊断编码（用于确定性的章节前缀规则；无编码时退回关键词规则）
  */
 export function buildRecordQualityReport(text, opts = {}) {
+  const evidenceReview = opts.evidence_review == null ? null : assertRecordEvidenceReview(opts.evidence_review, { text });
   if (typeof text !== "string" || !text.trim()) {
     throw new Error("RECORD_TEXT_REQUIRED");
   }
@@ -98,9 +99,9 @@ export function buildRecordQualityReport(text, opts = {}) {
   const advisoryHints = [];
 
   // ---- 1. 必填要素（结算清单/病案首页住院诊疗信息栏）----
-  if (!parsed.discharge_diagnosis_primary?.value) {
+  if (!parsed.discharge_diagnosis_primary?.value && !parsed.diagnosis_mentions?.length) {
     elementGaps.push(
-      finding("PRIMARY_DISCHARGE_DIAGNOSIS_MISSING", "HIGH", "出院主诊断缺失或仅为疑似/待查表述，结算清单主要诊断栏不得为空", {
+      finding("PRIMARY_DISCHARGE_DIAGNOSIS_MISSING", "HIGH", "未抽取到出院主诊断记载，需核对原始病案与适用清单要求", {
         section: "诊断",
         expected: "明确的出院主诊断",
         actual: null,
@@ -136,7 +137,7 @@ export function buildRecordQualityReport(text, opts = {}) {
     && dates.recorded_stay_days.value !== dates.computed_stay_days
   ) {
     algebraConflicts.push(
-      finding("STAY_DAYS_MISMATCH", "HIGH", `住院天数与出入院日期代数不一致：按日期计算应为 ${dates.computed_stay_days} 天（出院-入院+1），记录值为 ${dates.recorded_stay_days.value} 天`, {
+      finding("STAY_DAYS_MISMATCH", "HIGH", `住院天数与出入院日期代数不一致：按日期计算应为 ${dates.computed_stay_days} 天（出院-入院，同日按1天），记录值为 ${dates.recorded_stay_days.value} 天`, {
         section: "住院天数",
         span: dates.recorded_stay_days.span,
         expected: dates.computed_stay_days,
@@ -213,9 +214,16 @@ export function buildRecordQualityReport(text, opts = {}) {
   const age = parsed.demographics?.age;
   const terms = dxTerms(parsed);
   const termsText = allDxText(parsed);
-  const dxCodes = diagnosisCodes.filter((c) => (c.kind ?? "diagnosis") === "diagnosis").map((c) => c.code);
-  const hasObstetric = /O/.test(dxCodes.map((c) => c.charAt(0).toUpperCase()).join("")) || OBSTETRIC_TERM_RE.test(termsText);
-  const hasNeonatal = /P/.test(dxCodes.map((c) => c.charAt(0).toUpperCase()).join("")) || NEONATAL_TERM_RE.test(termsText);
+  const dxCodes = diagnosisCodes.filter(c => (c.kind ?? "diagnosis") === "diagnosis"
+    && ["医保版ICD-10", "ICD-10", "ICD-10-CN"].includes(c.code_system)
+    && /^[A-Z][0-9]{2}(?:\.[A-Za-z0-9]{1,6})?$/.test(c.code.trim())).map(c => c.code.trim());
+  const hasObstetric = dxCodes.some(c => /^O[0-9]{2}(?:\.|$)/.test(c)) || OBSTETRIC_TERM_RE.test(termsText);
+  const hasNeonatal = /新生儿|早产儿|足月儿/.test(termsText);
+  if (age != null && age >= 1 && dxCodes.some(c => /^P[0-9]{2}(?:\.|$)/.test(c))) {
+    advisoryHints.push(finding("PERINATAL_ORIGIN_REVIEW", "LOW", "P 章节按围产期起源分类；当前年龄不能单独判编码错误，需核对疾病起源及适用编码版本", {
+      section: "诊断", span: termsText || null, actual: dxCodes.filter(c => c.startsWith("P")), expected: "围产期起源的可追溯记录",
+    }));
+  }
 
   if (sex === "male" && hasObstetric) {
     legalityConflicts.push(
@@ -229,10 +237,10 @@ export function buildRecordQualityReport(text, opts = {}) {
   }
   if (age != null && age >= 1 && hasNeonatal) {
     legalityConflicts.push(
-      finding("NEONATAL_DIAGNOSIS_AGE_CONFLICT", "HIGH", `患者年龄 ${age} 岁与围产期/新生儿（P 章节）诊断冲突，须病案复核年龄或诊断归属`, {
+      finding("NEONATAL_DIAGNOSIS_AGE_CONFLICT", "HIGH", `患者年龄 ${age} 岁与原文的新生儿/早产儿/足月儿表述需复核；本提示不按当前年龄否定 P 章节编码`, {
         section: "诊断",
         span: termsText.slice(0, 60),
-        expected: "P 章节诊断仅适用于围产儿/新生儿（<28 天）",
+        expected: "原文年龄与新生儿表述应核对；P 章节条件可延续至晚期年龄",
         actual: `age=${age}岁, dx=${termsText.slice(0, 40)}`,
       }),
     );
@@ -242,7 +250,7 @@ export function buildRecordQualityReport(text, opts = {}) {
   const primary = parsed.discharge_diagnosis_primary?.value ?? "";
   if (primary && /待查|疑似|待排/.test(primary)) {
     advisoryHints.push(
-      finding("UNCERTAIN_PRIMARY_DIAGNOSIS", "LOW", "出院主诊断仍为疑似/待查表述，按结算规范不得按疑似编码，须明确最终主诊断或按确定症状编码", {
+      finding("UNCERTAIN_PRIMARY_DIAGNOSIS", "LOW", "出院主诊断含不确定表述，需按病案场景与当期适用规范复核；工具不作编码选择", {
         section: "诊断",
         span: primary,
       }),
@@ -251,9 +259,9 @@ export function buildRecordQualityReport(text, opts = {}) {
     // 解析器会把疑似/待查条目从诊断中过滤掉；从原始诊断章节回查，区分“未书写”与“书写了疑似/待查”
     const sec = splitSections(text);
     const rawDx = sec["出院诊断"] || sec["出院主诊断"] || sec["术后诊断"] || sec["门诊诊断"] || sec["初步诊断"] || sec["诊断"] || "";
-    if (rawDx && /待查|疑似|待排/.test(rawDx)) {
+    if (rawDx && /待查|疑似|待排|R\s*\/\s*O|不排除|不能排除/i.test(rawDx)) {
       advisoryHints.push(
-        finding("UNCERTAIN_PRIMARY_DIAGNOSIS", "LOW", "诊断章节为疑似/待查表述，按结算规范不得按疑似编码，须明确最终主诊断或按确定症状编码", {
+        finding("UNCERTAIN_PRIMARY_DIAGNOSIS", "LOW", "诊断章节含不确定表述，需按住院/门诊场景及当期适用规范复核；不能一概判定不得编码", {
           section: "诊断",
           span: rawDx.replace(/\s+/g, " ").slice(0, 60),
         }),
@@ -262,7 +270,7 @@ export function buildRecordQualityReport(text, opts = {}) {
   }
   if (TUMOR_TERM_RE.test(termsText) && !parsed.pathology?.value) {
     advisoryHints.push(
-      finding("TUMOR_PATHOLOGY_HINT", "LOW", "诊断含肿瘤性病变但未见病理诊断记载，肿瘤类诊断须病理形态学支持，须病案复核", {
+      finding("TUMOR_PATHOLOGY_HINT", "LOW", "当前文本未见病理诊断记载；须核对既往/外院病理或其他适用诊断依据，不能仅因本次未见病理判定诊断不成立", {
         section: "病理",
         expected: "病理诊断/形态学记录",
         actual: null,
@@ -293,6 +301,7 @@ export function buildRecordQualityReport(text, opts = {}) {
   if (conflictCount > 0 || highGapCount > 0) checkStatus = "action_needed";
   else if (elementGaps.length > 0 || advisoryHints.length > 0) checkStatus = "incomplete";
   else checkStatus = "pass";
+  if (evidenceReview && evidenceReview.status !== 'no_discrepancy_in_configured_scope' && checkStatus === 'pass') checkStatus = 'incomplete';
 
   return {
     schema_version: "medcius.nhsa-record-quality-report.v1",
@@ -308,6 +317,7 @@ export function buildRecordQualityReport(text, opts = {}) {
     algebra_conflicts: algebraConflicts,
     legality_conflicts: legalityConflicts,
     advisory_hints: advisoryHints,
+    ...(evidenceReview ? { evidence_reconciliation: evidenceReview } : {}),
     parsed_context: {
       note_type: parsed.note_type,
       sex: sex ?? null,

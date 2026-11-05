@@ -39,29 +39,36 @@ function six(hit, fallbackStatus, official) {
   };
 }
 
-function resolveTerm(CC, term, kind, official) {
+function resolveTerm(CC, term, kind, official, codeSystem, codeVersion, asOf, packId, region) {
   const found = CC.search_codes({
     query: term,
     code_type: kind,
+    code_system: codeSystem,
+    ...(packId ? { pack_id: packId, region } : {}),
+    ...(codeVersion ? { code_version: codeVersion } : {}),
+    ...(asOf ? { as_of: asOf } : {}),
+    match_mode: "exact_name",
     include_samples: !official,
     limit: 5,
   });
-  const hit = found.hits?.[0] ?? null;
-  const v = hit ? CC.validate_code({ code: hit.code, code_system: hit.code_system }) : null;
+  const candidates = (found.hits ?? []).filter(h => h.name === term && h.code_system === codeSystem && (!codeVersion || h.code_version === codeVersion));
+  const hit = candidates.length === 1 && found.total_matches === 1 ? candidates[0] : null;
+  const v = hit ? CC.validate_code({ code: hit.code, code_system: hit.code_system, ...(packId ? { pack_id: packId, region } : {}), ...(codeVersion ? { code_version: codeVersion } : {}), ...(asOf ? { as_of: asOf } : {}) }) : null;
   const merged = hit ? { ...hit, validation_status: v?.validation_status ?? hit.validation_status, reasons: v?.reasons } : null;
-  return { term, kind, hit: merged, provenance: six(merged, "unverifiable", official), coverage_note: found.coverage_note };
+  return { term, kind, hit: merged, provenance: six(merged, "unverifiable", official), resolution_status: hit ? "exact_unique" : found.total_matches > 1 || candidates.length > 1 ? "ambiguous" : candidates.length ? "uniqueness_unverified" : "no_exact_match", candidate_count: found.total_matches ?? candidates.length, coverage_note: found.coverage_note };
 }
 
 /**
  * @param {string} text
  * @param {{ HANDLERS: Record<string, Function> }} CC
  */
-export function settlementFromNote(text, CC) {
+export function settlementFromNote(text, CC, { diagnosisSystem = "医保版ICD-10", procedureSystem = "医保版手术操作分类",
+  diagnosisVersion, procedureVersion, asOf, evidenceReview, crosswalk, codePackId, region } = {}) {
   const extracted = parseCnNote(text);
   const demo = parseDemographics(text);
   const labs = parseLabs(text);
   const st = CC.corpus_status();
-  const official = (st.counts?.codes?.official ?? 0) > 0;
+  const official = codePackId ? CC.crosswalk_status?.().packs.some(p => p.pack_id === codePackId && p.data_class === 'official') === true : (st.counts?.codes?.official ?? 0) > 0;
 
   const jobs = [
     ...terms(extracted.discharge_diagnosis_primary).map((t) => ({ term: t, kind: "diagnosis", role: "discharge_primary" })),
@@ -70,7 +77,11 @@ export function settlementFromNote(text, CC) {
     ...terms(extracted.procedures).map((t) => ({ term: t, kind: "procedure", role: "procedure" })),
   ];
 
-  const items = jobs.map((j) => ({ ...j, ...resolveTerm(CC, j.term, j.kind, official) }));
+  const items = jobs.map((j) => ({ ...j, ...resolveTerm(CC, j.term, j.kind, official, j.kind === "diagnosis" ? diagnosisSystem : procedureSystem,
+    j.kind === 'diagnosis' ? diagnosisVersion : procedureVersion, asOf, codePackId, region) }));
+  const mappings = crosswalk ? jobs.map(j => ({ term: j.term, role: j.role,
+    review: typeof CC.query_code_mappings === 'function' ? CC.query_code_mappings({ ...crosswalk,
+      from: { system: crosswalk.from?.system, version: crosswalk.from?.version, term: j.term }, as_of: asOf }) : { status: 'unverifiable', reason: 'CROSSWALK_TOOL_UNAVAILABLE' } })) : [];
   const listCheck = CC.check_settlement_list
     ? CC.check_settlement_list({
         sex: demo.sex,
@@ -81,6 +92,7 @@ export function settlementFromNote(text, CC) {
           kind: i.kind,
           code: i.provenance.code,
           code_system: i.provenance.code_system,
+          code_version: i.provenance.code_version,
           is_main_diag_allowed: i.hit?.is_main_diag_allowed,
         })),
       })
@@ -94,9 +106,10 @@ export function settlementFromNote(text, CC) {
   };
 
   const record_quality = buildRecordQualityReport(text, {
+    evidence_review: evidenceReview,
     diagnosis_codes: items
       .filter((i) => i.kind === "diagnosis" && i.provenance.code)
-      .map((i) => ({ code: i.provenance.code, kind: "diagnosis" })),
+      .map((i) => ({ code: i.provenance.code, code_system: i.provenance.code_system, kind: "diagnosis" })),
   });
 
   return {
@@ -104,11 +117,14 @@ export function settlementFromNote(text, CC) {
     demographics: demo,
     labs,
     extracted,
-    production_ready: official,
+    production_ready: false,
+    corpus_available: official,
+    deployment_acceptance: "NOT_ESTABLISHED",
     halt: official ? null : "official 编码库为空：清单可出栏，validation_status 不得为 valid",
     settlement_list: list,
     list_check: listCheck,
     record_quality,
+    mappings,
     grouping: {
       implemented: false,
       note: "本插件不做 DRG/DIP 分组器。分组以医院当期分组器与费率表为准。",

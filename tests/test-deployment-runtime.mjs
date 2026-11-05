@@ -5,7 +5,7 @@
 // artifacts (Dockerfile / compose structural checks).
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { readFileSync, existsSync, mkdtempSync, writeFileSync, rmSync, mkdirSync, readdirSync } from "node:fs";
+import { readFileSync, existsSync, mkdtempSync, writeFileSync, rmSync, mkdirSync, readdirSync, renameSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -148,17 +148,20 @@ try {
   // NOTE: must use async spawn — spawnSync freezes the parent event loop while
   // the probe child fetches THIS parent's /health (self-deadlock → 5s abort).
   const { spawn } = await import("node:child_process");
-  const run = await new Promise((resolveRun) => {
+  const probeRun = extraEnv => new Promise((resolveRun) => {
     const child = spawn("node", [
       "scripts/resident-probe.mjs", "--once",
       "--target", `http://${host}:${port}/health`,
       "--state-file", join(tmp, "state.json"),
       "--metrics-out", join(tmp, "probe.prom"),
-    ], { cwd: REPO, env: { ...process.env, NODE_NO_WARNINGS: "1" } });
-    let stdout = "";
+    ], { cwd: REPO, env: { ...process.env, NODE_NO_WARNINGS: "1",
+      CLAUDE_MEDCIUS_DATA:join(tmp,'local-data'), MEDCIUS_DATA:join(tmp,'local-data'), ...extraEnv } });
+    let stdout = "", stderr = "";
     child.stdout.on("data", (chunk) => { stdout += String(chunk); });
-    child.on("close", (code) => resolveRun({ status: code, stdout }));
+    child.stderr.on("data", (chunk) => { stderr += String(chunk); });
+    child.on("close", (code) => resolveRun({ status: code, stdout, stderr }));
   });
+  const run = await probeRun({});
   // sample-only corpus → production_corpus_missing (P2) active → exit 2 (honest)
   assert.equal(run.status, 2, `expected exit 2, got ${run.status}: ${run.stdout}`);
   assert.match(run.stdout, /production_corpus_missing/);
@@ -167,6 +170,15 @@ try {
   assert.match(prom, /medcius_probe_health_ok 1/);
   assert.match(prom, /medcius_probe_official_codes 0/);
   assert.ok(existsSync(join(tmp, "state.json")));
+  const production = await probeRun({ NODE_ENV:'production', MEDCIUS_PROFILE:'production' });
+  assert.equal(production.status,2,production.stdout+production.stderr);
+  assert.doesNotMatch(production.stdout,/audit_chain_broken/);
+  assert.match(readFileSync(join(tmp,'probe.prom'),'utf8'),/medcius_probe_audit_chain_ok 1/);
+  const missing = await probeRun({ NODE_ENV:'production', MEDCIUS_PROFILE:'production', MEDCIUS_CN_NER_MODEL_DIR:'' });
+  assert.equal(missing.status,2,missing.stdout+missing.stderr);
+  assert.match(missing.stdout,/audit_chain_broken/);
+  assert.match(readFileSync(join(tmp,'probe.prom'),'utf8'),/medcius_probe_audit_chain_ok 0/);
+  assert.doesNotMatch(missing.stderr,/UnhandledPromiseRejection/);
 } finally {
   rmSync(tmp, { recursive: true, force: true });
   server.close();
@@ -192,11 +204,45 @@ assert.equal(installRun.status, 0);
 assert.ok(existsSync(join(target, "current", "scripts", "serve.mjs")), "release snapshot must contain runtime entry");
 assert.ok(existsSync(join(target, "medcius.env")), "env file must be created from template");
 const reinstall = spawnSync("node", ["scripts/deploy.mjs", "install", "--target", target], { cwd: REPO, encoding: "utf8" });
+assert.equal(reinstall.status, 0, reinstall.stdout + reinstall.stderr);
 assert.match(reinstall.stdout, /refusing to overwrite/, "env 文件存在时必须拒绝覆盖");
 
 // data dir + backup + tamper + rollback
 mkdirSync(join(target, "data"), { recursive: true });
 writeFileSync(join(target, "data", "audit.sqlite"), "synthetic-audit-bytes-v1");
+const envBytes = readFileSync(join(target, 'medcius.env'));
+const activeBefore = JSON.parse(readFileSync(join(target, 'active-release.json')));
+// Reproduce an older full current/ directory rather than only a new install.
+writeFileSync(join(target,'current/scripts/serve.mjs'),'// synthetic legacy entry\n');
+writeFileSync(join(target,'current/legacy-marker'),'preserve old release');
+const unstopped = spawnSync(process.execPath, ['scripts/deploy.mjs','upgrade','--target',target], {cwd:REPO,encoding:'utf8'});
+assert.equal(unstopped.status,2);assert.match(unstopped.stdout,/DEPLOY_LEGACY_SERVICE_STOP_REQUIRED/);
+assert.deepEqual(JSON.parse(readFileSync(join(target,'active-release.json'))),activeBefore);
+assert.equal(readFileSync(join(target,'current/legacy-marker'),'utf8'),'preserve old release');
+const upgrade = spawnSync(process.execPath, ['scripts/deploy.mjs','upgrade','--target',target,'--service-stopped'], {cwd:REPO,encoding:'utf8'});
+assert.equal(upgrade.status,0,upgrade.stdout+upgrade.stderr);
+const activeAfter = JSON.parse(readFileSync(join(target, 'active-release.json')));
+assert.notEqual(activeAfter.release,activeBefore.release);
+assert.equal(activeAfter.previous_release,activeBefore.release);
+assert.equal(readFileSync(join(target,'current/scripts/serve.mjs'),'utf8'),"import '../../launch.mjs';\n");
+assert.equal(readFileSync(join(target,'releases','legacy-current-'+activeAfter.release,'legacy-marker'),'utf8'),'preserve old release');
+assert.ok(existsSync(join(target,'releases',activeBefore.release,'scripts/serve.mjs')));
+assert.ok(existsSync(join(target,'releases',activeAfter.release,'plugins/medcius/runtimes/cn-phi-ner/node_modules/onnxruntime-node/package.json')));
+assert.deepEqual(readFileSync(join(target,'medcius.env')),envBytes);
+assert.equal(readFileSync(join(target,'data/audit.sqlite'),'utf8'),'synthetic-audit-bytes-v1');
+const missingModel = spawnSync(process.execPath,['scripts/deploy.mjs','upgrade','--target',target],
+  {cwd:REPO,encoding:'utf8',env:{...process.env,MEDCIUS_CN_NER_MODEL_DIR:''}});
+assert.equal(missingModel.status,2,missingModel.stdout+missingModel.stderr);
+assert.match(missingModel.stdout,/DEPLOY_RUNTIME_NOT_READY/);
+assert.deepEqual(JSON.parse(readFileSync(join(target,'active-release.json'))),activeAfter);
+assert.equal(readFileSync(join(target,'data/audit.sqlite'),'utf8'),'synthetic-audit-bytes-v1');
+writeFileSync(join(target,'.deploy-lock'),'another-installer');
+const locked=spawnSync(process.execPath,['scripts/deploy.mjs','upgrade','--target',target],{cwd:REPO,encoding:'utf8'});
+assert.equal(locked.status,2);assert.match(locked.stdout,/DEPLOY_LOCKED/);
+assert.equal(readFileSync(join(target,'.deploy-lock'),'utf8'),'another-installer');
+rmSync(join(target,'.deploy-lock'));
+const escape=spawnSync(process.execPath,['scripts/deploy.mjs','rollback','--target',target,'--to','../outside'],{cwd:REPO,encoding:'utf8'});
+assert.equal(escape.status,2);assert.match(escape.stdout,/DEPLOY_BACKUP_ID_INVALID/);
 const backupRun = spawnSync("node", ["scripts/deploy.mjs", "backup", "--target", target], { cwd: REPO, encoding: "utf8" });
 assert.equal(backupRun.status, 0);
 const backups = readdirSync(join(target, "backups")).filter((name) => /^\d{4}-/.test(name));
@@ -209,10 +255,20 @@ assert.equal(abort.status, 2);
 assert.match(abort.stdout, /ABORTED/);
 // restore the backup file content and redo rollback → must succeed
 writeFileSync(join(target, "backups", ts, "data", "audit.sqlite"), "synthetic-audit-bytes-v1");
+const unexpected=join(target,'backups',ts,'data','unexpected.txt');
+writeFileSync(unexpected,'synthetic-unlisted-bytes');
+const extra=spawnSync(process.execPath,['scripts/deploy.mjs','rollback','--target',target,'--to',ts],{cwd:REPO,encoding:'utf8'});
+assert.equal(extra.status,2);assert.match(extra.stdout,/file inventory differs/);
+rmSync(unexpected);
 const rolled = spawnSync("node", ["scripts/deploy.mjs", "rollback", "--target", target, "--to", ts], { cwd: REPO, encoding: "utf8" });
 assert.equal(rolled.status, 0);
 assert.match(rolled.stdout, /rollback complete/);
 assert.equal(readFileSync(join(target, "data", "audit.sqlite"), "utf8"), "synthetic-audit-bytes-v1");
+// Disaster recovery must also work when the live data directory is absent.
+renameSync(join(target,'data'),join(target,'missing-data-simulation'));
+const recovered=spawnSync(process.execPath,['scripts/deploy.mjs','rollback','--target',target,'--to',ts],{cwd:REPO,encoding:'utf8'});
+assert.equal(recovered.status,0,recovered.stdout+recovered.stderr);
+assert.equal(readFileSync(join(target,'data/audit.sqlite'),'utf8'),'synthetic-audit-bytes-v1');
 rmSync(target, { recursive: true, force: true });
 console.log("✓ Deployer: dry-run purity, refuse-overwrite, sha256-verified rollback");
 
@@ -221,7 +277,9 @@ console.log("✓ Deployer: dry-run purity, refuse-overwrite, sha256-verified rol
 // ----------------------------------------------------
 console.log("\n[Test 6] Container artifacts: Dockerfile / compose structural discipline...");
 const dockerfile = readFileSync(join(REPO, "Dockerfile"), "utf8");
-assert.match(dockerfile, /FROM node:22\.\d+\.[\dx]-alpine/, "base image must be version-pinned alpine");
+assert.match(dockerfile, /FROM node:22\.\d+\.\d+-bookworm-slim/, "CPU native runtime requires a version-pinned glibc base");
+assert.match(dockerfile, /npm ci.*--ignore-scripts.*--omit=dev/);
+assert.match(dockerfile, /MEDCIUS_CN_NER_MODEL_DIR=/);
 assert.ok(!/FROM .*latest/.test(dockerfile), "latest base tag forbidden");
 assert.match(dockerfile, /USER medcius/, "must run as non-root");
 assert.match(dockerfile, /HEALTHCHECK/, "must declare a healthcheck");

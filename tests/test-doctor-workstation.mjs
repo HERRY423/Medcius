@@ -113,6 +113,10 @@ const hospitalCa = createCaSignatureAdapter({
   providerId: "hospital-ca-sdk",
   provider: {
     id: "hospital-ca-sdk",
+    // Contract fixture only; does not prove SM2, CA trust or a hospital integration.
+    async getSigningIdentity() {
+      return { key_ref: 'cert:sn=2026-0830', algorithm: 'SM2_WITH_SM3', certificate_fingerprint: 'fingerprint-hospital-ca' };
+    },
     async sign({ payloadDigest }) {
       return { signature: `P7:${payloadDigest.slice(0, 12)}`, key_ref: "cert:sn=2026-0830", algorithm: "SM2_WITH_SM3", certificate_fingerprint: "fingerprint-hospital-ca" };
     },

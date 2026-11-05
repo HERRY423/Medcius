@@ -12,7 +12,7 @@ const PARENT =
 
 export const DATA = join(PARENT, "china-codes");
 export const DB_PATH = join(DATA, "data.sqlite");
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 import { mkdirSync } from "node:fs";
 mkdirSync(DATA, { recursive: true, mode: 0o700 });
@@ -29,11 +29,11 @@ try {
   tx(() => {
     const cur = db.prepare("PRAGMA user_version").get().user_version;
     const seeded = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='nhsa_codes'").get();
-    if (cur === 1 && SCHEMA_VERSION === 2) {
+    if ([1, 2].includes(cur) && SCHEMA_VERSION === 3) {
       db.exec(schemaSql);
-      db.exec("PRAGMA user_version = 2");
+      db.exec("PRAGMA user_version = 3");
     } else if (cur !== SCHEMA_VERSION && !(cur === 0 && !seeded)) {
-      const msg = `schema version ${cur} != ${SCHEMA_VERSION} — delete ${DB_PATH} and re-ingest.`;
+      const msg = `schema version ${cur} != ${SCHEMA_VERSION} — preserve the database and use an explicit migration.`;
       process.stderr.write(`mcp-server-china-codes: ${msg}\n`);
       throw new Error(msg);
     } else {

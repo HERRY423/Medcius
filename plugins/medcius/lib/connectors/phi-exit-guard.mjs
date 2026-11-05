@@ -12,9 +12,12 @@
 // deployments whose upstream already de-identifies, and by tests proving the
 // blocking path works.
 
-import { sha256Hex } from "../../servers/shared/crypto.mjs";
+import { canonicalJson, sha256Hex } from "../../servers/shared/crypto.mjs";
 import { pseudonymizeText } from "../../servers/phiguard/src/lib.mjs";
 import { sealIdentityRecord, containsRawStructuredPhi } from "../clinical-boundary.mjs";
+import { guardPatientSourceInput } from '../patient-source-phi.mjs';
+import { requiresProductionPhi } from '../production-phi-policy.mjs';
+import { resolvePhiDetector } from '../phi-runtime.mjs';
 
 function requireSalt(salt) {
   if (!salt || typeof salt !== "string" || salt.length < 8) {
@@ -52,8 +55,23 @@ export function withPhiExitGuard(connector, { salt, mode = "pseudonymize" } = {}
 
   return {
     ...connector,
-    readPatient: async (context) => {
+    readPatient: async (context, { entitySession, localPhiDetector, signal } = {}) => {
+      context = structuredClone(context);
+      const dual = requiresProductionPhi(context) || !!localPhiDetector;
+      if (dual) localPhiDetector = await resolvePhiDetector({ detector: localPhiDetector, context });
       const envelope = await connector.readPatient(context);
+      if (dual) {
+        if (envelope.patient_id !== context.patient_id || envelope.encounter_id !== context.encounter_id || envelope.tenant_id !== context.tenant_id) throw new Error('PHI_EXIT_GUARD_CONTEXT_MISMATCH');
+        const source = { context, patient: connector.kind === 'patient' ? envelope.records[0] : { id: context.patient_id },
+          encounter: connector.kind === 'encounter' ? envelope.records[0] : { id: context.encounter_id },
+          ...(connector.kind === 'notes' ? { notes: envelope.records } : {}), envelope };
+        const result = await guardPatientSourceInput(source, { detector: localPhiDetector, entitySession, signal });
+        try {
+          if (mode === 'assert' && canonicalJson(result.input.envelope) !== canonicalJson(envelope)) throw new Error('PHI_EXIT_GUARD_RAW_PHI_BLOCKED');
+          assertNoRawPhi(result.input.envelope.records, connector.id);
+          return { ...result.input.envelope, phi_exit_guard: { applied: true, mode: 'dual_track', ...result.receipt } };
+        } finally { if (!entitySession) result.session.dispose(); }
+      }
       const records =
         mode === "pseudonymize" ? pseudonymizeDeep(envelope.records, salt) : envelope.records;
       assertNoRawPhi(records, connector.id);

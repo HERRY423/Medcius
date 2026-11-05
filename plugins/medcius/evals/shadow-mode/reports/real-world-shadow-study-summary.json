@@ -5,8 +5,8 @@
   "cohort_unit": "synthetic_patient",
   "replay_as_of": "2026-08-28T00:00:00.000Z",
   "anchor_metrics": {
-    "text": 4,
-    "verbatim_verified": 4,
+    "text": 8,
+    "verbatim_verified": 8,
     "text_unverified": 0,
     "structured": 151,
     "resource_linked": 151,
@@ -19,16 +19,16 @@
   "input_sha256": "ef626929bafb05365ac84d677117547c8a725d8e741fa13e04f5fca3410c1b03",
   "data_source_verified": false,
   "total_cases": 18,
-  "total_candidate_items": 211,
+  "total_candidate_items": 215,
   "span_metric": {
-    "matched": 4,
+    "matched": 8,
     "missing": 207,
     "unverified": 0,
-    "denominator": 211,
+    "denominator": 215,
     "wilson_ci_percent": {
-      "point": 1.9,
-      "lower": 0.74,
-      "upper": 4.77
+      "point": 3.72,
+      "lower": 1.9,
+      "upper": 7.17
     }
   },
   "cohens_kappa": null,

@@ -1,0 +1,26 @@
+{
+  "upstream": "openai/codex",
+  "revision": "985cf47a4eb6084b2ff6b30ebdb1216acda85bb4",
+  "license": "Apache-2.0",
+  "python_dependency": "PyYAML==6.0.3",
+  "files": [
+    {
+      "name": "validate_plugin.py",
+      "bytes": 21739,
+      "sha256": "f4eeadb733b28b0c3e714de263a76d6542866a672f3e99bdffcf4dbcdf85e944",
+      "source": "https://github.com/openai/codex/blob/985cf47a4eb6084b2ff6b30ebdb1216acda85bb4/codex-rs/skills/src/assets/samples/plugin-creator/scripts/validate_plugin.py"
+    },
+    {
+      "name": "identifier_validation.py",
+      "bytes": 784,
+      "sha256": "a6d51ce4a9a7e8f85626ff5808a467a67574e7f8cdf1167ffb467c5f67e57223",
+      "source": "https://github.com/openai/codex/blob/985cf47a4eb6084b2ff6b30ebdb1216acda85bb4/codex-rs/skills/src/assets/samples/plugin-creator/scripts/identifier_validation.py"
+    },
+    {
+      "name": "LICENSE",
+      "bytes": 10926,
+      "sha256": "d17f227e4df5da1600391338865ce0f3055211760a36688f816941d58232d8dc",
+      "source": "https://github.com/openai/codex/blob/985cf47a4eb6084b2ff6b30ebdb1216acda85bb4/LICENSE"
+    }
+  ]
+}

@@ -5,6 +5,9 @@ import { canonicalJson, sha256Hex } from "../../shared/crypto.mjs";
 import { containsRawPhi } from "../../phiguard/src/lib.mjs";
 import { containsRawStructuredPhi } from "../../../lib/clinical-boundary.mjs";
 import { buildSignoffEnvelope, getPublicKey, verifySignoffEnvelope } from "../../shared/digital-signature.mjs";
+import { requiresProductionPhi } from '../../../lib/production-phi-policy.mjs';
+import { resolvePhiDetector } from '../../../lib/phi-runtime.mjs';
+import { guardPhiValue } from '../../../lib/phi-value-guard.mjs';
 
 function phiNoun(type) {
   if (type === "id_card") return "身份证号";
@@ -119,7 +122,7 @@ export function verifyAuditRows(rows, signoffs, { expectedHead, expectedSignoffH
 }
 
 /** @type {Record<string, (a: Record<string, unknown>) => unknown>} */
-export const HANDLERS = {
+const CORE_HANDLERS = {
   record_event({ actor, action, subject_ref, payload, tenant_id = "default" }) {
     // Strict PHI Guard: NO bypass path allowed.
     for (const field of [actor, action, subject_ref, tenant_id]) guardNoPhi(field);
@@ -272,9 +275,22 @@ export const HANDLERS = {
       signoff_head_hash: signoffHead()?.chain_hash ?? GENESIS,
       events: rows,
       signoffs,
-      verification: HANDLERS.verify_chain({}),
+      verification: CORE_HANDLERS.verify_chain({}),
       verification_scope: "entire_local_store_not_filtered_export",
-      note: "完整独立复核需要全部有序事件和签收行；头哈希须另存于可信检查点。本地链未获得独立见证。",
+      note: "完整核验需要全部有序事件和签收记录。本地记录尚未经外部独立见证。",
     };
   },
 };
+
+// Never mutate signed/stored bytes during release. Production ingress rejects
+// raw PHI before the SQLite transaction, and legacy rows are checked on release.
+async function guardedOperation(name, args) {
+  const input = structuredClone(args);
+  const detector = await resolvePhiDetector();
+  if (name === 'record_event' || name === 'signoff') await guardPhiValue(input, { detector, reject: true });
+  const result = CORE_HANDLERS[name](input);
+  if (name !== 'verify_chain') await guardPhiValue(result, { detector, reject: true });
+  return result;
+}
+export const HANDLERS = Object.freeze(Object.fromEntries(Object.entries(CORE_HANDLERS).map(([name, handler]) =>
+  [name, args => requiresProductionPhi() ? guardedOperation(name, args) : handler(args)])));

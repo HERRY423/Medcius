@@ -38,7 +38,7 @@ const dates = parseEncounterDates("入院日期：2024-08-01 出院日期：2024
 assert.equal(dates.admission_date.value, "2024-08-01");
 assert.equal(dates.discharge_date.value, "2024-08-10");
 assert.equal(dates.recorded_stay_days.value, 3);
-assert.equal(dates.computed_stay_days, 10);
+assert.equal(dates.computed_stay_days, 9);
 
 const methodNum = parseDischargeMethod("离院方式：5");
 assert.equal(methodNum.value, 5);
@@ -55,13 +55,13 @@ assert.equal(fees.sum, 4200);
 const qualityNote = `出院记录
 患者：测试甲（SYNTHETIC） 性别：女 年龄：55岁
 入院日期：2024-08-01 出院日期：2024-08-09
-住院天数：9天
+住院天数：8天
 离院方式：1 医嘱离院
 出院诊断：胃恶性肿瘤
 病理：腺癌。
 出院医嘱：嘱两周后门诊复查。`;
 const parsed = parseCnNote(qualityNote);
-assert.equal(parsed.encounter_dates.computed_stay_days, 9);
+assert.equal(parsed.encounter_dates.computed_stay_days, 8);
 assert.equal(parsed.discharge_method.value, 1);
 assert.ok(parsed.pathology.value.includes("腺癌"));
 assert.ok(parsed.discharge_instructions.value.includes("复查"));
@@ -94,12 +94,12 @@ const rStay = buildRecordQualityReport(
 );
 const stayFinding = rStay.algebra_conflicts.find((f) => f.code === "STAY_DAYS_MISMATCH");
 assert.ok(stayFinding);
-assert.equal(stayFinding.evidence.expected, 10);
+assert.equal(stayFinding.evidence.expected, 9);
 assert.equal(stayFinding.evidence.actual, 3);
 assert.ok(stayFinding.evidence.span.includes("住院天数"));
 
 const rFee = buildRecordQualityReport(
-  "出院记录\n性别：女 年龄：62岁\n入院日期：2024-08-01 出院日期：2024-08-08\n住院天数：8天\n离院方式：1\n出院诊断：2型糖尿病\n费用明细：总费用 5000 元，床位费 200 元，药品费 3000 元，检验费 1000 元，护理费 100 元",
+  "出院记录\n性别：女 年龄：62岁\n入院日期：2024-08-01 出院日期：2024-08-08\n住院天数：7天\n离院方式：1\n出院诊断：2型糖尿病\n费用明细：总费用 5000 元，床位费 200 元，药品费 3000 元，检验费 1000 元，护理费 100 元",
 );
 const feeFinding = rFee.algebra_conflicts.find((f) => f.code === "FEE_TOTAL_UNBALANCED");
 assert.ok(feeFinding);
@@ -107,7 +107,7 @@ assert.equal(feeFinding.evidence.expected, 4300);
 assert.equal(feeFinding.evidence.actual, 5000);
 
 const rBalanced = buildRecordQualityReport(
-  "出院记录\n性别：女 年龄：62岁\n入院日期：2024-08-01 出院日期：2024-08-08\n住院天数：8天\n离院方式：1\n出院诊断：2型糖尿病\n费用明细：总费用 4300 元，床位费 200 元，药品费 3000 元，检验费 1000 元，护理费 100 元",
+  "出院记录\n性别：女 年龄：62岁\n入院日期：2024-08-01 出院日期：2024-08-08\n住院天数：7天\n离院方式：1\n出院诊断：2型糖尿病\n费用明细：总费用 4300 元，床位费 200 元，药品费 3000 元，检验费 1000 元，护理费 100 元",
 );
 assert.ok(!rBalanced.algebra_conflicts.some((f) => f.code === "FEE_TOTAL_UNBALANCED"));
 
@@ -119,35 +119,35 @@ console.log("✓ Algebra conflicts computed deterministically with span-bound ev
 console.log("\n[Part 4] Legality: illegal discharge method, death consistency, obstetric/neonatal conflicts...");
 
 const rMethod = buildRecordQualityReport(
-  "出院记录\n性别：女 年龄：30岁\n入院日期：2024-08-01 出院日期：2024-08-08\n住院天数：8天\n离院方式：7\n出院诊断：急性阑尾炎",
+  "出院记录\n性别：女 年龄：30岁\n入院日期：2024-08-01 出院日期：2024-08-08\n住院天数：7天\n离院方式：7\n出院诊断：急性阑尾炎",
 );
 assert.ok(rMethod.legality_conflicts.some((f) => f.code === "DISCHARGE_METHOD_ILLEGAL" && f.evidence.actual === 7));
 
 const rDeathMissing = buildRecordQualityReport(
-  "出院记录\n性别：男 年龄：70岁\n入院日期：2024-08-01 出院日期：2024-08-05\n住院天数：5天\n离院方式：5 死亡\n出院诊断：急性心肌梗死",
+  "出院记录\n性别：男 年龄：70岁\n入院日期：2024-08-01 出院日期：2024-08-05\n住院天数：4天\n离院方式：5 死亡\n出院诊断：急性心肌梗死",
 );
 assert.ok(rDeathMissing.legality_conflicts.some((f) => f.code === "DEATH_METHOD_WITHOUT_DEATH_RECORD"));
 
 const rDeathOk = buildRecordQualityReport(
-  "出院记录\n性别：男 年龄：70岁\n入院日期：2024-08-01 出院日期：2024-08-05\n住院天数：5天\n离院方式：5 死亡\n出院诊断：急性心肌梗死\n死亡记录：患者于 2024-08-05 09:30 临床死亡。",
+  "出院记录\n性别：男 年龄：70岁\n入院日期：2024-08-01 出院日期：2024-08-05\n住院天数：4天\n离院方式：5 死亡\n出院诊断：急性心肌梗死\n死亡记录：患者于 2024-08-05 09:30 临床死亡。",
 );
 assert.ok(!rDeathOk.legality_conflicts.some((f) => f.code === "DEATH_METHOD_WITHOUT_DEATH_RECORD"));
 
 const rObstetric = buildRecordQualityReport(
-  "出院记录\n性别：男 年龄：34岁\n入院日期：2024-08-01 出院日期：2024-08-06\n住院天数：6天\n离院方式：1\n出院诊断：宫内妊娠 分娩",
+  "出院记录\n性别：男 年龄：34岁\n入院日期：2024-08-01 出院日期：2024-08-06\n住院天数：5天\n离院方式：1\n出院诊断：宫内妊娠 分娩",
 );
 assert.ok(rObstetric.legality_conflicts.some((f) => f.code === "OBSTETRIC_DIAGNOSIS_SEX_CONFLICT"));
 assert.ok(!rObstetric.legality_conflicts.some((f) => f.code === "NEONATAL_DIAGNOSIS_AGE_CONFLICT"));
 
 const rNeonatal = buildRecordQualityReport(
-  "出院记录\n性别：男 年龄：67岁\n入院日期：2024-08-01 出院日期：2024-08-12\n住院天数：12天\n离院方式：1\n出院诊断：新生儿肺炎",
+  "出院记录\n性别：男 年龄：67岁\n入院日期：2024-08-01 出院日期：2024-08-12\n住院天数：11天\n离院方式：1\n出院诊断：新生儿肺炎",
 );
 assert.ok(rNeonatal.legality_conflicts.some((f) => f.code === "NEONATAL_DIAGNOSIS_AGE_CONFLICT"));
 
 // Chapter-prefix rule from resolved codes (no keyword needed)
 const rCodePrefix = buildRecordQualityReport(
-  "出院记录\n性别：男 年龄：34岁\n入院日期：2024-08-01 出院日期：2024-08-06\n住院天数：6天\n离院方式：1\n出院诊断：某某病",
-  { diagnosis_codes: [{ code: "O80.000", kind: "diagnosis" }] },
+  "出院记录\n性别：男 年龄：34岁\n入院日期：2024-08-01 出院日期：2024-08-06\n住院天数：5天\n离院方式：1\n出院诊断：某某病",
+  { diagnosis_codes: [{ code: "O80.000", kind: "diagnosis", code_system: "医保版ICD-10" }] },
 );
 assert.ok(rCodePrefix.legality_conflicts.some((f) => f.code === "OBSTETRIC_DIAGNOSIS_SEX_CONFLICT"));
 
@@ -170,12 +170,12 @@ const rUncertain = buildRecordQualityReport(
 assert.ok(rUncertain.advisory_hints.some((f) => f.code === "UNCERTAIN_PRIMARY_DIAGNOSIS"));
 
 const rTumor = buildRecordQualityReport(
-  "出院记录\n性别：男 年龄：60岁\n入院日期：2024-08-01 出院日期：2024-08-09\n住院天数：9天\n离院方式：1\n出院诊断：胃恶性肿瘤",
+  "出院记录\n性别：男 年龄：60岁\n入院日期：2024-08-01 出院日期：2024-08-09\n住院天数：8天\n离院方式：1\n出院诊断：胃恶性肿瘤",
 );
 assert.ok(rTumor.advisory_hints.some((f) => f.code === "TUMOR_PATHOLOGY_HINT"));
 
 const rTrauma = buildRecordQualityReport(
-  "出院记录\n性别：男 年龄：30岁\n入院日期：2024-08-01 出院日期：2024-08-05\n住院天数：5天\n离院方式：1\n出院诊断：胫骨骨折",
+  "出院记录\n性别：男 年龄：30岁\n入院日期：2024-08-01 出院日期：2024-08-05\n住院天数：4天\n离院方式：1\n出院诊断：胫骨骨折",
 );
 assert.ok(rTrauma.advisory_hints.some((f) => f.code === "EXTERNAL_CAUSE_HINT"));
 
@@ -271,7 +271,7 @@ assert.equal(schema.$id, "https://medcius.local/schemas/china-record-quality-rep
 assert.equal(schema.properties.boundary.properties.is_drg_dip_grouper.const, false);
 const knownCodes = new Set(schema.$defs.finding.properties.code.enum);
 const report = buildRecordQualityReport(
-  "出院记录\n性别：女 年龄：30岁\n入院日期：2024-08-01 出院日期：2024-08-08\n住院天数：9天\n离院方式：7\n出院诊断：胃恶性肿瘤\n费用明细：总费用 5000 元，床位费 200 元",
+  "出院记录\n性别：女 年龄：30岁\n入院日期：2024-08-01 出院日期：2024-08-08\n住院天数：8天\n离院方式：7\n出院诊断：胃恶性肿瘤\n费用明细：总费用 5000 元，床位费 200 元",
 );
 for (const pool of ["element_gaps", "algebra_conflicts", "legality_conflicts", "advisory_hints"]) {
   for (const f of report[pool]) {

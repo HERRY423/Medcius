@@ -1,12 +1,18 @@
 # Medcius
 
+<img src="plugins/medcius/assets/medcius-icon-128.png" alt="Medcius single snake and spear icon" width="80" height="80">
+
 **面向一线临床医生的 Agent 插件**
 
 Medcius 为 Codex、Trae、WorkBuddy/CodeBuddy 或医院自建 Agent 增加受约束的临床工作流能力。医生继续在熟悉的 Agent 中提出任务、查看来源并作出决定；Medcius 提供临床技能、只读数据工具、隐私保护、证据追溯和评测契约。
 
 Medcius 不是一套独立临床软件或平台，也不是一个能够自主诊疗的“临床智能体”。它不负责替代宿主 Agent 的对话与编排，不拥有患者主数据，不独立决定下一步临床行动，也不绕过医生执行 EHR 写回。
 
-当前版本为 **`0.8.0-pilot` 工程试点版**。已有代码和合成验证不能替代真实 EHR 验收、临床事实准确性、人因效率、安全性或监管证据。
+当前版本为 **`0.10.0-pilot` 工程试点版**。已有代码和合成验证不能替代真实 EHR 验收、临床事实准确性、人因效率、安全性或监管证据。
+
+院内接入的新实现与边界见 [CDA、只读视图、执行记录及 PACS 改进说明](docs/engineering/HOSPITAL-INGESTION-2026-11-02.md)。
+
+本次整合包含中文断言与病历接入、本地 CPU NER 与会话词典双轨 PHI、部署与回滚检查，以及新的插件图标。变更范围见 [CHANGELOG](CHANGELOG.md)，本轮检查与未通过项见 [整合记录](docs/engineering/INTEGRATION-2026-11-05.md)。
 
 ## 定位
 
@@ -103,7 +109,7 @@ Medcius Agent Plugin
 | `skills/doc-extract` | 文档与附件提取 |
 | `lib/hospital-agent-adapter.mjs` | 面向 Codex、Trae、WorkBuddy 与医院自建 Agent 的宿主无关适配内核 |
 | `lib/clinician-directory-auth.mjs` | 医院目录身份适配（LDAP/AD/统一身份插槽 + 确定性角色映射 + 失败锁定 + 会话吊销，无隐式特权） |
-| `lib/ca-signature-adapter.mjs` | CA 电子签名适配层（内置 ECDSA P-256 + 医院 CA SDK 插槽；签名记录可验签、防篡改、零 PHI） |
+| `lib/ca-signature-adapter.mjs` | v2 完整上下文签名；内置 ECDSA 仅测试，hospital 模式须真实 CA 验签/吊销回执；不留自由备注原文 |
 | `lib/patient-evolution-engine.mjs` | 查房前患者变化整理引擎 |
 | `lib/shift-handover-engine.mjs` | 临床交接班 SBAR 结构化整理引擎 |
 | `lib/consult-preparation-engine.mjs` | 专科会诊前资料包整理引擎 |
@@ -117,7 +123,7 @@ Medcius Agent Plugin
 | `packs/official-sources.json` + `scripts/fetch-official-corpus.mjs` + `scripts/corpus-freshness.mjs` | 官方语料供应链：来源登记表、拉取/暂存校验（永不自动导入）、新鲜度 SLA 监控 |
 | `plugins/medcius/scripts/gen-classification-pack.mjs` + `scripts/qms-internal-audit.mjs` | 分类界定材料包就绪门（R04→R05）与可执行 QMS 内审（R09 落地） |
 | `Dockerfile`/`docker-compose.yml`/`deploy/` + `scripts/deploy.mjs` + `scripts/resident-probe.mjs` | 运行时产品形态：容器化交付、安装/升级/回滚（sha256 清单）、常驻探针与 Prometheus 指标 |
-| `lib/llm-inference-config.mjs` | LLM 推理路径配置管理：A/B 档校验（C 档全托管拒绝）、extract-only 客户端（D1 结构性限制）、模型/提示词版本出处 |
+| `lib/llm-inference-config.mjs` | A/B 档 extract-only 推理；B 档必须实际执行院端 PHI detector，超时/残留拒绝；C 档拒绝 |
 | `lib/idp-jwks-verifier.mjs` | 企业级 IdP / OIDC / JWKS 动态公钥验签与多租户隔离中间件 |
 | `lib/mtls-gateway-guard.mjs` | 院内前置机 mTLS 双向认证守卫与零信任只读安全信封 |
 | `lib/clinical-skill-catalog.mjs` + `rule-packs/catalogs/` | 临床技能目录全生命周期治理引擎（专家审批、哈希签名、一键熔断与回滚） |

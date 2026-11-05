@@ -1,10 +1,12 @@
 // Frozen MCP tool contract for mcp-server-drug-labels.
 // Literals ARE the wire format — edit deliberately.
+import { CHINA_TOOLS } from "./china-tools.mjs";
 
 /** @typedef {import("../../shared/rpc.mjs").ToolDef} ToolDef */
 
 /** @type {ToolDef[]} */
 export const TOOLS = [
+  ...CHINA_TOOLS,
   {
     name: "search_labels",
     description:

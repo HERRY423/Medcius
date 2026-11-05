@@ -142,6 +142,7 @@ console.log("✓ Cross-patient contamination blocked at the bridge boundary");
 // ----------------------------------------------------
 console.log("\n[Test 5] CDA document channel flattens narrative while preserving reading order...");
 const cdaConnector = createCdaDocumentConnector({
+  fixedTenantId: context.tenant_id,
   listDocuments: async () => cdaFixture.documents.map(({ body, ...meta }) => meta),
   loadDocument: async (_context, docMeta) => cdaFixture.documents.find((doc) => doc.id === docMeta.id).body,
   sourceVersion: cdaFixture.source_version,

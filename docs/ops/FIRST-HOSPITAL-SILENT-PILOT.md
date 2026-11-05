@@ -1,6 +1,6 @@
 # 第一家医院静默试点最小范围（P0）
 
-> Product baseline: 0.8.0-pilot; document revision: 1; approval: DRAFT_UNAPPROVED
+> Product baseline: 0.10.0-pilot; document revision: 2; approval: DRAFT_UNAPPROVED
 
 > 这是进信息科机房之前必须锁死的范围。不是产品愿景，不是注册材料。超出本页的技能一律视为冻结。
 

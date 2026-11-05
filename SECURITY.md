@@ -1,9 +1,9 @@
 # Medcius 安全策略与漏洞披露规范 (Security Policy)
 
-> Product baseline: 0.8.0-pilot; document revision: 1; approval: DRAFT_UNAPPROVED
+> Product baseline: 0.10.0-pilot; document revision: 3; approval: DRAFT_UNAPPROVED
 
 
-> **版本**：`0.8.0-pilot`
+> **版本**：`0.10.0-pilot`
 > **适用范围**：Medcius 核心插件、只读数据桥接器（ReadOnlyHospitalDataBridge）、本地 MCP 服务与宿主适配层
 > **最后修订**：2026-10-06
 
@@ -15,7 +15,7 @@ Medcius 目前处于工程试点与科研沙箱验证阶段。安全补丁与安
 
 | 版本系列 | 版本号 | 支持状态 | 说明 |
 |---|---|---|---|
-| **0.8.x** | `0.8.0-pilot` | 🟢 积极支持 (Active) | 当前工程试点与架构收敛主线 |
+| **0.10.x** | `0.10.0-pilot` | 🟢 积极支持 (Active) | 当前工程试点与架构收敛主线 |
 | **0.1.x** | `<= 0.1.9` | 🔴 已终止支持 (End of Life) | 遗留早期概念验证版本，不建议在任何环境中运行 |
 
 ---

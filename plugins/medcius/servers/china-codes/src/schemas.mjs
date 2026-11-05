@@ -9,6 +9,8 @@ export const TOOLS = [
       type: "object",
       properties: {
         query: { description: "Keyword (CN term or code substring)", type: "string", minLength: 1 },
+        code_system: { description: "Exact code system; no fallback across systems (including CCHI)", type: "string", minLength: 1 },
+        match_mode: { description: "exact_name for unambiguous resolution; substring for discovery only", type: "string", enum: ["substring", "exact_name"] },
         code_type: { description: "Filter by code_type", type: "string", enum: ["diagnosis", "procedure"] },
         include_samples: { type: "boolean" },
         limit: { type: "integer", minimum: 1, maximum: 50 },
@@ -127,3 +129,26 @@ export const TOOLS = [
     },
   },
 ];
+
+// Release and mapping selectors never imply a default current corpus.
+for (const tool of TOOLS.filter(t => ['search_codes', 'get_code', 'validate_code'].includes(t.name))) {
+  Object.assign(tool.inputSchema.properties, {
+    pack_id: { type: 'string', minLength: 1 }, code_version: { type: 'string', minLength: 1 },
+    as_of: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' }, region: { type: 'string', minLength: 1 },
+  });
+}
+const selector = { type: 'object', required: ['system', 'version'], properties: {
+  system: { type: 'string', minLength: 1 }, version: { type: 'string', minLength: 1 },
+  code: { type: 'string', minLength: 1 }, term: { type: 'string', minLength: 1 },
+}, additionalProperties: false };
+TOOLS.push({ name: 'crosswalk_status', description: 'List immutable local terminology release packs; no import or activation.',
+  inputSchema: { type: 'object', properties: {}, additionalProperties: false } });
+for (const name of ['query_code_mappings', 'check_code_pair']) {
+  const pair = name === 'check_code_pair';
+  TOOLS.push({ name, description: pair ? 'Check CCHI/ICD or other explicit code pairs in both directions; never approve settlement.'
+    : 'Inspect clinical-term, clinical ICD, NHSA and regional release paths; preserve ambiguity and qualifications.',
+    inputSchema: { type: 'object', required: ['pack_id', 'region', 'as_of', ...(pair ? ['left', 'right'] : ['from', 'target'])],
+      properties: { pack_id: { type: 'string', minLength: 1 }, region: { type: 'string', minLength: 1 },
+        as_of: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+        ...(pair ? { left: selector, right: selector } : { from: selector, target: selector }) }, additionalProperties: false } });
+}

@@ -38,6 +38,11 @@ let configuredGovernance = globalGovernance;
 let configuredCaAdapter = null;
 let configuredHandoverEventVerifier = null;
 let configuredHandoverHistoryVerifier = null;
+let configuredPacsViewerProfile = null;
+// Deployment configuration only; the workflow request cannot set viewer origins.
+export function setWorkstationPacsViewerProfile(profile) {
+  configuredPacsViewerProfile = profile == null ? null : structuredClone(profile);
+}
 // Deployment-only injection. A request JSON flag can never activate this authority.
 export function setWorkstationHandoverEventVerifier(verifier, historyVerifier = null) {
   if (verifier != null && typeof verifier !== "function") throw new Error("HANDOVER_VERIFIER_INVALID");
@@ -68,9 +73,9 @@ export function setWorkstationCaAdapter(adapter) {
   configuredCaAdapter = adapter ?? null;
 }
 
-function requireSession(auth, sendJson) {
+async function requireSession(auth, sendJson) {
   if (!auth?.isAuthenticated) {
-    sendJson(401, { error: "AUTHENTICATION_REQUIRED: workstation requires a clinician session token." });
+    await sendJson(401, { error: "AUTHENTICATION_REQUIRED: workstation requires a clinician session token." });
     return null;
   }
   return auth;
@@ -92,18 +97,18 @@ function sandboxFeeds({ bed }) {
 async function resolveFeeds(body, sendJson) {
   if (body?.demo_ward) {
     if (isProduction()) {
-      sendJson(403, { error: "DEMO_DISABLED_IN_PRODUCTION: synthetic ward feeds are refused in production deployments." });
+      await sendJson(403, { error: "DEMO_DISABLED_IN_PRODUCTION: synthetic ward feeds are refused in production deployments." });
       return null;
     }
     try {
       return { ...(await sandboxFeeds({ bed: body.bed })), ...pickExplicit(body) };
     } catch (err) {
-      sendJson(400, { error: err.message });
+      await sendJson(400, { error: err.message });
       return null;
     }
   }
   if (!body?.patient?.id && !body?.patient_id) {
-    sendJson(400, { error: "WORKSTATION_PATIENT_CONTEXT_REQUIRED: provide patient context/feed or demo_ward=true (non-production only)." });
+    await sendJson(400, { error: "WORKSTATION_PATIENT_CONTEXT_REQUIRED: provide patient context/feed or demo_ward=true (non-production only)." });
     return null;
   }
   return body;
@@ -139,7 +144,7 @@ export function createWorkstationHandler({ directoryAuth = null, governance = nu
     // ---- Workstation-issued session revocation gate (logout enforcement) ----
     const bearer = bearerOf(req);
     if (bearer && revokedTokens.has(tokenFingerprint(bearer)) && pathname !== "/workstation/logout") {
-      sendJson(401, { error: "AUTH_TOKEN_REVOKED: this workstation session has been logged out." });
+      await sendJson(401, { error: "AUTH_TOKEN_REVOKED: this workstation session has been logged out." });
       return true;
     }
 
@@ -163,13 +168,13 @@ export function createWorkstationHandler({ directoryAuth = null, governance = nu
           tenantId: body?.tenant_id ?? auth?.tenantId ?? "default",
         });
         try {
-          auditHandlers.record_event({ actor: "workstation", action: audit_event.action, subject_ref: audit_event.subject_ref, payload: audit_event.payload });
+          await auditHandlers.record_event({ actor: "workstation", action: audit_event.action, subject_ref: audit_event.subject_ref, payload: audit_event.payload });
         } catch { /* audit chain must never block identity decisions */ }
         return sendJson(200, session);
       } catch (err) {
         if (err.audit_event) {
           try {
-            auditHandlers.record_event({ actor: "workstation", action: err.audit_event.action, subject_ref: err.audit_event.subject_ref, payload: err.audit_event.payload });
+            await auditHandlers.record_event({ actor: "workstation", action: err.audit_event.action, subject_ref: err.audit_event.subject_ref, payload: err.audit_event.payload });
           } catch { /* ignore */ }
         }
         const status = err.code === "AUTH_LOCKED" ? 429 : err.code === "AUTH_DIRECTORY_UNAVAILABLE" ? 503 : 401;
@@ -179,7 +184,7 @@ export function createWorkstationHandler({ directoryAuth = null, governance = nu
 
     // ---- Session introspection (any authenticated clinician) ----
     if (method === "GET" && pathname === "/workstation/session") {
-      if (!requireSession(auth, sendJson)) return;
+      if (!(await requireSession(auth, sendJson))) return;
       const stage = gov().getCurrentStage();
       return sendJson(200, {
         clinician: { id: auth.user, roles: auth.roles, tenant_id: auth.tenantId },
@@ -204,7 +209,7 @@ export function createWorkstationHandler({ directoryAuth = null, governance = nu
 
     // ---- Governance view ----
     if (method === "GET" && pathname === "/workstation/governance") {
-      if (!requireSession(auth, sendJson)) return;
+      if (!(await requireSession(auth, sendJson))) return;
       const stage = gov().getCurrentStage();
       return sendJson(200, {
         current_stage: stage,
@@ -217,7 +222,7 @@ export function createWorkstationHandler({ directoryAuth = null, governance = nu
     // Reading drafts share the same identity, permission and silent-pilot boundary
     // as their originating report. They never enter the CA/signoff pathway.
     if (method === "POST" && ["/workstation/review/action", "/workstation/review/read"].includes(pathname)) {
-      if (!requireSession(auth, sendJson)) return;
+      if (!(await requireSession(auth, sendJson))) return;
       if (isProduction() || isClinicalLandingEnabled() || gov().getCurrentStage()?.id === "silent_pilot") {
         return sendJson(403, { error: "P0_CLINICIAN_SURFACE_SUPPRESSED" });
       }
@@ -236,6 +241,7 @@ export function createWorkstationHandler({ directoryAuth = null, governance = nu
         path: "/workstation/evolution",
         permission: "round:summary",
         run: (feeds, extra) => PatientEvolutionEngine.analyzePatientEvolution({
+          pacsViewerProfile: configuredPacsViewerProfile,
           patient: feeds.patient,
           context: { tenant_id: auth.tenantId, doctor_id: auth.user, patient_id: extra.patient_id || feeds.patient?.id, encounter_id: extra.encounter_id || feeds.encounter?.id },
           now: extra.as_of || new Date().toISOString(),
@@ -319,7 +325,7 @@ export function createWorkstationHandler({ directoryAuth = null, governance = nu
 
     const workflowDef = workflowDefs.find((def) => method === "POST" && pathname === def.path);
     if (workflowDef) {
-      if (!requireSession(auth, sendJson)) return;
+      if (!(await requireSession(auth, sendJson))) return;
       if (isProduction() || isClinicalLandingEnabled() || gov().getCurrentStage()?.id === "silent_pilot") {
         return sendJson(403, {
           error: "P0_CLINICIAN_SURFACE_SUPPRESSED: workstation clinical payloads are disabled in silent pilot; use /api/v1/his/embed/silent-capture",
@@ -346,7 +352,7 @@ export function createWorkstationHandler({ directoryAuth = null, governance = nu
 
     // ---- Record quality (病案/结算清单要素核对) ----
     if (method === "POST" && pathname === "/workstation/record-quality") {
-      if (!requireSession(auth, sendJson)) return;
+      if (!(await requireSession(auth, sendJson))) return;
       if (isProduction() || isClinicalLandingEnabled() || gov().getCurrentStage()?.id === "silent_pilot") {
         return sendJson(403, { error: "P0_SKILL_UNREGISTERED: record-quality is outside the approved silent-pilot workflow." });
       }
@@ -365,7 +371,7 @@ export function createWorkstationHandler({ directoryAuth = null, governance = nu
 
     // ---- Signoff (CA adapter + governance ladder) ----
     if (method === "POST" && pathname === "/workstation/signoff") {
-      if (!requireSession(auth, sendJson)) return;
+      if (!(await requireSession(auth, sendJson))) return;
       const authCheck = guardedAuthorize("workstation:signoff");
       if (!authCheck.allowed) return sendJson(authCheck.status, { error: authCheck.error });
       if (isProduction() || isClinicalLandingEnabled()) {
@@ -395,7 +401,7 @@ export function createWorkstationHandler({ directoryAuth = null, governance = nu
           tenantId: auth.tenantId ?? "default",
           signerNote: body.signer_note ?? null,
         });
-        auditHandlers.record_event({ actor: "workstation", action: audit_event.action, subject_ref: audit_event.subject_ref,
+        await auditHandlers.record_event({ actor: "workstation", action: audit_event.action, subject_ref: audit_event.subject_ref,
           tenant_id: auth.tenantId, payload: audit_event.payload });
         return sendJson(200, signature_record);
       } catch (err) {
@@ -405,7 +411,7 @@ export function createWorkstationHandler({ directoryAuth = null, governance = nu
 
     // ---- Verify a signature record ----
     if (method === "POST" && pathname === "/workstation/signoff/verify") {
-      if (!requireSession(auth, sendJson)) return;
+      if (!(await requireSession(auth, sendJson))) return;
       if (!body?.signature_record) return sendJson(400, { error: "SIGNATURE_RECORD_REQUIRED" });
       if (body.signature_record.signer?.tenant_id !== auth.tenantId) return sendJson(403, { error: "SIGNATURE_TENANT_MISMATCH" });
       const result = await ca().verifySignatureRecord({ record: body.signature_record, payload: body.payload ?? null });

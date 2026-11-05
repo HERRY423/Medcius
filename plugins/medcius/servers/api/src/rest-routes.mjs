@@ -12,8 +12,12 @@ import { executeHisEmbedPreRound } from "../../../lib/his-embed-adapter.mjs";
 import { isClinicalLandingEnabled, isLiveHospitalDataEnabled } from "../../../lib/clinical-landing-policy.mjs";
 import { loadSiteActivationFromEnv } from "../../../lib/site-activation-gate.mjs";
 import { isFormalHospitalPath, resolveAuthorizedHospitalSource } from "../../../lib/authorized-hospital-source.mjs";
-import { readFrozenResearchRecord, replayFrozenResearchRecord } from "../../../lib/silent-research-archive.mjs";
-import { getResearchReviewPacket, prepareResearchReview, confirmResearchReview, getResearchReviewStatus } from "../../../lib/research-review-workflow.mjs";
+import { readFrozenResearchRecordAsync, replayFrozenResearchRecordAsync } from "../../../lib/silent-research-archive.mjs";
+import { getResearchReviewPacketAsync, prepareResearchReviewAsync, confirmResearchReviewAsync, getResearchReviewStatusAsync } from "../../../lib/research-review-workflow.mjs";
+import { requiresProductionPhi } from '../../../lib/production-phi-policy.mjs';
+import { resolvePhiDetector } from '../../../lib/phi-runtime.mjs';
+import { guardPhiValue } from '../../../lib/phi-value-guard.mjs';
+import { PLUGIN_VERSION } from '../../../lib/plugin-version.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -27,15 +31,16 @@ export function resetTransportEdgeGuards() {
   tokenBruteGuard.reset();
 }
 
-function assertFrozenRecordAudited(record, tenantId) {
-  if (!auditHandlers.verify_chain({}).ok) throw new Error("FROZEN_RECORD_AUDIT_INTEGRITY_FAILED");
-  const matches = auditHandlers.query_events({ action: "his_embed_silent_capture", subject_ref: encodeAuditResearchReference(record.case_id), tenant_id: tenantId, limit: 1 });
-  const event = matches.events[0] ? auditHandlers.get_event({ event_id: matches.events[0].id }) : null;
+async function assertFrozenRecordAudited(record, tenantId) {
+  if (!(await auditHandlers.verify_chain({})).ok) throw new Error("FROZEN_RECORD_AUDIT_INTEGRITY_FAILED");
+  const matches = await auditHandlers.query_events({ action: "his_embed_silent_capture", subject_ref: encodeAuditResearchReference(record.case_id), tenant_id: tenantId, limit: 1 });
+  const event = matches.events[0] ? await auditHandlers.get_event({ event_id: matches.events[0].id }) : null;
   if (!event || decodeAuditDigest(event.payload?.record_sha256) !== record.record_sha256 || decodeAuditDigest(event.payload?.output_sha256) !== record.output_sha256
       || decodeAuditDigest(event.payload?.input_sha256) !== record.input_sha256) throw new Error("FROZEN_RECORD_AUDIT_ANCHOR_REQUIRED");
 }
 
 export async function routeRequest(req, res, body) {
+  if (requiresProductionPhi()) await resolvePhiDetector();
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   const pathname = url.pathname.replace(/\/+$/, "") || "/";
   const method = req.method.toUpperCase();
@@ -58,7 +63,11 @@ export async function routeRequest(req, res, body) {
   }
 
   // Helper JSON sender
-  const sendJson = (status, data) => {
+  const sendJson = async (status, data) => {
+    if (requiresProductionPhi()) {
+      try { await guardPhiValue(data, { reject: true }); }
+      catch { status = 503; data = { error: 'PHI_RESPONSE_BLOCKED' }; }
+    }
     res.writeHead(status, {
       "Content-Type": "application/json; charset=utf-8",
       "Access-Control-Allow-Origin": corsOrigin,
@@ -153,12 +162,12 @@ export async function routeRequest(req, res, body) {
   // Health & Readiness Endpoints
   // ----------------------------------------------------
   if (method === "GET" && (pathname === "/health" || pathname === "/api/v1/health")) {
-    const chainStatus = auditHandlers.verify_chain({});
+    const chainStatus = await auditHandlers.verify_chain({});
     const govStage = globalGovernance.getCurrentStage();
 
     return sendJson(200, {
       status: "ok",
-      version: "0.8.0-pilot",
+      version: PLUGIN_VERSION,
       product: "Medcius Inpatient Pre-Round Evolution Summary Plugin",
       profile: isDemoProfile ? "demo" : (process.env.MEDCIUS_PROFILE || (isProduction ? "production" : "development")),
       governance_stage: govStage,
@@ -314,7 +323,7 @@ export async function routeRequest(req, res, body) {
         siteActivation,
         authContext: auth,
         auditAppend: async (event) => {
-          auditHandlers.record_event({
+          await auditHandlers.record_event({
             actor: "his-embed",
             action: event.event_type,
             subject_ref: encodeAuditResearchReference(event.research_record_id),
@@ -346,12 +355,12 @@ export async function routeRequest(req, res, body) {
     try {
       let result;
       if (method === "GET" && pathname === "/api/v1/research/review-packet") {
-        result = getResearchReviewPacket(url.searchParams.get("case_id"), auth);
-        auditHandlers.record_event({ actor: auth.user, action: "research_review_packet_read", tenant_id: auth.tenantId,
+        result = await getResearchReviewPacketAsync(url.searchParams.get("case_id"), auth);
+        await auditHandlers.record_event({ actor: auth.user, action: "research_review_packet_read", tenant_id: auth.tenantId,
           subject_ref: encodeAuditResearchReference(result.case_id), payload: { packet_digest: encodeAuditDigest(result.packet_sha256) } });
-      } else if (method === "POST" && pathname === "/api/v1/research/review/prepare") result = prepareResearchReview(body || {}, auth);
-      else if (method === "POST" && pathname === "/api/v1/research/review/confirm") result = confirmResearchReview(body || {}, auth);
-      else if (method === "GET" && pathname === "/api/v1/research/review/status") result = getResearchReviewStatus({
+      } else if (method === "POST" && pathname === "/api/v1/research/review/prepare") result = await prepareResearchReviewAsync(body || {}, auth);
+      else if (method === "POST" && pathname === "/api/v1/research/review/confirm") result = await confirmResearchReviewAsync(body || {}, auth);
+      else if (method === "GET" && pathname === "/api/v1/research/review/status") result = await getResearchReviewStatusAsync({
         case_id: url.searchParams.get("case_id"), event_id: Number(url.searchParams.get("event_id")) }, auth);
       else return sendJson(404, { error: "RESEARCH_REVIEW_ROUTE_NOT_FOUND" });
       return sendJson(200, result);
@@ -364,10 +373,10 @@ export async function routeRequest(req, res, body) {
     const authCheck = guardedAuthorize("research:read");
     if (!authCheck.allowed) return sendJson(authCheck.status, { error: authCheck.error });
     try {
-      const record = readFrozenResearchRecord(url.searchParams.get("case_id"), { tenantId: auth.tenantId });
+      const record = await readFrozenResearchRecordAsync(url.searchParams.get("case_id"), { tenantId: auth.tenantId });
       if (!record) return sendJson(404, { error: "FROZEN_RECORD_NOT_FOUND" });
-      assertFrozenRecordAudited(record, auth.tenantId);
-      auditHandlers.record_event({ actor: `research:${auth.user}`, action: "research_record_read",
+      await assertFrozenRecordAudited(record, auth.tenantId);
+      await auditHandlers.record_event({ actor: `research:${auth.user}`, action: "research_record_read",
         subject_ref: encodeAuditResearchReference(record.case_id), tenant_id: auth.tenantId,
         payload: { case_id: encodeAuditResearchReference(record.case_id), record_sha256: encodeAuditDigest(record.record_sha256) } });
       return sendJson(200, record);
@@ -380,11 +389,11 @@ export async function routeRequest(req, res, body) {
     const authCheck = guardedAuthorize("research:replay");
     if (!authCheck.allowed) return sendJson(authCheck.status, { error: authCheck.error });
     try {
-      const record = readFrozenResearchRecord(body?.case_id, { tenantId: auth.tenantId });
+      const record = await readFrozenResearchRecordAsync(body?.case_id, { tenantId: auth.tenantId });
       if (!record) return sendJson(404, { error: "FROZEN_RECORD_NOT_FOUND" });
-      assertFrozenRecordAudited(record, auth.tenantId);
-      const replay = replayFrozenResearchRecord(body?.case_id, { tenantId: auth.tenantId });
-      auditHandlers.record_event({ actor: `research:${auth.user}`, action: "research_record_replay",
+      await assertFrozenRecordAudited(record, auth.tenantId);
+      const replay = await replayFrozenResearchRecordAsync(body?.case_id, { tenantId: auth.tenantId });
+      await auditHandlers.record_event({ actor: `research:${auth.user}`, action: "research_record_replay",
         subject_ref: encodeAuditResearchReference(replay.case_id), tenant_id: auth.tenantId,
         payload: { case_id: encodeAuditResearchReference(replay.case_id), record_sha256: encodeAuditDigest(replay.record_sha256), match: replay.match } });
       return sendJson(200, replay);
@@ -437,7 +446,7 @@ export async function routeRequest(req, res, body) {
     const authCheck = guardedAuthorize("audit:verify");
     if (!authCheck.allowed) return sendJson(authCheck.status, { error: authCheck.error });
 
-    const verification = auditHandlers.verify_chain({});
+    const verification = await auditHandlers.verify_chain({});
     return sendJson(200, {
       chain_intact: verification.ok,
       verification,

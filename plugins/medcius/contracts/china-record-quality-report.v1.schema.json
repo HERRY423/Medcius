@@ -41,6 +41,18 @@
       },
       "additionalProperties": false
     },
+    "evidence_reconciliation": {
+      "type": "object",
+      "required": ["schema_version", "snapshot_id", "digest", "coverage", "findings", "boundary"],
+      "properties": {
+        "schema_version": { "const": "medcius.record-evidence-reconciliation.v1" },
+        "snapshot_id": { "type": "string" },
+        "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "coverage": { "type": "array" },
+        "findings": { "type": "array" },
+        "boundary": { "type": "object" }
+      }
+    },
     "boundary": {
       "type": "object",
       "required": ["is_drg_dip_grouper", "outputs_coding_suggestions", "adjudicates_reimbursement", "affects_clinical_care", "note"],
@@ -75,6 +87,7 @@
             "OBSTETRIC_DIAGNOSIS_SEX_CONFLICT",
             "NEONATAL_DIAGNOSIS_AGE_CONFLICT",
             "UNCERTAIN_PRIMARY_DIAGNOSIS",
+            "PERINATAL_ORIGIN_REVIEW",
             "TUMOR_PATHOLOGY_HINT",
             "EXTERNAL_CAUSE_HINT"
           ]

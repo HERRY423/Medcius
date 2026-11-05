@@ -288,6 +288,9 @@ export function calculateNews2({
   };
 }
 
+import { actualFluidRecord, normalizeOrderExecution } from './order-execution.mjs';
+import { splitImagingReport } from './imaging-report.mjs';
+
 export class HospitalDataAdapter {
   /**
    * 1. Normalize NIS (Nursing Info System) Vital Signs and 24h Fluid Balance
@@ -299,7 +302,9 @@ export class HospitalDataAdapter {
     }
     nisFeed = resolveRecordVersions(nisFeed, { sourceType: "nursing", now: now ?? new Date(), cutoffTime }).current_records
       .filter((record) => !["cancelled", "entered_in_error"].includes(classifyRecordLifecycle(record, { sourceType: "nursing", now: now ?? new Date() }).result_status))
-      .map((record) => ({ ...record, timestamp: record.event_time || record.timing?.t_event || record.timestamp || null }));
+      .map((record) => ({ ...record, timestamp: record.record_kind === 'administration'
+        ? record.performed_at || record.event_time || record.timestamp || null
+        : record.event_time || record.timing?.t_event || record.timestamp || null }));
     if (!nisFeed.length) return { vitals_summary: null, fluid_balance: null, fhir_observations: [], discarded_outside_window_count: 0 };
 
     const cutoffMs = cutoffTime != null ? (typeof cutoffTime === "number" ? cutoffTime : new Date(cutoffTime).getTime()) : null;
@@ -325,6 +330,8 @@ export class HospitalDataAdapter {
     const drainDetails = [];
     const fhirObservations = [];
     let discardedCount = 0;
+    let excludedUnexecuted = 0;
+    const isVolume = value => isRecordedNumber(value) && Number(value) >= 0;
 
     for (const record of nisFeed) {
       // Time-window filtering (F-05)
@@ -389,9 +396,10 @@ export class HospitalDataAdapter {
       }
 
       // Fluid Intake (ml) - Mutually exclusive accumulation to prevent double counting
-      const hasOral = isRecordedNumber(record.oral_intake_ml);
-      const hasIv = isRecordedNumber(record.iv_intake_ml);
-      const hasTotalIntake = isRecordedNumber(record.intake_ml);
+      if (!actualFluidRecord(record)) { excludedUnexecuted++; continue; }
+      const hasOral = isVolume(record.oral_intake_ml);
+      const hasIv = isVolume(record.iv_intake_ml);
+      const hasTotalIntake = isVolume(record.intake_ml);
 
       if (hasOral || hasIv) {
         recorded.intake = true;
@@ -402,9 +410,9 @@ export class HospitalDataAdapter {
       }
 
       // Fluid Output (ml) - Prevent double counting of sub-items and total output
-      const hasUrine = isRecordedNumber(record.urine_output_ml);
-      const hasDrain = isRecordedNumber(record.drain_output_ml);
-      const hasTotalOutput = isRecordedNumber(record.output_ml);
+      const hasUrine = isVolume(record.urine_output_ml);
+      const hasDrain = isVolume(record.drain_output_ml);
+      const hasTotalOutput = isVolume(record.output_ml);
 
       if (hasUrine) {
         recorded.output = true;
@@ -427,7 +435,7 @@ export class HospitalDataAdapter {
         recorded.output = true;
         outputTotal += Number(record.output_ml);
       }
-      if (isRecordedNumber(record.stool_count)) {
+      if (isVolume(record.stool_count)) {
         recorded.stool = true;
         stoolCount += Number(record.stool_count);
       }
@@ -510,6 +518,10 @@ export class HospitalDataAdapter {
       fluid_balance: Object.values(recorded).some(Boolean) ? fluidBalance : null,
       fhir_observations: fhirObservations,
       discarded_outside_window_count: discardedCount,
+      excluded_unexecuted_count: excludedUnexecuted,
+      data_gaps: excludedUnexecuted ? [{ gap_type: 'NIS_UNEXECUTED_EXCLUDED', severity: 'MEDIUM',
+        title: '待执行或状态不明的记录已排除', summary: '计划输液、未核对、退回及执行状态不明的记录未计入实际出入量。',
+        source_type: 'NursingRecord', source_id: null }] : [],
     };
   }
 
@@ -684,11 +696,12 @@ export class HospitalDataAdapter {
       const studyRaw = item.study_time || item.effectiveDateTime || item.effective_time || item.event_time || null;
       const studyKnown = studyRaw != null && studyRaw !== "" && Number.isFinite(new Date(studyRaw).getTime());
       const studyAt = studyKnown ? studyRaw : null;
-      const impression = item.impression || item.impression_text || item.findings || "";
+      const reportParts = splitImagingReport(item);
+      const impression = reportParts.impression;
 
       diagnosticReports.push({
         ...lifecycleFields(item),
-        id: item.id || `pacs-rep-${sha256Hex(`${modality}:${name}:${orderedAt}:${impression}`).slice(0, 12)}`,
+        id: item.id || `pacs-rep-${sha256Hex(`${modality}:${name}:${orderedAt}:${impression}:${reportParts.findings}`).slice(0, 12)}`,
         name: name,
         modality: modality,
         status: status,
@@ -696,6 +709,10 @@ export class HospitalDataAdapter {
         study_time: studyAt,
         event_time: item.event_time || studyAt,
         impression: impression,
+        findings: reportParts.findings,
+        unclassified_text: reportParts.unclassified_text,
+        report_parts: reportParts.parts,
+        study_uid: item.study_uid ?? null,
         code: item.code || item.study_code || null,
         priority: item.priority || item.urgency || null,
         order_id: item.order_id || item.service_request_id || item.based_on_id || null,
@@ -741,8 +758,13 @@ export class HospitalDataAdapter {
   /**
    * 4. Normalize HIS (Hospital Info System) Orders & Track Antibiotic Durations
    */
-  static normalizeHisOrders(ordersFeed = [], { rulePack = null, now = Date.now() } = {}) {
+  static normalizeHisOrders(ordersFeed = [], { rulePack = null, now = Date.now(), timezoneOffset = null } = {}) {
     if (!Array.isArray(ordersFeed)) return { medications: [], orders: [], antibiotic_alerts: [] };
+    const administrationHistory = ordersFeed.filter(item => item.record_kind === 'administration');
+    ordersFeed = ordersFeed.filter(item => item.record_kind !== 'administration').map(item => {
+      const linked = administrationHistory.filter(event => event.order_id === item.id);
+      return linked.length ? { ...item, administrations: [...(item.administrations || []), ...linked] } : item;
+    });
 
     const medications = [];
     const orders = [];
@@ -757,6 +779,7 @@ export class HospitalDataAdapter {
     const currentOrders = [];
 
     for (const item of ordersFeed) {
+      const execution = normalizeOrderExecution(item, { now, timezoneOffset });
       if (item.is_medication || item.drug_name) {
         const drugName = item.drug_name || item.name;
         const authoredRaw = item.authored_on || item.start_time || null;
@@ -766,7 +789,8 @@ export class HospitalDataAdapter {
         const activeStatus = String(item.status ?? item.result_status ?? "").trim().toLowerCase() === "active";
         const endTime = item.end_date ?? item.stopped_at ?? null;
         const endMs = endTime == null || endTime === "" ? null : new Date(endTime).getTime();
-        const isCurrentActive = selectedMedications.has(item) && activeStatus && (endMs == null || Number.isFinite(endMs) && endMs > nowMs);
+        const isCurrentActive = selectedMedications.has(item) && activeStatus && execution.eligible_for_order_age_review
+          && (endMs == null || Number.isFinite(endMs) && endMs > nowMs);
         if (!authoredKnown) {
           timeGaps.push({
             gap_type: authoredFuture ? "ORDER_TIME_FUTURE" : "ORDER_TIME_UNKNOWN",
@@ -778,6 +802,7 @@ export class HospitalDataAdapter {
           });
           medications.push({
             ...lifecycleFields(item),
+            ...execution,
             id: item.id || `med-his-undated-${sha256Hex(`${drugName || ""}:${item.dosage || ""}`).slice(0, 12)}`,
             drug_name: drugName,
             dosage: item.dosage || "",
@@ -820,6 +845,7 @@ export class HospitalDataAdapter {
 
         medications.push({
           ...lifecycleFields(item),
+          ...execution,
           id: item.id || `med-his-${sha256Hex(canonicalJson(item)).slice(0, 16)}`,
           drug_name: drugName,
           dosage: item.dosage || "",
@@ -831,12 +857,15 @@ export class HospitalDataAdapter {
           authored_on: authoredOn,
           stop_reason: item.stop_reason,
           antibiotic_info: antiInfo,
+          ...Object.fromEntries(["approval_number", "manufacturer", "dosage_form", "spec", "antimicrobial", "tcm_injection", "diluents", "mixed_with_other_drugs", "therapy_horizon"]
+            .filter(key => item[key] !== undefined).map(key => [key, item[key]])),
           _source: item._source || null,
         });
         if (isCurrentActive) currentMedications.push(medications.at(-1));
       } else {
         orders.push({
           ...lifecycleFields(item),
+          ...execution,
           id: item.id || `ord-his-${sha256Hex(canonicalJson(item)).slice(0, 16)}`,
           title: item.title || item.name,
           order_type: item.order_type || "general",
@@ -857,7 +886,9 @@ export class HospitalDataAdapter {
     }
 
     return { medications, orders, history_records: [...medications, ...orders], current_medications: currentMedications,
-      current_orders: currentOrders, antibiotic_alerts: antibioticAlerts, time_gaps: timeGaps };
+      current_orders: currentOrders, antibiotic_alerts: antibioticAlerts, time_gaps: timeGaps,
+      administration_history_records: administrationHistory,
+      orphan_administration_count: administrationHistory.filter(event => !ordersFeed.some(item => item.id === event.order_id)).length };
   }
 
   /**

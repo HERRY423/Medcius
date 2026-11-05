@@ -189,7 +189,7 @@ test("HL7 medication missing order status is unknown; cancellation request is no
 });
 
 test("CDA catalog preserves explicit correction metadata and does not invent event time", async () => {
-  const source = createCdaDocumentConnector({ listDocuments: async () => [{ id: "doc-1", status: "amended", version_id: "3", recorded_at: newTime, acknowledged_version_id: "2" }], loadDocument: async () => "<text>Synthetic record</text>" });
+  const source = createCdaDocumentConnector({ fixedTenantId: context.tenant_id, mode: "legacy_narrative", listDocuments: async () => [{ patient_id: context.patient_id, encounter_id: context.encounter_id, id: "doc-1", status: "amended", version_id: "3", recorded_at: newTime, acknowledged_version_id: "2" }], loadDocument: async () => "<text>Synthetic record</text>" });
   const record = (await source.readPatient(context)).records[0];
   assert.equal(record.status, "amended");
   assert.equal(record.version_id, "3");

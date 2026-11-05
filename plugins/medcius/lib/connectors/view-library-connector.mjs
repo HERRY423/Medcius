@@ -6,6 +6,7 @@
 
 import { bindSourceOwnership } from "../clinical-boundary.mjs";
 import { SOURCE_LIFECYCLE_FIELDS, sourceLifecycle } from "./source-lifecycle.mjs";
+import { CHINA_CLINICAL_FIELDS } from "../china-clinical-rules.mjs";
 
 const DEFAULT_TIMEOUT_MS = 10000;
 const TRANSIENT_STATUSES = new Set([502, 503, 504, 429]);
@@ -24,16 +25,18 @@ export const DEFAULT_VIEW_NAMES = Object.freeze({
   his: "v_medcius_his_orders",
   pacs: "v_medcius_pacs_reports",
   notes: "v_medcius_notes",
+  clinical_quality: "v_medcius_clinical_quality",
 });
 
 // 最小必要字段：未知列在映射前剥离，防止视图多返回的标识符进入管线。
 const FIELD_ALLOWLISTS = Object.freeze({
+  clinical_quality: new Set(CHINA_CLINICAL_FIELDS),
   patient: new Set(["id", "patient_id", "name", "patient_name", "gender", "sex", "age", "birth_date", "birthDate", "bed_number", "bed", "patient_id_tenant", "tenant_id", "encounter_id"]),
   encounter: new Set(["id", "encounter_id", "status", "class", "encounter_class", "period_start", "admit_time", "period_end", "discharge_time", "patient_id", "tenant_id"]),
-  nis: new Set(["id", "patient_id", "encounter_id", "tenant_id", "temperature", "temp_c", "systolic_bp", "sbp", "diastolic_bp", "dbp", "heart_rate", "hr", "spo2", "oral_intake_ml", "intake_oral_ml", "iv_intake_ml", "intake_iv_ml", "intake_ml", "urine_output_ml", "urine_ml", "drain_output_ml", "drain_ml", "drain_name", "drain_desc", "stool_count", "timestamp", "recorded_at", "sample_time"]),
+  nis: new Set(["record_kind", "execution_status", "administration_id", "order_id", "performed_at", "id", "patient_id", "encounter_id", "tenant_id", "temperature", "temp_c", "systolic_bp", "sbp", "diastolic_bp", "dbp", "heart_rate", "hr", "spo2", "oral_intake_ml", "intake_oral_ml", "iv_intake_ml", "intake_iv_ml", "intake_ml", "urine_output_ml", "urine_ml", "drain_output_ml", "drain_ml", "drain_name", "drain_desc", "stool_count", "timestamp", "recorded_at", "sample_time"]),
   lis: new Set(["id", "result_id", "patient_id", "encounter_id", "tenant_id", "order_id", "test_code", "code", "test_name", "name", "result_value", "value", "unit", "status", "sample_time", "effective_time", "reference_range_text", "ref_text", "ref_low", "reference_low", "ref_high", "reference_high", "interpretation", "is_critical"]),
-  his: new Set(["id", "order_id", "patient_id", "encounter_id", "tenant_id", "is_medication", "drug_name", "dosage", "route", "frequency", "authored_on", "order_time", "change_type", "status", "title", "order_title", "order_type", "department", "purpose", "stop_reason", "previous_dosage"]),
-  pacs: new Set(["id", "report_id", "patient_id", "encounter_id", "tenant_id", "name", "study_name", "modality", "status", "report_status", "ordered_at", "study_time", "impression", "impression_text", "findings", "code", "study_code", "priority", "urgency", "order_id", "service_request_id", "based_on_id", "scheduled_time", "resulted_at", "issued", "acknowledged_at"]),
+  his: new Set(["record_kind", "order_kind", "execution_status", "previous_execution_status", "performed_at", "administered_volume_ml", "id", "order_id", "patient_id", "encounter_id", "tenant_id", "is_medication", "drug_name", "dosage", "route", "frequency", "authored_on", "order_time", "change_type", "status", "title", "order_title", "order_type", "department", "purpose", "stop_reason", "previous_dosage", "approval_number", "manufacturer", "dosage_form", "spec", "antimicrobial", "tcm_injection", "diluents", "mixed_with_other_drugs", "therapy_horizon"]),
+  pacs: new Set(["study_uid", "report_text", "findings_text", "id", "report_id", "patient_id", "encounter_id", "tenant_id", "name", "study_name", "modality", "status", "report_status", "ordered_at", "study_time", "impression", "impression_text", "findings", "code", "study_code", "priority", "urgency", "order_id", "service_request_id", "based_on_id", "scheduled_time", "resulted_at", "issued", "acknowledged_at"]),
   notes: new Set(["id", "document_id", "patient_id", "encounter_id", "tenant_id", "title", "content_type", "text", "body", "narrative"]),
 });
 const LIFECYCLE_ALLOWLIST = new Set([...SOURCE_LIFECYCLE_FIELDS, "source_record_version", "version", "authored_at", "study_time", "order_status"]);
@@ -197,6 +200,8 @@ function mapEncounter(row, context) {
 
 function mapNis(row, context) {
   return ownQueryRow(context, row, {
+    record_kind: row.record_kind ?? null, execution_status: row.execution_status ?? null,
+    administration_id: row.administration_id ?? null, order_id: row.order_id ?? null, performed_at: row.performed_at ?? null,
     id: row.id || null,
     temperature: row.temperature ?? row.temp_c ?? null,
     systolic_bp: row.systolic_bp ?? row.sbp ?? null,
@@ -238,8 +243,13 @@ function mapLis(row, context) {
 function mapHis(row, context) {
   const isMedication = row.is_medication === true || Boolean(row.drug_name);
   return ownQueryRow(context, row, {
+    ...Object.fromEntries(["approval_number", "manufacturer", "dosage_form", "spec", "antimicrobial", "tcm_injection", "diluents", "mixed_with_other_drugs", "purpose", "therapy_horizon"]
+      .filter(key => row[key] !== undefined).map(key => [key, row[key]])),
     id: row.id || row.order_id || null,
     is_medication: isMedication,
+    record_kind: row.record_kind ?? null, order_kind: row.order_kind ?? null, execution_status: row.execution_status ?? null,
+    previous_execution_status: row.previous_execution_status ?? null, performed_at: row.performed_at ?? null,
+    administered_volume_ml: row.administered_volume_ml ?? null, order_id: row.order_id ?? null,
     drug_name: row.drug_name || null,
     dosage: row.dosage || null,
     route: row.route || null,
@@ -284,7 +294,8 @@ function mapPacs(row, context) {
     ordered_at: row.ordered_at || null,
     study_time: row.study_time || null,
     event_time: row.event_time || row.study_time || null,
-    impression: row.impression || row.impression_text || row.findings || "",
+    impression: row.impression ?? row.impression_text ?? null,
+    findings: row.findings ?? row.findings_text ?? null, report_text: row.report_text ?? null, study_uid: row.study_uid ?? null,
     code: row.code || row.study_code || null,
     priority: row.priority || row.urgency || null,
     order_id: row.order_id || row.service_request_id || row.based_on_id || null,
@@ -310,6 +321,10 @@ function mapNotes(row, context) {
 }
 
 const EXTRA_VIEW_BUILDERS = {
+  clinical_quality: (names, query, sourceVersion) => createKindConnector({
+    id: "view-library-clinical-quality", kind: "clinical_quality", viewName: names.clinical_quality,
+    mapRow: (row, context) => ownQueryRow(context, row, row), query, sourceVersion,
+  }),
   pacs: (names, query, sourceVersion) => createKindConnector({
     id: "view-library-pacs", kind: "pacs", viewName: names.pacs, mapRow: mapPacs, query, sourceVersion,
   }),

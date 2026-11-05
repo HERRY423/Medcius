@@ -1189,16 +1189,14 @@
       "field_rate": 1
     },
     "combined": {
-      "notes_exact": 20,
-      "fields_passed": 59,
+      "notes_exact": 21,
+      "fields_passed": 61,
       "fields_total": 72,
       "per_note": {
         "01-allergy-negation#s1": {
           "exact": false,
-          "field_rate": 0.5,
+          "field_rate": 0.75,
           "failures": [
-            "admission_diagnosis missing 急性胆囊炎",
-            "admission_diagnosis.presence=undefined want present",
             "procedures missing 腹腔镜胆囊切除"
           ]
         },
@@ -1244,11 +1242,9 @@
           ]
         },
         "09-lab-not-complication#s1": {
-          "exact": false,
-          "field_rate": 0.5,
-          "failures": [
-            "admission_diagnosis missing 2 型糖尿病"
-          ]
+          "exact": true,
+          "field_rate": 1,
+          "failures": []
         },
         "10-rule-out-mi#s1": {
           "exact": true,
@@ -1369,14 +1365,14 @@
         }
       },
       "note_exact_rate": {
-        "point": 0.6666666666666666,
-        "low": 0.4878008769260288,
-        "high": 0.8076947950649104,
+        "point": 0.7,
+        "low": 0.5212424944367215,
+        "high": 0.8333523119524056,
         "n": 30,
         "computable": true,
-        "str": "66.7% [48.8%~80.8%]"
+        "str": "70.0% [52.1%~83.3%]"
       },
-      "field_rate": 0.8194444444444444
+      "field_rate": 0.8472222222222222
     }
   }
 }

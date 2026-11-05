@@ -111,6 +111,7 @@
         "critical_values": {
           "type": "object"
         },
+        "china_reference_checks": { "type": "boolean" },
         "restricted_antibiotics": {
           "type": "array"
         },

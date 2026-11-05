@@ -24,3 +24,19 @@ output/
 __pycache__/
 *.pyc
 .venv/
+
+# Local credentials, model weights and clinical runtime stores
+.env
+.env.*
+!.env.example
+!.env.template
+*.pem
+*.key
+*.p12
+*.pfx
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.onnx
+.agentmuxer/

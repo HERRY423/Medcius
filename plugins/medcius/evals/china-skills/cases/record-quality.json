@@ -5,7 +5,7 @@
     "trap": "primary_dx_missing",
     "title": "出院主诊断缺失必须显式输出要素缺口，不得默认通过",
     "input": {
-      "note_excerpt": "出院记录\n患者：合成甲（SYNTHETIC） 性别：女 年龄：45岁\n入院日期：2024-08-01 出院日期：2024-08-08\n住院天数：8天\n离院方式：1 医嘱离院\n主诉：头晕 3 天。",
+      "note_excerpt": "出院记录\n患者：合成甲（SYNTHETIC） 性别：女 年龄：45岁\n入院日期：2024-08-01 出院日期：2024-08-08\n住院天数：7天\n离院方式：1 医嘱离院\n主诉：头晕 3 天。",
       "expect": { "element_gaps": ["PRIMARY_DISCHARGE_DIAGNOSIS_MISSING"] },
       "expect_absent": { "legality_conflicts": ["OBSTETRIC_DIAGNOSIS_SEX_CONFLICT", "NEONATAL_DIAGNOSIS_AGE_CONFLICT"] }
     },
@@ -22,7 +22,7 @@
     "trap": "discharge_method_illegal_value",
     "title": "离院方式取值必须在合法值域内（1/2/3/4/5/9），越界值必须报冲突",
     "input": {
-      "note_excerpt": "出院记录\n患者：合成乙（SYNTHETIC） 性别：女 年龄：30岁\n入院日期：2024-08-01 出院日期：2024-08-08\n住院天数：8天\n离院方式：7\n出院诊断：急性阑尾炎",
+      "note_excerpt": "出院记录\n患者：合成乙（SYNTHETIC） 性别：女 年龄：30岁\n入院日期：2024-08-01 出院日期：2024-08-08\n住院天数：7天\n离院方式：7\n出院诊断：急性阑尾炎",
       "expect": { "legality_conflicts": ["DISCHARGE_METHOD_ILLEGAL"] },
       "expect_absent": { "algebra_conflicts": ["STAY_DAYS_MISMATCH"] }
     },
@@ -37,15 +37,15 @@
     "id": "rq-03-stay-days-algebra",
     "skill": "nhsa-record-quality",
     "trap": "stay_days_algebra_mismatch",
-    "title": "住院天数必须与出入院日期代数一致（出院-入院+1）",
+    "title": "住院天数必须与出入院日期代数一致（出院-入院，同日按1天）",
     "input": {
       "note_excerpt": "出院记录\n患者：合成丙（SYNTHETIC） 性别：男 年龄：58岁\n入院日期：2024-08-01 出院日期：2024-08-10\n住院天数：3天\n离院方式：1 医嘱离院\n出院诊断：急性胆囊炎",
       "expect": { "algebra_conflicts": ["STAY_DAYS_MISMATCH"] },
       "expect_absent": { "legality_conflicts": ["DISCHARGE_METHOD_ILLEGAL"] }
     },
     "must": [
-      "必须输出 STAY_DAYS_MISMATCH 且 evidence.expected=10、actual=3",
-      "冲突消息必须说明计算口径（出院-入院+1）",
+      "必须输出 STAY_DAYS_MISMATCH 且 evidence.expected=9、actual=3",
+      "冲突消息必须说明计算口径（出院-入院，同日按1天）",
       "该冲突必须绑定原文 span（住院天数行）"
     ],
     "must_not": ["以“按记录值为准”静默放行不一致", "自动改写住院天数或日期"]
@@ -56,7 +56,7 @@
     "trap": "death_method_without_death_record",
     "title": "离院方式=死亡但无死亡记录文书时必须报冲突",
     "input": {
-      "note_excerpt": "出院记录\n患者：合成丁（SYNTHETIC） 性别：男 年龄：70岁\n入院日期：2024-08-01 出院日期：2024-08-05\n住院天数：5天\n离院方式：5\n出院诊断：急性心肌梗死",
+      "note_excerpt": "出院记录\n患者：合成丁（SYNTHETIC） 性别：男 年龄：70岁\n入院日期：2024-08-01 出院日期：2024-08-05\n住院天数：4天\n离院方式：5\n出院诊断：急性心肌梗死",
       "expect": { "legality_conflicts": ["DEATH_METHOD_WITHOUT_DEATH_RECORD"] }
     },
     "must": [
@@ -72,7 +72,7 @@
     "trap": "obstetric_dx_sex_conflict",
     "title": "男性患者出现妊娠/分娩（O 章节）诊断必须报人群-章节冲突",
     "input": {
-      "note_excerpt": "出院记录\n患者：合成戊（SYNTHETIC） 性别：男 年龄：34岁\n入院日期：2024-08-01 出院日期：2024-08-06\n住院天数：6天\n离院方式：1 医嘱离院\n出院诊断：宫内妊娠 孕1产1 分娩",
+      "note_excerpt": "出院记录\n患者：合成戊（SYNTHETIC） 性别：男 年龄：34岁\n入院日期：2024-08-01 出院日期：2024-08-06\n住院天数：5天\n离院方式：1 医嘱离院\n出院诊断：宫内妊娠 孕1产1 分娩",
       "expect": { "legality_conflicts": ["OBSTETRIC_DIAGNOSIS_SEX_CONFLICT"] }
     },
     "must": [
@@ -88,7 +88,7 @@
     "trap": "fee_total_unbalanced",
     "title": "费用总额必须等于分类费用代数和（确定性对账，不估算）",
     "input": {
-      "note_excerpt": "出院记录\n患者：合成己（SYNTHETIC） 性别：女 年龄：62岁\n入院日期：2024-08-01 出院日期：2024-08-08\n住院天数：8天\n离院方式：1 医嘱离院\n出院诊断：2型糖尿病\n费用明细：总费用 5000 元，床位费 200 元，药品费 3000 元，检验费 1000 元，护理费 100 元",
+      "note_excerpt": "出院记录\n患者：合成己（SYNTHETIC） 性别：女 年龄：62岁\n入院日期：2024-08-01 出院日期：2024-08-08\n住院天数：7天\n离院方式：1 医嘱离院\n出院诊断：2型糖尿病\n费用明细：总费用 5000 元，床位费 200 元，药品费 3000 元，检验费 1000 元，护理费 100 元",
       "expect": { "algebra_conflicts": ["FEE_TOTAL_UNBALANCED"] }
     },
     "must": [
@@ -121,7 +121,7 @@
     "trap": "neonatal_dx_age_conflict",
     "title": "围产期/新生儿（P 章节）诊断与成人年龄冲突必须报冲突",
     "input": {
-      "note_excerpt": "出院记录\n患者：合成庚（SYNTHETIC） 性别：男 年龄：67岁\n入院日期：2024-08-01 出院日期：2024-08-12\n住院天数：12天\n离院方式：1 医嘱离院\n出院诊断：新生儿肺炎",
+      "note_excerpt": "出院记录\n患者：合成庚（SYNTHETIC） 性别：男 年龄：67岁\n入院日期：2024-08-01 出院日期：2024-08-12\n住院天数：11天\n离院方式：1 医嘱离院\n出院诊断：新生儿肺炎",
       "expect": { "legality_conflicts": ["NEONATAL_DIAGNOSIS_AGE_CONFLICT"] }
     },
     "must": [
@@ -154,7 +154,7 @@
     "trap": "death_record_present_no_false_positive",
     "title": "离院方式=死亡且存在死亡记录文书时不得误报",
     "input": {
-      "note_excerpt": "出院记录\n患者：合成辛（SYNTHETIC） 性别：男 年龄：70岁\n入院日期：2024-08-01 出院日期：2024-08-05\n住院天数：5天\n离院方式：5 死亡\n出院诊断：急性心肌梗死\n死亡记录：患者于 2024-08-05 09:30 临床死亡，死亡原因：心源性休克。",
+      "note_excerpt": "出院记录\n患者：合成辛（SYNTHETIC） 性别：男 年龄：70岁\n入院日期：2024-08-01 出院日期：2024-08-05\n住院天数：4天\n离院方式：5 死亡\n出院诊断：急性心肌梗死\n死亡记录：患者于 2024-08-05 09:30 临床死亡，死亡原因：心源性休克。",
       "expect_absent": { "legality_conflicts": ["DEATH_METHOD_WITHOUT_DEATH_RECORD"] }
     },
     "must": [

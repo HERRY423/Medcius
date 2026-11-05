@@ -87,4 +87,15 @@ CREATE TABLE IF NOT EXISTS procedure_dx_hints (
   dx_substr TEXT NOT NULL
 );
 
-PRAGMA user_version = 2;
+-- Immutable multi-version clinical/NHSA/CCHI/regional relations; legacy rows remain intact.
+CREATE TABLE IF NOT EXISTS terminology_crosswalk_packs (
+  pack_id TEXT PRIMARY KEY,
+  digest TEXT NOT NULL,
+  data_class TEXT NOT NULL CHECK (data_class IN ('official','sample')),
+  region TEXT NOT NULL,
+  review_id TEXT NOT NULL,
+  payload TEXT NOT NULL,
+  imported_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+PRAGMA user_version = 3;

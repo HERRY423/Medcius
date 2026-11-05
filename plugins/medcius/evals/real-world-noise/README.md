@@ -9,7 +9,7 @@ plugins/medcius/evals/real-world-noise/
   noise-models.mjs             # 7 个确定性、带种子的噪声模型（见下表）
   grader.mjs                   # 与 china-skills gold 语义一致的现场评分器
   run-noise-benchmark.mjs      # CI 门（第 40 步）：clean=100% + combined ≥ 下限绊线 + 字节级确定性
-  ingest-real-data.mjs         # 真实脱敏病历接入通道（fail-closed：脱敏声明 + PHI 扫描 + gold 必填）
+  ingest-real-data.mjs         # 显式合成/真实身份；真实输入另须 manifest、患者划分与标注设计声明
   reports/noise-robustness-baseline.md|.json   # 自动生成基线（--out 重生成）
   README.md
 ```
@@ -35,11 +35,16 @@ plugins/medcius/evals/real-world-noise/
 ## 真实数据到位后怎么用（合作医院流程）
 
 ```bash
-# 医院方产出脱敏 JSONL（每行一份病历 + 人工 gold 标注 + desensitized 声明）
-node plugins/medcius/evals/real-world-noise/ingest-real-data.mjs real-notes.jsonl --report reports/real-baseline.md
+# 仅在另行批准的院端数据处理边界内运行；此处是模板，不表示研究已启动
+node plugins/medcius/evals/real-world-noise/ingest-real-data.mjs real-notes.jsonl --manifest reviewed-intake.json --report reports/real-baseline.md
+
+# 合成探针须明确身份，不得将其输出标为真实临床证据
+node plugins/medcius/evals/real-world-noise/ingest-real-data.mjs synthetic-notes.jsonl --synthetic --report reports/synthetic-replay.md
 ```
 
-fail-closed 门：`source_meta.desensitized !== true` 拒绝；phiguard 检出原始 PHI（身份证/手机/标注姓名）拒绝（只报类型不回显内容）；缺 gold 拒绝。
+fail-closed 门：缺脱敏声明、全记录 PHI 扫描命中、重复记录、空或不可评分 gold 均拒绝；真实数据还核对 manifest 与数据集哈希绑定、患者开发/评测划分、source-first 双标注设计声明。`--synthetic` 与 `--manifest` 不可同时使用。错误不回显原始病历、gold、用户 note_id 或解析器异常片段。
+
+清单引用与脱敏声明不证明真实授权、完全去标识化或医师标注独立性。真实回放输出采用 `DECLARED_RETROSPECTIVE` / `DECLARED_PROSPECTIVE_SHADOW`，不把多份病历计为独立患者，不自动生成伪独立的准确率区间。完整字段与迁移说明见[本地化修复报告](../../../../docs/engineering/CHINA-LOCALIZATION-HARDENING-2026-11-02.md)。
 
 ## 解读纪律
 

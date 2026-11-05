@@ -32,7 +32,7 @@ Medcius 提供宿主无关的适配内核，支持医院自建的临床 Agent �
 ```javascript
 import { HospitalAgentAdapter, HOST_TYPES } from "plugins/medcius/lib/hospital-agent-adapter.mjs";
 
-const result = HospitalAgentAdapter.executePreRoundWorkflow({
+const result = await HospitalAgentAdapter.executePreRoundWorkflowAsync({
   host: HOST_TYPES.HOSPITAL_CUSTOM_AGENT,
   context: {
     tenant_id: "hospital_pku_cardio",

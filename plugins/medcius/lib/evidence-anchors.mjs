@@ -43,6 +43,12 @@ export function inspectEvidenceAnchor(item, records = []) {
     return { evidence_kind: "derived", anchor_status: refs.length && refs.every(r => r.anchor_status === "resource_linked") ? "sources_linked" : "unverified", source_references: refs, highlight: null };
   }
   if (typeof item.span === "string" && item.span.length) {
+    if (item.text_anchor) {
+      const resolved = matches.length === 1 && item.text_anchor.exact === item.span
+        ? resolveTextAnchor(item.text_anchor, matches[0]) : null;
+      return { evidence_kind: 'text', anchor_status: resolved?.anchor_status ?? 'unverified',
+        text_anchor: resolved?.highlight ? item.text_anchor : null, highlight: resolved?.highlight ?? null };
+    }
     const hits = matches.flatMap((r) => ["text", "content", "span", "conclusion"].flatMap((field) => {
       const text = r[field];
       if (typeof text !== "string") return [];

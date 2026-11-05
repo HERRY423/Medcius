@@ -6,6 +6,8 @@ import { cockcroftGault, ckdEpi2021, bmi, bsaMosteller, doseByWeight, doseByBsa,
 import { complementaryHits, validateApprovalFormat } from "./mechanisms.mjs";
 import { SAFETY_HANDLERS } from "./safety-handlers.mjs";
 import { SIGNAL_SEVERITY } from "./safety-tables.mjs";
+import { CHINA_HANDLERS } from "./china-tools.mjs";
+import { checkChinaMedicationSafety } from "../../../lib/china-pharmacy-catalog.mjs";
 
 // ---------------------------------------------------------------------------
 // Small helpers — pure, testable
@@ -28,27 +30,15 @@ function parseSections(raw) {
  * @returns {Record<string, unknown> | null}
  */
 function resolveOne(q, allowSample) {
-  const like = `%${q}%`;
-  const sampleClause = allowSample ? "" : "AND data_class != 'sample'";
-  // exact approval match first
-  let row = db
-    .prepare(
-      `SELECT * FROM drug_labels WHERE approval_number = ? ${sampleClause} LIMIT 1`,
-    )
-    .get(q);
-  if (row) return row;
-  row = db
-    .prepare(
-      `SELECT * FROM drug_labels WHERE generic_name LIKE ? ${sampleClause} ORDER BY length(generic_name) ASC LIMIT 1`,
-    )
-    .get(like);
-  if (row) return row;
-  row = db
-    .prepare(
-      `SELECT * FROM drug_labels WHERE brand_name LIKE ? ${sampleClause} LIMIT 1`,
-    )
-    .get(like);
-  return row ?? null;
+  const sampleClause = allowSample ? "" : "AND data_class = 'official'";
+  const byApproval = db.prepare(`SELECT * FROM drug_labels WHERE approval_number = ? ${sampleClause}`).all(q);
+  if (byApproval.length) return byApproval.length === 1 ? byApproval[0] : null;
+  const exact = db.prepare(`SELECT * FROM drug_labels WHERE (generic_name = ? OR brand_name = ?) ${sampleClause}`).all(q, q);
+  if (exact.length) return exact.length === 1 ? exact[0] : null;
+  // Partial names remain a sample-replay convenience only, never official product selection.
+  if (!allowSample) return null;
+  const candidates = db.prepare("SELECT * FROM drug_labels WHERE (instr(generic_name, ?) > 0 OR instr(brand_name, ?) > 0) AND data_class='sample' LIMIT 2").all(q, q);
+  return candidates.length === 1 ? candidates[0] : null;
 }
 
 function sourceLine(row) {
@@ -198,6 +188,7 @@ export const HANDLERS = {
         hint: "Use search_labels to discover available approval_number values, or ingest the label first.",
       };
     }
+    if (label_id != null && row.id !== label_id || approval_number && row.approval_number !== approval_number) return { error: "label_selector_mismatch" };
     return labelToFull(row, section ? String(section) : null);
   },
 
@@ -222,7 +213,7 @@ export const HANDLERS = {
             drug_b: b.query,
             status: "insufficient_data",
             explanation:
-              "至少一方在本地语料库中无对应标签，无法判定相互作用。本维度应标 REQUIRES_PHARMACIST_REVIEW 或 INSUFFICIENT_DATA，不得输出“未发现相互作用”。",
+              "至少一方不能在本地语料库中唯一定位到具体标签，无法判定相互作用。本维度应标 REQUIRES_PHARMACIST_REVIEW 或 INSUFFICIENT_DATA，不得输出“未发现相互作用”。",
             a_label: a.row ? { label_id: a.row.id, approval_number: a.row.approval_number, generic_name: a.row.generic_name, data_class: a.row.data_class } : null,
             b_label: b.row ? { label_id: b.row.id, approval_number: b.row.approval_number, generic_name: b.row.generic_name, data_class: b.row.data_class } : null,
           });
@@ -342,7 +333,16 @@ export const HANDLERS = {
     const mentionCount = db.prepare("SELECT count(*) AS n FROM interaction_mentions").get().n;
     return {
       counts: { total, official, sample, by_class: byClass },
-      production_ready: official > 0,
+      production_ready: false,
+      corpus_available: official > 0,
+      deployment_acceptance: "NOT_ESTABLISHED",
+      capabilities: {
+        label_mentions: "LOCAL_CORPUS_ONLY", reimbursement_terms: "SEPARATE_CATALOG_REVIEW",
+        vbp_substitution: "NOT_IMPLEMENTED", patient_specific_dose_adjustment: "NOT_IMPLEMENTED",
+        tcm_tables: "LIMITED_REFERENCE_ONLY", china_population_calibration: "NOT_ESTABLISHED",
+        china_product_catalog: "VERSIONED_REVIEWED_IMPORT_REQUIRED", china_mdrd_bmi: "EXPLICIT_APPLICABILITY_CHECKS",
+        china_quality_nodes: "SOURCE_BOUND_DOCUMENTATION_ONLY",
+      },
       interaction_mentions: mentionCount,
       sources,
       db_path: `${DATA}/data.sqlite`,
@@ -362,7 +362,7 @@ export const HANDLERS = {
     let anyHit = false;
     for (const q of drugs.map((s) => String(s).trim()).filter(Boolean)) {
       const row = resolveOne(q, allow);
-      if (!row) { perDrug.push({ query: q, status: "insufficient_data", reason: "not_in_corpus" }); continue; }
+      if (!row) { perDrug.push({ query: q, status: "insufficient_data", reason: "missing_or_ambiguous_label" }); continue; }
       const hits = allergyHitForDrug(row, allergyTerms);
       if (hits.length) { anyHit = true; perDrug.push({ query: q, status: "hit", label: { label_id: row.id, generic_name: row.generic_name, data_class: row.data_class }, hits }); }
       else {
@@ -383,7 +383,7 @@ export const HANDLERS = {
     const perDrug = [];
     for (const q of drugs.map((s) => String(s).trim()).filter(Boolean)) {
       const row = resolveOne(q, allow);
-      if (!row) { perDrug.push({ query: q, status: "insufficient_data", reason: "not_in_corpus" }); continue; }
+      if (!row) { perDrug.push({ query: q, status: "insufficient_data", reason: "missing_or_ambiguous_label" }); continue; }
       const sections = parseSections(row.sections_json);
       const pools = sectionsText(sections, ["禁忌", "注意事项", "警告"]);
       const hits = [];
@@ -399,14 +399,15 @@ export const HANDLERS = {
 
   check_renal_dosing({ drugs, crcl, egfr, include_samples }) {
     const allow = Boolean(include_samples);
-    const hasCrCl = typeof crcl === "number" && isFinite(crcl);
-    const hasEgfr = typeof egfr === "number" && isFinite(egfr);
-    const val = hasCrCl ? crcl : (hasEgfr ? egfr : null);
+    const hasCrCl = typeof crcl === "number" && Number.isFinite(crcl) && crcl >= 0;
+    const hasEgfr = typeof egfr === "number" && Number.isFinite(egfr) && egfr >= 0;
+    // Indexed eGFR and absolute CrCl are distinct quantities, not interchangeable dose strata.
+    const val = hasCrCl ? crcl : null;
     const bucket = val != null ? renalBucket(val) : null;
     const perDrug = [];
     for (const q of drugs.map((s) => String(s).trim()).filter(Boolean)) {
       const row = resolveOne(q, allow);
-      if (!row) { perDrug.push({ query: q, status: "insufficient_data", reason: "not_in_corpus" }); continue; }
+      if (!row) { perDrug.push({ query: q, status: "insufficient_data", reason: "missing_or_ambiguous_label" }); continue; }
       const sections = parseSections(row.sections_json);
       const pools = sectionsText(sections, ["肾", "特殊人群", "老年", "用法用量"]);
       const renalSignals = ["肾功能", "肌酐", "透析", "肾损害", "肾衰", "CrCl", "eGFR"];
@@ -420,7 +421,7 @@ export const HANDLERS = {
       }
       perDrug.push({ query: q, status: hits.length ? "renal_mentioned" : (pools.length ? "no_mention_in_corpus" : "no_renal_section"), label: { label_id: row.id, generic_name: row.generic_name, data_class: row.data_class }, renal_excerpts: hits, crcl_bucket: bucket });
     }
-    return { renal: hasCrCl ? { crcl, bucket } : (hasEgfr ? { egfr, bucket } : { bucket: null, note: "未提供 crcl/egfr，无法分桶；建议先 calc_renal" }), per_drug: perDrug, coverage_disclaimer: "是否需调整剂量以标签“肾功能不全/老年”章节原文为准；无提及≠无需调整。" };
+    return { dose_recommendation: null, renal: hasCrCl ? { crcl, unit: "mL/min", bucket } : (hasEgfr ? { egfr, unit: "mL/min/1.73m2", bucket: null, note: "索引化 eGFR 不自动替代 CrCl 用药分层" } : { bucket: null, note: "缺少有效肾功能数值，无法分层" }), per_drug: perDrug, coverage_disclaimer: "是否需调整剂量以标签“肾功能不全/老年”章节原文为准；无提及≠无需调整。" };
   },
 
   check_special_population({ population, drugs, include_samples }) {
@@ -436,7 +437,7 @@ export const HANDLERS = {
     const perDrug = [];
     for (const q of drugs.map((s) => String(s).trim()).filter(Boolean)) {
       const row = resolveOne(q, allow);
-      if (!row) { perDrug.push({ query: q, status: "insufficient_data", reason: "not_in_corpus" }); continue; }
+      if (!row) { perDrug.push({ query: q, status: "insufficient_data", reason: "missing_or_ambiguous_label" }); continue; }
       const sections = parseSections(row.sections_json);
       const pools = sectionsText(sections, signals.length ? signals : ["特殊人群", "注意事项", "禁忌"]);
       const hits = [];
@@ -462,7 +463,7 @@ export const HANDLERS = {
     // generic exact duplicate + substring containment (same ingredient)
     for (let i = 0; i < resolved.length; i++) for (let j = i + 1; j < resolved.length; j++) {
       const a = resolved[i], b = resolved[j];
-      if (!a.row || !b.row) { pairs.push({ drug_a: a.query, drug_b: b.query, status: "insufficient_data", reason: "not_in_corpus" }); continue; }
+      if (!a.row || !b.row) { pairs.push({ drug_a: a.query, drug_b: b.query, status: "insufficient_data", reason: "missing_or_ambiguous_label" }); continue; }
       const ga = norm(a.row.generic_name), gb = norm(b.row.generic_name);
       if (ga === gb) pairs.push({ drug_a: a.query, drug_b: b.query, status: "duplicate_generic", generic: a.row.generic_name, note: "通用名完全相同，重复用药。" });
       else if (ga.includes(gb) || gb.includes(ga) || norm(a.row.brand_name ?? "").includes(gb) || norm(b.row.brand_name ?? "").includes(ga)) {
@@ -471,7 +472,9 @@ export const HANDLERS = {
         pairs.push({ drug_a: a.query, drug_b: b.query, status: "no_duplicate_detected", a_generic: a.row.generic_name, b_generic: b.row.generic_name, note: "仅基于通用名/商品名字面比对，未做成分表深度比对；同类作用需药师结合药理判断。" });
       }
     }
-    return { drugs_queried: drugs, resolved: resolved.map((r) => r.row ? { query: r.query, generic_name: r.row.generic_name } : { query: r.query, status: "not_in_corpus" }), pairs, coverage_disclaimer: "no_duplicate_detected 仅为字面比对结果；同类作用（同靶点/同适应症）需药师综合判断。" };
+    const ingredientScreen = checkChinaMedicationSafety({ medications: resolved.map((r, index) => ({ ...(r.row || {}), id: `drug-${index + 1}`, drug_name: r.row?.generic_name || r.query })), context: { as_of: new Date().toISOString() } });
+    return { drugs_queried: drugs, resolved: resolved.map((r) => r.row ? { query: r.query, generic_name: r.row.generic_name } : { query: r.query, status: "not_in_corpus" }), pairs,
+      china_ingredient_screen: ingredientScreen, coverage_disclaimer: "no_duplicate_detected 仅为字面比对结果；成分重叠另见 china_ingredient_screen，未命中不代表无风险。" };
   },
 
   calc_renal({ age, weightKg, heightCm, scrMgDl, scrUmolL, scr, scrUnit, sex, calc }) {
@@ -506,4 +509,5 @@ export const HANDLERS = {
     }
   },
   ...SAFETY_HANDLERS,
+  ...CHINA_HANDLERS,
 };

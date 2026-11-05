@@ -52,3 +52,9 @@ console.log(HANDLERS.corpus_status({}));
 - `no_mention_in_corpus ≠ 无相互作用`；`insufficient_data` 时必须转 `REQUIRES_PHARMACIST_REVIEW`。
 - 样例库命中必须在输出中显式标注 `data_class=sample`。
 - 未检索不得断言“未发现相互作用”（与 `prescription-review` G3 一致）。
+
+## 中国专科与药学扩展
+
+新增 `calc_cn_reference`、`china_pharmacy_lookup`、`check_cn_clinical`。支持指定中国 MDRD 公式、成人 BMI、来源绑定的抗菌药管理/中成药成分与注射剂溶媒核查，以及甲乙类、地方双通道、VBP 和限定支付范围查询。生产临床输入必须经过实际本地 NER；缺失模型时阻断。
+
+正式药学数据须使用离线导入器逐产品、地区和有效期绑定审校原文。本仓库不附完整正式药品/地方支付目录，也不提供自动报销或替药判断。配置、字段、来源与验证边界见 [工程接入说明](../../../../docs/engineering/china-specialty-pharmacy-2026-11-02.md)。

@@ -1,6 +1,6 @@
 # QMS内部审核检查表与管理评审模板
 
-> Product baseline: 0.8.0-pilot; document revision: 1; approval: DRAFT_UNAPPROVED
+> Product baseline: 0.10.0-pilot; document revision: 2; approval: DRAFT_UNAPPROVED
 
 
 状态：待执行、待具名签认。本模板不代表会议已召开、风险已被接受或注册材料已获批准。

@@ -1,4 +1,5 @@
-import { guardToolOutput } from "../../shared/phi-output.mjs";
+import { guardToolOutputAsync } from "../../shared/phi-output.mjs";
+import { requiresProductionPhi } from '../../../lib/production-phi-policy.mjs';
 import {
   appendFileSync,
   existsSync,
@@ -55,6 +56,9 @@ const isReader = (stmt) => stmt.columns().length > 0;
 
 /** Run one SQL statement; readers return rows, writers return changes. */
 export function sql(query) {
+  // Arbitrary SQL can synthesize raw text after argument scanning (char(), hex,
+  // triggers). It is an engineering surface, not a production storage bypass.
+  if (requiresProductionPhi()) throw new Error('PHI_PRODUCTION_ARBITRARY_SQL_FORBIDDEN');
   const stmt = db.prepare(query.trim());
   // The one sentence in the tool description was the only thing stopping
   // `SELECT * FROM v_corpus_documents` from dumping the whole corpus (2MB at
@@ -387,7 +391,7 @@ export function docTextMany(docs, limit = 40_000) {
 // Sweep workers materialize their shard's text to files here instead of SELECTing
 // full content through the tool-result channel, which overflows result limits.
 // The dir lives under DATA and is run-scoped, so shard labels can't collide.
-function dumpShard(runId, label, ids) {
+async function dumpShard(runId, label, ids) {
   assertRunId("dump", runId);
   if (!NAME_RE.test(label)) die(`dump: invalid label '${label}'`);
   if (!db.prepare(`SELECT 1 FROM runs WHERE run_id = ?`).get(runId))
@@ -430,7 +434,7 @@ function dumpShard(runId, label, ids) {
       continue;
     }
     const path = join(dir, `doc${id}.txt`);
-    writeFileSync(path, guardToolOutput(doc.content), { mode: 0o600 });
+    writeFileSync(path, await guardToolOutputAsync(doc.content), { mode: 0o600 });
     written.push({ doc_id: id, path, chars: doc.content.length, uri: doc.uri, family: doc.family });
   }
   return {
@@ -474,13 +478,13 @@ TURN PLAN — a model turn is the expensive unit; batch INTO the tool first, par
  * before a single reader exists, which was the slowest stretch of a run.
  * @param shards {{label, doc_ids, hunter?}[]}
  */
-export function dump(runId, shards, opts = {}) {
+export async function dump(runId, shards, opts = {}) {
   if (!shards.length) die(`dump: no shards`);
   if (shards.length > 32) die(`dump: ${shards.length} shards; cap is 32`);
   mkdirSync(join(DATA, "shards", runId), { recursive: true, mode: 0o700 });
 
-  const out = shards.map((sh) => {
-    const res = dumpShard(runId, sh.label, sh.doc_ids);
+  const out = await Promise.all(shards.map(async (sh) => {
+    const res = await dumpShard(runId, sh.label, sh.doc_ids);
     if (opts.rubric === undefined) return { label: sh.label, ...res };
     // No readable docs -> no prompt file and no prompt_path: the missing path
     // is the conductor's signal to drop this label instead of spawning a
@@ -496,9 +500,9 @@ export function dump(runId, shards, opts = {}) {
       opts.scope_id ?? 0,
     );
     const pp = promptPath(runId, sh.label);
-    writeFileSync(pp, guardToolOutput(text), { mode: 0o600 });
+    writeFileSync(pp, await guardToolOutputAsync(text), { mode: 0o600 });
     return { label: sh.label, prompt_path: pp, ...res };
-  });
+  }));
   return { shards: out };
 }
 
@@ -527,9 +531,9 @@ const OBSERVATIONS_HEADER = `# /contracts observations
 `;
 
 /** Append an entry to <DATA>/observations.md, creating it with its header if absent. */
-export function logObservation(entry) {
+export async function logObservation(entry) {
   const path = join(DATA, "observations.md");
   if (!existsSync(path)) writeFileSync(path, OBSERVATIONS_HEADER, { mode: 0o600 });
-  appendFileSync(path, `\n${guardToolOutput(entry.trim())}\n`);
+  appendFileSync(path, `\n${await guardToolOutputAsync(entry.trim())}\n`);
   return { path };
 }

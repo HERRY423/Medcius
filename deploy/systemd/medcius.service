@@ -8,9 +8,9 @@ Wants=network-online.target
 Type=simple
 User=medcius
 Group=medcius
-WorkingDirectory=/opt/medcius/current
+WorkingDirectory=/opt/medcius
 EnvironmentFile=/opt/medcius/medcius.env
-ExecStart=/usr/bin/node scripts/serve.mjs
+ExecStart=/usr/bin/node /opt/medcius/launch.mjs
 Restart=on-failure
 RestartSec=5
 

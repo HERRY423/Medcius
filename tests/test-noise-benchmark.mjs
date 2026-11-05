@@ -104,14 +104,14 @@ const goodLine = {
 };
 const goodPath = join(tmp, "good.jsonl");
 writeFileSync(goodPath, JSON.stringify(goodLine) + "\n", "utf8");
-const goodRun = execFileSync("node", [INGEST, goodPath], { encoding: "utf8" });
-assert.ok(/REAL-DATA INGEST OK: 1\/1/.test(goodRun), "desensitized synthetic probe must ingest");
+const goodRun = execFileSync("node", [INGEST, goodPath, "--synthetic"], { encoding: "utf8" });
+assert.ok(/SYNTHETIC_ONLY INGEST OK: 1\/1/.test(goodRun), "desensitized synthetic probe must ingest");
 
 const runIngest = (obj) => {
   const p = join(tmp, "case.jsonl");
   writeFileSync(p, JSON.stringify(obj) + "\n", "utf8");
   try {
-    execFileSync("node", [INGEST, p], { encoding: "utf8" });
+    execFileSync("node", [INGEST, p, "--synthetic"], { encoding: "utf8" });
     return null;
   } catch (error) {
     return String(error.stderr || error.message);
@@ -136,7 +136,7 @@ assert.ok(/HALT .*RAW_PHI_DETECTED types=\[id_card\]/.test(withId), `must halt o
 assert.ok(!withId.includes(id), "halt message must never echo the PHI value itself");
 
 const noGold = runIngest({ note_id: "x", note_text: "出院诊断：阑尾炎", source_meta: { desensitized: true } });
-assert.ok(/HALT .*gold missing/.test(noGold), "must halt when gold annotation missing");
+assert.ok(/HALT .*INTAKE_GOLD_REQUIRED/.test(noGold), "must halt when gold annotation missing");
 rmSync(tmp, { recursive: true, force: true });
 console.log("✓ Desensitization + gold-annotation gates fail closed without content echo");
 

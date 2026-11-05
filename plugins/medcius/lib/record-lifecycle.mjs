@@ -1,6 +1,7 @@
 // Source lifecycle, occurrence time, and arrival are independent axes.
 // No clock/fetch-time fallback, inferred finality, or clinical interpretation.
 import { canonicalJson } from "../servers/shared/crypto.mjs";
+import { splitImagingReport } from './imaging-report.mjs';
 
 const lower = (value) => String(value ?? "").trim().toLowerCase().replaceAll("_", "-");
 const first = (...values) => values.find((value) => value != null && value !== "") ?? null;
@@ -96,11 +97,18 @@ function referenceRanges(record) {
 // Canonical aliases make a raw record and its normalized representation
 // comparable, while preserving every field used for clinical display/rules.
 function clinicalProjection(record, state) {
+  const imaging = state.source_type === 'diagnostic_report' ? splitImagingReport(record) : null;
   return {
     value: normalizedValue(first(record.value, record.valueQuantity?.value, record.result_value, record.valueString, record.valueInteger)),
     unit: first(record.unit, record.valueQuantity?.unit, record.valueQuantity?.code),
     code: normalizedCode(record), code_system: first(record.code_system, record.code?.coding?.[0]?.system),
-    status: state.result_status, text: first(record.text, record.impression, record.impression_text, record.findings),
+    status: state.result_status, text: imaging ? first(imaging.impression, imaging.findings, imaging.unclassified_text) : first(record.text, record.impression, record.impression_text, record.findings),
+    imaging_findings: imaging?.findings ?? null, imaging_impression: imaging?.impression ?? null,
+    unclassified_report: imaging?.unclassified_text ?? null, study_uid: record.study_uid ?? null,
+    order_kind: record.order_kind ?? null, execution_status: record.execution_status ?? null,
+    record_kind: record.record_kind ?? null, administration_id: record.administration_id ?? null,
+    performed_at: record.performed_at ?? null, administered_volume_ml: record.administered_volume_ml ?? null,
+    administrations: record.administrations ?? null,
     reference_ranges: referenceRanges(record),
     critical: record.is_critical === true || record.is_critical_reported === true || lower(record.interpretation) === "critical",
     critical_reason: record.critical_reason ?? null,

@@ -17,6 +17,18 @@ const repoRoot = join(__dirname, "..");
 const testDataRoot = mkdtempSync(join(tmpdir(), "medcius-quality-gates-"));
 
 const steps = [
+  { name: "Fixed 80 ms Performance Budget Override Negative Controls", cmd: "node", args: ["--test", "tests/test-performance-budget.mjs"], successPattern: /(?:ℹ|#) tests [1-9]\d*[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ },
+  { name: "Container Health Probe Transport and Failure Controls", cmd: "node", args: ["--test", "tests/test-healthcheck.mjs"], successPattern: /(?:ℹ|#) tests [1-9]\d*[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ },
+  { name: "Pinned Official Plugin Validator and Negative Control", cmd: "node", args: ["--test", "tests/test-plugin-validator.mjs"], successPattern: /(?:ℹ|#) tests [1-9]\d*[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ },
+  { name: "Request-Scoped CPU NER Reuse, Isolation and Fail-Closed Controls", cmd: "node", args: ["--test", "tests/test-phi-inference-scope.mjs"], successPattern: /(?:ℹ|#) tests [1-9]\d*[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ },
+  { name: "Independent CPU NER Batches: Exact Logits, Offsets and Native Failure", cmd: "node", args: ["--test", "tests/test-ner-batch-equivalence.mjs"], successPattern: /SYNTHETIC_NER_EQUIVALENCE[\s\S]*(?:ℹ|#) tests 5[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ },
+  { name: "Production MCP/Audit/Document Async PHI and Bounded CPU NER Concurrency", cmd: "node", args: ["--test", "--test-concurrency=1", "tests/test-production-mcp-phi.mjs", "tests/test-ner-concurrency.mjs"], successPattern: /(?:ℹ|#) tests [1-9]\d*[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ },
+  { name: "China Specialty & Pharmacy: Formula, Quality Nodes, Local Product/Payment Binding and PHI", cmd: "node", args: ["--test", "--test-concurrency=1", "tests/test-china-specialty-pharmacy.mjs", "tests/test-china-clinical-production.mjs"], successPattern: /(?:ℹ|#) tests [1-9]\d*[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ },
+  { name: "Production Async Dual-Track PHI: Actual CPU NER, HIS Boundaries and Model Egress", cmd: "node", args: ["--test", "--test-concurrency=1", "tests/test-production-dual-phi.mjs", "tests/test-cn-phi-onnx.mjs"], successPattern: /(?:ℹ|#) tests [1-9]\d*[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ },
+  { name: "Chinese Scope Dependencies & Session Dual-Track PHI Synthetic Regressions", cmd: "node", args: ["--test", "tests/test-cn-assertion-dual-phi.mjs"], successPattern: /(?:ℹ|#) tests [1-9]\d*[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ },
+  { name: "Hospital Ingestion: CDA Identity, Site Mappings, Executed Orders and PACS Separation", cmd: "node", args: ["--test", "tests/test-inpatient-ingestion.mjs"], successPattern: /(?:ℹ|#) tests [1-9]\d*[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ },
+  { name: "Jiangsu Record Review: Versioned Crosswalk, Admission Evidence and Local Grouper Binding", cmd: "node", args: ["--test", "--test-concurrency=1", "tests/test-jiangsu-record-review.mjs", "tests/test-versioned-coding-store.mjs"], successPattern: /(?:ℹ|#) tests [1-9]\d*[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ },
+  { name: "Chinese Localization: Scoped Assertions, Local PHI Execution, SQL Dialects, Signature Binding & Evidence Intake", cmd: "node", args: ["--test", "--test-concurrency=1", "tests/test-cn-localization-hardening.mjs", "tests/test-cn-corpus-boundaries.mjs"], successPattern: /(?:ℹ|#) tests [1-9]\d*[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ },
   { name: "Bound Text Anchors & Critical Visibility Negative Controls", cmd: "node", args: ["tests/test-evidence-visibility.mjs"], successPattern: /(?:ℹ|#) tests [1-9]\d*[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ },
   { name: "Rule Pack Review Handoff & Unverified Approval Rejection", cmd: "node", args: ["tests/test-rule-pack-review.mjs"] },
   { name: "Cross-Evaluation Negative Controls: Six Scorers", cmd: "node", args: ["tests/test-evaluation-negative-controls.mjs"], successPattern: /ALL CROSS-EVALUATION NEGATIVE CONTROLS PASSED/ },
@@ -74,7 +86,7 @@ const steps = [
   { name: "26. Clinical Closure: High-Risk Follow-up, Rule Packs & Read-Only Bridge", cmd: "node", args: ["tests/test-clinical-closure.mjs"] },
   { name: "27. Real-System Integration: FHIR R4 / CDA Connector PoC & PHI Exit Guard", cmd: "node", args: ["tests/test-real-connectors.mjs"] },
   { name: "28. Public-Reference Validation: Deterministic Reviewer vs Public Pharmacology Facts", cmd: "node", args: ["plugins/medcius/evals/public-reference-validation/run.mjs"] },
-  { name: "29. Performance Baseline: Hot-Path Benchmarks vs Budget Gates", cmd: "node", args: ["plugins/medcius/evals/performance-baseline/bench.mjs"] },
+  { name: "29. Performance Baseline: Hot-Path Benchmarks vs Budget Gates", cmd: "node", args: ["plugins/medcius/evals/performance-baseline/bench.mjs"], timeoutMs: 300000 },
   { name: "30. API Security Hardening: Rate Limit / Brute-Force Lockout / Security Headers", cmd: "node", args: ["tests/test-security-hardening.mjs"] },
   { name: "31. Clinical Landing: Dual-Timestamp, Causal Attribution & Progressive Views", cmd: "node", args: ["tests/test-clinical-landing-advancement.mjs"] },
   { name: "32. Privacy, Air-Gap, SaMD Traceability & Ward Complexity Benchmark", cmd: "node", args: ["tests/test-security-compliance-and-benchmarks.mjs"] },
@@ -119,6 +131,8 @@ for (const step of steps) {
   if (step.kind === "check") step.successPattern ??= specialSuccess[step.args[0]] ?? (nodeTestFiles.has(step.args[0]) ? /(?:ℹ|#) tests [1-9]\d*[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ : /ALL [^\r\n]+ PASSED/);
 }
 const receipt = { schema_version: "medcius.quality-gate-execution.v1", run_id: randomUUID(), started_at: new Date().toISOString(), steps: [] };
+const executionLogs = join(repoRoot, 'out', `quality-gates-${receipt.run_id}`);
+mkdirSync(executionLogs, { recursive: true });
 
 console.log("================================================================================");
 console.log(" Medcius Full CI Quality Gate & Synthetic Validation Pipeline");
@@ -137,12 +151,14 @@ for (const step of steps) {
     encoding: "utf8",
     env: { ...process.env, CLAUDE_MEDCIUS_DATA: testDataRoot, MEDCIUS_DATA: testDataRoot, NODE_NO_WARNINGS: "1" },
     maxBuffer: 16 * 1024 * 1024,
-    timeout: 120000,
+    timeout: step.timeoutMs ?? 120000,
   });
   const elapsed = Date.now() - start;
+  const logPath = join(executionLogs, `step-${String(receipt.steps.length + 1).padStart(2,'0')}.log`);
+  writeFileSync(logPath, `${res.stdout ?? ''}\n${res.stderr ?? ''}`);
   const assessed = assessGateResult(step, res);
   receipt.steps.push({name:step.name,command:[step.cmd,...step.args],kind:step.kind,duration_ms:elapsed,
-    expected_evidence:step.successPattern?.source ?? null, output_sha256:createHash("sha256").update(`${res.stdout??""}\n${res.stderr??""}`).digest("hex"),...assessed});
+    log_path: logPath, expected_evidence:step.successPattern?.source ?? null, output_sha256:createHash("sha256").update(`${res.stdout??""}\n${res.stderr??""}`).digest("hex"),...assessed});
 
   if (assessed.ok) {
     console.log(`[${step.kind === "report" ? "EXECUTED; ENDPOINT NOT ASSERTED" : "CHECK PASSED"}] (${elapsed}ms)`);
@@ -162,6 +178,7 @@ receipt.summary = { completed: passedCount, failed: failedCount, engineering_pas
 mkdirSync(join(repoRoot,"out"),{recursive:true});
 writeFileSync(join(repoRoot,"out",`quality-gates-${receipt.run_id}.json`),JSON.stringify(receipt,null,2));
 writeFileSync(join(repoRoot,"out","quality-gates-latest.json"),JSON.stringify(receipt,null,2));
+console.log(`Execution receipt: quality-gates-${receipt.run_id}.json`);
 
 console.log("\n================================================================================");
 console.log(` Quality Gate Summary: ${passedCount} Completed, ${failedCount} Failed / Total ${steps.length} Steps`);

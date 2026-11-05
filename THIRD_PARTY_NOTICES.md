@@ -1,6 +1,6 @@
 # Third-Party Notices & Provenance
 
-> Product baseline: 0.8.0-pilot; document revision: 1; approval: DRAFT_UNAPPROVED
+> Product baseline: 0.10.0-pilot; document revision: 2; approval: DRAFT_UNAPPROVED
 
 
 Medcius (this repository, `HERRY423/Medcius`) is a **rebranded, architecturally converged, and extended clinical workflow plugin platform** derived from the [`anthropics/healthcare`](https://github.com/anthropics/healthcare) repository. This notice records the provenance of all codebase assets, explicit module ownership, licensing postures, and independent rewrite audit baselines.
@@ -23,7 +23,7 @@ Medcius (this repository, `HERRY423/Medcius`) is a **rebranded, architecturally 
 ## 2. Codebase Provenance & Architectural Classification
 
 ```text
-Medcius Codebase (v0.8.0-pilot)
+Medcius Codebase (v0.10.0-pilot)
  ├── 1. Medcius Original Production Core (100% Owned by Medcius)
  │    ├─ Reference Workflow Engines (Patient Evolution, SBAR Shift Handover, Consult Prep, Discharge Readiness)
  │    ├─ Multi-Source Adapters & Real Bridge (NIS, LIS, PACS, HIS, FHIR R4, CDA Document Connector)
@@ -69,3 +69,20 @@ Medcius Codebase (v0.8.0-pilot)
 1. **Production Core Independence**: The entire active production core (`plugins/medcius/lib/`, `contracts/`, `rule-packs/`, `evals/`, `tests/`) consists of Medcius-original or independently rewritten modules.
 2. **Third-Party Licensing Clearance**: Prior to commercial deployment or external hospital licensing, any remaining reference dependencies (such as upstream documentation snippets) must pass a formal copyright clearance audit.
 3. **No Upstream Warranty or Liability**: Upstream contributors provide code "as is", without warranty of any kind.
+
+## 5. Local CPU NER and bundled tooling
+
+- The exact CPU runtime dependencies are recorded in
+  `plugins/medcius/runtimes/cn-phi-ner/package-lock.json`. They are installed
+  separately; `node_modules` is not committed.
+- `plugins/medcius/data/phi/cn-pronunciations.v1.json` is derived from
+  pinyin-pro 3.29.5; its MIT notice is retained beside the table as
+  `pinyin-pro-LICENSE.txt`. The table contains character pronunciations, not
+  patient or session names.
+- The pinned model manifest records the upstream CKIP model's declared
+  GPL-3.0 license and the exact ONNX conversion revision. Model weights are
+  separately acquired and are not part of this repository or plugin archive.
+  This record does not establish redistribution or hospital deployment clearance.
+- `scripts/vendor/openai-plugin-validator/` retains the pinned upstream
+  OpenAI validator, Apache-2.0 license, source URLs and file digests. The
+  wrapper verifies those bytes before running the validator.

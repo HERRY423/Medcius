@@ -39,22 +39,24 @@ function assertColumns(columns) {
 
 function buildSelectSql(config, context) {
   const select = [...new Set([...config.columns, config.patientColumn, config.encounterColumn, ...(config.tenantColumn ? [config.tenantColumn] : [])])];
-  const where = [`${config.tenantColumn ? `${config.tenantColumn} = ?` : null}`, `${config.patientColumn} = ?`, config.scope === "patient" ? null : `${config.encounterColumn} = ?`].filter(Boolean);
+  const params = [];
+  const bind = value => {
+    params.push(value);
+    return config.dialect === 'postgresql' ? `$${params.length}` : config.dialect === 'sqlserver' ? `@p${params.length}` : config.dialect === 'oracle' ? `:${params.length}` : '?';
+  };
+  const top = config.dialect === 'sqlserver' ? `TOP (${bind(config.limit)}) ` : '';
+  const where = [config.tenantColumn ? `${config.tenantColumn} = ${bind(context.tenant_id)}` : null,
+    `${config.patientColumn} = ${bind(context.patient_id)}`,
+    config.scope === 'patient' ? null : `${config.encounterColumn} = ${bind(context.encounter_id)}`].filter(Boolean);
   const sql = [
-    `SELECT ${select.join(", ")}`,
+    `SELECT ${top}${select.join(", ")}`,
     `FROM ${config.table}`,
     `WHERE ${where.join(" AND ")}`,
     config.orderBy ? `ORDER BY ${config.orderBy}` : null,
-    `LIMIT ?`,
+    config.dialect === 'sqlserver' ? null : ['oracle', 'dameng'].includes(config.dialect) ? `FETCH FIRST ${bind(config.limit)} ROWS ONLY` : `LIMIT ${bind(config.limit)}`,
   ]
     .filter(Boolean)
     .join(" ");
-  const params = [
-    ...(config.tenantColumn ? [context.tenant_id] : []),
-    context.patient_id,
-    ...(config.scope === "patient" ? [] : [context.encounter_id]),
-    config.limit,
-  ];
   if (!/^SELECT\s/i.test(sql) || /;/.test(sql)) {
     throw new Error(`CONNECTOR_VIEWDB_SQL_SHAPE_REJECTED: ${sql.slice(0, 80)}`);
   }
@@ -85,7 +87,12 @@ function buildEnvelope(connectorId, context, records, sourceVersion) {
  * @param {(row: object, context: object) => object} [options.mapRow] - row -> bridge record; must keep `id`
  * @param {string} [options.patientColumn="patient_id"]
  * @param {string} [options.encounterColumn="encounter_id"]
- * @param {string|null} [options.tenantColumn="tenant_id"] - null disables the tenant clause (single-tenant deployments)
+ * @param {string|null} [options.tenantColumn="tenant_id"] - null requires fixedTenantId plus an externally isolated read-only account
+ * @param {string|null} [options.fixedTenantId] reject any other tenant before query
+ * @param {'sqlite'|'mysql'|'postgresql'|'sqlserver'|'oracle'} [options.dialect='sqlite']
+ * @param {string|null} [options.schema] separately whitelisted database schema
+ * @param {number} [options.timeoutMs=10000] hard timeout with AbortSignal
+ * @param {number} [options.maxConcurrency=4] per-connector unresolved execution limit
  * @param {"encounter"|"patient"} [options.scope="encounter"]
  * @param {string} [options.orderBy] - whitelisted `<column> [ASC|DESC]`
  * @param {number} [options.limit=200]
@@ -107,6 +114,12 @@ export function createViewDbConnector(options) {
     limit = 200,
     query,
     sourceVersion = null,
+    dialect = 'sqlite',
+    schema = null,
+    fixedTenantId = null,
+    timeoutMs = 10000,
+    maxConcurrency = 4,
+    preserveRawLifecycle = true,
   } = options ?? {};
 
   if (typeof id !== "string" || !id.trim()) throw new Error("CONNECTOR_VIEWDB_ID_REQUIRED");
@@ -114,9 +127,14 @@ export function createViewDbConnector(options) {
   if (typeof query !== "function") throw new Error("CONNECTOR_VIEWDB_QUERY_REQUIRED");
   if (!["encounter", "patient"].includes(scope)) throw new Error("CONNECTOR_VIEWDB_SCOPE_INVALID");
   if (!Number.isInteger(limit) || limit < 1 || limit > 1000) throw new Error("CONNECTOR_VIEWDB_LIMIT_INVALID");
+  if (!['sqlite', 'mysql', 'postgresql', 'sqlserver', 'oracle', 'dameng', 'oceanbase-mysql', 'oceanbase-oracle'].includes(dialect)) throw new Error('CONNECTOR_VIEWDB_DIALECT_INVALID');
+  if (tenantColumn == null && (typeof fixedTenantId !== 'string' || !fixedTenantId.trim())) throw new Error('CONNECTOR_VIEWDB_FIXED_TENANT_REQUIRED');
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 120000) throw new Error('CONNECTOR_VIEWDB_TIMEOUT_INVALID');
+  if (!Number.isInteger(maxConcurrency) || maxConcurrency < 1 || maxConcurrency > 64) throw new Error('CONNECTOR_VIEWDB_CONCURRENCY_INVALID');
 
   const config = {
-    table: assertIdentifier(table, "table"),
+    table: schema == null ? assertIdentifier(table, 'table') : `${assertIdentifier(schema, 'schema')}.${assertIdentifier(table, 'table')}`,
+    dialect: ({ 'oceanbase-mysql': 'mysql', 'oceanbase-oracle': 'oracle' })[dialect] ?? dialect,
     columns: assertColumns(columns),
     patientColumn: assertIdentifier(patientColumn, "patientColumn"),
     encounterColumn: assertIdentifier(encounterColumn, "encounterColumn"),
@@ -131,6 +149,7 @@ export function createViewDbConnector(options) {
         })(),
     limit,
   };
+  let inflight = 0;
 
   return {
     id,
@@ -142,21 +161,36 @@ export function createViewDbConnector(options) {
           throw new Error(`CONNECTOR_VIEWDB_CONTEXT_REQUIRED: ${field}`);
         }
       }
+      if (fixedTenantId != null && context.tenant_id !== fixedTenantId) throw new Error('CONNECTOR_TENANT_MISMATCH');
+      if (inflight >= maxConcurrency) throw new Error('CONNECTOR_VIEWDB_CONCURRENCY_LIMIT');
       const { sql, params } = buildSelectSql(config, context);
-      const rows = await query(sql, params);
+      const controller = new AbortController();
+      let timer;
+      inflight++;
+      // Keep the slot occupied until the executor actually stops, even after timeout.
+      const pending = Promise.resolve().then(() => query(sql, params, { signal: controller.signal, readOnly: true, dialect, sqlDialect: config.dialect }))
+        .catch(() => { throw new Error('CONNECTOR_VIEWDB_QUERY_FAILED'); }).finally(() => { inflight--; });
+      let rows;
+      try {
+        rows = await Promise.race([pending, new Promise((_, reject) => { timer = setTimeout(() => {
+          controller.abort(); reject(new Error('CONNECTOR_VIEWDB_TIMEOUT'));
+        }, timeoutMs); })]);
+      } finally { clearTimeout(timer); }
       if (!Array.isArray(rows)) throw new Error(`CONNECTOR_VIEWDB_ROWS_INVALID: ${id}`);
+      if (rows.length > config.limit) throw new Error('CONNECTOR_VIEWDB_ROW_LIMIT_EXCEEDED');
       const records = rows.map((row, index) => {
         if (!row || typeof row !== "object" || Array.isArray(row)) {
           throw new Error(`CONNECTOR_VIEWDB_ROW_INVALID: ${id}[${index}]`);
         }
-        const record = { ...sourceLifecycle(row), ...mapRow(row, context) };
+        const record = { ...(preserveRawLifecycle ? sourceLifecycle(row) : {}), ...mapRow(row, context) };
         if (!record?.id) throw new Error(`CONNECTOR_VIEWDB_RECORD_ID_REQUIRED: ${id}[${index}]`);
-        const sourcePatient = row[config.patientColumn] || (kind === "patient" ? (row[config.patientColumn] ?? row.id) : null);
-        const sourceEncounter = row[config.encounterColumn] || (kind === "encounter" ? (row[config.encounterColumn] ?? row.id) : null);
+        const sourceId = value => typeof value === 'number' && Number.isSafeInteger(value) ? String(value) : value;
+        const sourcePatient = sourceId(row[config.patientColumn] ?? (kind === "patient" ? row.id : null));
+        const sourceEncounter = sourceId(row[config.encounterColumn] ?? (kind === "encounter" ? row.id : null));
         return bindSourceOwnership(context, record, {
           patient_id: sourcePatient || null,
           encounter_id: sourceEncounter || null,
-          tenant_id: config.tenantColumn ? row[config.tenantColumn] || null : null,
+          tenant_id: config.tenantColumn ? sourceId(row[config.tenantColumn]) ?? null : null,
         }, {
           requirePatient: true,
           requireEncounter: kind !== "patient",
@@ -222,7 +256,9 @@ export const VIEWDB_ROW_MAPPERS = {
  * @param {object} [options.columns] - per-kind whitelisted columns (falls back to mapper defaults)
  * @param {object} [options.mappers] - per-kind mapRow overrides
  */
-export function createViewDbConnectors({ query, tables, columns = {}, mappers = {}, sourceVersion = null, limits = {} }) {
+export function createViewDbConnectors({ query, tables, columns = {}, mappers = {}, sourceVersion = null, limits = {},
+  dialect = 'sqlite', schema = null, fixedTenantId = null, tenantColumn = 'tenant_id',
+  patientColumn = 'patient_id', encounterColumn = 'encounter_id', timeoutMs = 10000, maxConcurrency = 4 }) {
   if (!tables || typeof tables !== "object") throw new Error("CONNECTOR_VIEWDB_TABLES_REQUIRED");
   const defs = [
     { id: "viewdb-patient", kind: "patient", scope: "patient", mapper: VIEWDB_ROW_MAPPERS.patient },
@@ -230,6 +266,12 @@ export function createViewDbConnectors({ query, tables, columns = {}, mappers = 
     { id: "viewdb-lis", kind: "lis", scope: "encounter", mapper: VIEWDB_ROW_MAPPERS.lis },
     { id: "viewdb-his", kind: "his", scope: "encounter", mapper: VIEWDB_ROW_MAPPERS.his },
   ];
+  const defaultColumns = {
+    patient: ['patient_id', 'name', 'gender', 'birth_date'],
+    encounter: ['encounter_id', 'status', 'encounter_class', 'admission_time', 'discharge_time'],
+    lis: ['id', 'order_id', 'item_code', 'item_name', 'result_value', 'unit', 'status', 'sample_time', 'reference_range', 'is_critical'],
+    his: ['id', 'drug_name', 'dosage', 'route', 'frequency', 'order_time', 'order_status'],
+  };
   return defs.map(({ id, kind, scope, mapper }) => {
     const table = tables[kind];
     if (!table) throw new Error(`CONNECTOR_VIEWDB_TABLE_MISSING: ${kind}`);
@@ -237,11 +279,12 @@ export function createViewDbConnectors({ query, tables, columns = {}, mappers = 
       id,
       kind,
       table,
-      columns: columns[kind] ?? ["id", "drug_name", "item_code", "item_name", "result_value", "unit", "status"],
+      columns: columns[kind] ?? defaultColumns[kind],
       mapRow: mappers[kind] ?? mapper,
       scope,
       query,
       sourceVersion,
+      dialect, schema, fixedTenantId, tenantColumn, patientColumn, encounterColumn, timeoutMs, maxConcurrency,
       limit: limits[kind] ?? 200,
     });
   });

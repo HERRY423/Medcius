@@ -13,6 +13,14 @@ import { ClinicalSkillCatalog } from "./clinical-skill-catalog.mjs";
 import { scanStructuredValue } from "../servers/phiguard/src/lib.mjs";
 import { canonicalJson, sha256Hex } from "../servers/shared/crypto.mjs";
 import { assertExplicitFeedOwnership, toModelSafe, containsRawStructuredPhi } from "./clinical-boundary.mjs";
+import { createPhiEntitySession, guardSessionValue } from './phi-entity-session.mjs';
+import { guardPatientSourceInput } from './patient-source-phi.mjs';
+import { withPhiInferenceScope } from './phi-inference-scope.mjs';
+import { assertSyncPhiAllowed } from './production-phi-policy.mjs';
+import { resolvePhiDetector } from './phi-runtime.mjs';
+import { loadChinaPharmacyCatalog, selectChinaPharmacyCatalog } from './china-pharmacy-catalog.mjs';
+import { requiresProductionPhi } from './production-phi-policy.mjs';
+import { PLUGIN_VERSION } from './plugin-version.mjs';
 
 const HARD_IDENTIFIER_TYPES = new Set(["id_card", "phone_cn_mobile", "phone_cn_fixed", "bank_card", "email", "mrn_label"]);
 // Raw research material never travels in the serializable host response.
@@ -55,7 +63,17 @@ export function replayPreRoundResearchSnapshot(input) {
     dataFeeds: input.dataFeeds,
     sourceAvailability: input.sourceAvailability,
     frozenRulePack: input.rule_pack_encoding === "clinical-drug-name-v1" ? decodeResearchRulePack(input.rulePack) : input.rulePack,
+    pacsViewerProfile: input.pacsViewerProfile,
   }).summary;
+}
+
+export async function replayPreRoundResearchSnapshotAsync(input, options = {}) {
+  return (await HospitalAgentAdapter.executePreRoundWorkflowAsync({
+    host: 'his_embed', context: input.context, dataFeeds: input.dataFeeds,
+    sourceAvailability: input.sourceAvailability, pacsViewerProfile: input.pacsViewerProfile,
+    frozenRulePack: input.rule_pack_encoding === 'clinical-drug-name-v1' ? decodeResearchRulePack(input.rulePack) : input.rulePack,
+    ...options,
+  })).summary;
 }
 
 function assertNoHardIdentifiers(text) {
@@ -83,6 +101,26 @@ export const HOST_TYPES = {
 };
 
 export class HospitalAgentAdapter {
+  /** Explicit dual-track ingress; raw free text never enters the sync engine. */
+  static async executePreRoundWorkflowAsync({ localPhiDetector, signal, ...args }) {
+    args = structuredClone(args);
+    this.validateContextEnvelope(args.context);
+    localPhiDetector = await resolvePhiDetector({ detector:localPhiDetector, context:args.context });
+    return withPhiInferenceScope(args.context, localPhiDetector, async () => {
+    const { input, session, receipt } = await guardPatientSourceInput({
+      ...canonicalClinicalFeeds(args.dataFeeds), context: args.context,
+      encounter: args.dataFeeds?.encounter ?? { id: args.context.encounter_id },
+      source_availability: args.sourceAvailability ?? args.dataFeeds?.source_availability ?? [],
+    }, { detector: localPhiDetector, signal });
+    try {
+      const { context, ...dataFeeds } = input;
+      const result = await this.#executeGuardedPreRoundWorkflow({ ...args, context, dataFeeds,
+        sourceAvailability: input.source_availability }, { localPhiDetector, signal });
+      result.phi_guard = receipt;
+      return result;
+    } finally { session.dispose(); }
+    });
+  }
   static resolveRulePack(context) {
     const packId = context?.specialty_rule_pack_id;
     if (!packId) return null;
@@ -118,7 +156,12 @@ export class HospitalAgentAdapter {
   /**
    * Execute inpatient pre-round patient evolution workflow for any host agent.
    */
-  static executePreRoundWorkflow({ host = HOST_TYPES.HOSPITAL_CUSTOM_AGENT, context, dataFeeds, frozenRulePack = undefined, sourceAvailability = undefined }) {
+  static executePreRoundWorkflow({ host = HOST_TYPES.HOSPITAL_CUSTOM_AGENT, context, dataFeeds, frozenRulePack = undefined, sourceAvailability = undefined, pacsViewerProfile = null }) {
+    assertSyncPhiAllowed(context);
+    return this.#executeGuardedPreRoundWorkflow({ host, context, dataFeeds, frozenRulePack, sourceAvailability, pacsViewerProfile });
+  }
+
+  static #executeGuardedPreRoundWorkflow({ host = HOST_TYPES.HOSPITAL_CUSTOM_AGENT, context, dataFeeds, frozenRulePack = undefined, sourceAvailability = undefined, pacsViewerProfile = null }, asyncOptions) {
     dataFeeds = canonicalClinicalFeeds(dataFeeds);
     const availability = sourceAvailability ?? dataFeeds?.source_availability ?? [];
     if (!Array.isArray(availability)) throw new Error("FAIL_CLOSED_SOURCE_AVAILABILITY: expected an explicit array");
@@ -147,6 +190,12 @@ export class HospitalAgentAdapter {
     assertExplicitFeedOwnership({ tenant_id, patient_id, encounter_id }, pacs, "pacs");
     assertExplicitFeedOwnership({ tenant_id, patient_id, encounter_id }, his_orders, "his");
     assertNoHardIdentifiers({ patient, notes, nis, lis, pacs, his_orders });
+    // Anchor and replay the same guarded note representation. Redacting only
+    // after extraction changes offsets/digests and can break a frozen replay.
+    const phiSession = createPhiEntitySession({ ...dataFeeds, context, encounter: dataFeeds.encounter ?? { id: encounter_id } });
+    let guardedNotes;
+    try { guardedNotes = JSON.parse(JSON.stringify(guardSessionValue(notes, { session: phiSession, context }), (_key, value) => value === undefined ? null : value)); }
+    finally { phiSession.dispose(); }
 
     const asOf = context.as_of || context.now || new Date().toISOString();
     const asOfMs = new Date(asOf).getTime();
@@ -160,13 +209,20 @@ export class HospitalAgentAdapter {
     const hisNormalized = HospitalDataAdapter.normalizeHisOrders(his_orders, { rulePack, now: asOfMs });
 
     const mergedObservations = [...(lisNormalized.observations || []), ...(nisNormalized.fhir_observations || [])];
+    const chinaClinicalSource = dataFeeds.chinaClinical ?? (dataFeeds.clinical_quality?.length || rulePack?.clinical_rules?.china_reference_checks === true
+      ? { records: dataFeeds.clinical_quality || [], region: context.region } : null);
+    const chinaClinical = chinaClinicalSource ? { ...chinaClinicalSource,
+      pharmacy_catalog: chinaClinicalSource.pharmacy_catalog || selectChinaPharmacyCatalog(loadChinaPharmacyCatalog({ production: requiresProductionPhi(context) }),
+        [...hisNormalized.medications, ...(chinaClinicalSource.records || []).filter(r => r.kind === "medication")], { production: requiresProductionPhi(context) }) } : null;
     const engineInput = {
       patient,
-      context: { tenant_id, doctor_id, patient_id, encounter_id },
+      context: { tenant_id, doctor_id, patient_id, encounter_id, ...(requiresProductionPhi(context) ? { profile: "production" } : {}) },
+      pacsViewerProfile,
       timeWindow: time_window,
-      notes,
+      notes: guardedNotes,
       observations: mergedObservations,
       medications: hisNormalized.medications,
+      chinaClinical,
       diagnosticReports: [],
       pacsFeed: pacs,
       nursingFeed: nis,
@@ -182,7 +238,7 @@ export class HospitalAgentAdapter {
       },
       now: asOf,
     };
-    const engineOutput = PatientEvolutionEngine.analyzePatientEvolution(engineInput);
+    const finish = (engineOutput) => {
     const evolutionSummary = JSON.parse(JSON.stringify(engineOutput));
 
     const modelSafeSummary = toModelSafe(evolutionSummary);
@@ -205,7 +261,7 @@ export class HospitalAgentAdapter {
       success: true,
       host_info: {
         host_type: host,
-        adapter_version: "0.8.0-pilot",
+        adapter_version: PLUGIN_VERSION,
         workflow: "patient-evolution-summary",
       },
       context: {
@@ -242,10 +298,15 @@ export class HospitalAgentAdapter {
       engineInput: toModelSafe({ ...engineInput, rulePack: encodeResearchRulePack(rulePack), rule_pack_encoding: "clinical-drug-name-v1" }),
       engineOutput: modelSafeSummary,
       sourceAvailability: frozenAvailability,
-      replayInput: toModelSafe({ context: { ...context, as_of: asOf }, dataFeeds,
+      replayInput: toModelSafe({ context: { ...context, as_of: asOf }, dataFeeds: { ...dataFeeds, notes: guardedNotes, ...(chinaClinical ? { chinaClinical } : {}) },
+        pacsViewerProfile,
         sourceAvailability: frozenAvailability, rulePack: encodeResearchRulePack(rulePack), rule_pack_encoding: "clinical-drug-name-v1" }),
     });
     return result;
+    };
+    return asyncOptions
+      ? PatientEvolutionEngine.analyzePatientEvolutionAsync(engineInput, asyncOptions).then(finish)
+      : finish(PatientEvolutionEngine.analyzePatientEvolution(engineInput));
   }
 
   /**
@@ -253,19 +314,21 @@ export class HospitalAgentAdapter {
    * then execute the same pre-round workflow. The source manifest is returned
    * separately from clinician-facing output for audit and troubleshooting.
    */
-  static async executePreRoundFromBridge({ host = HOST_TYPES.HOSPITAL_CUSTOM_AGENT, context, bridge }) {
+  static async executePreRoundFromBridge({ host = HOST_TYPES.HOSPITAL_CUSTOM_AGENT, context, bridge, localPhiDetector, signal }) {
     this.validateContextEnvelope(context);
     if (!bridge || typeof bridge.readPatientSnapshot !== "function") {
       throw new Error("FAIL_CLOSED: A ReadOnlyHospitalDataBridge instance is required");
     }
     const fixedContext = { ...context, as_of: context.as_of || context.now || new Date().toISOString() };
-    const snapshot = await bridge.readPatientSnapshot({ ...fixedContext });
+    localPhiDetector = await resolvePhiDetector({ detector: localPhiDetector, context: fixedContext });
+    return withPhiInferenceScope(fixedContext, localPhiDetector, async () => {
+    const snapshot = await bridge.readPatientSnapshot({ ...fixedContext }, { localPhiDetector, signal });
     if (snapshot?.security_contract?.read_only_enforced !== true) throw new Error("FAIL_CLOSED: Source read-only contract is unverified");
     if (snapshot.source_availability != null && snapshot.dataFeeds?.source_availability != null
         && canonicalJson(snapshot.source_availability) !== canonicalJson(snapshot.dataFeeds.source_availability)) {
       throw new Error("FAIL_CLOSED_SOURCE_AVAILABILITY: bridge and feed availability disagree");
     }
-    const result = this.executePreRoundWorkflow({ host, context: fixedContext, dataFeeds: snapshot.dataFeeds,
+    const result = await this.executePreRoundWorkflowAsync({ host, context: fixedContext, dataFeeds: snapshot.dataFeeds, localPhiDetector, signal,
       sourceAvailability: snapshot.source_availability ?? snapshot.dataFeeds?.source_availability ?? [] });
     const response = {
       ...result,
@@ -281,6 +344,7 @@ export class HospitalAgentAdapter {
     };
     researchSnapshots.set(response, researchSnapshots.get(result));
     return response;
+    });
   }
 
   /**
@@ -339,7 +403,7 @@ export class HospitalAgentAdapter {
       success: true,
       host_info: {
         host_type: host,
-        adapter_version: "0.8.0-pilot",
+        adapter_version: PLUGIN_VERSION,
         workflow: "shift-handover",
       },
       context: {
@@ -411,7 +475,7 @@ export class HospitalAgentAdapter {
       success: true,
       host_info: {
         host_type: host,
-        adapter_version: "0.8.0-pilot",
+        adapter_version: PLUGIN_VERSION,
         workflow: "consult-preparation",
       },
       context: {
@@ -459,6 +523,7 @@ export class HospitalAgentAdapter {
       diagnosticReports: dataFeeds.diagnosticReports ?? pacs,
       observations: dataFeeds.observations ?? dataFeeds.lis ?? [],
       inpatientMedications: dataFeeds.medications ?? his_orders.filter(order => order.is_medication),
+      chinaClinical: dataFeeds.chinaClinical ?? { region: context.region },
       orders: dataFeeds.orders ?? his_orders.filter(order => !order.is_medication),
       sourceAvailability: dataFeeds.source_availability ?? [],
       dischargeMedications, medicationTransitions, followUpPlans, patientInstructions,
@@ -485,7 +550,7 @@ export class HospitalAgentAdapter {
       success: true,
       host_info: {
         host_type: host,
-        adapter_version: "0.8.0-pilot",
+        adapter_version: PLUGIN_VERSION,
         workflow: "discharge-readiness-check",
       },
       context: {
@@ -521,6 +586,7 @@ export class HospitalAgentAdapter {
     mode = "production",
     options = {},
   }) {
+    assertSyncPhiAllowed(context);
     this.validateContextEnvelope(context);
 
     // 1. Enforce Catalog Verification if catalog is provided or in production
@@ -588,6 +654,19 @@ export class HospitalAgentAdapter {
         throw new Error(`FAIL_CLOSED_UNREGISTERED_WORKFLOW: Improvised or unregistered clinical workflow '${skillId}' is prohibited. Only approved catalog skills may execute.`);
       }
     }
+  }
+
+  static async routeAndExecuteWorkflowAsync({ skillId, host = HOST_TYPES.HOSPITAL_CUSTOM_AGENT,
+    context, dataFeeds, catalog = null, mode = 'production', localPhiDetector, signal } = {}) {
+    this.validateContextEnvelope(context);
+    if (catalog && !catalog.isSkillApproved(skillId, mode).isEligible) throw new Error('FAIL_CLOSED_SKILL_UNAPPROVED');
+    assertSkillInvocable({ skillId, host, clinicalLanding: context?.clinical_landing || mode === 'clinical_landing' });
+    if (skillId !== 'patient-evolution-summary') throw new Error('PHI_ASYNC_WORKFLOW_NOT_ENABLED');
+    const result = await this.executePreRoundWorkflowAsync({ host, context, dataFeeds, localPhiDetector, signal });
+    const progressiveViews = StagedDraftService.generateProgressiveViewsFromSummary(result.summary, {
+      patient: result.summary.patient, timeWindow: context.time_window || '24h',
+    });
+    return { ...result, progressive_views: progressiveViews };
   }
 
   /**

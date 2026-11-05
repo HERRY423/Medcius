@@ -1,4 +1,12 @@
 import { writeSafeDiagnostic } from "../../shared/phi-output.mjs";
+import { requiresProductionPhi } from '../../../lib/production-phi-policy.mjs';
+import { resolvePhiDetector } from '../../../lib/phi-runtime.mjs';
+import { guardPhiValue } from '../../../lib/phi-value-guard.mjs';
+
+async function checked(value) {
+  if (requiresProductionPhi()) await guardPhiValue(value, { reject: true });
+  return value;
+}
 // PLUMBING: bytes on disk → documents.content. Nothing here knows what a
 // contract is.
 //
@@ -46,7 +54,8 @@ function registerRoot(name, dir) {
 }
 
 /** Register (or re-root) a corpus at a directory. */
-export function corpusRegister(name, dir, files) {
+export async function corpusRegister(name, dir, files) {
+  await checked({ corpus: name, directory: dir });
   const root = registerRoot(name, dir);
   files ??= scanCorpus(root);
   return {
@@ -260,9 +269,9 @@ async function preprocessFiles(files, force) {
       status.set(f.srcSha, "failed");
       writeFileSync(
         out,
-        failText(
+        await checked(failText(
           `liteparse required for ${extname(f.rel)}; install liteparse (lit on PATH or $LITEPARSE_PATH), or supply ${f.rel.replace(PREPROCESS_EXT, ".txt")}`,
-        ),
+        )),
       );
       return void writeSafeDiagnostic(
         `preprocess: SKIP  ${f.rel} — liteparse required for .docx/.xlsx/.pptx\n`,
@@ -273,7 +282,7 @@ async function preprocessFiles(files, force) {
       if (prior === "ok") return keepCached("re-extraction failed where the cached run succeeded");
       failed++;
       status.set(f.srcSha, "failed");
-      writeFileSync(out, failText(`parse error on ${f.rel}`));
+      writeFileSync(out, await checked(failText(`parse error on ${f.rel}`)));
       return void writeSafeDiagnostic(`preprocess: FAIL  ${f.rel}\n`);
     }
     if (visibleChars(text) < MIN_EXTRACTED_CHARS) {
@@ -281,12 +290,12 @@ async function preprocessFiles(files, force) {
         return keepCached("re-extraction returned no text where the cached run succeeded");
       empty++;
       status.set(f.srcSha, "empty");
-      writeFileSync(out, emptyText("page may be blank or unreadable after OCR", text));
+      writeFileSync(out, await checked(emptyText("page may be blank or unreadable after OCR", text)));
       return void writeSafeDiagnostic(
         `preprocess: EMPTY ${f.rel} (liteparse/OCR returned no text)\n`,
       );
     }
-    writeFileSync(out, text);
+    writeFileSync(out, await checked(text));
     status.set(f.srcSha, "ok");
     done++;
     progress();
@@ -390,9 +399,11 @@ function loadManifest(dir) {
 // content moved under it. Any future path here that mutates content in place
 // would break that, and must call forgetDocs().
 export async function ingest(corpus, force = false, files) {
+  if (requiresProductionPhi()) await resolvePhiDetector();
   const dir = corpusRoot(corpus);
   files ??= scanCorpus(dir);
   const { status, ...pre } = await preprocessFiles(files, force);
+  await checked({ corpus, pre });
   const now = new Date().toISOString();
   db.prepare(
     `INSERT INTO audits (run_id, corpus, kind, sample_n, result) VALUES (NULL, ?, 'preprocess', ?, ?)`,
@@ -414,7 +425,7 @@ export async function ingest(corpus, force = false, files) {
   );
   let n = 0;
   const warnings = [];
-  tx(() => {
+  const prepared = [];
     for (const f of files) {
       if (f.kind === "source" && f.override) continue;
       let content;
@@ -434,16 +445,10 @@ export async function ingest(corpus, force = false, files) {
         manifest.get(f.rel) ??
         PREPROCESS_EXTS.map((e) => manifest.get(`${stem}.${e}`)).find(Boolean) ??
         {};
-      const doc = insDoc.get({
-        content,
-        sha256: contentSha,
-        family: f.rel.split(sep)[0] ?? "",
-      });
-      if (!doc) die(`ingest: upsert failed for ${f.rel}`);
-      insCorpus.run({
+      const document = { content, sha256: contentSha, family: f.rel.split(sep)[0] ?? "" };
+      const metadata = {
         corpus,
         uri: f.rel,
-        doc_id: doc.id,
         source_sha256: f.srcSha,
         parse_status: f.srcSha ? (status.get(f.srcSha) ?? null) : null,
         parsed_at: f.srcSha ? now : null,
@@ -451,8 +456,15 @@ export async function ingest(corpus, force = false, files) {
         category: m.category ?? null,
         dated: m.dated ?? null,
         source_url: m.url ?? m.source_url ?? null,
-      });
-      n++;
+      };
+      await checked({ document, metadata });
+      prepared.push({ document, metadata });
+    }
+  tx(() => {
+    for (const { document, metadata } of prepared) {
+      const doc = insDoc.get(document);
+      if (!doc) die('ingest: upsert failed');
+      insCorpus.run({ ...metadata, doc_id: doc.id }); n++;
     }
   });
   return { preprocess: pre, ingested: n, corpus, root: dir, warnings };
@@ -464,6 +476,7 @@ export async function ingest(corpus, force = false, files) {
  * Idempotent: re-registering updates the root; ingest skips unchanged files.
  */
 export async function corpusPrepare(name, dir, force = false) {
+  await checked({ corpus: name, directory: dir });
   // One scan (full read + sha256 of every source file) threaded through
   // register/sync/ingest — scanning in each step tripled the cost on
   // multi-GB corpora.

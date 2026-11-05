@@ -25,10 +25,51 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.13.0'
+          cache: npm
+          cache-dependency-path: plugins/medcius/runtimes/cn-phi-ner/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install locked CPU runtime and pinned validator dependencies
+        run: |
+          npm ci --prefix plugins/medcius/runtimes/cn-phi-ner --ignore-scripts --omit=dev --no-audit --no-fund
+          python -m pip install -r scripts/vendor/openai-plugin-validator/requirements.txt
+
+      - name: Cache pinned public NER assets
+        uses: actions/cache@v4
+        with:
+          path: output/models/bert-base-chinese-ner-int8
+          key: cn-phi-model-${{ hashFiles('plugins/medcius/runtimes/cn-phi-ner/model-manifest.json') }}
+
+      - name: Verify model bytes and actual CPU execution
+        run: |
+          export MEDCIUS_CN_NER_MODEL_DIR="$GITHUB_WORKSPACE/output/models/bert-base-chinese-ner-int8"
+          echo "MEDCIUS_CN_NER_MODEL_DIR=$MEDCIUS_CN_NER_MODEL_DIR" >> "$GITHUB_ENV"
+          node scripts/setup-cn-phi-model.mjs "$MEDCIUS_CN_NER_MODEL_DIR"
+          node scripts/verify-runtime.mjs
+          node scripts/validate-plugin.mjs
+
       - name: Master CI Quality Gates, Security, Shadow Study & Clinical Evals
         run: |
           set -euo pipefail
           node scripts/run-all-checks.mjs
+
+      - name: Preserve engineering and synthetic execution receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: medcius-quality-gates-${{ github.run_id }}
+          path: |
+            out/quality-gates-*.json
+            out/quality-gates-*/
+            plugins/medcius/evals/*/reports/
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Cache Claude Code CLI
         id: cli-cache

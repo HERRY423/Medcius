@@ -70,7 +70,12 @@ test('MCP roundtrip survives PHI egress including binding tokens and all actions
   const c=(await runOnce(cfg,'medcius_review_context',{session_id:s.session_id}))._meta.review_context;
   assert.equal(c.snapshot_hash,s.snapshot_hash);assert.equal(c.items.length,1);assert.match(c.items[0].item_hash,/^sha256-ap:[a-p]{64}$/);
   const saved=process.env.NODE_ENV;process.env.NODE_ENV='production';
-  try{await assert.rejects(runOnce(cfg,'medcius_review_workspace',{}),/SYNTHETIC_ONLY/);}finally{saved===undefined?delete process.env.NODE_ENV:process.env.NODE_ENV=saved;}
+  try{
+    assert.throws(()=>cfg.handlers.medcius_review_workspace({}),/SYNTHETIC_ONLY/);
+    // Production transport withholds handler diagnostics; the intended-use
+    // prohibition above remains separately checked and is not relaxed.
+    await assert.rejects(runOnce(cfg,'medcius_review_workspace',{}),{message:'TOOL_FAILED_OR_PHI_OUTPUT_BLOCKED'});
+  }finally{saved===undefined?delete process.env.NODE_ENV:process.env.NODE_ENV=saved;}
 });
 test('REST reading drafts keep report RBAC and silent/production restrictions',async()=>{
   let stage='engineering';const handler=createWorkstationHandler({governance:{getCurrentStage:()=>({id:stage})}});

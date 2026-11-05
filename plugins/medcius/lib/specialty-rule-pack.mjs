@@ -3,6 +3,16 @@ import { deepFreeze as freeze } from "../servers/shared/immutable.mjs";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { CHINA_CLINICAL_REFERENCE, CHINA_CALCULATION_PROVENANCE } from "./calculation-reference.mjs";
+
+// Public national references supplement, but never impersonate, an approved hospital pack.
+export function listChinaSpecialtyRulePacks() { return CHINA_CLINICAL_REFERENCE.packs.map(pack => pack.pack_id); }
+export function loadChinaSpecialtyRulePack(packId) {
+  const pack = CHINA_CLINICAL_REFERENCE.packs.find(pack => pack.pack_id === packId);
+  if (!pack) throw new Error("CHINA_RULE_PACK_NOT_FOUND");
+  return freeze({ ...pack, provenance: CHINA_CALCULATION_PROVENANCE,
+    source_reference: CHINA_CLINICAL_REFERENCE.sources[pack.source] });
+}
 
 const PACK_ID_RE = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
 export const DEFAULT_RULE_PACK_DIRECTORY = fileURLToPath(
@@ -43,6 +53,7 @@ export function validateSpecialtyRulePack(pack, { production = false, hospitalSc
   if (!rules || typeof rules !== "object") {
     errors.push("CLINICAL_RULES_REQUIRED");
   } else {
+    if (rules.china_reference_checks != null && typeof rules.china_reference_checks !== "boolean") errors.push("INVALID_CHINA_REFERENCE_CHECKS_FLAG");
     if (!rules.critical_values || typeof rules.critical_values !== "object" || Array.isArray(rules.critical_values)) errors.push("CRITICAL_VALUE_RULES_OBJECT_REQUIRED");
     if (!Array.isArray(rules.restricted_antibiotics)) errors.push("RESTRICTED_ANTIBIOTICS_ARRAY_REQUIRED");
     const wardThresholds = rules.ward_thresholds;

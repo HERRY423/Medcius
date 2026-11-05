@@ -21,10 +21,18 @@ const entries=sources.map(([id,path,scope,describe])=>{
   const bytes=readFileSync(absolute), data=JSON.parse(bytes);
   if(data.evaluation_id && data.evaluation_id!==id) throw new Error(`EVIDENCE_ID_MISMATCH:${id}`);
   if(data.execution_status && data.execution_status!=="COMPLETED") throw new Error(`EVIDENCE_RUN_INCOMPLETE:${id}`);
-  return {id,path,scope,status:"SYNTHETIC_ONLY",sha256:hash(bytes),input_sha256:data.input_sha256??null,metrics:describe(data),clinical_evidence_pass:false};
+  // Only the two explicitly enumerated synthetic reports above are exported.
+  // Publish identical bytes so checkout readers can resolve every index link.
+  let publishedPath=path;
+  if(path.startsWith('out/')) {
+    publishedPath=`docs/evidence/reports/${id}.json`;
+    mkdirSync(join(root,'docs/evidence/reports'),{recursive:true});
+    writeFileSync(join(root,publishedPath),bytes);
+  }
+  return {id,path:publishedPath,source_path:path,scope,status:"SYNTHETIC_ONLY",sha256:hash(bytes),input_sha256:data.input_sha256??null,metrics:describe(data),clinical_evidence_pass:false};
 });
 entries.push({id:"public-benchmark",path:"plugins/medcius/evals/public-benchmarks/README.md",scope:"未运行公开数据集评测；转换器不计为评测结果",status:"NOT_RUN",sha256:null,metrics:null});
 const dir=join(root,"docs/evidence"); mkdirSync(dir,{recursive:true});
 writeFileSync(join(dir,"current-evidence.json"),JSON.stringify({schema_version:"medcius.evidence-index.v1",clinical_evidence_pass:false,entries},null,2)+"\n");
-writeFileSync(join(dir,"CURRENT-EVIDENCE.md"),`# 当前评测证据索引\n\n由 scripts/build-evidence-index.mjs 从原始报告读取。各条目有独立身份、输入范围与文件哈希；不同分母不可相互替代。旧 out/ 报告仅在此索引引用时才是当前产物。所有结果均不支持临床获益或部署准入。\n\n| 评测身份 | 状态 / 范围 | 原始报告与指标 |\n|---|---|---|\n${entries.map(e=>`| ${e.id} | ${e.status}；${e.scope} | [报告](../../${e.path})：${e.metrics??"未测量"} |`).join("\n")}\n\n机器索引 current-evidence.json 保存报告 SHA-256。公开基准尚缺批准的数据与独立预测；生产规则包仍为 0 个院方审批产物。\n`);
+writeFileSync(join(dir,"CURRENT-EVIDENCE.md"),`# 当前评测证据索引\n\n由 scripts/build-evidence-index.mjs 从原始报告读取。各条目有独立身份、输入范围与文件哈希；不同分母不可相互替代。本地 out/ 中的两份具名合成摘要按原字节复制到 docs/evidence/reports/，使仓库内链接可直接读取；source_path 保留生成位置。所有结果均不支持临床获益或部署准入。\n\n| 评测身份 | 状态 / 范围 | 原始报告与指标 |\n|---|---|---|\n${entries.map(e=>`| ${e.id} | ${e.status}；${e.scope} | [报告](../../${e.path})：${e.metrics??"未测量"} |`).join("\n")}\n\n机器索引 current-evidence.json 保存报告 SHA-256。公开基准尚缺批准的数据与独立预测；生产规则包仍为 0 个院方审批产物。\n`);
 console.log("Evidence index written: distinct cohorts, exact report hashes, NOT_RUN retained.");

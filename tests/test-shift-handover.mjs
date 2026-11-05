@@ -84,7 +84,7 @@ const conflictId = event(plan.event_id, "plan_recorded", "10:05", { plan_id: "pl
 assert.throws(() => prepare([plan, conflictId]), /ID reused/);
 assert.throws(() => prepare([], { windowStart: null }), /window/);
 assert.throws(() => prepare([], { shiftType: "made-up" }), /shift type/);
-assert.throws(() => Engine.createSnapshot({ ...source, encounter: { id: "wrong" } }), /mismatch/);
+assert.throws(() => Engine.createSnapshot({ ...source, encounter: { id: "wrong" } }), /mismatch/i);
 const corrected = Engine.createSnapshot({ ...source, observations: [lab, { ...lab, version_id: "v2", status: "corrected", updated_at: "2026-10-06T09:40:00Z", value: 4.1, is_critical: false }] });
 assert.equal(prepare([], { snapshot: corrected }).sbar.assessment.critical_values.length, 0);
 assert.ok(prepare([], { snapshot: corrected }).record_changes.some(c => c.lifecycle.change_type === "revision"));

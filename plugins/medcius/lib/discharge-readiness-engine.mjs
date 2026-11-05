@@ -120,7 +120,8 @@ export class DischargeReadinessEngine {
 
     const financial = docs("financialAccessRecords").map(({ record }) => record.kind === "patient_cost_estimate" && record.status === "available"
       && Date.parse(record.valid_until) < Date.parse(snapshot.as_of) ? { ...record, status: "expired" } : record);
-    const affordability = buildPatientAffordabilityContext({ records: financial, dischargeMedicationCount: discharge.length });
+    const affordability = buildPatientAffordabilityContext({ records: financial, dischargeMedicationCount: discharge.length,
+      medications: discharge.map(entry => entry.record), context: snapshot.context, asOf: snapshot.as_of, region: snapshot.china_clinical?.region });
     const domain = (key, rows) => { const gaps = findings.filter(f => f.domain === key); return { status: !rows.length ? "unknown" : gaps.length ? "gaps_present" : "fields_present_in_supplied_records",
       status_label: statusLabels[!rows.length ? "unknown" : gaps.length ? "gaps_present" : "fields_present_in_supplied_records"], items: rows, findings: gaps }; };
     const result = { schema_version: "medcius.discharge-document-check.v2", patient: { id: snapshot.context.patient_id },
@@ -158,6 +159,11 @@ export class DischargeReadinessEngine {
     for (const item of d.domains.follow_up.patient_instructions) lines.push(`来源患者说明：${item.record.text ?? "未提供"} [${item.evidence.source_reference.resource_id}]`);
     lines.push("四、费用与可获得性资料", `来源状态：${d.patient_affordability.assessment_status}；不能推断无经济障碍。`);
     for (const fact of d.patient_affordability.verified_facts.filter(f => f.kind === "patient_cost_estimate" && f.status === "available")) lines.push(`• 来源估算 ${fact.amount} ${fact.currency}，有效至 ${fact.valid_until}；非账单或待遇裁定。`);
+    for (const med of d.patient_affordability.medication_coverage_context || []) {
+      const yesNo = value => value === true ? "是" : value === false ? "否" : "未核实";
+      lines.push(`• 带药 ${med.medication_id || "标识未提供"}：医保${({ A: "甲类", B: "乙类", not_listed: "未列入目录" })[med.insurance_category] || "类别未核实"}；地方双通道：${yesNo(med.dual_channel)}；VBP中选：${yesNo(med.vbp_selected)}。`,
+        `  限定支付范围：${med.payment_scope || "未取得有效目录记录"}。需授权人员核对患者支付资格，不作自动替药或待遇裁定。`);
+    }
     for (const finding of d.findings.filter(f => ["source", "access"].includes(f.domain))) lines.push(`• ${finding.message}`);
     lines.push(d.boundary);
     return lines.join("\n");

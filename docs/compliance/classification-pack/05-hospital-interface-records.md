@@ -1,6 +1,6 @@
 # 05 医院系统接入接口规范与报文样例（分类界定附件）
 
-> Product baseline: 0.8.0-pilot; document revision: 1; approval: DRAFT_UNAPPROVED
+> Product baseline: 0.10.0-pilot; document revision: 2; approval: DRAFT_UNAPPROVED
 
 
 > **归档编号**：MED-CLS-ATT-05 (2026-08)  

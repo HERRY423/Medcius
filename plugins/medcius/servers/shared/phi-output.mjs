@@ -2,8 +2,11 @@
 // this enforces the boundary, not a claim of complete de-identification.
 import { toModelSafe, containsRawStructuredPhi, sealIdentifier, sealIdentityRecord } from "../../lib/clinical-boundary.mjs";
 import { isIntegrityMetadata } from "./integrity-metadata.mjs";
+import { assertSyncPhiAllowed, requiresProductionPhi } from '../../lib/production-phi-policy.mjs';
+import { guardPhiValue } from '../../lib/phi-value-guard.mjs';
 
 export function guardToolOutput(value) {
+  assertSyncPhiAllowed();
   function visit(v) {
     if (typeof v === "string") {
       // FHIR handlers put serialized resources inside MCP text blocks.
@@ -45,11 +48,17 @@ export function guardToolOutput(value) {
   return result;
 }
 
+export async function guardToolOutputAsync(value, options = {}) {
+  return requiresProductionPhi(options.context) ? guardPhiValue(value, options) : guardToolOutput(value);
+}
+
 export function safeToolFailure() {
   return { content: [{ type: "text", text: '{"error":"TOOL_FAILED_OR_PHI_OUTPUT_BLOCKED"}' }], isError: true };
 }
 
 export function writeSafeDiagnostic(text) {
+  // Synchronous error paths cannot await inference. Never emit their payload.
+  if (requiresProductionPhi()) { process.stderr.write('DIAGNOSTIC_WITHHELD\n'); return; }
   try { process.stderr.write(guardToolOutput(text)); }
   catch { process.stderr.write("DIAGNOSTIC_REDACTED\n"); }
 }

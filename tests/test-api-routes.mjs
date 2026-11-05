@@ -1,6 +1,7 @@
 // Integration test for the Medcius HTTP / REST & CDS Hooks reference workflow API
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { startServer } from "../plugins/medcius/servers/api/src/server.mjs";
 import { generateToken, ROLES } from "../plugins/medcius/servers/api/src/auth-middleware.mjs";
 
@@ -30,7 +31,8 @@ try {
   assert.equal(healthRes.status, 200);
   const healthJson = await healthRes.json();
   assert.equal(healthJson.status, "ok");
-  assert.equal(healthJson.version, "0.8.0-pilot");
+  const manifest = JSON.parse(readFileSync(new URL('../plugins/medcius/plugin.json', import.meta.url), 'utf8'));
+  assert.equal(healthJson.version, manifest.version);
   assert.ok(healthJson.production_gate);
   console.log(`✓ /health responded 200 OK (version: ${healthJson.version})`);
 

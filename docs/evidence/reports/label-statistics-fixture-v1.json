@@ -1,0 +1,83 @@
+{
+  "schema_version": "medcius.eval-summary.v1",
+  "execution_status": "COMPLETED",
+  "evaluation_id": "label-statistics-fixture-v1",
+  "evaluation_kind": "supplied_label_statistics",
+  "independence_status": "NOT_ESTABLISHED",
+  "cohort_unit": "generated_label_row",
+  "input_sha256": "da448009e5d4feb266988f02e38314e6acbd6eeb15106b98a0c90ccc9476650a",
+  "data_source_verified": false,
+  "total_cases": 1188,
+  "overall": {
+    "n": 1188,
+    "scored_n": 1188,
+    "pending": 0,
+    "abstentions": 0,
+    "negative_abstentions": 0,
+    "tp": 648,
+    "fp": 0,
+    "fn": 0,
+    "tn": 540,
+    "sensitivity": {
+      "point": 1,
+      "low": 0.9941067828048303,
+      "high": 1,
+      "n": 648,
+      "computable": true,
+      "str": "100.0% [99.4%~100.0%]"
+    },
+    "specificity": {
+      "point": 1,
+      "low": 0.9929364647552688,
+      "high": 1,
+      "n": 540,
+      "computable": true,
+      "str": "100.0% [99.3%~100.0%]"
+    },
+    "ppv": {
+      "point": 1,
+      "low": 0.9941067828048303,
+      "high": 1,
+      "n": 648,
+      "computable": true,
+      "str": "100.0% [99.4%~100.0%]"
+    },
+    "npv": {
+      "point": 1,
+      "low": 0.9929364647552688,
+      "high": 1,
+      "n": 540,
+      "computable": true,
+      "str": "100.0% [99.3%~100.0%]"
+    },
+    "f1": "100.0%",
+    "mcnemar": {
+      "stat_b": 0,
+      "stat_c": 0,
+      "p": 1
+    }
+  },
+  "endpoints": {
+    "sensitivity_target_met": true,
+    "sensitivity_ci_lower_met": true,
+    "specificity_target_met": true,
+    "specificity_ci_lower_met": true,
+    "zero_critical_escape_met": true,
+    "inter_annotator_kappa_met": true,
+    "all_disagreements_adjudicated": true,
+    "no_abstentions": true,
+    "record_keys_complete": true,
+    "prediction_independence_established": false
+  },
+  "pass_classification": {
+    "engineering_pass": false,
+    "synthetic_validation_pass": false,
+    "clinical_evidence_pass": false,
+    "independent_review_pending": true,
+    "caller_upgrade_attempted": false,
+    "blocked_reason": "CLINICAL_EVIDENCE_BLOCKED",
+    "data_source_verified": false,
+    "endpoint_pass": false,
+    "human_acceptance": null
+  }
+}

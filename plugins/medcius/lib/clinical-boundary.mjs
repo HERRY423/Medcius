@@ -4,7 +4,7 @@
 // explicit gap. Request context is never copied onto a record to fill either.
 
 import { canonicalJson, hmacHex } from "../servers/shared/crypto.mjs";
-import { containsRawPhi, pseudonymizeText, scanText } from "../servers/phiguard/src/lib.mjs";
+import { containsRawPhi, pseudonymizeText, scanText, normalizedPhiFieldKey } from "../servers/phiguard/src/lib.mjs";
 import { isIntegrityMetadata } from "../servers/shared/integrity-metadata.mjs";
 
 export const STRUCTURED_IDENTIFIER_KEYS = new Set([
@@ -131,7 +131,7 @@ export function sealIdentifier(value, field, { salt = process.env.CLAUDE_MEDCIUS
 }
 
 function isIdentityKey(record, key) {
-  const normalized = key.replace(/[_\s-]/g, "").toLowerCase();
+  const normalized = normalizedPhiFieldKey(key);
   if (!normalizedIdentifierKeys.has(normalized)) return false;
   if (normalized !== "name") return true;
   // A bare name is an identity field. Only explicit clinical shapes retain it.
@@ -158,7 +158,7 @@ export function sealIdentityRecord(record, options = {}) {
 export function containsRawStructuredPhi(value) {
   if (typeof value === "string") {
     // MCP/audit text envelopes may contain serialized structured records.
-    let parsed; if (/^\s*[\[{]/.test(value)) { try { parsed = JSON.parse(value); } catch { /* ordinary text */ } }
+    let parsed; if (mayContainStructuredJson(value)) { try { parsed = JSON.parse(value); } catch { /* ordinary text */ } }
     if (parsed && typeof parsed === 'object') return containsRawStructuredPhi(parsed);
     return containsRawPhi(value);
   }
@@ -175,11 +175,18 @@ export function containsRawStructuredPhi(value) {
   return { hit: false };
 }
 
+// These marker prefixes cannot start valid JSON (unquoted identifiers are not
+// JSON values). Avoid throwing on every sealed identifier, but still send the
+// entire string through the ordinary PHI/dictionary/NER text checks below.
+export function mayContainStructuredJson(value) {
+  return /^\s*(?:\{|\[(?!ID:|PSN:|REDACTED:))/.test(value);
+}
+
 /** Model-safe copy. Unknown structured identities are removed; no unsalted identifier hashes. */
 export function toModelSafe(value, { salt = process.env.CLAUDE_MEDCIUS_PHI_SALT } = {}) {
   if (typeof value === "number" && containsRawPhi(String(value)).hit) return toModelSafe(String(value), { salt });
   if (typeof value === "string") {
-    let parsed; if (/^\s*[\[{]/.test(value)) { try { parsed = JSON.parse(value); } catch { /* ordinary text */ } }
+    let parsed; if (mayContainStructuredJson(value)) { try { parsed = JSON.parse(value); } catch { /* ordinary text */ } }
     if (parsed && typeof parsed === 'object') {
       const safe = toModelSafe(parsed, { salt });
       // Preserve already-safe serialized bytes, including whitespace/escapes.

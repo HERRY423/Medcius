@@ -1,0 +1,24 @@
+{
+  "schema_version": "medcius.local-ner-assets.v1",
+  "model_id": "Xenova/bert-base-chinese-ner",
+  "upstream_model": "ckiplab/bert-base-chinese-ner",
+  "revision": "be592940bc954f32492c831bdd1d086a04036597",
+  "model_kind": "general_chinese_ner_not_clinically_validated",
+  "upstream_license": "GPL-3.0",
+  "upstream_model_card": "https://huggingface.co/ckiplab/bert-base-chinese-ner",
+  "distribution": "weights_downloaded_separately_not_bundled",
+  "files": {
+    "model_quantized.onnx": {
+      "bytes": 102959365,
+      "sha256": "7f8e1a4dac9c65d880b41c8ebedda02f074536f5ab249bdae66cfe41ae709dee"
+    },
+    "config.json": {
+      "bytes": 3892,
+      "sha256": "fbcd62e5b97cf06ce28fb6eaf8f39d6e1e6c82ea9519e3df9c5adfb8571bff32"
+    },
+    "tokenizer.json": {
+      "bytes": 439125,
+      "sha256": "48cea5d44424912a6fd1ea647bf4fe50b55ab8b1e5879c3275f80e339e8fae26"
+    }
+  }
+}

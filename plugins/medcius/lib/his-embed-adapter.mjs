@@ -14,7 +14,7 @@ import {
 import { GOVERNANCE_STAGES, globalGovernance } from "./governance-mode.mjs";
 import { assertLiveHospitalDataAllowed } from "./site-activation-gate.mjs";
 import { isFormalHospitalPath, resolveAuthorizedHospitalSource, resolveAuthorizedCaptureContext } from "./authorized-hospital-source.mjs";
-import { saveFrozenResearchRecord } from "./silent-research-archive.mjs";
+import { saveFrozenResearchRecordAsync } from "./silent-research-archive.mjs";
 
 const REQUIRED_CONTEXT = ["tenant_id", "doctor_id", "patient_id", "encounter_id"];
 
@@ -58,6 +58,8 @@ export async function executeHisEmbedPreRound({
   siteActivation = null,
   auditAppend = null,
   authContext = null,
+  localPhiDetector,
+  signal,
 } = {}) {
   const resolvedHost = host === CLINICAL_SURFACES.HOSPITAL_SSO ? CLINICAL_SURFACES.HOSPITAL_SSO : CLINICAL_SURFACES.HIS_EMBED;
   assertClinicalHostAllowed(resolvedHost, { clinicalLanding: true });
@@ -92,17 +94,19 @@ export async function executeHisEmbedPreRound({
       host: resolvedHost,
       context: resolvedContext,
       bridge: activeBridge,
+      localPhiDetector, signal,
     });
   } else {
-    result = HospitalAgentAdapter.executePreRoundWorkflow({
+    result = await HospitalAgentAdapter.executePreRoundWorkflowAsync({
       host: resolvedHost,
       context: resolvedContext,
       dataFeeds,
+      localPhiDetector, signal,
     });
   }
 
   const researchSnapshot = getPreRoundResearchSnapshot(result);
-  const frozen = saveFrozenResearchRecord({
+  const frozen = await saveFrozenResearchRecordAsync({
     tenantId: resolvedContext.tenant_id,
     patientId: resolvedContext.patient_id,
     encounterId: resolvedContext.encounter_id,
@@ -113,7 +117,7 @@ export async function executeHisEmbedPreRound({
     unavailableSources: result.source_bridge?.unavailable_sources || [],
     degradedRecords: result.source_bridge?.degraded_records || [],
     ...researchSnapshot,
-  });
+  }, { localPhiDetector, signal });
 
   const itemCount = result?.summary?.total_items_count ?? 0;
   const display = clinicianDisplayFor(stage);

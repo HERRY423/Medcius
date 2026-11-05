@@ -1,0 +1,34 @@
+{
+  "schema_version": "medcius.china-clinical-reference.v1",
+  "version": "1.0.0",
+  "status": "public_reference_requires_hospital_review",
+  "scope": "Selected patient-level documentation checks; not the complete hospital accreditation or single-disease reporting specification",
+  "sources": {
+    "core_monitoring": {"version":"医疗质量安全核心制度落实情况监测指标（2025年版）", "url":"https://www.nhc.gov.cn/yzygj/c100067/202506/bd3ff04a2a2e463eaf680902c1a49894.shtml", "locator":"国家卫健委官方解读：三级查房、会诊、危急值、手术安全核查；本地节点ID并非官方指标编号"},
+    "bmi": {"version":"WS/T 428-2013", "url":"https://www.nhc.gov.cn/ewebeditor/uploadfile/2013/08/20130808135715967.pdf", "locator":"成人体重判定，BMI 分类；不适用于孕产妇及运动员"},
+    "c_mdrd": {"version":"Chinese MDRD 175 coefficient variant", "url":"https://pmc.ncbi.nlm.nih.gov/articles/PMC3720580/", "locator":"Chinese equation 1: 175 × Scr^-1.234 × age^-0.179 × 0.79 (female)"},
+    "accreditation": {"version":"国卫医政发〔2025〕4号", "url":"https://www.nhc.gov.cn/yzygj/c100068/202506/25229edc80d34694b7debf54ddef9f9f.shtml", "locator":"三级医院评审标准（2025年版），医疗服务能力与质量安全监测、单病种质量监测"},
+    "single_disease": {"version":"国卫办医函〔2020〕624号，附件2", "url":"https://www.nhc.gov.cn/wjw/c100175/202007/4833bc2402ab4705984d0de4831e630e/files/1643270847648_15839.pdf", "locator":"印刷页1–2、10–11、22，STEMI / HF / STK / CAP"},
+    "antimicrobial": {"version":"国卫办医发〔2015〕43号", "url":"https://www.nhc.gov.cn/ewebeditor/uploadfile/2015/09/20150928170007470.pdf", "locator":"印刷页5、18–19：围手术期、分级管理及会诊权限"},
+    "vte": {"version":"2024 NIT-2024-III", "url":"https://www.nhc.gov.cn/yzygj/c100068/202402/0359e2adda284e69b676e94c24426b0d/files/1733999813027_60751.pdf", "locator":"提高静脉血栓栓塞症规范预防率；风险及出血评估、动态评估"},
+    "insurance": {"version":"医保发〔2025〕33号，2026-01-01实施", "url":"https://www.nhsa.gov.cn/art/2025/12/7/art_104_18970.html", "locator":"甲乙分类、限定支付范围、地方双通道目录；不收录保密支付价格"},
+    "tcm_overlap": {"version":"NMPA 2024年第81号；香港药物办公室2024-07-03转发", "url":"https://www.drugoffice.gov.hk/gb/unigb/www.drugoffice.gov.hk/eps/news/showNews/%E5%9C%8B%E5%AE%B6%E8%97%A5%E7%9B%A3%E5%B1%80/pharmaceutical_trade/2024-07-03/tc/53737.html", "locator":"复方感冒灵制剂含对乙酰氨基酚、马来酸氯苯那敏；具体剂型及剂量须核对说明书"}
+  },
+  "c_mdrd": {"id":"c_mdrd_175", "coefficient":175, "creatinine_exponent":-1.234, "age_exponent":-0.179, "female_multiplier":0.79, "minimum_age":18, "unit":"mL/min/1.73m2"},
+  "bmi": {"id":"china_adult_bmi_wst428_2013", "minimum_age":18, "underweight_below":18.5, "overweight_at":24, "obesity_at":28, "unit":"kg/m2"},
+  "packs": [
+    {"pack_id":"cn-core-monitoring", "scope":"2025核心制度的患者级记录核查子集；本地节点不等于官方指标统计或医院评审结论", "source":"core_monitoring", "nodes":[["CN-CORE-ROUND","三级查房记录核对"],["CN-CORE-CONSULT","会诊申请、完成及原记录核对"],["CN-CORE-CRITICAL","危急值报告、接收及处置记录核对"],["CN-CORE-SURGICAL","手术安全核查记录核对"]]},
+    {"pack_id":"cn-stemi", "scope":"STEMI 首次住院；须确认入组，非所有心肌梗死", "source":"single_disease", "nodes":[["STEMI-1","首剂双联抗血小板用药记录及禁忌评估"],["STEMI-2","左心室射血分数记录"],["STEMI-3","心电确诊至再灌注时间记录"],["STEMI-6","出院用药核对记录及禁忌评估"]]},
+    {"pack_id":"cn-heart-failure", "scope":"符合2020版HF主诊断与伴随诊断范围的患者", "source":"single_disease", "nodes":[["HF-1","LVEF及BNP检测记录"],["HF-6","住院心衰用药核对及不适用原因"],["HF-7","出院心衰用药核对及不适用原因"],["HF-9","健康教育与出院告知记录"]]},
+    {"pack_id":"cn-pneumonia", "scope":"成人社区获得性肺炎首次住院；非院内肺炎或儿科", "source":"single_disease", "nodes":[["CAP-1","入院严重程度评估记录"],["CAP-2","首次氧合评估记录"],["CAP-3","治疗前病原学检查记录"],["CAP-4","起始抗菌药物与重症分层记录"]]},
+    {"pack_id":"cn-cerebral-infarction", "scope":"脑梗死首次住院；非出血性卒中", "source":"single_disease", "nodes":[["STK-1","入院病情评估记录"],["STK-2.1","静脉溶栓适用性评估记录"],["STK-6","吞咽困难评价记录"],["STK-7","深静脉血栓预防评估记录"]]},
+    {"pack_id":"cn-perioperative-antimicrobial", "scope":"静脉预防用药；区分治疗用药、长输注药及心脏手术例外", "source":"antimicrobial", "nodes":[]},
+    {"pack_id":"cn-vte", "scope":"中国住院场景中的Padua/Caprini及出血风险核查；不改写量表原有BMI阈值，不自动计分或开药", "source":"vte", "nodes":[]}
+  ],
+  "core_monitoring_domains": [
+    {"id":"antimicrobial_management", "source":"antimicrobial", "patient_checks":["local_grade","culture_collection","authorized_consultation","prescriber_authority"]},
+    {"id":"single_disease", "source":"single_disease", "patient_checks":["cohort_eligibility","source_bound_nodes"]},
+    {"id":"vte_prevention", "source":"vte", "patient_checks":["risk_assessment","bleeding_assessment","prevention_decision","reassessment"]}
+  ],
+  "institutional_rates": "NOT_COMPUTED: no complete eligible denominator, exclusions or hospital reporting specification"
+}
