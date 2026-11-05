@@ -54,10 +54,10 @@ jobs:
           node scripts/verify-runtime.mjs
           node scripts/validate-plugin.mjs
 
-      - name: Master CI Quality Gates, Security, Shadow Study & Clinical Evals
+      - name: Functional CI Quality Gates (reference performance runs separately)
         run: |
           set -euo pipefail
-          node scripts/run-all-checks.mjs
+          node scripts/run-all-checks.mjs --functional
 
       - name: Preserve engineering and synthetic execution receipts
         if: always()
@@ -68,6 +68,7 @@ jobs:
             out/quality-gates-*.json
             out/quality-gates-*/
             plugins/medcius/evals/*/reports/
+            !plugins/medcius/evals/performance-baseline/reports/
           if-no-files-found: warn
           retention-days: 14
 

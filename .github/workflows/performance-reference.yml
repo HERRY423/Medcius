@@ -1,0 +1,69 @@
+name: reference-performance
+
+# Deliberate release check on an approved reference machine, never a PR runner.
+# The operator pins MEDCIUS_RELEASE_ALLOWED_SHA before starting an ephemeral
+# runner. A later/unreviewed main commit cannot pass the first step.
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Full reviewed main commit SHA approved for this one-shot runner
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  performance:
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Windows, X64, medcius-release-perf]
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Require the locally approved exact commit before checkout
+        env:
+          REQUESTED_SHA: ${{ inputs.commit }}
+          DISPATCH_SHA: ${{ github.sha }}
+        run: |
+          if ($env:MEDCIUS_RELEASE_ALLOWED_SHA -notmatch '^[0-9a-f]{40}$' -or
+              $env:REQUESTED_SHA -cne $env:MEDCIUS_RELEASE_ALLOWED_SHA -or
+              $env:DISPATCH_SHA -cne $env:MEDCIUS_RELEASE_ALLOWED_SHA) {
+            throw 'REFERENCE_RUNNER_COMMIT_NOT_APPROVED'
+          }
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Prepare pinned CPU dependencies from the approved local cache
+        run: |
+          if ((node --version) -ne 'v24.13.0') { throw 'REFERENCE_NODE_VERSION_MISMATCH' }
+          if (-not (Test-Path -LiteralPath $env:MEDCIUS_CN_NER_MODEL_DIR)) { throw 'REFERENCE_MODEL_REQUIRED' }
+          npm ci --prefix plugins/medcius/runtimes/cn-phi-ner --offline --ignore-scripts --omit=dev --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/verify-runtime.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify numerical equivalence and the fixed budget controls
+        run: |
+          node --test --test-concurrency=1 tests/test-ner-batch-equivalence.mjs tests/test-performance-budget.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run the unchanged full-path 80 ms performance gate
+        run: |
+          $env:MEDCIUS_DATA = Join-Path $env:RUNNER_TEMP 'medcius-reference-audit'
+          $env:CLAUDE_MEDCIUS_DATA = $env:MEDCIUS_DATA
+          $env:MEDCIUS_PERF_BUDGET_FACTOR = '1'
+          node plugins/medcius/evals/performance-baseline/bench.mjs --out out/reference-performance.md
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node -e "const fs=require('node:fs'),os=require('node:os');fs.writeFileSync('out/reference-environment.json',JSON.stringify({commit:process.env.GITHUB_SHA,run_id:process.env.GITHUB_RUN_ID,node:process.version,platform:os.platform(),arch:os.arch(),cpu:os.cpus()[0].model,logical_cpus:os.cpus().length,scope:'synthetic reference hardware only',budget_ms:80},null,2))"
+      - name: Preserve reference hardware results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: medcius-reference-performance-${{ github.sha }}
+          path: |
+            out/reference-performance.md
+            out/reference-environment.json
+          if-no-files-found: warn
+          retention-days: 90

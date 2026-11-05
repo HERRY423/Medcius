@@ -13,10 +13,16 @@ import { tmpdir } from "node:os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, "..");
+const args = process.argv.slice(2);
+if (args.some(arg => arg !== '--functional') || args.length > 1) throw new Error('QUALITY_GATE_ARGUMENT_INVALID');
+// Hosted functional CI does not assert a hardware latency result. Releases
+// additionally require performance-reference.yml for the identical commit.
+const functionalOnly = args.includes('--functional');
 // A validation run must never open an operator's production audit store.
 const testDataRoot = mkdtempSync(join(tmpdir(), "medcius-quality-gates-"));
 
 const steps = [
+  { name: "Exact-Commit Release CI and Mandatory Reference Performance Controls", cmd: "node", args: ["--test", "tests/test-release-ci.mjs"], successPattern: /(?:ℹ|#) tests 6[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ },
   { name: "Release Archive Version and Runtime-Data Exclusion Controls", cmd: "python", args: ["tests/test-release-package.py"], successPattern: /Ran 4 tests[\s\S]*OK/ },
   { name: "Cross-Platform Offline npm Runtime Resolution", cmd: "node", args: ["--test", "tests/test-npm-runtime.mjs"], successPattern: /(?:ℹ|#) tests 4[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ },
   { name: "Fixed 80 ms Performance Budget Override Negative Controls", cmd: "node", args: ["--test", "tests/test-performance-budget.mjs"], successPattern: /(?:ℹ|#) tests [1-9]\d*[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ },
@@ -132,20 +138,29 @@ for (const step of steps) {
   step.kind = step.args[0].includes("/evals/") || ["scripts/corpus-freshness.mjs", "plugins/medcius/scripts/generate-coverage-report.mjs", "scripts/build-evidence-index.mjs"].includes(step.args[0]) ? "report" : "check";
   if (step.kind === "check") step.successPattern ??= specialSuccess[step.args[0]] ?? (nodeTestFiles.has(step.args[0]) ? /(?:ℹ|#) tests [1-9]\d*[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ : /ALL [^\r\n]+ PASSED/);
 }
-const receipt = { schema_version: "medcius.quality-gate-execution.v1", run_id: randomUUID(), started_at: new Date().toISOString(), steps: [] };
+const receipt = { schema_version: "medcius.quality-gate-execution.v1", run_id: randomUUID(), scope: functionalOnly ? 'FUNCTIONAL_ONLY' : 'FULL', started_at: new Date().toISOString(), steps: [] };
 const executionLogs = join(repoRoot, 'out', `quality-gates-${receipt.run_id}`);
 mkdirSync(executionLogs, { recursive: true });
 
 console.log("================================================================================");
-console.log(" Medcius Full CI Quality Gate & Synthetic Validation Pipeline");
+console.log(` Medcius ${functionalOnly ? 'Functional (reference performance pending)' : 'Full'} CI Quality Gate & Synthetic Validation Pipeline`);
 console.log("================================================================================\n");
 
 let passedCount = 0;
 let failedCount = 0;
 let engineeringFailures = 0;
 let syntheticFailures = 0;
+let deferredCount = 0;
 
 for (const step of steps) {
+  if (functionalOnly && step.args[0] === 'plugins/medcius/evals/performance-baseline/bench.mjs') {
+    receipt.steps.push({name:step.name,command:[step.cmd,...step.args],kind:step.kind,ok:null,
+      execution_status:'NOT_RUN',assertion_status:'PENDING_REFERENCE_RUNNER',evidence_status:'NOT_ESTABLISHED',
+      exit_code:null,error:null});
+    deferredCount++;
+    console.log(`▶ Deferred: ${step.name} [NOT_RUN; requires separate exact-commit reference performance CI]`);
+    continue;
+  }
   process.stdout.write(`▶ Running: ${step.name}... `);
   const start = Date.now();
   const res = spawnSync(step.cmd, step.args, {
@@ -175,19 +190,23 @@ for (const step of steps) {
   }
 }
 receipt.completed_at = new Date().toISOString();
-receipt.summary = { completed: passedCount, failed: failedCount, engineering_pass: engineeringFailures === 0,
-  synthetic_execution_pass: syntheticFailures === 0, synthetic_validation_pass: "NOT_ESTABLISHED", clinical_evidence_pass: "BLOCKED" };
+receipt.summary = { completed: passedCount, failed: failedCount, deferred: deferredCount,
+  full_suite_pass: failedCount ? false : deferredCount ? null : true,
+  reference_performance: functionalOnly ? 'NOT_RUN' : failedCount ? 'SEE_STEP_RESULT' : 'PASSED',
+  engineering_pass: engineeringFailures === 0,
+  synthetic_execution_pass: syntheticFailures ? false : deferredCount ? null : true,
+  synthetic_validation_pass: "NOT_ESTABLISHED", clinical_evidence_pass: "BLOCKED" };
 mkdirSync(join(repoRoot,"out"),{recursive:true});
 writeFileSync(join(repoRoot,"out",`quality-gates-${receipt.run_id}.json`),JSON.stringify(receipt,null,2));
 writeFileSync(join(repoRoot,"out","quality-gates-latest.json"),JSON.stringify(receipt,null,2));
 console.log(`Execution receipt: quality-gates-${receipt.run_id}.json`);
 
 console.log("\n================================================================================");
-console.log(` Quality Gate Summary: ${passedCount} Completed, ${failedCount} Failed / Total ${steps.length} Steps`);
+console.log(` Quality Gate Summary: ${passedCount} Completed, ${failedCount} Failed, ${deferredCount} Deferred / Total ${steps.length} Steps`);
 console.log("================================================================================");
 console.log(" Three-Tier Pass Status Classification:");
 console.log(` - 1. engineering_pass:          ${engineeringFailures === 0 ? "🟢 PASS (Listed engineering checks passed)" : "🔴 FAIL"}`);
-console.log(` - 2. synthetic_execution_pass:   ${syntheticFailures === 0 ? "🟢 PASS (Listed synthetic scripts completed)" : "🔴 FAIL"}`);
+console.log(` - 2. synthetic_execution_pass:   ${syntheticFailures ? "🔴 FAIL" : deferredCount ? "PENDING (reference performance NOT_RUN)" : "🟢 PASS (Listed synthetic scripts completed)"}`);
 console.log("      synthetic_validation_pass: NOT_ESTABLISHED (Protocol endpoints are reported separately; execution success is not endpoint success)");
 console.log(` - 3. clinical_evidence_pass:    🔒 BLOCKED (Requires approved real-world study and independent clinician labeling)`);
 console.log("================================================================================");

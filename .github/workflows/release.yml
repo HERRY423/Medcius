@@ -27,15 +27,9 @@ jobs:
           script: |
             const {owner, repo} = context.repo;
             const {data: commit} = await github.rest.repos.getCommit({owner, repo, ref: context.ref});
-            for (const workflow_id of ['plugin-validate.yml', 'secret-scan.yml']) {
-              const {data} = await github.rest.actions.listWorkflowRuns({
-                owner, repo, workflow_id, head_sha: commit.sha, event: 'push', per_page: 10
-              });
-              const latest = data.workflow_runs.sort((a,b) => b.run_number-a.run_number)[0];
-              if (!latest || latest.status !== 'completed' || latest.conclusion !== 'success') {
-                throw new Error(`RELEASE_CI_NOT_PASSED: ${workflow_id} at ${commit.sha}`);
-              }
-              core.info(`${workflow_id}: ${latest.html_url}`);
+            const {requireReleaseCi} = require(`${process.cwd()}/scripts/lib/release-ci.cjs`);
+            for (const accepted of await requireReleaseCi(github, {owner,repo}, commit.sha)) {
+              core.info(`${accepted.workflow}: ${accepted.url}`);
             }
 
       - name: Build and verify committed plugin archive
