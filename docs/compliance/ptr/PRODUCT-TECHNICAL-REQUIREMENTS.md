@@ -1,10 +1,10 @@
 # 医疗器械产品技术要求（送审稿）(PRODUCT-TECHNICAL-REQUIREMENTS)
 
-> Product baseline: 0.10.0-pilot; document revision: 2; approval: DRAFT_UNAPPROVED
+> Product baseline: 1.0.0; document revision: 3; approval: DRAFT_UNAPPROVED
 
 
 > **产品名称**：住院临床工作流数据辅助整理软件
-> **产品型号/规格**：Medcius Plugin Edition (v0.10.0-pilot)
+> **产品型号/规格**：Medcius Plugin Edition (v1.0.0)
 > **编制依据**：国家药品监督管理局《医疗器械产品技术要求编写指导原则》、GB/T 25000.51-2016《就绪可用软件产品(RUSP)的质量要求和测试细则》、GB/T 42062-2022。
 
 ---
@@ -12,7 +12,7 @@
 ## 1. 产品型号/规格及其划分说明
 
 - **产品名称**：住院临床工作流数据辅助整理软件
-- **软件发布版本**：`v0.10`；**软件完整版本**：`v0.10.0-pilot`
+- **软件发布版本**：`v1.0`；**软件完整版本**：`v1.0.0`
 - **运行环境要求**：
   - **服务器端**：Linux / Windows Server，Node.js 运行时环境（≥ v20.0），支持 mTLS 双向认证；
   - **客户端/宿主 Agent**：临床入口仅 HIS 内嵌 / 院内 SSO；Codex、Trae、CodeBuddy 仅用于插件工程和合成验证；

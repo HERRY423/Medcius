@@ -17,6 +17,8 @@ const repoRoot = join(__dirname, "..");
 const testDataRoot = mkdtempSync(join(tmpdir(), "medcius-quality-gates-"));
 
 const steps = [
+  { name: "Release Archive Version and Runtime-Data Exclusion Controls", cmd: "python", args: ["tests/test-release-package.py"], successPattern: /Ran 4 tests[\s\S]*OK/ },
+  { name: "Cross-Platform Offline npm Runtime Resolution", cmd: "node", args: ["--test", "tests/test-npm-runtime.mjs"], successPattern: /(?:ℹ|#) tests 4[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ },
   { name: "Fixed 80 ms Performance Budget Override Negative Controls", cmd: "node", args: ["--test", "tests/test-performance-budget.mjs"], successPattern: /(?:ℹ|#) tests [1-9]\d*[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ },
   { name: "Container Health Probe Transport and Failure Controls", cmd: "node", args: ["--test", "tests/test-healthcheck.mjs"], successPattern: /(?:ℹ|#) tests [1-9]\d*[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ },
   { name: "Pinned Official Plugin Validator and Negative Control", cmd: "node", args: ["--test", "tests/test-plugin-validator.mjs"], successPattern: /(?:ℹ|#) tests [1-9]\d*[\s\S]*(?:ℹ|#) fail 0(?:\r?\n|$)/ },

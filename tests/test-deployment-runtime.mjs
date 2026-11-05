@@ -200,7 +200,7 @@ assert.match(dryRun.stdout, /install plan/);
 assert.equal(existsSync(target), false, "dry-run must write nothing");
 
 const installRun = spawnSync("node", ["scripts/deploy.mjs", "install", "--target", target], { cwd: REPO, encoding: "utf8" });
-assert.equal(installRun.status, 0);
+assert.equal(installRun.status, 0, installRun.stdout + installRun.stderr);
 assert.ok(existsSync(join(target, "current", "scripts", "serve.mjs")), "release snapshot must contain runtime entry");
 assert.ok(existsSync(join(target, "medcius.env")), "env file must be created from template");
 const reinstall = spawnSync("node", ["scripts/deploy.mjs", "install", "--target", target], { cwd: REPO, encoding: "utf8" });

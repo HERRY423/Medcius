@@ -1,6 +1,6 @@
 {
   "schema_version": "medcius.controlled-documents.v1",
-  "product_version": "0.10.0-pilot",
+  "product_version": "1.0.0",
   "approval_status": "DRAFT_UNAPPROVED",
   "manifests": [
     "plugins/medcius/plugin.json",
@@ -10,93 +10,93 @@
   "documents": [
     {
       "path": "SECURITY.md",
-      "revision": 3,
-      "sha256_lf": "1d99f0cc5bc6b015223d2c4d99738891a13e9e20e13983cd41cdc264c26c06e1"
+      "revision": 4,
+      "sha256_lf": "150a541c86adc9f58bc7a4c742168aa7a686a0a1822a6c83dd02cbd26ef4edf3"
     },
     {
       "path": "PRIVACY.md",
-      "revision": 2,
-      "sha256_lf": "aed1b53eff8e0eb0091e6bde231affb7f32a1fbb44923b892ba61c3e1ebdd089"
+      "revision": 3,
+      "sha256_lf": "f910b494939daec142bca876296a3a7ca3bd87d9e81cf420f343350aa44bb60c"
     },
     {
       "path": "CLINICAL-SAFETY.md",
-      "revision": 2,
-      "sha256_lf": "a4742c76b7e4180db24e0f1a8c843edefab084244eeabaa9b0d631ca2917ab2b"
+      "revision": 3,
+      "sha256_lf": "ac9f5fe977c435de30ee0bb89681e759f34a3d2f6beb3e80c738fa28ae84eac9"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
-      "revision": 2,
-      "sha256_lf": "d9810d1eed74fc8ba62615a92da05fbf06aa810abc22ee7c76fa146273267819"
+      "revision": 3,
+      "sha256_lf": "898571cb55ca77eb8bcb62624ff49eef9012acebc62f17556173787919f76b2c"
     },
     {
       "path": "docs/compliance/CLINICAL-TIMELINE-COLLABORATION-MATRIX.md",
-      "revision": 2,
-      "sha256_lf": "7fd02ffff146788e9d775e34aed179d9ecbcfdb79ac7c99715a52fb7d15454f5"
+      "revision": 3,
+      "sha256_lf": "8c610b9013857267ab61d782d08ce839c8eec8c19b6ee785570ae75fac88f0a4"
     },
     {
       "path": "docs/compliance/ptr/PRODUCT-TECHNICAL-REQUIREMENTS.md",
-      "revision": 2,
-      "sha256_lf": "a1fc23d8b4c4165b47281298414f404070ae75aa10581dc9250c5d30e575887e"
+      "revision": 3,
+      "sha256_lf": "5cd3eff4210010bd7b733474463ee59d3e06db5326c26b6d700c86761f0dcd13"
     },
     {
       "path": "docs/compliance/qms/QMS-CONTROLLED-DOCUMENTS.md",
-      "revision": 2,
-      "sha256_lf": "9523bc4f4e6e1e28ecafdf0052237b2ea04baab9b4677385637d87e052dd7ef3"
+      "revision": 3,
+      "sha256_lf": "b8985dd223b707ed7f8a2c027b9d0fe6b2fe944761ca19bbfed738661c814fe4"
     },
     {
       "path": "docs/compliance/qms/QMS-INTERNAL-AUDIT-CHECKLIST.md",
-      "revision": 2,
-      "sha256_lf": "8378dc9a25c78a1d70327dd7d9308fabd9447be2d38e73985b921535faebcda0"
+      "revision": 3,
+      "sha256_lf": "47525b28db72ec5be9ec1d875a86bb869b92f82e606f6cb71461a3792f6e0295"
     },
     {
       "path": "docs/compliance/qms/CONTROLLED-BASELINE.md",
-      "revision": 2,
-      "sha256_lf": "dbd6b0c33e4ad4238804bc21d70f428288c8d28cf4df071ae7d4e53c0605745a"
+      "revision": 3,
+      "sha256_lf": "0d41ed43954a664506fd673ffbb14e22969ceee763b3213bf97301654e3b8d13"
     },
     {
       "path": "docs/compliance/classification-pack/01-intended-use.md",
-      "revision": 2,
-      "sha256_lf": "6da77ebf3568eb69eeae0e30b6e438ffd8d570081877157dc72529f6a7280ced"
+      "revision": 3,
+      "sha256_lf": "f133e77656098d19a685df646122c89bebbfa4ef3cc033028746d38888279587"
     },
     {
       "path": "docs/compliance/classification-pack/02-device-description.md",
-      "revision": 2,
-      "sha256_lf": "85eacf93e0d79db26c06d32190b320863974e3d0a15a995696dd06300346ea78"
+      "revision": 3,
+      "sha256_lf": "950fa8e7b0f19e47499c705df9c47e7c25de74ee1b03324b22a7b5f83e740d42"
     },
     {
       "path": "docs/compliance/classification-pack/03-prior-art.md",
-      "revision": 2,
-      "sha256_lf": "0862f41c8910b9dcbaf87faff66dfb3bdf8a9866d2b499534d64388ea1949744"
+      "revision": 3,
+      "sha256_lf": "abe32393ba7be2465363d0d5f6b591310fb131d04e9f3d437bfd0f9812d7bf85"
     },
     {
       "path": "docs/compliance/classification-pack/04-timeline.md",
-      "revision": 2,
-      "sha256_lf": "6903b9451a0a4603e68fc9f42ef4d8ea97f851c7e80b47680fe66e8d116dcb2e"
+      "revision": 3,
+      "sha256_lf": "5f20c1c832310456aa37b1f7b0dd344fb23cb3588761334417a6f97148d07779"
     },
     {
       "path": "docs/compliance/classification-pack/05-hospital-interface-records.md",
-      "revision": 2,
-      "sha256_lf": "bf7a2f5c3916fdfa90e10d91bbb24076f418fb20c0083ed88c58d3273e3581ba"
+      "revision": 3,
+      "sha256_lf": "6cd799edebd3c01305afb8b37c91e2d75641eb5d8b19894617ac36ec0571d87c"
     },
     {
       "path": "docs/compliance/classification-pack/README.md",
-      "revision": 2,
-      "sha256_lf": "2813af1b40611cc67c935916f299966eb8fbed3b3cd89bcdac461b24f9082cb2"
+      "revision": 3,
+      "sha256_lf": "4adfbd7d91969e690d025fce65eac70fd968620222c1d12f4c2053ff48115e6c"
     },
     {
       "path": "docs/compliance/dhf/SRS-CN-SKILLS.md",
-      "revision": 2,
-      "sha256_lf": "3b053cb57167be1a8ac1cb44b6a6393759ccc9a4f2bbd540cdce224274085061"
+      "revision": 3,
+      "sha256_lf": "38271f890c449b820e94422047818190d9996b17e34b85b6bad497ec8d4e8ebc"
     },
     {
       "path": "docs/compliance/dhf/RISK-MANAGEMENT.md",
-      "revision": 2,
-      "sha256_lf": "badcd0a0faebd54a7a6e39569ffb7cfc116a082b66a749ac903dc9064f12a3fa"
+      "revision": 3,
+      "sha256_lf": "50c4d13575cf0d7a5c0cd1d144b22ea96f48fa6e01cbbf4727de86512729b034"
     },
     {
       "path": "docs/ops/FIRST-HOSPITAL-SILENT-PILOT.md",
-      "revision": 2,
-      "sha256_lf": "2ca6677f7fc1d07668cadd2c07873a7224155f29fda71b97f12fc25e5efe9813"
+      "revision": 3,
+      "sha256_lf": "11b5aa52cc5701cfcad9d1ce046b816b6f68044b7e78e9f8c1d7cbf53f34f244"
     }
   ],
   "components": [

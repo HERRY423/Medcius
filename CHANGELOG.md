@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.0 — 2026-11-05
+
+- Publish the integrated plugin as V1.0.0 without changing clinical permissions.
+- Resolve npm CLI paths on Windows, Unix Node distributions and Debian;
+  keep offline installation and real-inference readiness checks mandatory.
+- Package only committed plugin files, verify tag/manifest versions and ZIP
+  contents, and publish SHA-256 plus source-commit metadata.
+- Require successful CI on the exact release commit before publication.
+
+See [V1.0.0 release notes](docs/releases/V1.0.0.md). Prior results below retain
+their original scope, including failed performance observations.
+
 ## 0.10.0-pilot — 2026-11-05
 
 This engineering integration brings the accumulated local changes into one

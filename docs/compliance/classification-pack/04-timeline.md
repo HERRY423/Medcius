@@ -1,6 +1,6 @@
 # 04 并行化时间线与费用区间（估算）
 
-> Product baseline: 0.10.0-pilot; document revision: 2; approval: DRAFT_UNAPPROVED
+> Product baseline: 1.0.0; document revision: 3; approval: DRAFT_UNAPPROVED
 
 
 > 法定时限已核实（2021-47/104/121号），日历时间含检验/体系核查/发补等待，费用待询价。

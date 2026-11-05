@@ -1,6 +1,6 @@
 # 分类界定申报包（草案 v0.1）— 16-20月硬周期的破局点
 
-> Product baseline: 0.10.0-pilot; document revision: 2; approval: DRAFT_UNAPPROVED
+> Product baseline: 1.0.0; document revision: 3; approval: DRAFT_UNAPPROVED
 
 
 > **用途**：向属地省局提交分类界定申请的**可直接组卷骨架**，对应 `SAMD-PATHWAY.md:74-86` Phase 0 与 `REG-ACTION-TRACKER.md:7-16` R04/R05。  

@@ -6,7 +6,7 @@
 # 发布钉死示例（以实际验收 digest 替换）：
 #   FROM node:22.14.0-bookworm-slim@sha256:<release-digest>
 FROM node:22.14.0-bookworm-slim
-LABEL org.medcius.image="medcius" org.medcius.version="0.10.0-pilot" org.medcius.sbom="pending-syft"
+LABEL org.medcius.image="medcius" org.medcius.version="1.0.0" org.medcius.sbom="pending-syft"
 
 RUN groupadd --system medcius && useradd --system --gid medcius medcius \
     && mkdir -p /opt/medcius/data /opt/medcius/backups \

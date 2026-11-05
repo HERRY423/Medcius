@@ -2,6 +2,7 @@
 
 当前医院试点仅限 [查房前患者演变静默流程](ops/FIRST-HOSPITAL-SILENT-PILOT.md)。临床范围以该文件与运行时策略为准。产品还包含其他技能，但工程实现不代表临床启用。
 
+- [V1.0.0 发布说明](releases/V1.0.0.md)：版本化插件包、校验清单和安装边界。
 - [0.10.0-pilot 整合与检查记录](engineering/INTEGRATION-2026-11-05.md)：本次源码更新、完整回归、失败保留和发布边界。
 - [本地 NER 安装与验证](../plugins/medcius/runtimes/cn-phi-ner/README.md)：锁定依赖、模型准备、离线执行及缺失时的失败行为。
 - [当前证据与测量身份](evidence/CURRENT-EVIDENCE.md)：区分工程、合成执行、合成指标与临床证据。

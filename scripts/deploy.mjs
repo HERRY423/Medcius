@@ -18,6 +18,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { dirname, join, resolve, relative, isAbsolute, parse } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { resolveNpmCli } from './lib/npm-runtime.mjs';
 
 const REPO = resolve(join(dirname(fileURLToPath(import.meta.url)), ".."));
 const NODE_MIN_MAJOR = 22;
@@ -113,8 +114,7 @@ function install({ target, dryRun, serviceStopped = false }) {
       } });
   }
   const runtime = join(releases, 'plugins/medcius/runtimes/cn-phi-ner');
-  const npmCli = join(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
-  if (!existsSync(npmCli)) throw new Error('DEPLOY_NPM_RUNTIME_REQUIRED');
+  const npmCli = resolveNpmCli();
   const deps = spawnSync(process.execPath, [npmCli, 'ci', '--prefix', runtime, '--offline', '--ignore-scripts', '--omit=dev', '--no-audit', '--no-fund'],
     { encoding: 'utf8', timeout: 120000 });
   if (deps.status !== 0) throw new Error('DEPLOY_OFFLINE_DEPENDENCIES_UNAVAILABLE');

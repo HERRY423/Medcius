@@ -1,6 +1,6 @@
 # 03 同品种/同类产品比对（支撑论据链 B-3）
 
-> Product baseline: 0.10.0-pilot; document revision: 2; approval: DRAFT_UNAPPROVED
+> Product baseline: 1.0.0; document revision: 3; approval: DRAFT_UNAPPROVED
 
 
 > 来源：`EVIDENCE-PRIOR-ART.md` 已核实部分 + 待补充的 NMPA 库导出（R02 关闭条件）

@@ -1,6 +1,6 @@
 # 软件需求规格（SRS · 中国技能线）
 
-> Product baseline: 0.10.0-pilot; document revision: 2; approval: DRAFT_UNAPPROVED
+> Product baseline: 1.0.0; document revision: 3; approval: DRAFT_UNAPPROVED
 
 > **状态**：骨架 v1——系统级需求（ARCH 层）已具文，技能行为层需求由 `TRACEABILITY.md`（63 条，自动生成）承载。
 > **依据**：《医疗器械软件注册审查指导原则（2022 年修订版）》（器审中心通告 2022 年第 9 号）「软件需求规范文档」要求；GB/T 42062-2022 风险管理接口见同目录 `RISK-MANAGEMENT.md`。

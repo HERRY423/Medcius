@@ -1,6 +1,6 @@
 # 风险管理文件（Risk Management File · 骨架 v1）
 
-> Product baseline: 0.10.0-pilot; document revision: 2; approval: DRAFT_UNAPPROVED
+> Product baseline: 1.0.0; document revision: 3; approval: DRAFT_UNAPPROVED
 
 > **状态**：危害情境已预填（源自仓库实证：8 项实测失败模式 + 53 条陷阱用例 + 架构红线），**风险可接受性准则与残余风险判定待管理层批准**。
 > **标准依据**：GB/T 42062-2022《风险管理对医疗器械的应用》（=ISO 14971:2019）；软件应用指南 YY/T 1406.1-2016；北京局二类独立软件审评规范要求的风险管理报告结构。

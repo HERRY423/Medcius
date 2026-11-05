@@ -1,6 +1,6 @@
 # 质量管理体系受控文件与程序文件（SOP）清单 (QMS-CONTROLLED-DOCUMENTS)
 
-> Product baseline: 0.10.0-pilot; document revision: 2; approval: DRAFT_UNAPPROVED
+> Product baseline: 1.0.0; document revision: 3; approval: DRAFT_UNAPPROVED
 
 
 > **版本**：v1.0 (2026-08)  
