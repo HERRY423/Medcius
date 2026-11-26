@@ -8,3 +8,7 @@
 1828a2ed5d1a09b482ba8418ec2343c89ba4153c:tests/test-security.mjs:generic-api-key:61
 # 2) tests/test-boundary-evidence-silent-path.mjs:443 — synthetic JWT secret in commit 499c590
 499c590e979dbf724c02f4204c040b911c24812c:tests/test-boundary-evidence-silent-path.mjs:generic-api-key:443
+# 3) V1.1.0 工程回执中的 bert-tokenizer.mjs SHA-256，已逐项与对应源码字节核对。
+ad9f9cad5a1d241d168e15ecf7cd7065a7926f7d:docs/engineering/verification/2026-11-15-phi-cpu/verification.json:generic-api-key:18
+ad9f9cad5a1d241d168e15ecf7cd7065a7926f7d:docs/engineering/verification/2026-11-15-phi-v2/verification.json:generic-api-key:17
+ad9f9cad5a1d241d168e15ecf7cd7065a7926f7d:docs/engineering/verification/2026-11-15-phi-v3/verification.json:generic-api-key:15
