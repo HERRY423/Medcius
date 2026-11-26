@@ -10,6 +10,9 @@ import { createPatientSourceSnapshot, createPatientSourceSnapshotAsync, assertPa
 import { EnhancedPhiGuard } from '../plugins/medcius/lib/enhanced-phi-guard.mjs';
 import { createPhiEntitySession } from '../plugins/medcius/lib/phi-entity-session.mjs';
 import { createLlmInferenceClient } from '../plugins/medcius/lib/llm-inference-config.mjs';
+import { createCnNoteExtractor } from '../plugins/medcius/lib/cn-note-extraction.mjs';
+import { CN_CANDIDATE_TASK, CN_CANDIDATE_PROMPT_VERSION } from '../plugins/medcius/lib/cn-note-candidate-contract.mjs';
+import { resolveTextAnchor } from '../plugins/medcius/lib/evidence-anchors.mjs';
 import { resolvePhiDetector } from '../plugins/medcius/lib/phi-runtime.mjs';
 import { ReadOnlyHospitalDataBridge } from '../plugins/medcius/lib/read-only-hospital-data-bridge.mjs';
 import { withPhiExitGuard } from '../plugins/medcius/lib/connectors/phi-exit-guard.mjs';
@@ -24,7 +27,7 @@ const source = () => ({context:{...context}, patient:{id:context.patient_id,name
     timestamp:'2026-11-02T11:00:00Z',text:'王建国因胸痛入院。赵宁自述胸闷，李芳陪同。'}], nis:[],lis:[],pacs:[],his_orders:[]});
 const fake = Object.freeze({execution:'local',device:'cpu',id:'claimed-onnx',version:'v1',
   async detect(text){return {complete:true,text_sha256:sha256Hex(text),spans:[]};}});
-const config = topology => ({topology,model_id:'synthetic',model_version:'v1',prompt_pack_version:'v1',endpoint:'https://example.invalid',
+const config = topology => ({topology,model_id:'synthetic',model_version:'v1',prompt_pack_version:'v1',endpoint:'http://127.0.0.1/v1',
   desensitization_attestation:true,phi_exit_guard_version:'v1',egress_human_sampling_attested:true,bare_name_limitation_acknowledged:true});
 
 test('production dual-track: no sync, callback, cached-model or topology bypass', async t => {
@@ -50,7 +53,7 @@ test('production dual-track: no sync, callback, cached-model or topology bypass'
     await t.test('empty detectors and cloned metadata cannot impersonate a loaded model', async () => {
       await assert.rejects(createPatientSourceSnapshotAsync(source(),{detector:fake}),/VERIFIED_NER_REQUIRED/);
       await assert.rejects(clientMadeInDemo.extract({text:'王建国入院',context,entitySession:session}),/VERIFIED_NER_REQUIRED/);
-      for(const topology of ['A','B']) assert.throws(()=>createLlmInferenceClient({config:config(topology),localPhiDetector:fake,transport:async()=>({text:''})}),/VERIFIED_NER_REQUIRED/);
+      for(const topology of ['A']) assert.throws(()=>createLlmInferenceClient({config:config(topology),localPhiDetector:fake,transport:async()=>({text:''})}),/VERIFIED_NER_REQUIRED/);
     });
     await t.test('missing model blocks before source read and model transport', async () => {
       delete process.env.MEDCIUS_CN_NER_MODEL_DIR;
@@ -58,7 +61,7 @@ test('production dual-track: no sync, callback, cached-model or topology bypass'
       await assert.rejects(HospitalAgentAdapter.executePreRoundFromBridge({context,bridge:{async readPatientSnapshot(){reads++;}}}),/MODEL_REQUIRED/);
       const bridge=new ReadOnlyHospitalDataBridge({connectors:[{id:'synthetic',kind:'patient',capabilities:['read'],async readPatient(){reads++;}}]});
       await assert.rejects(bridge.readPatientSnapshot({...context,profile:'demo'}),/MODEL_REQUIRED/);
-      for(const topology of ['A','B']) {
+      for(const topology of ['A']) {
         const c=createLlmInferenceClient({config:config(topology),transport:async()=>{sends++;return {text:'unsafe'};}});
         await assert.rejects(c.extract({text:'王建国入院',context,entitySession:session}),/MODEL_REQUIRED/);
       }
@@ -74,9 +77,13 @@ test('production dual-track: no sync, callback, cached-model or topology bypass'
       await assert.rejects(resolvePhiDetector(),/MODEL_REQUIRED/);
       process.env.MEDCIUS_CN_NER_MODEL_DIR=modelDirectory;
       await assert.rejects(resolvePhiDetector({detector:{...detector}}),/VERIFIED_NER_REQUIRED/);
+      await assert.rejects(detector.detect('无发热。'),/NOT_AVAILABLE/);
+      // Reconfiguration closes the obsolete native runtime; subsequent tests
+      // explicitly load the restored, verified configuration.
+      detector=await resolvePhiDetector();
     });
-    await t.test('A and B scan prompt and generated response; patient/session mismatch is blocked', async () => {
-      for(const topology of ['A','B']) {
+    await t.test('Local models scan prompt and generated response; patient/session mismatch is blocked', async () => {
+      for(const topology of ['A']) {
         let sent;
         const c=createLlmInferenceClient({config:config(topology),localPhiDetector:detector,
           transport:async req=>{sent=req.prompt;return {text:'林志明主诉咳嗽，居住于和平路28号3栋602室。赵宁。'};}});
@@ -86,6 +93,26 @@ test('production dual-track: no sync, callback, cached-model or topology bypass'
         assert.doesNotMatch(sent,/王建国|赵宁|李芳/);
         assert.doesNotMatch(result.text,/林志明|和平路|28号|602室|赵宁/);
         assert.equal(result.egress_receipt.assurance,'dual_track_executed');
+      }
+    });
+    await t.test('bounded Chinese candidates use actual local NER and keep exact guarded offsets without promotion', async () => {
+      for(const topology of ['A']) {
+        let sent;
+        const c=createLlmInferenceClient({config:{...config(topology),prompt_pack_version:CN_CANDIDATE_PROMPT_VERSION},localPhiDetector:detector,
+          transport:async req=>{
+            sent=req.prompt;const i=JSON.parse(req.messages[1].content),span='无胸痛',start=i.note_text.indexOf(span);
+            return {text:JSON.stringify({schema_version:CN_CANDIDATE_TASK,request_id:i.request_id,source_sha256:i.source_sha256,coverage:'complete',
+              candidates:[{kind:'finding',span,start,end:start+span.length,presence:'negative',temporality:'current',experiencer:'patient'}]})};
+          }});
+        const e=createCnNoteExtractor({client:c,localPhiDetector:detector});
+        const note={...source().notes[0],tenant_id:context.tenant_id,source_system:'synthetic',version_id:'1',text:'病程记录：王建国无胸痛。赵宁自述胸闷。'};
+        await assert.rejects(e.extract({note,context,mode:'hybrid'}),/SESSION/);
+        const result=await e.extract({note,context,entitySession:session,mode:'hybrid'});
+        assert.doesNotMatch(sent,/王建国|赵宁/);assert.doesNotMatch(JSON.stringify(result),/王建国|赵宁/);
+        assert.equal(result.model.status,'CANDIDATES_ONLY');assert.equal(result.review_candidates.length,1);
+        assert.equal(result.review_candidates[0].requires_clinician_review,true);
+        assert.equal(resolveTextAnchor(result.review_candidates[0].text_anchor,result.source).anchor_status,'verbatim_verified');
+        assert.equal(result.rules.discharge_diagnosis_primary.value,null);
       }
     });
     await t.test('clinical literals remain readable; dynamic patient names override the fixed lexicon', async () => {

@@ -1,0 +1,558 @@
+{
+  "schema_version": "medcius.phi-v2-verification.v1",
+  "created_at": "2026-11-15T13:22:58.771Z",
+  "scope": "LOCAL_DIRTY_WORKTREE_SYNTHETIC_ENGINEERING_ONLY",
+  "source_hashes_match_measurements": true,
+  "sources": {
+    "scripts/benchmark-phi-burst-v2.mjs": "4fed10860621fd6104a59994c9a685026d23695ab374793a540032958fc86501",
+    "plugins/medcius/lib/phi-oov-subjects.mjs": "b0465b6d0606f37ba4ef5c177da89b310dd399e2c3263d2cf6c0349919b0cb70",
+    "plugins/medcius/runtimes/cn-phi-ner/request-batcher.mjs": "9f29a12d6bd111e3c7f190d9a634797e80619f7afa3f43a96cef411451112741",
+    "plugins/medcius/runtimes/cn-phi-ner/detector.mjs": "459f4c242af30e194f7eeb3c265212f804407e65c06ee91fbb37510b69a050dc",
+    "plugins/medcius/runtimes/cn-phi-ner/process-pool.mjs": "37243c29e6635f61affb98ff587880b5478d2b52c78a58876f5a4b9abdd92d79",
+    "plugins/medcius/runtimes/cn-phi-ner/process-worker.mjs": "ec3a97d17bdb7f864bb8c7c741b69e6457e594b60af719fd7c6ef179711d4681",
+    "plugins/medcius/runtimes/cn-phi-ner/inference-queue.mjs": "2b32bee595dae4664413891db90b44a1cb4df41c25783ae2993fb8a9e5eb2c6b",
+    "plugins/medcius/runtimes/cn-phi-ner/batch-pool.mjs": "fcbfa5ea84499215b0611a8a9c172f13826d29fb29125bdec844a5be3d1fe87e",
+    "plugins/medcius/runtimes/cn-phi-ner/batch-worker.mjs": "5341301fc822f7a46edcd67a3cc8dd1888b3170dc17a4b367bf4dbffbc7c54aa",
+    "plugins/medcius/runtimes/cn-phi-ner/independent-batch-graph.mjs": "5a8e05512f401d68196671a1aaff4bd4e8da3fb5f0b91c91a95059966ec7485c",
+    "plugins/medcius/runtimes/cn-phi-ner/bert-tokenizer.mjs": "b2fe96a9db93344503cf6150771a5c7f083d7a6272ed206cf1bb61444cacb582",
+    "plugins/medcius/lib/phi-entity-session.mjs": "64418a4952262f57279d0447d6f707a1ee823edba2879e949c2aa6df36e4300c",
+    "plugins/medcius/lib/phi-inference-scope.mjs": "b92a2c88c06724d593bebbf067d2ac6e1fda8e977b3df5dfa9ee36007d762324",
+    "plugins/medcius/lib/phi-runtime.mjs": "910e40b7b462eea6885a59ab6df440846c82d5d2ae96157cb6b5f8d1427236d3",
+    "plugins/medcius/lib/local-phi-egress.mjs": "c12057d2199cb2c61f233015be608bb153360f15700672e03adce8f20d28dbd0",
+    "plugins/medcius/lib/phi-clinical-literals.mjs": "5ef9fc276d0a25e143c6890d0766f40a537f833d8aee6cf003aa5a72ce4729bc",
+    "plugins/medcius/lib/patient-source-phi.mjs": "3e37321fc4db8c37ead75bc1fcd4a583e62023793c1acc8c26311fc8200a2d1a",
+    "plugins/medcius/lib/patient-source-snapshot.mjs": "28f92db52f07e9939b45c11454890da4ed283f11ab66085f2da9ce7be62e87c4",
+    "plugins/medcius/servers/phiguard/src/lib.mjs": "242c52ea6ab46ae51ef2ec08e8c00b951f4579c30b45d9e5d84220bfcdcc7a1a",
+    "scripts/measure-phi-subjects-v2.mjs": "f6c3227f8480e0cd256b0a5df851ef4d2fdc9ebb8b01e23358bfd5eee30c7900",
+    "tests/fixtures/phi-clinical-development.mjs": "51b3cd7420b33df346e14d3a4c27cbafb5cc102cfbedaa9ca9c6b1c48f07cbb3",
+    "tests/fixtures/phi-subject-challenge.mjs": "4c6dc425f70eebaddc6cd55aac5c6a86db120091abac07e6c339ec88661f89df",
+    "scripts/run-all-checks.mjs": "9125d2a7d79237cab0623d85497e951d45b2a53658d238399174bcfbde19c239",
+    "scripts/build-evidence-index.mjs": "49894a29cff72e8ebd8999acb98f5c6445ea9e712c8b8b83e29599514c54e04a",
+    "tests/test-ner-microbatch.mjs": "b098aad0c23a34f0e3f4be936c249b4f4d3124164d112a2324b9a65c42ee4062",
+    "tests/test-ner-request-batcher.mjs": "9cd67312c72d50f40fb1d952b0c1061449fe899642aee9393c9a20ef4938058d",
+    "tests/test-phi-oov-subjects.mjs": "7e1470b5b1edc038864f71648c219a85f04a438a39044842de1eaeed2407080d",
+    "tests/test-ner-concurrency.mjs": "e712a1756b485141dcf6b53a664813a54df52b3f283476264f282657bc68bd99",
+    "tests/test-ner-process-pool.mjs": "f3a163faf7b117b0a3324dde3c321c35ba637ab7848bfcb35a425cf6e8f81791",
+    "tests/test-ner-batch-equivalence.mjs": "6bb496a653688230018dd76da760f2acb44a033ac1950d8c65657f7925c65bb9",
+    "tests/test-phi-clinical-coverage.mjs": "f5c44dc3d40dc44359cd3379308af151ca7ce9cdd86577bfac6054f82e43085c",
+    "plugins/medcius/runtimes/cn-phi-ner/README.md": "04047f4e6c9218c667b947b9cc95519c408a0c6b90015e352f67f35d6a752775"
+  },
+  "quality_gate_run_id": "e190b193-51a1-4e13-a67e-4d9547c99e66",
+  "quality_gate_summary": {
+    "completed": 97,
+    "failed": 0,
+    "deferred": 1,
+    "full_suite_pass": null,
+    "reference_performance": "NOT_RUN",
+    "engineering_pass": true,
+    "synthetic_execution_pass": null,
+    "synthetic_validation_pass": "NOT_ESTABLISHED",
+    "clinical_evidence_pass": "BLOCKED"
+  },
+  "checks_passed": 84,
+  "reports_executed": 13,
+  "focused": {
+    "tests": 50,
+    "passed": 50,
+    "failed": 0,
+    "scope": "before telemetry-only counter labels"
+  },
+  "telemetry_final": {
+    "tests": 8,
+    "passed": 8,
+    "failed": 0
+  },
+  "requested_host_plugin_validator": "UNAVAILABLE_FILE_ABSENT",
+  "repository_pinned_plugin_validator": "PASSED",
+  "original_fixtures_unchanged": true,
+  "burst_sources_unchanged": true,
+  "clinical_evidence": "NOT_ESTABLISHED",
+  "reference_80ms_gate": "NOT_RUN",
+  "logs": [
+    {
+      "name": "PHI OOV Subjects, Bounded Request Microbatches and Real CPU Failure Isolation",
+      "path": "quality-gate-logs/step-01.txt",
+      "sha256": "13ae4fe80b59d6202c722d8c61c9cf998fc5949974f6e407ba4e404992d9167e"
+    },
+    {
+      "name": "PHI Clinical Metadata, Ward Dictionary Lifetimes and Real CPU Process Pool Isolation",
+      "path": "quality-gate-logs/step-02.txt",
+      "sha256": "75ffec0b31cafa4f2f599c4e74fa9a213fa5d0b39e8207cd427ea8be07d2d8e6"
+    },
+    {
+      "name": "Chinese Free Notes: Scoped Assertions, Guarded Model Candidates and Source-bound Review",
+      "path": "quality-gate-logs/step-03.txt",
+      "sha256": "f5a5316af5aed8c776982e5ae4c4ce29f1d09c50007f761ba444c3ba5afa8402"
+    },
+    {
+      "name": "Chinese Noise Diagnostics: Literal and Alias Scores Kept Separate",
+      "path": "quality-gate-logs/step-04.txt",
+      "sha256": "b6f1a0238618c3e90fca78682e1e61f10c5e98a85c2d6c38cc7d1179a8617741"
+    },
+    {
+      "name": "Dirty HIS: Rich Source Offsets, De-identification, Local Z Profiles and Laboratory Unit Guards",
+      "path": "quality-gate-logs/step-05.txt",
+      "sha256": "bda6884c416a370af6a887d8a67cbe27327697ee8eb159b6cfaabaa98801a0a1"
+    },
+    {
+      "name": "Temporal Evolution: Administration Windows, Delta Rules and Silent Boundaries",
+      "path": "quality-gate-logs/step-06.txt",
+      "sha256": "0e437a4c2de860d780545f1014cf6edc3199d1bcd4bdcb693ff18aa30036052b"
+    },
+    {
+      "name": "Exact-Commit Release CI and Mandatory Reference Performance Controls",
+      "path": "quality-gate-logs/step-07.txt",
+      "sha256": "31ab8c5eb84292fdef3cfa61e5754d81d68b95c686db317a20ed19419266ff3a"
+    },
+    {
+      "name": "Release Archive Version and Runtime-Data Exclusion Controls",
+      "path": "quality-gate-logs/step-08.txt",
+      "sha256": "2c3821dd2a73f90fda45c347fc0f6089d394b5b1622421d11f0b841838d56e5b"
+    },
+    {
+      "name": "Cross-Platform Offline npm Runtime Resolution",
+      "path": "quality-gate-logs/step-09.txt",
+      "sha256": "653ff3e4396de2f57ec2c8d64a15e12492430d76216fe702dc9edec7a2545ace"
+    },
+    {
+      "name": "Fixed 80 ms Performance Budget Override Negative Controls",
+      "path": "quality-gate-logs/step-10.txt",
+      "sha256": "e71865642c031ada8571f3bf13f62a71a4cd86ffa53bb8fca078d7a1f332ee04"
+    },
+    {
+      "name": "Container Health Probe Transport and Failure Controls",
+      "path": "quality-gate-logs/step-11.txt",
+      "sha256": "56c37d1e7419dbea2843023e13ed585ad31af575dfde6ac2701a3cd859a690a5"
+    },
+    {
+      "name": "Pinned Official Plugin Validator and Negative Control",
+      "path": "quality-gate-logs/step-12.txt",
+      "sha256": "61f087bfbf543ff5400d7b7b94fa3bcaabad9b57e0a6d45c89b65162e1e0a7b2"
+    },
+    {
+      "name": "Request-Scoped CPU NER Reuse, Isolation and Fail-Closed Controls",
+      "path": "quality-gate-logs/step-13.txt",
+      "sha256": "aa94d8286da7b57bba6926fad6628a980b0a383cd952f5c33b141d89bcb3cb3e"
+    },
+    {
+      "name": "Independent CPU NER Batches: Exact Logits, Offsets and Native Failure",
+      "path": "quality-gate-logs/step-14.txt",
+      "sha256": "433b86fcdaa960b034ac2872e5b9f40e91a456c3666661a9b04d06982eb2795c"
+    },
+    {
+      "name": "Production MCP/Audit/Document Async PHI and Bounded CPU NER Concurrency",
+      "path": "quality-gate-logs/step-15.txt",
+      "sha256": "9a6033db5de10463e1cd7b5601251a323a121df9345b3264fdc6957ef76af94d"
+    },
+    {
+      "name": "China Specialty & Pharmacy: Formula, Quality Nodes, Local Product/Payment Binding and PHI",
+      "path": "quality-gate-logs/step-16.txt",
+      "sha256": "eb09bd4efa931a6b208e80b8081d52d73f5bdb3aa9cb3ddb60f5bc346275af37"
+    },
+    {
+      "name": "Production Async Dual-Track PHI: Actual CPU NER, HIS Boundaries and Model Egress",
+      "path": "quality-gate-logs/step-17.txt",
+      "sha256": "79a671c73adcd065e1629887c6e44b9de00c7207db9f725d6875b10d2771e2d4"
+    },
+    {
+      "name": "Chinese Scope Dependencies & Session Dual-Track PHI Synthetic Regressions",
+      "path": "quality-gate-logs/step-18.txt",
+      "sha256": "61e3ca780490a6d7ab459a0a313353065cc06996d264907ad498c911f92079a3"
+    },
+    {
+      "name": "Hospital Ingestion: CDA Identity, Site Mappings, Executed Orders and PACS Separation",
+      "path": "quality-gate-logs/step-19.txt",
+      "sha256": "82486afbb90972c9d03e5841cae05068b4c257233aa515ea7665aeb8fd348218"
+    },
+    {
+      "name": "Jiangsu Record Review: Versioned Crosswalk, Admission Evidence and Local Grouper Binding",
+      "path": "quality-gate-logs/step-20.txt",
+      "sha256": "ba68fc95fe92e0a3200bc83780ba7d5e7f73f2fa1d697bfeb201620e65d54cb8"
+    },
+    {
+      "name": "Chinese Localization: Scoped Assertions, Local PHI Execution, SQL Dialects, Signature Binding & Evidence Intake",
+      "path": "quality-gate-logs/step-21.txt",
+      "sha256": "4fb22881c2e3e55c1f4519d4595977251ed8d10946cd57bd18f60b6887d9768f"
+    },
+    {
+      "name": "Bound Text Anchors & Critical Visibility Negative Controls",
+      "path": "quality-gate-logs/step-22.txt",
+      "sha256": "c6ae172042e781eb18dac7077921961b69e08ac9418f94efe439c360ff8af6b5"
+    },
+    {
+      "name": "Rule Pack Review Handoff & Unverified Approval Rejection",
+      "path": "quality-gate-logs/step-23.txt",
+      "sha256": "cb8ff43f42b0c4a2d343759aed9e70eee5a42b9d6b56a766c29a574900811f6e"
+    },
+    {
+      "name": "Cross-Evaluation Negative Controls: Six Scorers",
+      "path": "quality-gate-logs/step-24.txt",
+      "sha256": "77cb8b30ffeca8e13426fc31b5fe6add931bd1c8bcb102df4460c51a29941c00"
+    },
+    {
+      "name": "Gate Semantics & Configuration Drift Negative Controls",
+      "path": "quality-gate-logs/step-25.txt",
+      "sha256": "1014979b110119e43974def12de5c14763e8761e7946f2e229c72f15e9385f8c"
+    },
+    {
+      "name": "Controlled Document Baselines & Content Integrity",
+      "path": "quality-gate-logs/step-26.txt",
+      "sha256": "69029064fd25923fccb76d3d5f741f9e3199adedf9cd8e8cd2ab3a0c603eaef8"
+    },
+    {
+      "name": "QMS Listed Machine Checks (human review pending)",
+      "path": "quality-gate-logs/step-27.txt",
+      "sha256": "801e449ea8bf7c896e51205d3c8e8a0ebc04e4376a631c9e7db8818d5456c07b"
+    },
+    {
+      "name": "MCP PHI Egress & Public-Key HTTP Authentication",
+      "path": "quality-gate-logs/step-28.txt",
+      "sha256": "b9e1bf2e4ba07274490242aeaed1979c5e46d388bfab2bdaba846982244a6d7f"
+    },
+    {
+      "name": "PHI Integrity Metadata: Deterministic Collisions, Signatures, Audit & Stdio",
+      "path": "quality-gate-logs/step-29.txt",
+      "sha256": "e5e5e50812e962c5e1e030dcd7fb9b66fb4712fef10c6af43c6fd58d675890c4"
+    },
+    {
+      "name": "Rule Policy, Numeric Boundaries & Exact Evidence Anchors",
+      "path": "quality-gate-logs/step-30.txt",
+      "sha256": "594b05e87e6ddd23bdd3c4072e52893771ad055b88063c4732db77f727d4dc58"
+    },
+    {
+      "name": "Actual Engine Challenge & Defective Output Controls",
+      "path": "quality-gate-logs/step-31.txt",
+      "sha256": "55fa304e3362f849ef8e039dcc47d221d7154e30adc02403f7788a36aa67faee"
+    },
+    {
+      "name": "Benefit Measurement Negative Control",
+      "path": "quality-gate-logs/step-32.txt",
+      "sha256": "c2ee1693489dfc61c3be687bb6c413828385a49c4ad7c435b34ad33b9b39c2d1"
+    },
+    {
+      "name": "Doctor UI: Context Invalidation, Late Responses, Source Disclosure & Error Recovery",
+      "path": "quality-gate-logs/step-33.txt",
+      "sha256": "c06e41d23b98eb3e0cb68650c8ee305a3450c23385759aa09d6f92554b54e174"
+    },
+    {
+      "name": "Clinician Reading Drafts: Scope, PHI, Ownership, Revision & Governance",
+      "path": "quality-gate-logs/step-34.txt",
+      "sha256": "55b3804b0c893bd870c25171795ceef2f0992f30a0e01cba539c609b58f56acb"
+    },
+    {
+      "name": "MCP Review App: Capability Negotiation, Context, Delivery & Stdio",
+      "path": "quality-gate-logs/step-35.txt",
+      "sha256": "009df2e53526073d80160cf07b3c504cee78ea193993bb3cc6df4a47913657fa"
+    },
+    {
+      "name": "Output Consistency: Shared State, Projection Coverage, Provenance & Mutation Guards",
+      "path": "quality-gate-logs/step-36.txt",
+      "sha256": "60cbaca94f51e18fcb18a54f20847fd61618b0b5ea5988c93a87feb534a4eadf"
+    },
+    {
+      "name": "Research Review: Frozen Evidence, Physician Signature & Benefit Observation Boundaries",
+      "path": "quality-gate-logs/step-37.txt",
+      "sha256": "faf0f58596c98bf75d296d85397d8fd9d59831a413a9ab9baf66a1dffba54d5e"
+    },
+    {
+      "name": "Record Changes: Publication, Revision, Cancellation, Arrival & Unknown",
+      "path": "quality-gate-logs/step-38.txt",
+      "sha256": "0fbebba8bed44d04fe14d2e995049dc1a492b232b9bd210b70cb7da5bb16b990"
+    },
+    {
+      "name": "Record Versions: Time Boundaries, Replacement Chains & Conflicts",
+      "path": "quality-gate-logs/step-39.txt",
+      "sha256": "b0f4ed17fce03f5134c75c8e9ef56f7108efa3b4d34055d7c73f91970e36dd64"
+    },
+    {
+      "name": "Lifecycle Normalizers: Current Imaging & Medication Source States",
+      "path": "quality-gate-logs/step-40.txt",
+      "sha256": "6b695097d3fdfc9859e57b5235ebbe36dc4db49361f3e99fdb09de537eeb4d00"
+    },
+    {
+      "name": "Lifecycle Draft: Unknown, Open Follow-up & Source Outage",
+      "path": "quality-gate-logs/step-41.txt",
+      "sha256": "a6aef87296e41f702538a4164023086c7452948020de9bed33c99639d0856b2c"
+    },
+    {
+      "name": "Follow-up: Version-Bound Review & Source Availability",
+      "path": "quality-gate-logs/step-42.txt",
+      "sha256": "571b9d8bde94f807ff5c3d571afcd467f0e4a422d060a21624bba66af8c355ec"
+    },
+    {
+      "name": "Connectors: Source Lifecycle & Empty / Unavailable Separation",
+      "path": "quality-gate-logs/step-43.txt",
+      "sha256": "9785d145a0d0b942374405241e12376af99bf722ec0fc933599cd94fdde271e2"
+    },
+    {
+      "name": "Lifecycle Surface: Summary, Silent Archive & Replay",
+      "path": "quality-gate-logs/step-44.txt",
+      "sha256": "9ef70c7aa36ef33f52f84956f74e91447198659978790a4cdba07afd250ab53e"
+    },
+    {
+      "name": "JSON Mapped Contracts & Explicit Syntax-Only Checks",
+      "path": "quality-gate-logs/step-45.txt",
+      "sha256": "2fb32c75198bceca22ca050e8d5332fe6aeb304a640042709924088dbaac2451"
+    },
+    {
+      "name": "P0: Boundary, Evidence Status & Frozen Silent Path",
+      "path": "quality-gate-logs/step-46.txt",
+      "sha256": "8f52b1d20b815f02bd5487c07ebf1bc0495c431510cb62b1b778be65e1d947ee"
+    },
+    {
+      "name": "P0: Exact Evidence Text, Missing Data & Measurement Semantics",
+      "path": "quality-gate-logs/step-47.txt",
+      "sha256": "a123927b5fb899ca5b963ec427bce7a2b64d849b60ea0a769a584ee74f84b14a"
+    },
+    {
+      "name": "P0: Field-Aware PHI, Signed Decisions & Audit Integrity",
+      "path": "quality-gate-logs/step-48.txt",
+      "sha256": "63a0533dd3c89ea592e098f644625dd52bd900a5b964595898b4a88e4d75cdde"
+    },
+    {
+      "name": "P0: Evaluation Integrity & Missing Observations",
+      "path": "quality-gate-logs/step-49.txt",
+      "sha256": "0ab30d0e6ceefe9d72ce440c6c835c7b03ff2a70119be32fbab6c3b23a344630"
+    },
+    {
+      "name": "P0: Authorized Source, Tenant Archive & Silent HTTP Boundary",
+      "path": "quality-gate-logs/step-50.txt",
+      "sha256": "e8c0d39456f7753610cbee71ce6fc1a8877d7eb1cb33ac98f3f1624792778467"
+    },
+    {
+      "name": "1. Skills Manifest Validation",
+      "path": "quality-gate-logs/step-51.txt",
+      "sha256": "446203e6f545efc2a0ff42fb5bd00ea8c0994375f426212fb59f176ac690f2e9"
+    },
+    {
+      "name": "2. Cross-host MCP, Rules & Skills Adapter Validation",
+      "path": "quality-gate-logs/step-52.txt",
+      "sha256": "17dd35028fb3879e0ec5ec577649acb0b851c6d47764ccbd56fa9df86cfef58c"
+    },
+    {
+      "name": "3. Regulatory Boundary & DHF Compliance Lint",
+      "path": "quality-gate-logs/step-53.txt",
+      "sha256": "ab0d1486f6ea91f3d376586eed51fadb78d33237ae5cb4dbe7aeadc6c384833e"
+    },
+    {
+      "name": "4. Build & Packaging Sample Isolation Gate",
+      "path": "quality-gate-logs/step-54.txt",
+      "sha256": "07c6615e795f37bbc32d1233f179f1d3509568785a68d5413c7ca4b7a9a14d16"
+    },
+    {
+      "name": "5. Production Hard Gate H01 Validation",
+      "path": "quality-gate-logs/step-55.txt",
+      "sha256": "b7e37a8a6aa08cf10dd25fa9b1189e9910804a741096f2f8e9158b810fe305bf"
+    },
+    {
+      "name": "6. Knowledge Base Coverage & SLA Report",
+      "path": "quality-gate-logs/step-56.txt",
+      "sha256": "ffc14fd650858a2a832542fa57d0f13ff0f78397c50d689fa1b61b40765ffbfe"
+    },
+    {
+      "name": "7. Synthetic Multi-Center Shadow-Study Protocol Engine",
+      "path": "quality-gate-logs/step-57.txt",
+      "sha256": "f03457dd5c40edc5e2248c5026e59b70db6ec6370bfdcb2eb9319a47932c97d4"
+    },
+    {
+      "name": "8. Security & PHI Guard Negative Leakage Tests",
+      "path": "quality-gate-logs/step-58.txt",
+      "sha256": "5b8a8169530ea57b1636977f3bb709a8f3bb11fea460a040d8919c2abd3499de"
+    },
+    {
+      "name": "9. AES-256-GCM Secure Storage Tests",
+      "path": "quality-gate-logs/step-59.txt",
+      "sha256": "c25a3ca09f773811ae4e9311b27630fe378cf8b298b1f15deff911aab695368c"
+    },
+    {
+      "name": "10. SMART/OIDC Auth, RBAC & Multi-Tenancy Tests",
+      "path": "quality-gate-logs/step-60.txt",
+      "sha256": "cb993cd0af65f08f3c96862610cbbfd9813e43e18d173ce816487ee7a722085b"
+    },
+    {
+      "name": "11. Stepwise Governance State Machine Tests",
+      "path": "quality-gate-logs/step-61.txt",
+      "sha256": "91fa615886c5191d5a8d44d69945b4c68328dfb726141ea7f3c7b50b592e3c80"
+    },
+    {
+      "name": "12. Reference Workflow: CDS Hooks 2.0 Integration & Fail-Closed Tests",
+      "path": "quality-gate-logs/step-62.txt",
+      "sha256": "82197b83755158007593428e7250f754dc32edfc37be8e3c2b3d25a7de48a1ac"
+    },
+    {
+      "name": "13. Reference Workflow: RESTful API Routes & Security Gate Tests",
+      "path": "quality-gate-logs/step-63.txt",
+      "sha256": "942f09aa42714b31ea6e646d28ceb3a1becd594b0156033574364c3f4d84e244"
+    },
+    {
+      "name": "14. Reference Workflow: Inpatient Pre-Round Patient Evolution Tests",
+      "path": "quality-gate-logs/step-64.txt",
+      "sha256": "e2c810ab0008b7ca3798c9a7f67f215dcfdb27f7f4a1f058c9b611ab6fba2065"
+    },
+    {
+      "name": "15. Synthetic Evaluation Benchmark & Traps",
+      "path": "quality-gate-logs/step-65.txt",
+      "sha256": "534db85a04bb28dc67562a6dd72290d967e773a7f57047ee02428d05f1028301"
+    },
+    {
+      "name": "16. Reference Workflow: Synthetic Consecutive-Case Silent Validation",
+      "path": "quality-gate-logs/step-66.txt",
+      "sha256": "28dc7e667e6b7d6cc9e49e8987708a91c45e867c8c39ab05e27975135e15a6dc"
+    },
+    {
+      "name": "17. Reference Workflow: Synthetic Physician Time-Motion Protocol",
+      "path": "quality-gate-logs/step-67.txt",
+      "sha256": "e3ea0928af705cdc248a708a47352313889e1835a1dc4915a2cb1c4379bf16cf"
+    },
+    {
+      "name": "18. Reference Workflow: Hospital Multi-Source Adapter Tests",
+      "path": "quality-gate-logs/step-68.txt",
+      "sha256": "36cc30e346839dac3d973bb1079e762bf99652d042cb7a0f0d45bf657d96b0d9"
+    },
+    {
+      "name": "19. Reference Workflow: Clinical Safety Contract Tests",
+      "path": "quality-gate-logs/step-69.txt",
+      "sha256": "89a74a4465de6e372004fef8496f706c39287266c266686685835cd99143772d"
+    },
+    {
+      "name": "20. Host-Agnostic Hospital Agent Adapter & Fail-Closed Tests",
+      "path": "quality-gate-logs/step-70.txt",
+      "sha256": "cb67adf6213a77fc6e22e417c19c5c88c4e3338355dfee40a0893107003db758"
+    },
+    {
+      "name": "21. Reference Workflow: Independent Physician Annotation & Kappa Tests",
+      "path": "quality-gate-logs/step-71.txt",
+      "sha256": "c3a37195d18ca43b40c5922db505f1c8d35b0c9ebafa6699e9c6e90ff9aaa5a8"
+    },
+    {
+      "name": "22. Reference Workflow: Independent Physician Annotation Report",
+      "path": "quality-gate-logs/step-72.txt",
+      "sha256": "239c81fb41e39c6b817e203c702a141eb5131b6437775d30d7a7d77dc595ad3b"
+    },
+    {
+      "name": "23. Workflow Skill Pack: Shift Handover Tests",
+      "path": "quality-gate-logs/step-73.txt",
+      "sha256": "e5eaf5ad6986e847398a541c08514e6fb951ed85cf29067ee9b8136eb9591630"
+    },
+    {
+      "name": "24. Workflow Skill Pack: Consultation Preparation Tests",
+      "path": "quality-gate-logs/step-74.txt",
+      "sha256": "d8247d9b52b8e3199fe3f03d07f49da637b92996ab4b845c557f1381b32a4705"
+    },
+    {
+      "name": "25. Workflow Skill Pack: Discharge Readiness & Completeness Tests",
+      "path": "quality-gate-logs/step-75.txt",
+      "sha256": "24df399e3a981ad6711dda1ee596102fca53fe110ef4099cb5ce3bdba3e4aa97"
+    },
+    {
+      "name": "26. Clinical Closure: High-Risk Follow-up, Rule Packs & Read-Only Bridge",
+      "path": "quality-gate-logs/step-76.txt",
+      "sha256": "0b3a79d8daa9a1edc93e1b88c673b126220ff226e704792d9bf185e1a76ea9e4"
+    },
+    {
+      "name": "27. Real-System Integration: FHIR R4 / CDA Connector PoC & PHI Exit Guard",
+      "path": "quality-gate-logs/step-77.txt",
+      "sha256": "bf401c08eabf1029ef2d02656ef436aa24008001680fa9e3fc1c5e8f1fdea811"
+    },
+    {
+      "name": "28. Public-Reference Validation: Deterministic Reviewer vs Public Pharmacology Facts",
+      "path": "quality-gate-logs/step-78.txt",
+      "sha256": "3e39e9b0b28cd77539ecac10a1ec06592a04f29456db9636cf3c25e66947e295"
+    },
+    {
+      "name": "30. API Security Hardening: Rate Limit / Brute-Force Lockout / Security Headers",
+      "path": "quality-gate-logs/step-80.txt",
+      "sha256": "fd364862884bb627af253b9922a5ca7ece0ea2e613b3faf4301e675ca9deac6b"
+    },
+    {
+      "name": "31. Clinical Landing: Dual-Timestamp, Causal Attribution & Progressive Views",
+      "path": "quality-gate-logs/step-81.txt",
+      "sha256": "17e8ee6d657bfdc0a756d6b4075d082678faa165860502553977286d897fe012"
+    },
+    {
+      "name": "32. Privacy, Air-Gap, SaMD Traceability & Ward Complexity Benchmark",
+      "path": "quality-gate-logs/step-82.txt",
+      "sha256": "a379a6439e9b1b1a70811506836002c07c449584ac34eb348f43c89a6c1cbbe7"
+    },
+    {
+      "name": "33. Repository Architecture Convergence & Quarantine Linter",
+      "path": "quality-gate-logs/step-83.txt",
+      "sha256": "b54799eafed03719cb4a45d08f13e8fd9c5c2dd19c95e634ea8736706a3c38c6"
+    },
+    {
+      "name": "34. Clinical Skill Catalog Governance & Integrity Gate",
+      "path": "quality-gate-logs/step-84.txt",
+      "sha256": "bbaa30c0795c1b7e86e1637f007074319a47f539a52165db17d48cee4995e44d"
+    },
+    {
+      "name": "35. Enterprise Deployment: IdP JWKS & mTLS Gateway Tests",
+      "path": "quality-gate-logs/step-85.txt",
+      "sha256": "bcbd765c6167b18fa207770506be9c2ab7345363d4bf11fc9720248ea8e16135"
+    },
+    {
+      "name": "36. Cross-Hospital Migration & Heterogeneous Dialect Tests",
+      "path": "quality-gate-logs/step-86.txt",
+      "sha256": "3bb65ba13053980b4dc2064e8d714496338a304b1531b0685d635695f269d57a"
+    },
+    {
+      "name": "37. Multi-Department Real-World Shadow Study & Time-Motion Analyzer",
+      "path": "quality-gate-logs/step-87.txt",
+      "sha256": "91d682bcceca786bd27a479c5657d5ffa062f0b72c021513fcf9b3c09f9c2526"
+    },
+    {
+      "name": "38. P0 Clinical Landing: HIS Embed, Frozen Skills, View Library, Silent Pilot, Stopwatch",
+      "path": "quality-gate-logs/step-88.txt",
+      "sha256": "0bd726bdd30505b0d6cd5de269ed94cc3fef376bcd12e028d3ce4af95bac8284"
+    },
+    {
+      "name": "39. Evaluation Findings Rectification: Claim Verifier, Lab NLP, LIS/NIS & PHI (F-01 to F-14)",
+      "path": "quality-gate-logs/step-89.txt",
+      "sha256": "947e34add06ca28f491d0c71eb144443eada54a39ceeb58e8149d08ba0152ee7"
+    },
+    {
+      "name": "40. Workflow Pack: NHSA Record Quality & Settlement-List Element Checks",
+      "path": "quality-gate-logs/step-90.txt",
+      "sha256": "fba20f534446f5b91010cdc17ea51e4c89917c5d4195052dc353799053b65ea4"
+    },
+    {
+      "name": "41. Real-Data Channels: P3 View-DB / P4 HL7 v2 Read-Only Connectors & PHI Exit Guard",
+      "path": "quality-gate-logs/step-91.txt",
+      "sha256": "47fc6f19c3b3df3a5614c37fc44ec00524559590d7cffcb7ac7315911b4ee02b"
+    },
+    {
+      "name": "42. Real-World Noise Robustness Benchmark & Desensitized-Data Ingest Gate",
+      "path": "quality-gate-logs/step-92.txt",
+      "sha256": "5dd4662bac3c2c1d013a9ef224d31ba4387a5c3f09e185857b62148c06f83f6b"
+    },
+    {
+      "name": "43. Noise Benchmark & Real-Data Ingest Channel Unit Tests",
+      "path": "quality-gate-logs/step-93.txt",
+      "sha256": "ef7a88c6c6732d0e13ce4c61e6eef2acbdbf5999f373a722fffd57ef815cd9e0"
+    },
+    {
+      "name": "44. Doctor Workstation: Directory Auth, Governance-Gated Reports & CA Signoff",
+      "path": "quality-gate-logs/step-94.txt",
+      "sha256": "c4639a702134d9c9c27c1ebaf5b4166e983363b18fa3c1798b0d9f3476bf9e05"
+    },
+    {
+      "name": "45. Corpus Supply Chain: Official-Source Registry & Freshness SLA (informational)",
+      "path": "quality-gate-logs/step-95.txt",
+      "sha256": "f25e56d2b5481053d40bc79d3a1cbb22b38812869eb9e2f4f0628927f49b77b1"
+    },
+    {
+      "name": "46. Corpus Supply Chain & Regulatory Readiness: Fetch Pipeline, Reconciliation, Classification Gate, Executable Audit",
+      "path": "quality-gate-logs/step-96.txt",
+      "sha256": "974ece0218913c5d5df4d17210348c4fc2d2e44115845f406ab62cc0fb04b118"
+    },
+    {
+      "name": "47. Runtime Product Form: Container Discipline, Deployer, Resident Probe, LLM Config Management",
+      "path": "quality-gate-logs/step-97.txt",
+      "sha256": "5760b5fbe5432025268984c0ab3b8ae8a18539dc036b4e2aa42c54666c1b1c34"
+    },
+    {
+      "name": "Distinct Evaluation Identities & Evidence Index",
+      "path": "quality-gate-logs/step-98.txt",
+      "sha256": "8bded156d5493a012cc83300afd5ffdc238672f7708a3941ef50b81a790e4aa7"
+    }
+  ]
+}

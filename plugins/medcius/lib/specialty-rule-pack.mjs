@@ -1,7 +1,7 @@
 import { canonicalJson, sha256Hex } from "../servers/shared/crypto.mjs";
 import { deepFreeze as freeze } from "../servers/shared/immutable.mjs";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { basename, join } from "node:path";
+import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
+import { basename, isAbsolute, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CHINA_CLINICAL_REFERENCE, CHINA_CALCULATION_PROVENANCE } from "./calculation-reference.mjs";
 
@@ -15,13 +15,22 @@ export function loadChinaSpecialtyRulePack(packId) {
 }
 
 const PACK_ID_RE = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
+const SHA256_RE = /^[a-f0-9]{64}$/;
 export const DEFAULT_RULE_PACK_DIRECTORY = fileURLToPath(
   new URL("../rule-packs/specialties/", import.meta.url),
 );
 
 function isIsoDate(value) {
-  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const time = Date.parse(`${value}T00:00:00Z`);
+  return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === value;
 }
+
+const nonemptyString = value => typeof value === "string" && value.trim().length > 0;
+// National western-medicine product code. Identity is established by membership
+// in the versioned, hospital-approved formulary, never by the shape alone.
+export const isNhsaWesternDrugCode = value => typeof value === "string" && /^X[A-Z][0-9]{2}[A-Z]{3}[0-9]{3}[A-Z][0-9]{3}[A-Z0-9]{4}[0-9]{5}$/.test(value);
+export const formularyNameKey = value => typeof value === "string" ? value.normalize("NFKC").trim().toLowerCase() : "";
 
 export function rulePackDigest(pack) {
   const { sha256, ...content } = pack;
@@ -35,7 +44,7 @@ export function validateSpecialtyRulePack(pack, { production = false, hospitalSc
   }
 
   if (pack.schema_version !== "medcius.specialty-rule-pack.v1") errors.push("UNSUPPORTED_SCHEMA_VERSION");
-  if (!PACK_ID_RE.test(pack.pack_id || "")) errors.push("INVALID_PACK_ID");
+  if (typeof pack.pack_id !== "string" || !PACK_ID_RE.test(pack.pack_id)) errors.push("INVALID_PACK_ID");
   for (const field of ["version", "specialty", "care_setting", "data_class", "status"]) {
     if (typeof pack[field] !== "string" || !pack[field].trim()) errors.push(`MISSING_${field.toUpperCase()}`);
   }
@@ -56,6 +65,17 @@ export function validateSpecialtyRulePack(pack, { production = false, hospitalSc
     if (rules.china_reference_checks != null && typeof rules.china_reference_checks !== "boolean") errors.push("INVALID_CHINA_REFERENCE_CHECKS_FLAG");
     if (!rules.critical_values || typeof rules.critical_values !== "object" || Array.isArray(rules.critical_values)) errors.push("CRITICAL_VALUE_RULES_OBJECT_REQUIRED");
     if (!Array.isArray(rules.restricted_antibiotics)) errors.push("RESTRICTED_ANTIBIOTICS_ARRAY_REQUIRED");
+    else if (production || pack.data_class === "official") {
+      const names = new Set();
+      for (const rule of rules.restricted_antibiotics) {
+        const key = rule?.nhsa_code;
+        if (!isNhsaWesternDrugCode(key) || names.has(key) || !nonemptyString(rule.name) || !nonemptyString(rule.class) || !nonemptyString(rule.level)
+          || !Number.isSafeInteger(rule.review_after_days) || rule.review_after_days <= 0) {
+          errors.push("INVALID_OR_DUPLICATE_ANTIBIOTIC_RULE");
+        }
+        names.add(key);
+      }
+    }
     const wardThresholds = rules.ward_thresholds;
     if (!wardThresholds || typeof wardThresholds !== "object" || Array.isArray(wardThresholds)) {
       errors.push("WARD_THRESHOLDS_OBJECT_REQUIRED");
@@ -76,7 +96,7 @@ export function validateSpecialtyRulePack(pack, { production = false, hospitalSc
     }
     if (rules.renal_stability && ["absolute_rise_umol_l", "relative_rise"].some((key) => !Number.isFinite(rules.renal_stability[key]) || rules.renal_stability[key] <= 0)) errors.push("INVALID_RENAL_STABILITY_POLICY");
     const ids = new Set();
-    for (const rule of rules.followup || []) {
+    for (const rule of Array.isArray(rules.followup) ? rules.followup : []) {
       if (!rule?.rule_id || ids.has(rule.rule_id)) errors.push("FOLLOWUP_RULE_ID_REQUIRED_AND_UNIQUE");
       ids.add(rule?.rule_id);
       if (Object.values(rule?.due_minutes || {}).some((v) => !Number.isFinite(v) || v < 0)) errors.push(`INVALID_FOLLOWUP_DEADLINE:${rule?.rule_id}`);
@@ -87,31 +107,69 @@ export function validateSpecialtyRulePack(pack, { production = false, hospitalSc
   if (production) {
     if (pack.data_class !== "official") errors.push("PRODUCTION_REQUIRES_OFFICIAL_DATA_CLASS");
     if (pack.status !== "approved") errors.push("PRODUCTION_REQUIRES_APPROVED_STATUS");
-    if (!authority?.approved_by) errors.push("PRODUCTION_REQUIRES_NAMED_APPROVER");
-    if (!authority?.hospital_scope) errors.push("PRODUCTION_REQUIRES_HOSPITAL_SCOPE");
+    if (!nonemptyString(authority?.approved_by)) errors.push("PRODUCTION_REQUIRES_NAMED_APPROVER");
+    if (!nonemptyString(authority?.hospital_scope)) errors.push("PRODUCTION_REQUIRES_HOSPITAL_SCOPE");
     if (hospitalScope != null && authority?.hospital_scope !== hospitalScope) errors.push("HOSPITAL_SCOPE_MISMATCH");
     const nowMs = new Date(now).getTime();
     if (!Number.isFinite(nowMs) || Date.parse(authority?.effective_from) > nowMs) errors.push("RULE_PACK_NOT_EFFECTIVE");
     if (!isIsoDate(authority?.review_due) || Date.parse(`${authority.review_due}T23:59:59.999Z`) < nowMs) errors.push("RULE_PACK_REVIEW_EXPIRED_OR_MISSING");
-    if (!authority?.approval_document || !/^[a-f0-9]{64}$/.test(authority?.approval_sha256 || "")) errors.push("APPROVAL_DOCUMENT_REFERENCE_REQUIRED");
+    if (!nonemptyString(authority?.approval_document) || typeof authority.approval_sha256 !== "string"
+      || !SHA256_RE.test(authority.approval_sha256)) errors.push("APPROVAL_DOCUMENT_REFERENCE_REQUIRED");
   }
 
   return { ok: errors.length === 0, errors };
 }
 
+export function assertApprovedSpecialtyRulePack(pack, { hospitalScope, now } = {}) {
+  const validation = validateSpecialtyRulePack(pack, { production: true, hospitalScope, now });
+  if (!validation.ok) throw new Error(`RULE_PACK_REJECTED: ${validation.errors.join(",")}`);
+  if (!nonemptyString(hospitalScope) || pack.pack_id === "cardiology-inpatient-sandbox") {
+    throw new Error("RULE_PACK_REJECTED: APPROVED_SITE_PACK_REQUIRED");
+  }
+  if (!validateSpecialtyRulePack(pack, { production: true, hospitalScope }).ok) {
+    throw new Error("RULE_PACK_REJECTED: CURRENT_APPROVAL_REQUIRED");
+  }
+  const pin = process.env.MEDCIUS_RULE_PACK_APPROVED_SHA256;
+  if (!SHA256_RE.test(pin ?? "") || pin !== rulePackDigest(pack) || (pack.sha256 != null && pack.sha256 !== pin)) {
+    throw new Error("RULE_PACK_REJECTED: DEPLOYMENT_DIGEST_MISMATCH");
+  }
+  const directory = process.env.MEDCIUS_RULE_PACK_DIR;
+  if (!directory || !isAbsolute(directory) || isAbsolute(pack.authority.approval_document)) {
+    throw new Error("RULE_PACK_REJECTED: APPROVAL_BUNDLE_REQUIRED");
+  }
+  let bytes;
+  try {
+    const root = realpathSync(directory);
+    const target = realpathSync(join(root, pack.authority.approval_document));
+    const pathInBundle = relative(root, target);
+    if (!pathInBundle || pathInBundle === ".." || pathInBundle.startsWith(".." + sep) || isAbsolute(pathInBundle)) throw new Error();
+    bytes = readFileSync(target);
+  } catch {
+    throw new Error("RULE_PACK_REJECTED: APPROVAL_DOCUMENT_UNAVAILABLE");
+  }
+  if (sha256Hex(bytes) !== pack.authority.approval_sha256) {
+    throw new Error("RULE_PACK_REJECTED: APPROVAL_DOCUMENT_DIGEST_MISMATCH");
+  }
+}
+
 export function loadSpecialtyRulePack(packId, {
   directory = process.env.MEDCIUS_RULE_PACK_DIR || DEFAULT_RULE_PACK_DIRECTORY,
   production = false,
+  hospitalScope,
+  now,
 } = {}) {
-  if (!PACK_ID_RE.test(packId || "")) throw new Error("RULE_PACK_INVALID_ID: path-like or malformed pack id rejected");
+  if (typeof packId !== "string" || !PACK_ID_RE.test(packId)) throw new Error("RULE_PACK_INVALID_ID: path-like or malformed pack id rejected");
   const filePath = join(directory, `${packId}.json`);
   if (basename(filePath) !== `${packId}.json` || !existsSync(filePath)) {
     throw new Error(`RULE_PACK_NOT_FOUND: ${packId}`);
   }
   const pack = JSON.parse(readFileSync(filePath, "utf8"));
   if (pack.pack_id !== packId) throw new Error(`RULE_PACK_ID_MISMATCH: expected ${packId}, received ${pack.pack_id}`);
-  const validation = validateSpecialtyRulePack(pack, { production });
-  if (!validation.ok) throw new Error(`RULE_PACK_REJECTED: ${validation.errors.join(",")}`);
+  if (production) assertApprovedSpecialtyRulePack(pack, { hospitalScope, now });
+  else {
+    const validation = validateSpecialtyRulePack(pack);
+    if (!validation.ok) throw new Error(`RULE_PACK_REJECTED: ${validation.errors.join(",")}`);
+  }
   return freeze({ ...pack, sha256: rulePackDigest(pack) });
 }
 

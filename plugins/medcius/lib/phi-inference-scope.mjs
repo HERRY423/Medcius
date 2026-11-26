@@ -6,7 +6,7 @@ import { isVerifiedLocalChineseNer } from './phi-runtime.mjs';
 import { detectManyLocalChineseNer } from '../runtimes/cn-phi-ner/detector.mjs';
 import { withPhiTextScanScope } from '../servers/phiguard/src/lib.mjs';
 const scopes = new AsyncLocalStorage();
-const binding = c => JSON.stringify(['tenant_id','patient_id','encounter_id','doctor_id','phi_session_id','phi_request_id'].map(k=>c?.[k]??null));
+const binding = c => JSON.stringify(['tenant_id','ward_id','patient_id','encounter_id','doctor_id','phi_session_id','phi_request_id'].map(k=>c?.[k]??null));
 const MAX_BYTES = 2_000_000;
 
 // Same request, same verified detector, same raw texts. Populate only by actual

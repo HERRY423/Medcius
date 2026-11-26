@@ -3,8 +3,10 @@
 import { canonicalJson, sha256Hex } from "../servers/shared/crypto.mjs";
 import { readFrozenResearchRecord, readFrozenResearchRecordAsync } from "./silent-research-archive.mjs";
 import { classifyRecordLifecycle } from "./record-lifecycle.mjs";
-import { HANDLERS as audit, encodeAuditDigest, decodeAuditDigest, encodeAuditResearchReference } from "../servers/audit/src/tools.mjs";
+import { HANDLERS as audit, encodeAuditDigest, decodeAuditDigest, encodeAuditResearchReference, decodeAuditResearchReference } from "../servers/audit/src/tools.mjs";
 import { buildSignoffEnvelope } from "../servers/shared/digital-signature.mjs";
+import { wardReviewRow } from "./ward-review-row.mjs";
+import { latestWardEvent, wardPublicationBeforeDeadline } from "../servers/audit/src/silent-capture.mjs";
 
 const digest = value => sha256Hex(canonicalJson(value));
 export const REVIEW_AXES = ["source", "time", "state", "missingness", "fact"];
@@ -37,6 +39,58 @@ export function getResearchReviewPacket(caseId, auth) {
 export async function getResearchReviewPacketAsync(caseId, auth) {
   requireResearchIdentity(auth);
   return packetForRecord(await auditedRecord(caseId, auth, await readFrozenResearchRecordAsync(caseId, { tenantId: auth.tenantId })), caseId);
+}
+
+export async function getTodayWardOverview(auth, { tenantId, wardId, timeZone, now = new Date() }) {
+  requireResearchIdentity(auth);
+  if (!tenantId || tenantId !== auth.tenantId || !wardId || !timeZone) throw new Error("WARD_WORKLIST_NOT_FOUND");
+  const id = await latestWardEvent({ tenantId, wardId, timeZone, now });
+  if (!id) throw new Error("WARD_WORKLIST_NOT_FOUND");
+  return getWardPreRoundWorklistAsync(id, auth, { overview: true });
+}
+
+export async function getWardPreRoundWorklistAsync(eventId, auth, { overview = false, position = null, patientContext = null } = {}) {
+  requireResearchIdentity(auth);
+  if (!Number.isSafeInteger(eventId) || eventId < 1) throw new Error("WARD_WORKLIST_EVENT_REQUIRED");
+  if (!(await audit.verify_chain({})).ok) throw new Error("RESEARCH_REVIEW_AUDIT_INVALID");
+  const event = await audit.get_event({ event_id: eventId });
+  if (event.tenant_id !== auth.tenantId || event.action !== "ward_preround_precompute" || event.actor !== "ward-preround") {
+    throw new Error("WARD_WORKLIST_NOT_FOUND");
+  }
+  const batch = event.payload, entries = [];
+  if (position !== null && (!Number.isSafeInteger(position) || position < 1)) throw new Error("WARD_WORKLIST_POSITION_INVALID");
+  let selected = position === null ? batch.entries : batch.entries.filter(entry => entry.position === position);
+  if (patientContext) {
+    if (![patientContext.patient_id, patientContext.encounter_id].every(v => typeof v === "string" && v.length && v.length <= 256)) {
+      throw new Error("WARD_WORKLIST_CONTEXT_REQUIRED");
+    }
+    const binding = digest([auth.tenantId, patientContext.patient_id, patientContext.encounter_id]);
+    selected = selected.filter(entry => entry.context_hash && decodeAuditDigest(entry.context_hash) === binding);
+  }
+  if ((position !== null || patientContext) && selected.length !== 1) throw new Error("WARD_WORKLIST_NOT_FOUND");
+  for (const entry of selected) {
+    const header = { position: entry.position, bed_number: null, status: entry.status,
+      ...(entry.bed_binding_sha256 ? { bed_binding_sha256: decodeAuditDigest(entry.bed_binding_sha256) } : {}),
+      source_coverage: entry.source_coverage ?? "unknown", worklist_counts: entry.worklist_counts ?? null };
+    if (overview) { entries.push(header); continue; }
+    if (entry.status !== "captured") { entries.push(header); continue; }
+    const caseId = decodeAuditResearchReference(entry.research_record_id);
+    const record = await readFrozenResearchRecordAsync(caseId, { tenantId: auth.tenantId });
+    if (!record || record.as_of !== batch.as_of || record.source_mode !== "authorized_bridge"
+        || record.record_sha256 !== decodeAuditDigest(entry.record_sha256)
+        || record.output_sha256 !== decodeAuditDigest(entry.output_sha256)) throw new Error("WARD_WORKLIST_RECORD_BINDING_FAILED");
+    entries.push({ ...header, ...(patientContext ? { context_match: true } : {}), research_record_id: caseId, ...wardReviewRow(record.annotation_output, record.replay_input, record.engine_input) });
+  }
+  await audit.record_event({ actor: `research:${auth.user}`, action: "ward_preround_worklist_read", tenant_id: auth.tenantId,
+    subject_ref: event.subject_ref, payload: { batch_event_id: eventId, row_count: entries.length } });
+  // The audit store records UTC seconds. The end of that second bounds the
+  // index insertion time without treating a same-second capture as late.
+  const recordedSecond = event.ts.replace(" ", "T");
+  return { schema_version: "medcius.ward-preround-worklist.v1", audit_event_id: eventId, ward_date: batch.ward_date,
+    time_zone: batch.time_zone, as_of: batch.as_of, status: batch.status, before_deadline: batch.before_deadline,
+    audit_recorded_at: recordedSecond + "Z",
+    audit_recorded_before_deadline: wardPublicationBeforeDeadline(batch, recordedSecond + ".999Z"),
+    counts: batch.counts, entries, research_only: true };
 }
 
 function packetForRecord(record, caseId) {

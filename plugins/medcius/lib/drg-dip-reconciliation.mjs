@@ -14,16 +14,20 @@
  */
 
 import { canonicalJson, sha256Hex } from "../servers/shared/crypto.mjs";
+export { inspectRegionalRuleRegistry, validateRegionalRuleRegistry, validateSyntheticExclusionPack,
+  evaluateSyntheticExclusion } from './reconciliation-rule-packs.mjs';
+export { buildSyntheticLifecycleStage, appendSyntheticDecisionTrigger,
+  appendSyntheticPhysicianResponse } from './reconciliation-lifecycle.mjs';
 
 export const RECONCILIATION_SCHEMA = "medcius.drg-dip-reconciliation.v1";
 
 /** finding code → 支付对账风险类别（确定性映射，供病案/医保办复核排序）。 */
 const PAYMENT_RISK_BY_FINDING = {
-  PRIMARY_DISCHARGE_DIAGNOSIS_MISSING: { risk: "grouping_blocked", note: "主要诊断缺失将直接导致分组器无法入组" },
+  PRIMARY_DISCHARGE_DIAGNOSIS_MISSING: { risk: "grouping_blocked", note: "主要诊断字段缺失；实际分组状态须由医院当期分组器确认" },
   UNCERTAIN_PRIMARY_DIAGNOSIS: { risk: "grouping_instability", note: "疑似/待查主诊断须结合出院情境及适用编码规则复核，不能仅凭疑似字样判为禁止编码" },
   STAY_DAYS_MISMATCH: { risk: "days_billing_mismatch", note: "住院天数与日期代数不一致，需核对日期口径；支付影响须由当期规则确认" },
   FEE_TOTAL_UNBALANCED: { risk: "fee_billing_mismatch", note: "费用总额与分类代数和不平，需复核收费栏；是否退回由经办系统确认" },
-  DISCHARGE_METHOD_ILLEGAL: { risk: "settlement_field_invalid", note: "离院方式取值非法，清单机检将拒绝" },
+  DISCHARGE_METHOD_ILLEGAL: { risk: "settlement_field_invalid", note: "离院方式超出本核对规则的取值，医院机检结果须单独确认" },
   DEATH_METHOD_WITHOUT_DEATH_RECORD: { risk: "documentation_review", note: "死亡离院缺死亡记录，DRG 伴随结局变量不可信" },
   OBSTETRIC_DIAGNOSIS_SEX_CONFLICT: { risk: "coding_review", note: "人群-章节冲突须病案复核后才能入组" },
   NEONATAL_DIAGNOSIS_AGE_CONFLICT: { risk: "coding_review", note: "人群-章节冲突须病案复核后才能入组" },
@@ -90,7 +94,7 @@ export function buildDrgDipReconciliation({ recordQualityReport, hospitalGroupin
       code_system: hospitalGrouping.code_system ?? null,
       version: hospitalGrouping.version ?? null,
       weight_or_score: hospitalGrouping.weight_or_score ?? null,
-      source: hospitalGrouping.source ?? "医院当期分组器",
+      source: hospitalGrouping.source ?? null,
       note: "旧版外部结果回显，未验证请求/统筹区/规则版本绑定；本地预审使用 local-grouper-precheck。Medcius 不复算、不预测。",
     },
     data_quality_risks: dataQualityRisks,
@@ -104,7 +108,7 @@ export function buildDrgDipReconciliation({ recordQualityReport, hospitalGroupin
       is_drg_dip_grouper: false,
       predicts_payment: false,
       adjudicates_violation: false,
-      note: "本报告是要素质量与医院分组结果的确定性对账视图；分组与费率以医院当期分组器、费率表与经办规则为准。",
+      note: "本报告是要素质量与未经绑定验证的外部分组结果回显；旧状态 grouping_blocked 仅表示字段缺口，并不判定实际分组、支付或合规。",
     },
     digest: null,
   };

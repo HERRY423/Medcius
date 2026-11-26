@@ -9,6 +9,7 @@ import { resolveRecordVersions, lifecycleTime } from "./record-lifecycle.mjs";
 import { createPhiEntitySession, assertPhiEntitySession, guardSessionValue } from './phi-entity-session.mjs';
 import { guardPatientSourceInput, isProductionGuardedSource } from './patient-source-phi.mjs';
 import { assertSyncPhiAllowed, requiresProductionPhi } from './production-phi-policy.mjs';
+import { prepareRichTextTree, finalizeRichTextTree } from './rich-note-normalization.mjs';
 
 const hash = (value) => sha256Hex(canonicalJson(value));
 const madeHere = new WeakSet();
@@ -40,8 +41,13 @@ function buildSnapshot({ context = {}, patient = {}, encounter = {}, asOf,
         encounter_id: row.source_encounter_id || referenceTail(row.encounter?.reference), tenant_id: row.source_tenant_id }], key);
       const { name, ...rest } = structuredClone(row);
       const nameKey = ({ medications: "drug_name", observations: "test_name", diagnosticReports: "study_name" })[key] || "title";
-      return safe({ ...rest, ...(name ? { [nameKey]: rest[nameKey] || name } : {}) });
+      const prepared = { ...rest, ...(name ? { [nameKey]: rest[nameKey] || name } : {}) };
+      return finalizeRichTextTree(prepared, safe(prepared));
     });
+    if (key === 'notes' && normalized.some(row => row.rich_text_normalization?.status === 'quarantined')) {
+      snapshot.source_availability = snapshot.source_availability.map(source =>
+        ['notes', 'note'].includes(source.kind ?? source.source_type) ? { ...source, status: 'unknown' } : source);
+    }
     const resolved = resolveRecordVersions(normalized, { sourceType: kinds[key], now: asOf });
     snapshot.records[key] = resolved.entries.map((entry) => {
       const { record, lifecycle, selection_status } = entry;
@@ -51,7 +57,8 @@ function buildSnapshot({ context = {}, patient = {}, encounter = {}, asOf,
       const invalidTime = [lifecycle.event_time, lifecycle.change_time, lifecycle.source_updated_at, lifecycle.recorded_at, record.ordered_at]
         .some(value => value != null && lifecycleTime(value) == null);
       const future = time > lifecycleTime(asOf);
-      const eligible = entry.is_current && recordId != null && timeKnown && !invalidTime && !future;
+      const richQuarantined = key === 'notes' && record.rich_text_normalization?.status === 'quarantined';
+      const eligible = entry.is_current && recordId != null && timeKnown && !invalidTime && !future && !richQuarantined;
       const evidence = { source_type: kinds[key], source_id: recordId, source_system: lifecycle.source_system,
         version_id: lifecycle.version_id, content_sha256: hash(record), hash_basis: "guarded_source_record", event_time: lifecycle.event_time,
         source_updated_at: lifecycle.source_updated_at, recorded_at: lifecycle.recorded_at,
@@ -61,7 +68,7 @@ function buildSnapshot({ context = {}, patient = {}, encounter = {}, asOf,
         evidence.text_anchor = createTextAnchor(record, { start: 0, end: record.text?.length });
         evidence.span = evidence.text_anchor;
       }
-      if (!eligible) snapshot.excluded.push({ evidence, reason: !recordId ? "SOURCE_ID_MISSING" : invalidTime ? "SOURCE_TIME_INVALID" : !timeKnown ? "SOURCE_TIME_MISSING" : future ? "future" : selection_status });
+      if (!eligible) snapshot.excluded.push({ evidence, reason: richQuarantined ? 'RICH_TEXT_QUARANTINED' : !recordId ? "SOURCE_ID_MISSING" : invalidTime ? "SOURCE_TIME_INVALID" : !timeKnown ? "SOURCE_TIME_MISSING" : future ? "future" : selection_status });
       return { record, lifecycle, selection_status, selection_reasons: entry.selection_reasons, eligible, evidence };
     }).sort((a, b) => canonicalJson(a).localeCompare(canonicalJson(b)));
   }
@@ -82,10 +89,11 @@ export function createPatientSourceSnapshot(input, { entitySession, phiPolicy = 
     if (typeof input?.context?.[key] !== 'string' || !input.context[key].trim()) throw new Error(`FAIL_CLOSED: Missing ${key}`);
   }
   if (input.patient?.id !== input.context.patient_id || input.encounter?.id !== input.context.encounter_id) throw new Error('FAIL_CLOSED: Patient/encounter snapshot mismatch');
-  const session = entitySession ?? createPhiEntitySession(input);
-  assertPhiEntitySession(session, input.context);
-  if (entitySession) session.inject(input);
-  try { return buildSnapshot(input, session, { assurance: 'session_dictionary_and_heuristics', ner_status: 'NOT_RUN', complete_deidentification: 'NOT_ESTABLISHED' }); }
+  const prepared = prepareRichTextTree(structuredClone(input));
+  const session = entitySession ?? createPhiEntitySession(prepared);
+  assertPhiEntitySession(session, prepared.context);
+  if (entitySession) session.inject(prepared);
+  try { return buildSnapshot(prepared, session, { assurance: 'session_dictionary_and_heuristics', ner_status: 'NOT_RUN', complete_deidentification: 'NOT_ESTABLISHED' }); }
   catch (error) { if (!entitySession) session.dispose(); throw error; }
 }
 

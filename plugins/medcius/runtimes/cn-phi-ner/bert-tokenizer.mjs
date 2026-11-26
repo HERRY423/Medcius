@@ -8,6 +8,7 @@ export function createBertTokenizer(spec) {
     || !vocab || ['[CLS]', '[SEP]', '[UNK]'].some(k => !Number.isInteger(vocab[k]))) throw new Error('LOCAL_NER_TOKENIZER_UNSUPPORTED');
   return Object.freeze({
     cls: vocab['[CLS]'], sep: vocab['[SEP]'],
+    isUnknownHan(c) { return typeof c==='string'&&/^\p{Script=Han}$/u.test(c)&&!Object.hasOwn(vocab,c); },
     encode(input) {
       const protectedText = input.replace(/\[(?:ID:[A-Za-z0-9_-]+:(?:[a-f0-9]{32}|REDACTED)|PSN:[a-f0-9]{8,64}|REDACTED:[A-Za-z0-9_]+)\]/g, m => ' '.repeat(m.length));
       const words = []; let word = [], offset = 0;

@@ -1,0 +1,320 @@
+{
+  "recorded_at": "2026-11-19T15:50:31.697976+00:00",
+  "before_after": {
+    "before": {
+      "summary": {
+        "cases": 96,
+        "entities": 72,
+        "completely_masked": 57,
+        "clinical_segments": 168,
+        "clinical_segments_retained": 166,
+        "blocked": 0,
+        "released_with_residual": 15,
+        "released_with_clinical_loss": 2
+      },
+      "names_complete_in_both": 25,
+      "names": 36,
+      "by_surname_group": {
+        "compound": [
+          18,
+          24
+        ],
+        "rare_single": [
+          16,
+          24
+        ],
+        "common_single": [
+          23,
+          24
+        ]
+      },
+      "by_scene": {
+        "1": 3,
+        "2": 5,
+        "3": 5,
+        "4": 4,
+        "5": 6,
+        "6": 6,
+        "7": 4,
+        "8": 5,
+        "9": 5,
+        "10": 4,
+        "11": 5,
+        "12": 5
+      },
+      "controls_fully_preserved": 23
+    },
+    "after": {
+      "summary": {
+        "cases": 96,
+        "entities": 72,
+        "completely_masked": 63,
+        "clinical_segments": 168,
+        "clinical_segments_retained": 166,
+        "blocked": 0,
+        "released_with_residual": 9,
+        "released_with_clinical_loss": 2
+      },
+      "names_complete_in_both": 29,
+      "names": 36,
+      "by_surname_group": {
+        "compound": [
+          19,
+          24
+        ],
+        "rare_single": [
+          21,
+          24
+        ],
+        "common_single": [
+          23,
+          24
+        ]
+      },
+      "by_scene": {
+        "1": 5,
+        "2": 6,
+        "3": 6,
+        "4": 4,
+        "5": 6,
+        "6": 6,
+        "7": 5,
+        "8": 6,
+        "9": 5,
+        "10": 4,
+        "11": 5,
+        "12": 5
+      },
+      "controls_fully_preserved": 23
+    }
+  },
+  "paired_row_changes": {
+    "coverage_gain": 6,
+    "coverage_loss": 0,
+    "clinical_gain": 0,
+    "clinical_loss": 0
+  },
+  "performance": {
+    "crop-burst": {
+      "64_v4": {
+        "requests": 768,
+        "rejected": 0,
+        "mean_round_p95_ms": 596.5126666666666
+      },
+      "64_v5": {
+        "requests": 768,
+        "rejected": 0,
+        "mean_round_p95_ms": 407.39168333333356
+      },
+      "64_v6": {
+        "requests": 768,
+        "rejected": 0,
+        "mean_round_p95_ms": 420.8100750000003
+      }
+    },
+    "legacy": {
+      "1_before": {
+        "requests": 6,
+        "rejected": 0,
+        "mean_round_p95_ms": 220.4934833333335
+      },
+      "1_after": {
+        "requests": 6,
+        "rejected": 0,
+        "mean_round_p95_ms": 207.988733333333
+      },
+      "8_before": {
+        "requests": 48,
+        "rejected": 0,
+        "mean_round_p95_ms": 455.18014999999986
+      },
+      "8_after": {
+        "requests": 48,
+        "rejected": 0,
+        "mean_round_p95_ms": 618.3127333333335
+      },
+      "32_before": {
+        "requests": 192,
+        "rejected": 0,
+        "mean_round_p95_ms": 1709.2690666666679
+      },
+      "32_after": {
+        "requests": 192,
+        "rejected": 0,
+        "mean_round_p95_ms": 1669.4357833333336
+      },
+      "64_before": {
+        "requests": 384,
+        "rejected": 0,
+        "mean_round_p95_ms": 3222.237000000001
+      },
+      "64_after": {
+        "requests": 384,
+        "rejected": 0,
+        "mean_round_p95_ms": 3217.118933333335
+      }
+    },
+    "legacy-repeat": {
+      "1_before": {
+        "requests": 6,
+        "rejected": 0,
+        "mean_round_p95_ms": 215.38421666666682
+      },
+      "1_after": {
+        "requests": 6,
+        "rejected": 0,
+        "mean_round_p95_ms": 209.33126666666644
+      },
+      "8_before": {
+        "requests": 48,
+        "rejected": 0,
+        "mean_round_p95_ms": 289.19391666666615
+      },
+      "8_after": {
+        "requests": 48,
+        "rejected": 0,
+        "mean_round_p95_ms": 280.6237666666666
+      },
+      "32_before": {
+        "requests": 192,
+        "rejected": 0,
+        "mean_round_p95_ms": 1692.4799833333334
+      },
+      "32_after": {
+        "requests": 192,
+        "rejected": 0,
+        "mean_round_p95_ms": 1665.647466666667
+      },
+      "64_before": {
+        "requests": 384,
+        "rejected": 0,
+        "mean_round_p95_ms": 3417.2736000000004
+      },
+      "64_after": {
+        "requests": 384,
+        "rejected": 0,
+        "mean_round_p95_ms": 3400.369833333334
+      }
+    }
+  },
+  "development": {
+    "before-A": {
+      "cases": 100,
+      "entities": 60,
+      "masked": 50,
+      "segments": 144,
+      "retained": 143,
+      "changed_ids": []
+    },
+    "after-A": {
+      "cases": 100,
+      "entities": 60,
+      "masked": 60,
+      "segments": 144,
+      "retained": 144,
+      "changed_ids": [
+        "subject-6",
+        "subject-7",
+        "subject-9",
+        "subject-10",
+        "subject-11",
+        "subject-16",
+        "subject-27",
+        "subject-28",
+        "administration-77",
+        "mixed-92",
+        "unicode-95"
+      ]
+    },
+    "before-B": {
+      "cases": 72,
+      "entities": 36,
+      "masked": 31,
+      "segments": 108,
+      "retained": 108,
+      "changed_ids": []
+    },
+    "after-B": {
+      "cases": 72,
+      "entities": 36,
+      "masked": 36,
+      "segments": 108,
+      "retained": 108,
+      "changed_ids": [
+        "n3",
+        "n4",
+        "n5",
+        "n15",
+        "n17"
+      ]
+    }
+  },
+  "functional": {
+    "completed": 100,
+    "failed": 0,
+    "deferred": 1,
+    "full_suite_pass": null,
+    "reference_performance": "NOT_RUN",
+    "engineering_pass": true,
+    "synthetic_execution_pass": null,
+    "synthetic_validation_pass": "NOT_ESTABLISHED",
+    "clinical_evidence_pass": "BLOCKED"
+  },
+  "artifacts": {
+    "after-A.json": "6cb78811e8575af9c8efee1c40036e0eae016ca71d7f59d32d96a003abea301f",
+    "after-B.json": "c85cc3cd874917aa0c00f9d0a80c825fa725969040d24467c2b2d5aa52dda0aa",
+    "baseline-changed-sources.zip": "61f7580878a56704dce77d9e2c43ff3604fb63f503586a0be785b0b94ba8ebb3",
+    "baseline.json": "c4952db1b68c386ce1c0eaf8da155e6587f710a6da65f6c19f8d72936bd24690",
+    "before-A.json": "814b1cc8a0be96a9b82da2b985079e4f95222b497d32dc4780704c9ee4fd5ce1",
+    "before-B.json": "cce47e9be3ccd843a535ad6c29a9e1e5d2202248cd21f62c72237eccbf66a923",
+    "benchmark-three-versions.mjs": "d6fcc1e17d2f967b6d5a949c44ee5ab8477ddf8a5b5d04c31d5f30cd25f8e9dd",
+    "check-mixed-burst.mjs": "c5f684a3a216e69d553c54cb99d5eab2561996e4a33114acfdbe8b9ea78ed445",
+    "crop-burst.json": "89ffe4e68f3615fa85277c95ed9a91c1090a91b87be8549ac9e6f2e726f6a02b",
+    "development-diagnosis-before.jsonl": "60839ac8a879e8ab6c87d02a70e2099a4ac04b90c3c647563582314432bb74f6",
+    "focused.txt": "a465281448c9f7987d49a65db15fad6db4a2ab57eb799836bbfcea3c7985dcbb",
+    "fresh/build.mjs": "40aeaba184932d588df86b9457f0b7d0c3d86bd3d16a4707f62961cee41bf064",
+    "fresh/challenge-results.json": "5193a409299df824f78cc3ccb1012e5815dc897f820e2117039ccfea67bca458",
+    "fresh/challenge.json": "c9c42ca8e3d12d5266196041ada71c9b2d7926539f96853ab30cbd66e97d9b80",
+    "fresh/evaluation-after-checkpoint.json": "e6d62d928bdf5e273dc2fbbdb84798102266e648ce63c82cb0a3b8b96b6b3784",
+    "fresh/evaluation-before-checkpoint.json": "bece9ed1664e3668e6b77a2897887dbda6248b4cb37d495e78b235486e2a1623",
+    "fresh/evaluation-started.json": "b3d867e14211729069f38e8d71f0ff0ed29a163a3fc3d031dfa7ee1cd678c51c",
+    "fresh/freeze.json": "bb21d9c8852812904b7376c49c2eaa98e606686b5f616fbf81d70d0fead66851",
+    "fresh/implementation-freeze.json": "9d70b601653d4004b0f4513b58daf541b7fe496b96bc2c505a69a2a2b5fd1bd3",
+    "fresh/remaining-errors.json": "454050e2be25dad9fde3c1faf88de7663e802e085b97ac1c45ec3f70b7fa7308",
+    "gate-logs/step-03.txt": "762c503f689fb452690686cc287855459db1dfa3b1c26410d5499f9a250a4fc5",
+    "gate-logs/step-04.txt": "428ea233639e41a820031a9aa7cc8151a802a5fe783f621e13781a6b589384b5",
+    "gate-logs/step-05.txt": "6a3c7d953169188460a17c37594490d7922dab8d5d267505009c928786acad72",
+    "gate-logs/step-100.txt": "18492ae099e0892c508b4d86eef035aef2c51960e667984d4affaf59269aa6ce",
+    "gate-logs/step-14.txt": "e94f624e686405d047e8f76e33f767f6b4122e220bfee9279c3b8b10b08f3a72",
+    "gate-logs/step-16.txt": "23920792bf45a76d3566e563c0cdb7eb8b4799986984df6318fda74348950df1",
+    "gate-logs/step-17.txt": "36620c470c49356596af0c5f62ad439fc14182d2e4a1dc112d61b5968f225f9d",
+    "gate-logs/step-18.txt": "0707582859661a08c4e4484ebd7ce4703923f57ff7473343a7e04c0b8b598ddf",
+    "gate-logs/step-19.txt": "c138a027e58a908baf3f88ce95643a5d410ed36aacfa81081531f33cda44d2d8",
+    "gate-logs/step-20.txt": "24f1ad718c8107ddd4407ba0b021a0e87e6ba4f6b9b9ad052d74dcb4597a72fd",
+    "gate-logs/step-21.txt": "2413717b017a0fc026cbe226429de99ea93d6f4dbb187d1d7ced0032dfb65a5c",
+    "gate-logs/step-24.txt": "1d2688d11327a159c2eb8edd6cd04173ec8a6aa81ceaf9a8da5a83c8749aaa28",
+    "gate-logs/step-31.txt": "3bb81b4ed230d46c1d021b52b080c069583397fd915dbcf676da10718bc7e35c",
+    "gate-logs/step-32.txt": "401d8b258f9490e4f5fe913ac2398a0274d2fb3cb3daaee7ccf9db86c9063c57",
+    "gate-logs/step-37.txt": "2e280995b27a63823e7721c76744f571bfec4b5933db1e063c1b0237378be32c",
+    "gate-logs/step-48.txt": "2fb32c75198bceca22ca050e8d5332fe6aeb304a640042709924088dbaac2451",
+    "gate-logs/step-51.txt": "63a0533dd3c89ea592e098f644625dd52bd900a5b964595898b4a88e4d75cdde",
+    "gate-logs/step-54.txt": "446203e6f545efc2a0ff42fb5bd00ea8c0994375f426212fb59f176ac690f2e9",
+    "gate-logs/step-61.txt": "5b8a8169530ea57b1636977f3bb709a8f3bb11fea460a040d8919c2abd3499de",
+    "gate-logs/step-80.txt": "bf401c08eabf1029ef2d02656ef436aa24008001680fa9e3fc1c5e8f1fdea811",
+    "gate-logs/step-92.txt": "947e34add06ca28f491d0c71eb144443eada54a39ceeb58e8149d08ba0152ee7",
+    "gate-logs/step-94.txt": "47fc6f19c3b3df3a5614c37fc44ec00524559590d7cffcb7ac7315911b4ee02b",
+    "generated/plugins/medcius/evals/china-skills/results/nhsa-coding-04-version-unknown.json": "185587162733cf627dce9cce2ede7671ed5991a816df932877eff972d2f5c129",
+    "generated/plugins/medcius/evals/china-skills/results/rq-07-catalog-restriction-hint.json": "4a03d1761141d29fd2cb35f971b37b7e7f5feeadb38f2b0c4bebc96366e85ca0",
+    "generated/plugins/medcius/evals/china-skills/results/rq-09-catalog-restriction-match.json": "3fab30f400ae71636ed6b467e14212532a38215c96c00f0bff77acccf6db007e",
+    "generated/plugins/medcius/evals/shadow-mode/reports/real-world-shadow-study-report.md": "cc017ba773868618b526a3f62bb6025ad03e6964d0bb9a7d3ccef3f5f66bda53",
+    "generated/plugins/medcius/evals/shadow-mode/reports/real-world-shadow-study-summary.json": "8af5538e3ca561ffa3ecdaa8a7ddcc42901c178dbb94479ba84a145d713d8914",
+    "generated-reports.json": "0e923813f5217abcfad45f8ba4f8c77543809089fcd5744b5b26bcedf9d7510c",
+    "legacy-repeat.json": "098680218cbf31bc1a717fa59c010a4a49f1adc72f18c4934a562b4125b1ae9d",
+    "legacy.json": "e2cd4ba0ebfd8dde8a34d7dc3e635b2e03cfdffbc2594124cc1e4dc9411082c9",
+    "mixed-isolation-burst.json": "f2f6e589d7dba10c3fd23c692e59f904622750cd600f789f71e26660d8d1825e",
+    "native-crops.json": "e8458a8db29309219e5152c622461e7c495cece98a86da24c59a52d169bf3c69",
+    "plan.json": "dd11fe79385705dcc9c99d89101c0fd7465fb76f1a2a6f0976e8d2e1f6c3866b",
+    "quality-gates.json": "adf62fbeeda4cb0054896db8807621876987ec2bdd099297c928bbc19dbc0c15",
+    "runtime-lock.json": "bae9e249a05ec6f4cb3641f8bc0d1b99872c659164aa57c5a766e066885b6373"
+  }
+}

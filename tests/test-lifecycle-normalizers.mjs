@@ -75,14 +75,14 @@ test("HIS unknown, conflicting or ended orders never become ongoing use or durat
   }
 });
 
-test("HIS current active order has one bounded elapsed-order reminder, without claiming actual administration", () => {
+test("HIS current active order has unknown administration days until execution evidence is available", () => {
   const revised = { ...medication, version_id: "v2", updated_at: inWindow };
   const data = HospitalDataAdapter.normalizeHisOrders([medication, revised], { now, rulePack });
   assert.equal(data.medications.length, 2);
   assert.equal(data.current_medications.length, 1);
   assert.equal(data.antibiotic_alerts.length, 1);
   assert.equal(data.medications[0].antibiotic_info, null);
-  assert.equal(data.antibiotic_alerts[0].duration_basis, "elapsed_since_order_authored_not_administration");
+  assert.equal(data.antibiotic_alerts[0].duration_basis, "observed_administration_calendar_days");
   assert.match(data.antibiotic_alerts[0].alert_message, /实际给药天数未确认/);
   assert.doesNotMatch(data.antibiotic_alerts[0].alert_message, /已使用/);
   const orders = HospitalDataAdapter.normalizeHisOrders([{ id: "exam-1", title: "Synthetic exam", status: "active", authored_on: oldTime },

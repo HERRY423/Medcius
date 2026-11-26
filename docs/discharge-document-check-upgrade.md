@@ -26,6 +26,8 @@
 
 `medcius.discharge-document-check.v2` 提供 `domains.results/medications/follow_up`。各域状态为 `unknown/gaps_present/fields_present_in_supplied_records`；最后一个仅说明输入记录的核对字段已具备。
 
+本地参考工作台的「出院小结模板」提供 `discharge_template.fields` 和「复制模板字段」。来源为当前 `document_kind` 标记的 `discharge_summary`、`front_sheet` 和 `settlement_list`，以及字段齐备的用药衔接和后续安排资料。原文栏目带精确偏移和摘要，首页、结算清单和小结的诊断与操作字段并列核对。遇到文本差异或版本冲突时，保留来源并留空对应复制字段。医生核对后可手动粘贴到 EMR 模板。
+
 `documentation_summary.coverage=not_established`，不宣称全院资料完整。缺少有来源的过敏记录仍提示回源核对。`clinical_suitability.assessed=false`、`is_suitable_for_discharge=null`。保留兼容字段 `readiness_verdict.is_ready=null, deprecated=true`，消费者必须迁移到三组资料状态，不得将 null 转换成“不能出院”或“可以出院”。旧的自动警示、签字措辞和默认复诊时间不再返回。
 
 核心为宿主中立只读引擎，SDK 和本地 HTTP 参考适配器复用同一合同。参考页面默认展示三组资料和缺口，原始记录按需展开。HIS/SSO/临床落地仍为 P0-FROZEN。

@@ -67,3 +67,9 @@ const result = await reviewSettlementSnapshot({
 当前适配请求白名单包含年龄、性别、住院天数、离院方式、出生/入院体重和通气时长；具体分组器还需要的字段必须先扩展和验收契约，不能凭缺省值补足。本轮未对接真实医院分组器，未导入官方全量跨版本映射，未验证江苏各地的所有规则。
 
 **验证与后续边界。** 本轮执行记录、失败记录及最终状态见本目录配套验证报告；定向命令为 `node --test --test-concurrency=1 tests/test-jiangsu-record-review.mjs tests/test-versioned-coding-store.mjs tests/test-cn-corpus-boundaries.mjs`。下一次院内验收须取得具体统筹区、当期 DRG/DIP 版本、官方/院方授权映射原件、源数据完整性回执及本地只读接口，使用获批脱敏病例与人工病案复核对照。任何真实接口或临床证据结果都另行登记，不能沿用本轮合成通过状态。
+
+## 历史病例回测
+
+在获准的离线工程环境配置本地 PHI 模型后，运行 `node scripts/backtest-record-quality.mjs <cohort.json>`。输入为同一租户的 `{ tenant_id, policy, cases: [{ source, reference? }] }`。`policy` 采用 `config/record-review/jiangsu-reference.v1.json` 的结构，`source` 采用 `createPatientSourceSnapshotAsync` 的输入，首页和结算清单分别用 `document_kind: "front_sheet"` 和 `"settlement_list"` 标记。
+
+回测核对病案与来源证据、首页要素及结算清单要素，输出规则版本与摘要、来源引用、各类发现和未核对例数。初次运行可取得逐例 `snapshot_hash`。如已有人工标注，可提供同一快照的 `reference: { snapshot_hash, findings: [{ section, code, condition_id? }] }`。仅对来源覆盖齐备且标签与快照相符的样本计算匹配、仅规则标出和仅人工标出的数量。缺少最终文书或有效标签时保留覆盖状态和空值。该回测用于复核配置，临床证据和地方分组器验收单独建立。

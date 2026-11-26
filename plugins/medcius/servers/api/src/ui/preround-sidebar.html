@@ -1,892 +1,185 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Medcius - 住院医生查房前“患者变化摘要”</title>
-  <style>
-    :root {
-      --bg: #0d1117;
-      --card-bg: #161b22;
-      --border: #30363d;
-      --text: #c9d1d9;
-      --text-muted: #8b949e;
-      --accent: #58a6ff;
-      --accent-hover: #1f6feb;
-      --danger: #f85149;
-      --warning: #d29922;
-      --success: #3fb950;
-      --purple: #bc8cff;
-      --tag-fact: #1f6feb22;
-      --tag-fact-text: #58a6ff;
-      --tag-crit: #f8514933;
-      --tag-crit-text: #ff7b72;
-      --tag-gap: #d2992222;
-      --tag-gap-text: #e3b341;
-      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Medcius 病区查房清单</title>
+<style>
+:root{font:15px/1.6 "Microsoft YaHei",system-ui,sans-serif;color:#153839;background:#f3f7f6}*{box-sizing:border-box}
+body{max-width:1040px;margin:auto;padding:clamp(12px,3vw,30px)}header,nav,main{background:white;border:1px solid #ccdcd9;border-radius:8px;padding:16px}
+h1,h2,h3,p{margin:0 0 8px}h1{font-size:22px}h2{font-size:19px}h3{margin-top:18px;font-size:15px}
+#layout{display:grid;grid-template-columns:minmax(160px,28%) 1fr;gap:10px;margin-top:10px}nav{align-self:start;display:grid;gap:5px}
+button,summary{font:inherit;cursor:pointer;color:#115652}button{border:1px solid #abc9c4;border-radius:5px;background:#fff;padding:6px 10px;text-align:left}
+button[aria-current=true]{background:#dff0eb;border-color:#37776c}button:focus-visible,summary:focus-visible{outline:3px solid #267b88}
+small,.muted{color:#4b6664}.item{border-top:1px solid #e1ebe8;padding:9px 0}.actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+details{margin-top:3px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f1f6f4;padding:10px}mark{background:#ffe5a1}
+@media(max-width:620px){#layout{grid-template-columns:1fr}nav{display:flex;flex-wrap:wrap;max-height:32vh;overflow:auto}nav button{flex:1 0 95px}header,main,nav{padding:12px}}
+</style></head><body>
+<header><small id="mode"></small><h1>病区查房清单</h1><p id="status" role="status" aria-live="polite">正在读取病区清单…</p></header>
+<div id="layout"><nav id="beds" aria-label="按床位选择"></nav><main id="row" tabindex="-1"></main></div>
+<script>
+"use strict";
+const demo = "__WARD_MODE__" === "synthetic", origins = __WARD_ORIGINS__;
+const $ = id => document.getElementById(id);
+const node = (tag, value = "") => { const el = document.createElement(tag); el.textContent = value; return el; };
+const add = (parent, tag, value) => parent.appendChild(node(tag,value));
+const mode = demo ? "合成病区 · 工程演示" : "静默试点 · 授权研究复核";
+$("mode").textContent = mode;
+let epoch = 0, selection = 0, active = null, launch = null, batch = null, bedLabels = new Map();
+const base = demo ? "/api/v1/demo/ward-preround" : "/api/v1/research/ward-preround";
+const bedTitle = r => r.bed_number ? r.bed_number + "床" : "床位未提供（名册第" + r.position + "项）";
+const action = (parent,label,fn) => { const b = add(parent,"button",label); b.type = "button"; b.onclick = fn; return b; };
+function clear() { ++selection; active = null; $("row").replaceChildren(); }
+function reset() { ++epoch; clear(); batch = null; launch = null; bedLabels = new Map(); $("beds").replaceChildren(); }
+async function api(path, body) {
+  const headers = {};
+  if (launch?.token) headers.Authorization = "Bearer " + launch.token;
+  if (body) headers["Content-Type"] = "application/json";
+  const r = await fetch(path, { method: body ? "POST" : "GET", headers, body: body ? JSON.stringify(body) : undefined,
+    cache:"no-store", credentials:"omit", redirect:"error", referrerPolicy:"no-referrer" });
+  if (!r.ok) throw new Error(r.status === 404 ? "本次清单没有匹配记录。" : "无法读取已授权清单。");
+  return r.json();
+}
+function localTime(value) {
+  if (!value) return "未提供";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime()) || !batch?.time_zone) return value;
+  return new Intl.DateTimeFormat("zh-CN", {timeZone:batch.time_zone,month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(date);
+}
+const analytes = {k:"钾",na:"钠",cl:"氯",ca:"钙",mg:"镁"};
+function source(parent,s) {
+  const d = add(parent,"details"); add(d,"summary","查看原始证据 · " + (s.source_id ?? "未知来源"));
+  if (s.status === "verified_span") {
+    const p=add(d,"pre"); p.append(document.createTextNode(s.text.slice(0,s.start)),node("mark",s.text.slice(s.start,s.end)),document.createTextNode(s.text.slice(s.end)));
+  } else if (s.status === "linked_record") add(d,"pre",JSON.stringify(s.fields,null,2));
+  else add(d,"p","原始版本或定位未核实。");
+}
+const statusText = { open:"待闭环", unknown:"待核实", requires_reconciliation:"待核对撤销或更正", closed:"已闭环" };
+function display(row) {
+  clear(); active=row;
+  for(const b of $("beds").children) b.setAttribute("aria-current",String(Number(b.dataset.position) === row.position));
+  const pane=$("row"); add(pane,"h2",bedTitle(row));
+  if(row.status!=="captured") { add(pane,"p","此床本轮缺少可展示的快照。"); return; }
+  if(row.source_coverage!=="connector_reported") add(pane,"small","来源覆盖待核实，空项不能证明没有变化。");
+  const factById=new Map(row.facts.map(f=>[f.item_id,f]));
+  const sections = { changes:[], pending:[], followup:[] };
+  const sameChart = launch?.patient_id === row.context.patient_id && launch?.encounter_id === row.context.encounter_id && launch?.tenant_id === row.context.tenant_id;
+  function facts(key,title,ids) {
+    add(pane,"h3",title); const lines=sections[key];
+    for(const id of new Set(ids)) {
+      const f=factById.get(id); if(!f) continue;
+      const d=add(pane,"div"); d.className="item";
+      const record=f.sources.length===1 && f.sources[0].status==="linked_record" ? f.sources[0].fields : null;
+      const value=f.attributes.current_value ?? record?.value ?? record?.result_value;
+      const task=key==="pending" ? " · "+(f.attributes.source_status??"状态待核实")+" · 责任人 "+(f.attributes.owner_id??"待认领或核实")+" · 截止 "+localTime(f.attributes.due_at) : "";
+      const line=(f.verbatim ?? [f.label,value == null ? "" : String(value),value == null ? "" : f.attributes.unit ?? record?.unit, f.attributes.status_desc ?? ""].filter(Boolean).join(" ")) + task;
+      add(d,"span",line); for(const s of f.sources) source(d,s);
+      if(f.sources.length && f.sources.every(s=>s.status!=="source_review_required")) lines.push(line + " ［" + f.sources.map(s=>s.source_id).join("、") + "］");
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font);
-      font-size: 13px;
-      line-height: 1.45;
-      padding: 12px;
-      overflow-x: hidden;
-    }
-
-    /* Critical Value Alert Banner */
-    .critical-banner {
-      display: none;
-      background: #490202;
-      border: 1px solid #f85149;
-      border-radius: 8px;
-      padding: 10px 12px;
-      margin-bottom: 12px;
-      animation: pulseAlert 2s infinite ease-in-out;
-    }
-    @keyframes pulseAlert {
-      0%, 100% { box-shadow: 0 0 4px rgba(248,81,73,0.4); }
-      50% { box-shadow: 0 0 12px rgba(248,81,73,0.8); }
-    }
-    .critical-banner-title {
-      font-size: 13px;
-      font-weight: 700;
-      color: #ff7b72;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-bottom: 4px;
-    }
-    .critical-item {
-      font-size: 12px;
-      color: #fff;
-      margin-top: 2px;
-    }
-
-    .header {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 12px;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-    .patient-title {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 6px;
-    }
-    .patient-title h1 {
-      font-size: 15px;
-      font-weight: 700;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .bed-badge {
-      background: var(--accent);
-      color: #fff;
-      font-size: 11px;
-      font-weight: 600;
-      padding: 2px 6px;
-      border-radius: 4px;
-    }
-    .egfr-badge {
-      background: #238636;
-      color: #fff;
-      font-size: 11px;
-      font-weight: 600;
-      padding: 2px 6px;
-      border-radius: 4px;
-    }
-    .patient-meta {
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-    }
-    .control-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-top: 1px solid var(--border);
-      padding-top: 8px;
-    }
-    .btn-group {
-      display: inline-flex;
-      background: var(--bg);
-      border-radius: 6px;
-      padding: 2px;
-      border: 1px solid var(--border);
-    }
-    .btn-group button {
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      font-size: 12px;
-      padding: 3px 10px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 600;
-      transition: all 0.15s;
-    }
-    .btn-group button.active {
-      background: var(--accent);
-      color: #fff;
-    }
-    .refresh-btn {
-      background: #21262d;
-      border: 1px solid var(--border);
-      color: var(--text);
-      font-size: 12px;
-      padding: 4px 10px;
-      border-radius: 6px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-    .refresh-btn:hover { background: #30363d; }
-
-    /* Visual Blocks */
-    .block-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      margin-bottom: 12px;
-      overflow: hidden;
-    }
-    .block-header {
-      background: #1c2128;
-      border-bottom: 1px solid var(--border);
-      padding: 8px 12px;
-      font-size: 13px;
-      font-weight: 700;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .block-badge {
-      font-size: 11px;
-      padding: 1px 6px;
-      border-radius: 10px;
-      background: #30363d;
-      color: var(--text-muted);
-    }
-    .block-content {
-      padding: 10px;
-    }
-
-    /* Vitals and Fluid Balance Box */
-    .vitals-box {
-      background: #0d1117;
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      padding: 8px 10px;
-      margin-bottom: 8px;
-      font-size: 12px;
-    }
-    .vitals-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-      margin-top: 4px;
-    }
-    .vitals-pill {
-      background: #161b22;
-      padding: 4px 6px;
-      border-radius: 4px;
-      border: 1px solid #21262d;
-    }
-
-    .item-row {
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-      padding: 7px 6px;
-      border-bottom: 1px solid #21262d;
-      cursor: pointer;
-      border-radius: 4px;
-      transition: background 0.1s;
-    }
-    .item-row:last-child { border-bottom: none; }
-    .item-row:hover { background: #21262d; }
-    .item-row input[type="checkbox"] {
-      margin-top: 3px;
-      cursor: pointer;
-    }
-    .item-body { flex: 1; min-width: 0; }
-    .tag {
-      display: inline-block;
-      font-size: 11px;
-      font-weight: 600;
-      padding: 1px 5px;
-      border-radius: 4px;
-      margin-right: 4px;
-    }
-    .tag-fact { background: var(--tag-fact); color: var(--tag-fact-text); border: 1px solid #1f6feb44; }
-    .tag-crit { background: var(--tag-crit); color: var(--tag-crit-text); border: 1px solid #f8514966; }
-    .tag-gap { background: var(--tag-gap); color: var(--tag-gap-text); border: 1px solid #d2992244; }
-    .tag-rule { background: #8957e522; color: #d2a8ff; border: 1px solid #8957e544; }
-    .tag-added { background: #3fb95022; color: var(--success); border: 1px solid #3fb95044; }
-    .tag-disc { background: #f8514922; color: var(--danger); border: 1px solid #f8514944; }
-    .tag-adj { background: #a371f722; color: var(--purple); border: 1px solid #a371f744; }
-
-    .item-text {
-      color: #e6edf3;
-      font-size: 12.5px;
-      word-break: break-word;
-    }
-    .item-source {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-top: 2px;
-    }
-    .delta-indicator {
-      font-weight: 700;
-      margin-left: 4px;
-    }
-    .delta-up { color: var(--danger); }
-    .delta-down { color: var(--success); }
-
-    /* Sticky Bottom Action Bar */
-    .action-bar {
-      position: sticky;
-      bottom: 0;
-      background: #161b22;
-      border: 1px solid var(--accent);
-      border-radius: 8px;
-      padding: 10px 14px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.6);
-      z-index: 10;
-    }
-    .insert-btn {
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      font-size: 13px;
-      font-weight: 700;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    .insert-btn:hover { background: var(--accent-hover); }
-
-    /* Modal for Draft Preview */
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.75);
-      z-index: 100;
-      justify-content: center;
-      align-items: center;
-      padding: 16px;
-    }
-    .modal {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      max-width: 620px;
-      width: 100%;
-      max-height: 85vh;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.8);
-    }
-    .modal-header {
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .modal-header h3 { font-size: 14px; color: #fff; }
-    .close-btn { background: transparent; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; }
-    .modal-body {
-      padding: 14px;
-      overflow-y: auto;
-      flex: 1;
-    }
-    .draft-textarea {
-      width: 100%;
-      height: 290px;
-      background: #0d1117;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: #e6edf3;
-      padding: 10px;
-      font-family: var(--font);
-      font-size: 12.5px;
-      line-height: 1.5;
-      resize: vertical;
-    }
-    .modal-footer {
-      padding: 12px 16px;
-      border-top: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .stamp-text {
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-    .btn-secondary {
-      background: #21262d;
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 6px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 600;
-    }
-  </style>
-</head>
-<body>
-
-  <!-- Critical Value Alarm Banner -->
-  <div class="critical-banner" id="critical-banner">
-    <div class="critical-banner-title">
-      <span>来源危急标记与数据覆盖（遵循医院危急值制度）</span>
-    </div>
-    <div id="critical-items-list"></div>
-  </div>
-
-  <!-- Header Context Panel -->
-  <div class="header">
-    <div class="patient-title">
-      <h1 id="p-name"><span class="bed-badge" id="p-bed">01床</span> 张** (68岁 男)</h1>
-      <div style="display:flex; align-items:center; gap:8px;">
-        <span class="egfr-badge" id="p-egfr" style="display:none;">eGFR 52 mL/min</span>
-        <button class="refresh-btn" onclick="fetchSummary()">↻ 刷新</button>
-      </div>
-    </div>
-    <div class="patient-meta" id="p-meta">
-      就诊号: IP-2026-90812 | 主诊断: 冠心病，急性前壁心肌梗死，PCI术后
-    </div>
-    <div class="control-row">
-      <span style="font-size:12px; color:var(--text-muted);">摘要时间跨度：</span>
-      <div class="btn-group">
-        <button id="btn-24h" class="active" onclick="switchWindow('24h')">过去 24 小时</button>
-        <button id="btn-72h" onclick="switchWindow('72h')">过去 72 小时</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- BLOCK 1: 「发生了什么变化」 -->
-  <div class="block-card">
-    <div class="block-header">
-      <span>1. 发生了什么变化 (What Changed)</span>
-      <span class="block-badge" id="badge-changed">0项</span>
-    </div>
-    <div class="block-content" id="list-changed">
-      <!-- Injected via JS -->
-    </div>
-  </div>
-
-  <!-- BLOCK 2: 「今天仍待处理什么」 -->
-  <div class="block-card">
-    <div class="block-header">
-      <span>2. 今天仍待处理什么 (What's Pending)</span>
-      <span class="block-badge" id="badge-pending">0项</span>
-    </div>
-    <div class="block-content" id="list-pending">
-      <!-- Injected via JS -->
-    </div>
-  </div>
-
-  <!-- BLOCK 3: 「临床提醒与用药质控」 -->
-  <div class="block-card" id="card-rules" style="display:none;">
-    <div class="block-header">
-      <span>3. 临床提醒与用药质控 (Clinical Rules & Antimicrobial)</span>
-      <span class="block-badge" id="badge-rules">0项</span>
-    </div>
-    <div class="block-content" id="list-rules">
-      <!-- Injected via JS -->
-    </div>
-  </div>
-
-  <!-- BLOCK 4: 「哪些资料不足」 -->
-  <div class="block-card">
-    <div class="block-header">
-      <span>4. 哪些资料不足 (Critical Data Gaps)</span>
-      <span class="block-badge" id="badge-gaps">0项</span>
-    </div>
-    <div class="block-content" id="list-gaps">
-      <!-- Injected via JS -->
-    </div>
-  </div>
-
-  <!-- BLOCK 5: 「查看原始证据」 -->
-  <div class="block-card">
-    <div class="block-header">
-      <span>5. 查看原始证据 (Source Evidence)</span>
-      <span class="block-badge" id="badge-evidence">点击条目查看</span>
-    </div>
-    <div class="block-content" id="evidence-panel" style="font-size:12px; color:var(--text-muted);">
-      点击上方任意卡片条目，在此高亮展开病历原文段落或检验报告单来源。
-    </div>
-  </div>
-
-  <!-- Sticky Bottom Action Bar -->
-  <div class="action-bar">
-    <div>
-      <label style="cursor:pointer; font-weight:600; font-size:12px;">
-        <input type="checkbox" id="select-all-cb" onchange="toggleSelectAll(this.checked)" checked /> 全选
-      </label>
-      <span style="margin-left:8px; font-size:12px; color:var(--text-muted);" id="selected-count">已选 0 项</span>
-    </div>
-    <button class="insert-btn" onclick="openInsertModal()">✍️ 插入查房记录</button>
-  </div>
-
-  <!-- Modal: Progress Note Draft Preview -->
-  <div class="modal-overlay" id="draft-modal">
-    <div class="modal">
-      <div class="modal-header">
-        <h3>确认并生成查房病程记录草稿</h3>
-        <button class="close-btn" onclick="closeInsertModal()">&times;</button>
-      </div>
-      <div class="modal-body">
-        <p style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">
-          以下为您确认勾选的结构化事实与待办。不含任何自主诊断结论，可编辑后复制或插入 EHR 病程：
-        </p>
-        <textarea class="draft-textarea" id="draft-text"></textarea>
-      </div>
-      <div class="modal-footer">
-        <span class="stamp-text" id="stamp-info">电子签名：查房医师 | 默认只读，禁止自主写回</span>
-        <div style="display:flex; gap:8px;">
-          <button class="btn-secondary" onclick="copyDraftText()">📋 复制文本</button>
-          <button class="insert-btn" onclick="confirmInsert()">✓ 确认插入病程</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    let currentWindow = '24h';
-    let summaryPayload = null;
-    const selectedItemIds = new Set();
-
-    async function fetchSummary() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const patId = urlParams.get('patient_id');
-      const encId = urlParams.get('encounter_id') || (patId ? `ENC-${patId}` : null);
-      
-      if (!patId) {
-        renderFailClosedState('未在 URL 参数或 EHR 上下文中检出有效 patient_id');
-        return;
-      }
-
-      try {
-        const res = await fetch('/api/v1/patient/evolution-summary', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            time_window: currentWindow,
-            patient_id: patId,
-            encounter_id: encId,
-            patient: { id: patId, encounter_id: encId },
-          }),
-        });
-        if (!res.ok) {
-          const errBody = await res.json().catch(() => ({}));
-          throw new Error(errBody.error || `HTTP ${res.status}`);
-        }
-        summaryPayload = await res.json();
-        renderSummary(summaryPayload);
-      } catch (err) {
-        console.error('[Medcius] Fail-Closed trigger:', err);
-        renderFailClosedState(err.message);
-      }
-    }
-
-    function renderFailClosedState(reason) {
-      document.getElementById('p-name').innerHTML = `<span class="bed-badge" style="background:var(--danger)">FAIL-CLOSED</span> 未连接患者`;
-      document.getElementById('p-meta').textContent = `错误: ${reason} (按法规要求安全关闭，禁止展示虚构数据)`;
-      document.getElementById('p-egfr').style.display = 'none';
-      document.getElementById('critical-banner').style.display = 'none';
-
-      const changedDiv = document.getElementById('list-changed');
-      changedDiv.innerHTML = `<div style="padding:12px; color:#ff7b72; font-size:12px; background:#490202; border-radius:6px;">❌ EHR 接口连接异常或未检出有效患者上下文。系统已“失败关闭”，请在医院 EHR 中重新选择患者后刷新。</div>`;
-      
-      document.getElementById('list-pending').innerHTML = `<div style="padding:8px; color:var(--text-muted); font-size:12px;">无上下文数据</div>`;
-      document.getElementById('list-gaps').innerHTML = `<div style="padding:8px; color:var(--text-muted); font-size:12px;">无上下文数据</div>`;
-      document.getElementById('card-rules').style.display = 'none';
-      document.getElementById('evidence-panel').textContent = '未连接有效患者，证据面板已关闭。';
-
-      document.getElementById('badge-changed').textContent = '0项';
-      document.getElementById('badge-pending').textContent = '0项';
-      document.getElementById('badge-gaps').textContent = '0项';
-      selectedItemIds.clear();
-      updateSelectedCount();
-    }
-
-    function switchWindow(w) {
-      currentWindow = w;
-      document.getElementById('btn-24h').classList.toggle('active', w === '24h');
-      document.getElementById('btn-72h').classList.toggle('active', w === '72h');
-      fetchSummary();
-    }
-
-    function renderSummary(data) {
-      if (!data) return;
-      document.getElementById('p-name').innerHTML = `<span class="bed-badge" id="p-bed">${data.patient.bed_number || '未分床'}</span> ${data.patient.name || '患者'} (${data.patient.age != null ? data.patient.age + '岁' : '年龄未知'} ${data.patient.gender || '性别未知'})`;
-      document.getElementById('p-meta').textContent = `就诊号: ${data.patient.id || 'N/A'} | 主诊断: ${data.patient.primary_diagnosis || '待录入'}`;
-
-      if (data.patient.egfr) {
-        const egfrEl = document.getElementById('p-egfr');
-        egfrEl.textContent = `eGFR ${data.patient.egfr} mL/min`;
-        egfrEl.style.display = 'inline-block';
-      } else {
-        document.getElementById('p-egfr').style.display = 'none';
-      }
-
-      // Critical Values Banner
-      const critBanner = document.getElementById('critical-banner');
-      const critList = document.getElementById('critical-items-list');
-      critList.innerHTML = '';
-      const coverage = document.createElement('p');
-      coverage.textContent = (data.critical_visibility?.message || '危急值覆盖未确认，不能排除遗漏。') + ' 固定快照，不是实时监测；请核对院内 LIS 与危急值通知通道。';
-      critList.appendChild(coverage);
-      if (data.critical_values && data.critical_values.length > 0) {
-        critBanner.style.display = 'block';
-        data.critical_values.forEach(cv => {
-          const div = document.createElement('div');
-          div.className = 'critical-item';
-          div.innerHTML = `• <b>${cv.name}</b>: ${cv.value} ${cv.unit} — ${cv.reason} <span style="color:#ffd280">(${cv.urgency_action})</span>`;
-          critList.appendChild(div);
-        });
-      } else {
-        critBanner.style.display = 'block';
-      }
-
-      selectedItemIds.clear();
-
-      // 1. What Changed
-      const changedDiv = document.getElementById('list-changed');
-      changedDiv.innerHTML = '';
-      const b1 = data.blocks.what_changed;
-      let b1Count = 0;
-
-      // 0. Structured Multi-Source Alignment (NIS/LIS/PACS/HIS)
-      const alignments = data.blocks.structured_multisource_alignment || [];
-      if (alignments.length > 0) {
-        const alignBox = document.createElement('div');
-        alignBox.className = 'vitals-box';
-        alignBox.style.borderColor = '#8957e5';
-        alignBox.style.marginBottom = '10px';
-        alignBox.innerHTML = `
-          <div style="font-weight:700; color:#d2a8ff; margin-bottom:6px; display:flex; justify-content:space-between;">
-            <span>🎯 跨系统结构化多源临床对齐 (NIS/LIS/PACS/HIS)</span>
-            <span style="font-size:11px; color:var(--text-muted);">自动对齐护理体征/化验动态/影像印象/医嘱处置</span>
-          </div>
-          <div style="display:flex; flex-direction:column; gap:6px;">
-            ${alignments.map(a => `
-              <div style="background:#161b22; padding:6px 8px; border-radius:4px; border:1px solid ${a.requires_attention ? '#f8514966' : '#30363d'};">
-                <div style="font-weight:600; color:${a.requires_attention ? '#ff7b72' : '#58a6ff'}; font-size:12px;">${a.requires_attention ? '⚠️ ' : '• '}${a.domain_title}: ${a.clinical_synthesis}</div>
-                <div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">
-                  <span style="color:#79c0ff;">[NIS]</span> ${a.nis_summary} | <span style="color:#7ee787;">[LIS]</span> ${a.lis_summary} | <span style="color:#d2a8ff;">[HIS]</span> ${a.his_summary}
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        `;
-        changedDiv.appendChild(alignBox);
-      }
-
-      // Vitals & Fluid card
-      if (b1.vitals_and_fluids) {
-        b1Count++;
-        selectedItemIds.add(b1.vitals_and_fluids.id);
-        const vf = b1.vitals_and_fluids;
-        const vfRow = document.createElement('div');
-        vfRow.className = 'vitals-box';
-        vfRow.innerHTML = `
-          <div style="font-weight:700; color:#58a6ff; margin-bottom:4px;">📊 护理生命体征与 24h 出入量平衡</div>
-          <div class="vitals-grid">
-            <div class="vitals-pill">🌡️ 最高体温: <b>${vf.vitals?.t_max ? vf.vitals.t_max + '℃' : '未测'}</b></div>
-            <div class="vitals-pill">💓 血压/心率: <b>${vf.vitals?.bp_max || '未测'} (${vf.vitals?.hr_avg ? vf.vitals.hr_avg + 'bpm' : '未测'})</b></div>
-            <div class="vitals-pill">💧 24h入量: <b>${vf.fluids?.intake_total_ml != null ? vf.fluids.intake_total_ml + 'ml' : '0ml'}</b></div>
-            <div class="vitals-pill">🚽 24h出量(尿量): <b>${vf.fluids?.output_total_ml != null ? vf.fluids.output_total_ml + 'ml' : '0ml'} (${vf.fluids?.net_balance_label || '0ml'})</b></div>
-          </div>
-        `;
-        changedDiv.appendChild(vfRow);
-      }
-
-      // Symptoms
-      (b1.clinical_symptoms || []).forEach(item => {
-        b1Count++;
-        selectedItemIds.add(item.id);
-        changedDiv.appendChild(createRow(item, 'tag-fact', '【原文事实】'));
+    if(!ids.length) add(pane,"small","当前快照未列出。");
+  }
+  facts("changes","发生了什么变化",row.worklist.change_ids);
+  facts("pending","今天仍待处理什么",Object.values(row.worklist.pending).flat());
+  add(pane,"h3","未闭环事项");
+  if(!row.worklist.unclosed_followup.length) add(pane,"small","当前来源未列出未闭环事项。");
+  for(const t of row.worklist.unclosed_followup) {
+    const d=add(pane,"div"); d.className="item";
+    const line=(t.label ?? t.tracking_id) + " · " + (statusText[t.closure_status] ?? "待核实") + " · 责任人 " + (t.owner_id ?? "待认领或核实") + " · 截止 " + localTime(t.due_at)+(t.overdue===true?"（已逾期）":"");
+    add(d,"span",line); for(const s of t.sources) source(d,s);
+    if(sameChart && launch.taskReview && t.sources.some(s=>s.status!=="source_review_required")) {
+      action(d,"在院内任务中核对",()=>{if(active!==row)return;
+        window.parent.postMessage({type:"medcius:open-source-task",tenant_id:row.context.tenant_id,patient_id:row.context.patient_id,
+          encounter_id:row.context.encounter_id,as_of:row.context.as_of,audit_event_id:batch.audit_event_id??null,
+          tracking_id:t.tracking_id},launch.origin);
       });
-
-      // Abnormal Labs
-      (b1.abnormal_labs || []).forEach(item => {
-        b1Count++;
-        selectedItemIds.add(item.id);
-        const tagType = item.is_critical ? 'tag-crit' : 'tag-fact';
-        const tagText = item.is_critical ? '【危急警报】' : '【原文事实】';
-        const trendClass = item.trend_direction === '↑' ? 'delta-up' : (item.trend_direction === '↓' ? 'delta-down' : '');
-        const extraSpan = `<span class="delta-indicator ${trendClass}">${item.status_label}</span>`;
-        changedDiv.appendChild(createRow(item, tagType, tagText, extraSpan));
-      });
-
-      // PACS Imaging
-      (b1.imaging_changes || []).forEach(item => {
-        b1Count++;
-        selectedItemIds.add(item.id);
-        changedDiv.appendChild(createRow(item, 'tag-fact', '【影像演变】'));
-      });
-
-      // Med Diffs
-      (b1.medication_diff?.added || []).forEach(item => {
-        b1Count++;
-        selectedItemIds.add(item.id);
-        changedDiv.appendChild(createRow(item, 'tag-added', '+ 新增医嘱'));
-      });
-      (b1.medication_diff?.discontinued || []).forEach(item => {
-        b1Count++;
-        selectedItemIds.add(item.id);
-        changedDiv.appendChild(createRow(item, 'tag-disc', '- 停用医嘱'));
-      });
-      (b1.medication_diff?.adjusted || []).forEach(item => {
-        b1Count++;
-        selectedItemIds.add(item.id);
-        changedDiv.appendChild(createRow(item, 'tag-adj', '~ 剂量调整'));
-      });
-      document.getElementById('badge-changed').textContent = `${b1Count}项`;
-
-      // 2. What's Pending
-      const pendingDiv = document.getElementById('list-pending');
-      pendingDiv.innerHTML = '';
-      const b2 = data.blocks.whats_pending;
-      let b2Count = 0;
-
-      (b2.pending_reports || []).forEach(item => {
-        b2Count++;
-        selectedItemIds.add(item.id);
-        pendingDiv.appendChild(createRow(item, 'tag-fact', '【待出报告】'));
-      });
-      (b2.pending_orders || []).forEach(item => {
-        b2Count++;
-        selectedItemIds.add(item.id);
-        pendingDiv.appendChild(createRow(item, 'tag-fact', '【待办医嘱】'));
-      });
-      (b2.scheduled_consults || []).forEach(item => {
-        b2Count++;
-        selectedItemIds.add(item.id);
-        pendingDiv.appendChild(createRow(item, 'tag-fact', '【待办会诊】'));
-      });
-      document.getElementById('badge-pending').textContent = `${b2Count}项`;
-
-      // 3. Clinical Rules & Antibiotics
-      const rulesDiv = document.getElementById('list-rules');
-      rulesDiv.innerHTML = '';
-      const bRules = data.blocks.rule_reminders || [];
-      if (bRules.length > 0) {
-        document.getElementById('card-rules').style.display = 'block';
-        bRules.forEach(item => {
-          selectedItemIds.add(item.id);
-          rulesDiv.appendChild(createRow(item, 'tag-rule', '【规则提醒】'));
-        });
-        document.getElementById('badge-rules').textContent = `${bRules.length}项`;
-      } else {
-        document.getElementById('card-rules').style.display = 'none';
-      }
-
-      // 4. Data Gaps
-      const gapsDiv = document.getElementById('list-gaps');
-      gapsDiv.innerHTML = '';
-      const bGaps = data.blocks.data_gaps || [];
-      bGaps.forEach(item => {
-        selectedItemIds.add(item.id);
-        gapsDiv.appendChild(createRow(item, 'tag-gap', '【资料不足】'));
-      });
-      document.getElementById('badge-gaps').textContent = `${bGaps.length}项`;
-
-      updateSelectedCount();
     }
-
-    function escapeSource(value) { return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
-
-    function createRow(item, tagClass, tagText, extraHtml = '') {
-      const row = document.createElement('div');
-      row.className = 'item-row';
-      row.onclick = (e) => {
-        if (e.target.type !== 'checkbox') showEvidence(item);
-      };
-
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.checked = true;
-      cb.id = `cb-${item.id}`;
-      cb.onchange = (e) => {
-        if (e.target.checked) selectedItemIds.add(item.id);
-        else selectedItemIds.delete(item.id);
-        updateSelectedCount();
-      };
-
-      const body = document.createElement('div');
-      body.className = 'item-body';
-      body.innerHTML = `
-        <div>
-          <span class="tag ${tagClass}">${tagText}</span>
-          <span class="item-text">${escapeSource(item.summary)}</span>
-          ${extraHtml}
-        </div>
-        <div class="item-source">来源: ${escapeSource(item.source_title || item.source_type)} | 对应证据: "${escapeSource(item.span ? item.span.slice(0, 40) : (item.summary || ''))}"</div>
-      `;
-
-      row.appendChild(cb);
-      if (item.viewer?.available && item.viewer.read_only_requested === true) {
-        try {
-          const url = new URL(item.viewer.href);
-          if (url.protocol === 'https:' && !url.username && !url.password) {
-            const a = document.createElement('a'); a.href = url.href; a.target = '_blank';
-            a.rel = 'noopener noreferrer'; a.referrerPolicy = 'no-referrer';
-            a.textContent = '打开院内影像（需 PACS 授权）'; a.onclick = e => e.stopPropagation();
-            body.appendChild(a);
-          }
-        } catch { /* Invalid viewer metadata stays unavailable. */ }
-      }
-      row.appendChild(body);
-      return row;
+    if(t.sources.length && t.sources.every(s=>s.status!=="source_review_required")) sections.followup.push(line+" ［"+t.sources.map(s=>s.source_id).join("、")+"］");
+  }
+  if(row.electrolyte_trends?.length) add(pane,"h3","电解质复查");
+  for(const t of row.electrolyte_trends ?? []) {
+    const d=add(pane,"div");d.className="item";add(d,"span",(analytes[t.metric]??t.metric)+" · "+(t.status==="calculated" ? t.before.value+" → "+t.after.value+" "+t.unit+"，差值 "+Number(t.delta.toFixed(4))+"，间隔 "+Number(t.elapsed_hours.toFixed(2))+" 小时" : "配对测量待核实"));for(const s of t.sources) source(d,s);
+  }
+  if(row.administration_days?.length) add(pane,"h3","实际给药日");
+  for(const a of row.administration_days ?? []) {
+    const d=add(pane,"div");d.className="item";add(d,"span",a.drug_name+" · "+(a.days==null?"给药日未知":"已记录 "+a.days+" 个给药日"));for(const s of a.sources) source(d,s);
+  }
+  add(pane,"h3","哪些资料不足");add(pane,"small","本次有 "+row.withheld_count+" 条事实因来源或版本待核实而暂缓展示。");
+  const buttons=add(pane,"div");buttons.className="actions";
+  const contextMatches = row.context_match === true || launch?.patient_id === row.context.patient_id && launch?.encounter_id === row.context.encounter_id
+    && launch?.tenant_id === row.context.tenant_id;
+  const fieldData=Object.entries(sections).filter(([,lines])=>lines.length).map(([key,lines])=>({key,text:lines.join("\n")}));
+  const names={changes:"病情变化",pending:"待办事项",followup:"未闭环事项"};
+  if(demo && (!launch?.patient_id || sameChart) && fieldData.length) {
+    action(buttons,"复制核实段落",async()=>{if(active!==row)return;try { await navigator.clipboard.writeText(fieldData.map(f=>(launch?.fields?.[f.key]?.label??names[f.key])+"\n"+f.text).join("\n\n"));if(active===row)$("status").textContent="已复制所选床位的合成核实段落。";}catch{if(active===row)$("status").textContent="浏览器未允许复制。";}});
+    if(contextMatches && launch.fields && fieldData.some(f=>launch.fields[f.key])) action(buttons,"交给宿主预览草稿",()=>{
+      if(active!==row)return;const fields=fieldData.filter(f=>launch.fields[f.key]).map(f=>({field_id:launch.fields[f.key].id,text:f.text}));
+      window.parent.postMessage({type:"medcius:synthetic-draft-preview",patient_id:row.context.patient_id,encounter_id:row.context.encounter_id,
+        tenant_id:row.context.tenant_id,as_of:row.context.as_of,fields,requires_physician_signature:true},launch.origin);
+      $("status").textContent="已请求宿主预览合成草稿，尚未签名。";});
+  }
+  if(contextMatches && launch.followup) action(buttons,"向宿主追问",()=>{if(active===row)window.parent.postMessage({type:"medcius:ward-followup",position:row.position,
+    audit_event_id:batch.audit_event_id??null,as_of:row.context.as_of},launch.origin);});
+}
+async function pick(position, matchPatient=false) {
+  clear(); const ticket=selection; let data;
+  try {
+    if(matchPatient) data=await api(base+"/patient",{audit_event_id:batch.audit_event_id,patient_id:launch.patient_id,encounter_id:launch.encounter_id,tenant_id:launch.tenant_id});
+    else data=await api(base+"?"+(demo?"":"audit_event_id="+batch.audit_event_id+"&")+"position="+position);
+    if(ticket!==selection)return;
+    if(!data.entries[0] || (matchPatient && !data.entries[0].context_match && data.entries[0].context && ["tenant_id","patient_id","encounter_id"].some(k=>launch[k]!==data.entries[0].context[k]))) throw new Error("当前患者与预计算快照不一致。");
+    const row=data.entries[0];display({...row,bed_number:bedLabels.get(row.position)??row.bed_number});
+  } catch(err) { if(ticket===selection)add($("row"),"p",err.message); }
+}
+// The host owns bed identifiers. Match its current census against the label
+// committed at capture before using a label for a frozen chart. Never send the
+// roster back to the service or put it in browser storage.
+async function verifiedBeds(view,launchContext) {
+  const labels=new Map();
+  if(demo || !launchContext?.roster?.length || !globalThis.crypto?.subtle)return labels;
+  const encoder=new TextEncoder();
+  const hash=async parts=>Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",encoder.encode(JSON.stringify(parts)))),
+    octet=>octet.toString(16).padStart(2,"0")).join("");
+  const byBinding=new Map(view.entries.filter(r=>r.bed_binding_sha256).map(r=>[r.bed_binding_sha256,r.position]));
+  for(const r of launchContext.roster) {
+    if(!r || ![launchContext.tenant_id,r.patient_id,r.encounter_id].every(k=>typeof k==="string" && k.length && k.length<=256)) continue;
+    const raw=r.bed_number;
+    const bed=typeof raw==="string" ? raw.normalize("NFKC").trim().replace(/床$/,"").trim() : Number.isSafeInteger(raw) ? String(raw) : "";
+    if(!/^[A-Z]?\d{1,3}(?:-[A-Z0-9]{1,3}|[A-Z])?$/.test(bed)) continue;
+    const position=byBinding.get(await hash(["medcius.ward-bed.v1",launchContext.tenant_id,r.patient_id,r.encounter_id,view.as_of,bed]));
+    if(position!==undefined)labels.set(position,bed);
+  }
+  return labels;
+}
+async function loadWard() {
+  const ticket=epoch;
+  try {
+    const view=await api(base+(demo?"":"/today")); if(epoch!==ticket)return;
+    const labels=await verifiedBeds(view,launch);if(epoch!==ticket)return;bedLabels=labels;batch=view;
+    $("status").textContent="资料截至 "+localTime(view.as_of)+(view.time_zone?"（"+view.time_zone+"）":"")+" · "+view.entries.length+" 个床位记录"+(view.status==="captured"?"":" · 本轮未全部完成")+(view.audit_recorded_before_deadline===false?" · 审计索引未在 07:00 前写入":"");
+    const rows=view.entries.map(r=>({...r,bed_number:bedLabels.get(r.position)??r.bed_number})).sort((a,b)=>a.bed_number && b.bed_number ? a.bed_number.localeCompare(b.bed_number,"zh",{numeric:true}) : Number(!a.bed_number)-Number(!b.bed_number) || a.position-b.position);
+    for(const r of rows) {
+      const b=action($("beds"),bedTitle(r)+(r.status==="captured"?" · 未闭环 "+(r.worklist_counts?.followup_open_or_unknown??"未知"):" · 未捕获"),()=>pick(r.position));
+      b.dataset.position=r.position;
     }
-
-    function showEvidence(item) {
-      const p = document.getElementById('evidence-panel');
-      p.innerHTML = `
-        <div style="background:#0d1117; padding:10px; border:1px solid var(--border); border-radius:6px;">
-          <div style="font-weight:700; color:#fff; margin-bottom:4px;">${escapeSource(item.tag || '【事实证据】')} ${escapeSource(item.title || item.summary)}</div>
-          <div style="color:var(--accent); font-family:monospace; background:#161b22; padding:6px; border-radius:4px; margin:6px 0;">
-            证据 Span / 描述: "${escapeSource(item.span || item.summary)}"
-          </div>
-          <div style="font-size:11px; color:var(--text-muted);">
-            • 来源系统/文档: ${escapeSource(item.source_title || item.source_type)}<br/>
-            • 资源标识 (ID): ${escapeSource(item.source_id || 'N/A')}<br/>
-            • 发生时间: ${escapeSource(item.timestamp || '近 24 小时')}
-          </div>
-        </div>
-      `;
-    }
-
-    function toggleSelectAll(checked) {
-      if (!summaryPayload) return;
-      (summaryPayload.selectable_items || []).forEach(item => {
-        const el = document.getElementById(`cb-${item.id}`);
-        if (el) el.checked = checked;
-        if (checked) selectedItemIds.add(item.id);
-        else selectedItemIds.delete(item.id);
-      });
-      updateSelectedCount();
-    }
-
-    function updateSelectedCount() {
-      document.getElementById('selected-count').textContent = `已选 ${selectedItemIds.size} 项`;
-    }
-
-    async function openInsertModal() {
-      if (!summaryPayload) return;
-      const modal = document.getElementById('draft-modal');
-      
-      try {
-        const res = await fetch('/api/v1/patient/progress-note-draft', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            summaryData: summaryPayload,
-            selectedItemIds: Array.from(selectedItemIds),
-            doctorName: '查房医师',
-          })
-        });
-        if (res.ok) {
-          const draftJson = await res.json();
-          document.getElementById('draft-text').value = draftJson.draft_text;
-        } else {
-          fallbackBuildDraft();
-        }
-      } catch (e) {
-        fallbackBuildDraft();
-      }
-
-      modal.style.display = 'flex';
-    }
-
-    function fallbackBuildDraft() {
-      const chosen = (summaryPayload.selectable_items || []).filter(i => selectedItemIds.has(i.id));
-      const lines = ['【日常查房记录 - 病情演变摘要】'];
-      chosen.forEach(c => lines.push(`• ${c.summary}`));
-      document.getElementById('draft-text').value = lines.join('\n');
-    }
-
-    function closeInsertModal() {
-      document.getElementById('draft-modal').style.display = 'none';
-    }
-
-    function copyDraftText() {
-      const val = document.getElementById('draft-text').value;
-      navigator.clipboard.writeText(val);
-      alert('✓ 查房病程记录草稿已复制到系统剪贴板！');
-    }
-
-    async function confirmInsert() {
-      const draftText = document.getElementById('draft-text').value;
-      
-      // 1. Copy to clipboard for immediate fallback
-      try {
-        await navigator.clipboard.writeText(draftText);
-      } catch (e) {
-        console.warn('Clipboard write failed:', e);
-      }
-
-      // 2. Real SMART Web Messaging STU 1.0 (HL7 FHIR postMessage Bridge)
-      const smartMessage = {
-        messagingHandle: window.location.href,
-        messageId: 'msg-' + Date.now(),
-        messageType: 'scratchpad.create',
-        payload: {
-          resource: {
-            resourceType: 'DocumentReference',
-            status: 'preliminary',
-            type: { text: '住院日常查房记录' },
-            subject: { reference: `Patient/${summaryPayload?.patient?.id || 'unknown'}` },
-            description: 'Medcius 查房前病情演变与调整摘要',
-            content: [
-              {
-                attachment: {
-                  contentType: 'text/plain; charset=utf-8',
-                  data: btoa(unescape(encodeURIComponent(draftText)))
-                }
-              }
-            ]
-          }
-        }
-      };
-
-      if (window.parent && window.parent !== window) {
-        window.parent.postMessage(smartMessage, '*');
-        console.log('[Medcius] Sent SMART Web Messaging scratchpad.create to host EHR:', smartMessage);
-      }
-
-      alert('✓ 查房摘要已通过 SMART Web Messaging 接口发送至宿主 EHR，并已同步写入系统剪贴板！');
-      closeInsertModal();
-    }
-
-    // Auto-fetch on load
-    window.addEventListener('DOMContentLoaded', fetchSummary);
-  </script>
-</body>
-</html>
+    if(launch?.patient_id) await pick(null,true); else if(rows.length) await pick(rows[0].position);
+    else add($("row"),"p","本轮病区名册为空。");
+  } catch(err){if(epoch===ticket)$("status").textContent=err.message;}
+}
+function templateMap(input) {
+  if(!input || typeof input!=="object")return null;
+  const map={}, used=new Set();
+  for(const k of ["changes","pending","followup"]) {
+    const f=input[k];if(f===undefined)continue;
+    if(!f || typeof f.id!=="string" || !/^[A-Za-z][A-Za-z0-9_.-]{0,63}$/.test(f.id) || used.has(f.id) || typeof f.label!=="string" || !f.label.trim() || f.label.length>48)return null;
+    map[k]={id:f.id,label:f.label}; used.add(f.id);
+  } return map;
+}
+window.addEventListener("message",ev=>{
+  if(window.parent===window || ev.source!==window.parent || !(ev.origin===location.origin || origins.includes(ev.origin)))return;
+  const m=ev.data; if(!m || !["his:patient-context","his:ward-context","his:context-cleared"].includes(m.type))return;
+  reset();$("status").textContent="正在切换上下文…";
+  if(m.type==="his:context-cleared"){ $("status").textContent="患者上下文已关闭。"; return; }
+  const p=m.payload??{};if(m.type==="his:patient-context" && !["tenant_id","patient_id","encounter_id"].every(k=>typeof p[k]==="string" && p[k].length)){ $("status").textContent="患者或就诊上下文不完整。";return; }
+  launch={origin:ev.origin,token:p.sso_token,roster:Array.isArray(p.ward_roster) && p.ward_roster.length<=1000 ? p.ward_roster : p.bed_number!=null ? [p] : [],tenant_id:p.tenant_id,patient_id:p.patient_id,encounter_id:p.encounter_id,fields:templateMap(p.template_fields),followup:p.supports_local_followup===true,taskReview:p.supports_source_task_review===true};
+  if(demo || launch.token) loadWard();else $("status").textContent="等待已授权的院内复核身份。";
+});
+for(const origin of new Set([location.origin,...origins])) if(window.parent!==window) window.parent.postMessage({type:"medcius:ward-ready",mode:demo?"synthetic":"research"},origin);
+if(demo)loadWard();else $("status").textContent="等待院内复核工作站下发授权上下文。";
+</script></body></html>

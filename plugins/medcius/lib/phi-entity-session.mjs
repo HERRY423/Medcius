@@ -1,5 +1,6 @@
 // Patient-scoped, memory-only deterministic entities. Never serialize names,
 // their phonetic forms, or a reusable unsalted dictionary digest into receipts.
+import { COMPOUND_SURNAMES } from './cn-surnames.mjs';
 import { createRequire } from 'node:module';
 import { randomUUID } from 'node:crypto';
 import { toModelSafe, assertExplicitFeedOwnership, mayContainStructuredJson } from './clinical-boundary.mjs';
@@ -25,6 +26,32 @@ const PERSON_CONTAINERS = new Set(['contact', 'contacts', 'emergencycontact', 'e
   'practitioners', 'attending', 'supervising', 'consulting', 'careteam', 'participant', 'participants',
   'individual', 'member', 'generalpractitioner', 'performer', 'author', '紧急联系人']);
 const ADDRESS_KEYS = new Set(['address', 'currentaddress', 'homeaddress', 'street', '现住址', '住址', '家庭地址']);
+const CLINICIAN_CONTAINERS = new Set(['practitioner','practitioners','attending','supervising','consulting','careteam',
+  'participant','participants','individual','member','generalpractitioner','performer','author']);
+const ORGANIZATION_KEYS = new Set(['organization','organizations','hospital','hospitalname','referringhospital',
+  'serviceprovider','managingorganization','机构','医院','转出医院']);
+const LOCATION_KEYS = new Set(['location','locations','wardname','院区','病区名称']);
+
+const CLINICIAN_TITLES = ['主任','医生','医师','大夫','护士','护士长','老师','教授'];
+
+export function phiNoteEntityMetadata(note) {
+  if(!note||typeof note!=='object'||Array.isArray(note)) throw new Error('PHI_SESSION_ENTITIES_INVALID');
+  return Object.fromEntries(Object.entries(note).filter(([key])=>{
+    const k=keyOf(key);
+    return ['tenantid','patientid','encounterid'].includes(k) || (k!=='name' && (NAME_KEYS.has(k)||ALIAS_KEYS.has(k)
+      ||PERSON_CONTAINERS.has(k)||ADDRESS_KEYS.has(k)||ORGANIZATION_KEYS.has(k)||LOCATION_KEYS.has(k)));
+  }));
+}
+
+function assertEntityOwnership(context, values, depth=0) {
+  if(depth>16) throw new Error('PHI_SESSION_ENTITY_DEPTH');
+  for(const value of values) {
+    if(!value || typeof value!=='object') continue;
+    try {assertExplicitFeedOwnership(context,[value],'phi_entities');}
+    catch {throw new Error('PHI_SESSION_SOURCE_MISMATCH');}
+    assertEntityOwnership(context,Object.values(value),depth+1);
+  }
+}
 
 function names(value) {
   if (typeof value === 'string') return [value];
@@ -48,16 +75,15 @@ function projected(text) {
   return { chars, starts, ends, text: chars.join('') };
 }
 
-export function createPhiEntitySession({ context, patient = {}, encounter = {}, practitioners = [], careTeam = [], notes = [],
-  homophones = true } = {}) {
+export function createPhiEntitySession({ context, patient = {}, encounter = {}, practitioners = [], careTeam = [], notes = [], organizations = [], locations = [],
+  homophones = true, cacheScans = true } = {}) {
   const keys = ['tenant_id', 'patient_id', 'encounter_id'];
   if (!context || keys.some(k => typeof context[k] !== 'string' || !context[k].trim())) throw new Error('PHI_SESSION_CONTEXT_REQUIRED');
   if (patient.id !== context.patient_id || encounter.id !== context.encounter_id) throw new Error('PHI_SESSION_CONTEXT_MISMATCH');
-  if (![practitioners, careTeam, notes].every(Array.isArray)) throw new Error('PHI_SESSION_ENTITIES_INVALID');
-  try { assertExplicitFeedOwnership(context, [patient, encounter, ...practitioners, ...careTeam, ...notes], 'phi_entities'); }
-  catch { throw new Error('PHI_SESSION_SOURCE_MISMATCH'); }
-  return makeSession({ context, patient, encounter, practitioners, careTeam, notes, homophones,
-    binding: Object.fromEntries([...keys, 'phi_session_id'].map(k => [k, context[k] ?? null])) });
+  if (![practitioners, careTeam, notes, organizations, locations].every(Array.isArray)) throw new Error('PHI_SESSION_ENTITIES_INVALID');
+  assertEntityOwnership(context,[patient,encounter,practitioners,careTeam,notes,organizations,locations]);
+  return makeSession({ context, patient, encounter, practitioners, careTeam, notes, organizations, locations, homophones, cacheScans,
+    binding: Object.fromEntries([...keys, 'phi_session_id', 'ward_id'].map(k => [k, context[k] ?? null])) });
 }
 
 // MCP/document/audit requests need a deterministic dictionary even without a
@@ -69,8 +95,8 @@ export function createPhiRequestSession(values = []) {
   return { context, session };
 }
 
-function makeSession({ context, patient = {}, encounter = {}, practitioners = [], careTeam = [], notes = [],
-  values = [], binding, homophones = true }) {
+function makeSession({ context, patient = {}, encounter = {}, practitioners = [], careTeam = [], notes = [], organizations = [], locations = [],
+  values = [], binding, homophones = true, cacheScans = true }) {
   const entities = new Map();
   let disposed = false;
   const add = (raw, label) => {
@@ -80,28 +106,58 @@ function makeSession({ context, patient = {}, encounter = {}, practitioners = []
     if (entities.size >= 2048 && !entities.has(normalized)) throw new Error('PHI_SESSION_ENTITY_LIMIT');
     entities.set(normalized, label);
   };
+  const personName = (value, clinician=false) => {
+    for(const raw of names(value)) {
+      add(raw,'PERSON');
+      const name=projected(raw.trim()).text;
+      // Derived aliases require a supplied clinician name; never promote an
+      // arbitrary surname or a clinical term to a global blacklist.
+      if(clinician && /^[\p{Script=Han}]{2,6}$/u.test(name)) {
+        const surname=COMPOUND_SURNAMES.exec(name)?.[0] ?? Array.from(name)[0];
+        for(const title of CLINICIAN_TITLES) add(surname+title,'PERSON');
+      }
+    }
+  };
   const address = value => {
     if (Array.isArray(value)) { value.forEach(address); return; }
-    if (value && typeof value === 'object') { address(value.text); address(value.line); address(value.street); return; }
+    if (value && typeof value === 'object') {
+      for(const key of ['text','line','street','city','district','state']) address(value[key]); return;
+    }
     if (typeof value !== 'string') return;
     add(value, 'ADDRESS');
     const tail = value.split(/省|自治区|市|区|县|旗|街道/).at(-1);
     const street = /^[^\d，,。；;]{2,30}?(?:大道|大街|路|街|巷|弄)/.exec(tail)?.[0];
     if (street) add(street, 'ADDRESS');
   };
-  const collect = (value, depth = 0, person = false) => {
-    if (depth > 12) throw new Error('PHI_SESSION_ENTITY_DEPTH');
-    if (Array.isArray(value)) { value.forEach(x => collect(x, depth + 1, person)); return; }
-    if (!value || typeof value !== 'object') { if (person) names(value).forEach(x => add(x, 'PERSON')); return; }
-    if (person) names(value).forEach(x => add(x, 'PERSON'));
-    for (const [key, item] of Object.entries(value)) {
-      const k = keyOf(key);
-      if (NAME_KEYS.has(k) || ALIAS_KEYS.has(k)) names(item).forEach(x => add(x, 'PERSON'));
-      else if (ADDRESS_KEYS.has(k)) address(item);
-      else if (PERSON_CONTAINERS.has(k)) collect(item, depth + 1, true);
+  const institution = (value, label, depth=0) => {
+    if(depth>12) throw new Error('PHI_SESSION_ENTITY_DEPTH');
+    if(Array.isArray(value)) {for(const item of value) institution(item,label,depth+1);return;}
+    if(typeof value==='string') {add(value,label);return;}
+    if(!value || typeof value!=='object') return;
+    for(const [key,item] of Object.entries(value)) {
+      if(['name','text','display','alias','aliases','shortname','简称'].includes(keyOf(key))) institution(item,label,depth+1);
+      else if(ADDRESS_KEYS.has(keyOf(key))) address(item);
+      else if(ORGANIZATION_KEYS.has(keyOf(key))) institution(item,'ORGANIZATION',depth+1);
+      else if(LOCATION_KEYS.has(keyOf(key))) institution(item,'ADDRESS',depth+1);
     }
   };
-  collect(patient); collect(encounter); collect(context); collect(practitioners, 0, true); collect(careTeam, 0, true);
+  const collect = (value, depth = 0, person = false, clinician = false) => {
+    if (depth > 12) throw new Error('PHI_SESSION_ENTITY_DEPTH');
+    if (Array.isArray(value)) { value.forEach(x => collect(x, depth + 1, person, clinician)); return; }
+    if (!value || typeof value !== 'object') { if (person) personName(value,clinician); return; }
+    if (person) personName(value,clinician);
+    for (const [key, item] of Object.entries(value)) {
+      const k = keyOf(key);
+      if (NAME_KEYS.has(k) || ALIAS_KEYS.has(k)) personName(item,!ALIAS_KEYS.has(k) &&
+        (clinician || /doctor|physician|attending|supervising|consulting|医师|authorname/.test(k)));
+      else if (ADDRESS_KEYS.has(k)) address(item);
+      else if (ORGANIZATION_KEYS.has(k)) institution(item,'ORGANIZATION');
+      else if (LOCATION_KEYS.has(k)) institution(item,'ADDRESS');
+      else if (PERSON_CONTAINERS.has(k)) collect(item, depth + 1, true,CLINICIAN_CONTAINERS.has(k));
+    }
+  };
+  collect(patient); collect(encounter); collect(context); collect(practitioners, 0, true, true); collect(careTeam, 0, true, true);
+  institution(organizations,'ORGANIZATION'); institution(locations,'ADDRESS');
   for (const { name: _title, ...metadata } of notes) collect(metadata);
   const collectRequest = (value, depth = 0) => {
     if (depth > 64) throw new Error('PHI_SESSION_ENTITY_DEPTH');
@@ -142,14 +198,14 @@ function makeSession({ context, patient = {}, encounter = {}, practitioners = []
       if (binding.phi_request_id) throw new Error('PHI_SESSION_CONTEXT_MISMATCH');
       assertContext(source?.context);
       if (source.patient?.id !== binding.patient_id || source.encounter?.id !== binding.encounter_id) throw new Error('PHI_SESSION_CONTEXT_MISMATCH');
-      const lists = [source.practitioners ?? [], source.careTeam ?? [], source.notes ?? []];
+      const lists = [source.practitioners ?? [], source.careTeam ?? [], source.notes ?? [], source.organizations ?? [], source.locations ?? []];
       if (!lists.every(Array.isArray)) throw new Error('PHI_SESSION_ENTITIES_INVALID');
-      try { assertExplicitFeedOwnership(source.context, [source.patient, source.encounter, ...lists.flat()], 'phi_entities'); }
-      catch { throw new Error('PHI_SESSION_SOURCE_MISMATCH'); }
+      assertEntityOwnership(source.context,[source.patient,source.encounter,...lists]);
       try {
         collect(source.patient); collect(source.encounter); collect(source.context);
-        collect(lists[0], 0, true); collect(lists[1], 0, true);
+        collect(lists[0], 0, true, true); collect(lists[1], 0, true, true);
         for (const { name: _title, ...metadata } of lists[2]) collect(metadata);
+        institution(lists[3],'ORGANIZATION'); institution(lists[4],'ADDRESS');
         rebuildPhonetics();
       } catch { entities.clear(); phoneticIndex.clear();scanCache.clear();scanBytes=0; disposed = true; throw new Error('PHI_SESSION_INJECTION_FAILED'); }
     },
@@ -181,7 +237,7 @@ function makeSession({ context, patient = {}, encounter = {}, practitioners = []
           }
         }
       }
-      if(scanCache.size<512 && scanBytes+text.length*2<=2_000_000) {
+      if(cacheScans && scanCache.size<512 && scanBytes+text.length*2<=2_000_000) {
         scanCache.set(text,spans.map(s=>({...s})));scanBytes+=text.length*2;
       }
       return spans;

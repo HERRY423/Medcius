@@ -1,0 +1,97 @@
+{
+  "schema_version": "medcius.cn-note-improvement-verification.v1",
+  "scope": "ENGINEERING_AND_SYNTHETIC_ONLY",
+  "status": "FOR_REVIEW",
+  "user_date": "2026-11-14",
+  "final_execution_receipt": "out/quality-gates-b22f9016-74e1-4534-b3d5-5074c02d6ac9.json",
+  "final_run_id": "b22f9016-74e1-4534-b3d5-5074c02d6ac9",
+  "functional_pipeline": {
+    "completed": 95,
+    "failed": 0,
+    "deferred": 1,
+    "full_suite_pass": null,
+    "reference_performance": "NOT_RUN",
+    "engineering_pass": true,
+    "synthetic_execution_pass": null,
+    "synthetic_validation_pass": "NOT_ESTABLISHED",
+    "clinical_evidence_pass": "BLOCKED"
+  },
+  "engineering_checks": {
+    "completed": 82,
+    "failed": 0
+  },
+  "synthetic_report_executions": {
+    "completed": 13,
+    "endpoint_success": "NOT_ESTABLISHED"
+  },
+  "focused_tests": {
+    "total": 80,
+    "failed": 0,
+    "log": "focused-final.log",
+    "new_suite_tests": 45
+  },
+  "actual_local_ner": {
+    "status": "TEST_PASSED",
+    "scope": "Synthetic guarded candidates in A/B topologies; medical LLM transport stub",
+    "log": "production-phi.log",
+    "final_step_log": "C:\\Medcius\\out\\quality-gates-b22f9016-74e1-4534-b3d5-5074c02d6ac9\\step-15.log"
+  },
+  "plugin_validator": {
+    "status": "PASSED",
+    "requested_host_path": "UNAVAILABLE",
+    "used": "scripts/vendor/openai-plugin-validator/validate_plugin.py",
+    "log": "plugin-validation.log"
+  },
+  "development_fixture": {
+    "independent_holdout": false,
+    "fixture_sha256": "630f4220d7af7f3cbbea4193f51385fb4d58a80c3b63306875229c45794641d2",
+    "before_exact": 10,
+    "after_exact": 22,
+    "total_cases": 22,
+    "before_matched_mentions": 26,
+    "after_matched_mentions": 40,
+    "expected_mentions": 40
+  },
+  "previous_attempts": [
+    {
+      "receipt": "attempt-1-receipt.json",
+      "reason": "Model directory unset; loopback connections restricted; failed checks retained"
+    },
+    {
+      "receipt": "attempt-2-receipt.json",
+      "reason": "Offline dependency cache unset; 94 completed, 1 failed, 1 deferred"
+    }
+  ],
+  "medical_llm_evaluation": "NOT_RUN",
+  "real_note_recall": "NOT_EVALUATED",
+  "clinical_evidence": "NOT_ESTABLISHED",
+  "reference_performance": "NOT_RUN",
+  "source_hashes": {
+    "plugins/medcius/lib/parse-cn-note.mjs": "51194e87641da0a5c52ac9a72347d0f93456ae012065f8c48044dfa3cbf4af5d",
+    "plugins/medcius/lib/cn-assertions.mjs": "6014f612d34a34a7eb0e920accbbe57f2d7f70fff5b9e234033a88bbe09dae8e",
+    "plugins/medcius/lib/cn-assertion-rules.mjs": "b6a4e1379a8c22afd70464d6852e76ddf6dfd3d841cd07bfe82b334cbe215524",
+    "plugins/medcius/lib/cn-measurements.mjs": "f871027d7b97657e6ac7263a4b5eafd0b91c05cacc01db565764e18c6431bddb",
+    "plugins/medcius/lib/cn-note-terms.mjs": "85a5f18fad0d302f89134ba83bf66e17ea822a686751dae1e77338157151cec3",
+    "plugins/medcius/lib/cn-note-candidate-contract.mjs": "d228bd5557a8f4803812826aa9c0c88ec89ce280e0c6aaf5e692e53bfc18fd9f",
+    "plugins/medcius/lib/cn-note-extraction.mjs": "edf42993d972b9cef66ca64ccc68090ef5f41469e9faae9012f4be92ea18f75b",
+    "plugins/medcius/lib/llm-inference-config.mjs": "68d2e78e2e5180b673a2d86db245a893ecb046eea535fd15a378aaacb04ae93a",
+    "plugins/medcius/lib/patient-evolution-engine.mjs": "c9a9b76f0cb9e78258f44391518755d99b04c1651cdc528df41fd02088b2e2c8",
+    "plugins/medcius/skills/clinical-note-extract/SKILL.md": "ed90dae390cc24c8fc207e13826bf99f8f56d10d5b8f6a111570c2527ac37db0",
+    "plugins/medcius/skills/clinical-note-extract/references/controlled-extraction.md": "44d26680c2bd2f618d2dec9325eb76a0660768165468f78e50c63e6bcc27d831",
+    "tests/test-cn-note-extraction.mjs": "65c2109547a03038101dec711bd8c96beab31491001f688a2394dde9cf739606",
+    "tests/test-production-dual-phi.mjs": "5731fe5a80785fb20047592d2f5527384677596c532591395e6bef5fc4cb57a4",
+    "tests/test-noise-benchmark.mjs": "27435fb65cbec85ea2421f6a68826f1591a7469c799cc0633d7215f319eb3af5",
+    "tests/fixtures/cn-messy-notes.mjs": "3f10a2934b7c446443f5ab8235baa017f6f213644073946cd3c94f23715010a8",
+    "scripts/measure-cn-note-development.mjs": "a55a47d5cbeca2d909cd076d8c1cf56b3e2930d56589eb9b5ddc8727814b46a2",
+    "scripts/run-all-checks.mjs": "bffd8d79ce022531e36f5af1e927676567908deeeedaa61eb2ab47ae085e769c",
+    "scripts/build-evidence-index.mjs": "88f1aa202d66683d742ae5de70da3573603136a100a85440e3f1b91513279919",
+    "plugins/medcius/evals/real-world-noise/run-noise-diagnostics.mjs": "bf74e805dfb15c82352b8b6e524db064a5274ba1a63fe4d51cd8b8b7958dd4b4"
+  },
+  "artifact_hashes": {
+    "assertions-before.json": "00e654f703f6e4029968fae26912b73763013dd2a5eb35d5953ed0b9b84e53d3",
+    "assertions-after.json": "04a9a08a510fd58050b9c55a41c589dcf9f10a8ae9459b02ded71e50ad604a3e",
+    "final-functional-receipt.json": "e4b38ff02b3ea8161ac4a940eda7c84dd397b9fec7185838c81fc8604db87cb1",
+    "focused-final.log": "87cf1576e43c4c59ed32a803bb5d433a421aba605730b6b803e77662c3ff3569",
+    "production-phi.log": "b31ef0ba2bce5fb0d5cc3281cfb09b1b37ff239ff71d9c7599832715432e5f5f"
+  }
+}

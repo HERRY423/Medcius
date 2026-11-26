@@ -131,7 +131,8 @@ export function scanText(text, { contextual = true } = {}) {
     push(new RegExp(`(?:患者|病人|患儿)(${CONTEXT_NAME})(?=[，,]|诉|因|于|今日|昨日|入院|出院)`, 'g'), "context_patient", null, plausibleName);
     push(new RegExp(`(?:由其[子女]|陪护人(?:家属)?(?:姓名)?[：:]?|家属(?:姓名)?[：:]?)(${CONTEXT_NAME})(?=[，,。]|送入|陪同|代诉|诉称)`, 'g'), "context_relative", null, plausibleName);
     push(new RegExp(`(?:妻子|丈夫|配偶|儿子|女儿|父亲|母亲|兄长|姐姐|弟弟|妹妹)\\s*(${CONTEXT_NAME})(?=陪同|代诉|签字|签名|送入|表示|诉称|[，,。；;])`, 'g'), "context_relative", null, plausibleName);
-    push(/(?<![\u4e00-\u9fa5])([\u4e00-\u9fa5]{2,4})(?:主任医师|副主任医师|主治医师|住院医师|医生|医师|护士|教授)(?=查房|会诊|建议|签名|签字|[，,。；;\s]|$)/g, "context_clinician");
+    const roleWords = new Set(['主治','主任','副主任','住院','主管','责任','经管','值班','当班','管床','会诊','上级','下级','实习','进修']);
+    push(/(?<![\u4e00-\u9fa5])([\u4e00-\u9fa5]{2,4})(?:主任医师|副主任医师|主治医师|住院医师|医生|医师|护士|教授)(?=查房|会诊|建议|签名|签字|[，,。；;\s]|$)/g, "context_clinician", null, m=>!roleWords.has(m[1]));
     push(/(?:患者系|就职于|任职于|担任)(?:某|原)?(?:市委|省委|局长|科长|主任|书记|董事长|总经理|校长|院长)/g, "context_title");
     push(/病案号[：:]\s*[A-Za-z0-9_-]{4,25}/g, "mrn_label");
   }

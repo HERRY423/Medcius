@@ -1,9 +1,9 @@
 # Medcius 临床真实时间线协同体系矩阵 (Clinical Timeline Collaboration Matrix)
 
-> Product baseline: 1.0.0; document revision: 3; approval: DRAFT_UNAPPROVED
+> Product baseline: 1.1.0; document revision: 4; approval: DRAFT_UNAPPROVED
 
 
-> **版本**：`1.0.0`
+> **版本**：`1.1.0`
 > **定位**：一线临床医生全天真实工作流时间线下的 **Agent - 插件 - 医生** 协同分工与安全边界
 > **核心原则**：**把「极致」落到医生真实时间线，而不是功能清单**
 

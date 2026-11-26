@@ -4,7 +4,8 @@ const measurements=channel('medcius.ner.batch');
 // Caller admission/deadlines belong to inference-queue. Within an admitted
 // operation, at most four native batches execute and at most twelve independent
 // windows share a batch. A native failure invalidates the pool, never falls back.
-export async function createBatchPool(bytes,{threads,classes,onFailure}={}) {
+export async function createBatchPool(bytes,{threads,classes,onFailure,workerCount=4,singleRows=false}={}) {
+  if(!Number.isInteger(workerCount)||workerCount<1||workerCount>4) throw new Error('LOCAL_NER_LIMIT_INVALID');
   const shared=new SharedArrayBuffer(bytes.length); new Uint8Array(shared).set(bytes);
   const workers=[], waiting=[]; let failed=false,closing=false,completedBatches=0,completedWindows=0;
   const fail=()=>{
@@ -26,7 +27,7 @@ export async function createBatchPool(bytes,{threads,classes,onFailure}={}) {
     }
   };
   try {
-    for(let i=0;i<4;i++) {
+    for(let i=0;i<workerCount;i++) {
       const worker=new Worker(new URL('./batch-worker.mjs',import.meta.url),{workerData:{bytes:shared,threads,classes},execArgv:[]});
       const slot={worker,job:null,exited:false}; workers.push(slot);
       slot.exit=new Promise(resolve=>worker.once('exit',()=>{
@@ -60,17 +61,38 @@ export async function createBatchPool(bytes,{threads,classes,onFailure}={}) {
   }
   let sequence=0;
   return Object.freeze({
-    async run(rows,cancelled=()=>false) {
+    async run(rows,cancelled=()=>false,{compactShortRows=false}={}) {
       const started=performance.now();
       if(failed || closing) throw new Error('LOCAL_NER_NOT_AVAILABLE');
       if(rows.length>512) throw new Error('LOCAL_NER_LIMIT_INVALID');
+      if(compactShortRows&&rows.some(row=>row.ids.length>6)) throw new Error('LOCAL_NER_LIMIT_INVALID');
       const groups=new Map();
       for(const row of rows) {
         const bucket=Math.ceil(row.ids.length/8);
         if(!groups.has(bucket)) groups.set(bucket,[]);groups.get(bucket).push(row);
       }
+      // Spread short crop work over the existing workers in at most one wave
+      // when it fits. One large crop batch left sibling workers idle, while
+      // one row per batch adds repeated dispatches. Keep independent examples
+      // together within each balanced batch; the native budget is unchanged.
       const batchSize=rows.length<=4 ? 1 : 12;
-      const batches=[...groups.values()].flatMap(group=>Array.from({length:Math.ceil(group.length/batchSize)},(_,i)=>group.slice(i*batchSize,(i+1)*batchSize)))
+      const batches=[...groups.values()].flatMap(group=>{
+        if (singleRows) return group.map(row => [row]);
+        const short = group.every(row => row.ids.length <= 32);
+        const expand = compactShortRows || (short && groups.size === 1 && group.length > 4);
+        const count = expand
+          ? Math.min(group.length, workerCount * Math.ceil(group.length / (workerCount * 12)))
+          : Math.ceil(group.length / batchSize);
+        if (count === 1) return [group];
+        if (!short) {
+          return Array.from({ length: count }, (_, i) => group.slice(i * batchSize, (i + 1) * batchSize));
+        }
+        // Group similar lengths first to reduce padding, then spread short
+        // rows evenly so a small remainder does not leave a worker idle.
+        const sorted = group.toSorted((a, b) => a.ids.length - b.ids.length);
+        return Array.from({ length: count }, (_, i) =>
+          sorted.slice(Math.floor(i * sorted.length / count), Math.floor((i + 1) * sorted.length / count)));
+      })
         .sort((a,b)=>b.length*Math.max(...b.map(r=>r.ids.length))-a.length*Math.max(...a.map(r=>r.ids.length)));
       const promises=batches.map(batch=>new Promise((resolve,reject)=>{
         waiting.push({id:++sequence,rows:batch,resolve,reject,cancelled});
@@ -84,7 +106,7 @@ export async function createBatchPool(bytes,{threads,classes,onFailure}={}) {
       if(measurements.hasSubscribers) measurements.publish({windows:rows.length,batches:batches.length,elapsed_ms:performance.now()-started});
       return settled.flatMap(r=>r.value);
     },
-    diagnostics(){return {completed_batches:completedBatches,completed_windows:completedWindows};},
+    diagnostics(){return {batch_workers:workerCount,completed_batches:completedBatches,completed_windows:completedWindows};},
     async close(){
       closing=true;
       for(const job of waiting.splice(0)) job.reject(new Error('LOCAL_NER_NOT_AVAILABLE'));

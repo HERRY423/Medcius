@@ -1,0 +1,27 @@
+{
+  "id": "medcius-temporal-reference",
+  "version": "1.0.0",
+  "status": "engineering_reference_not_hospital_approval",
+  "clinical_alerts_enabled": false,
+  "windows": { "baseline_hours": 24, "urine_hours": 6, "infection_hours": 72, "morning_start_hour": 4, "morning_end_hour": 12 },
+  "delta_rules": {
+    "creatinine_48h": { "metric": "scr", "max_hours": 48, "absolute_rise": 26.5, "unit": "umol/L", "native_mg_dl_rise": 0.3, "basis": "KDIGO_2012_2.1.1_creatinine_absolute_component_only" },
+    "news2_rise": { "metric": "news2", "max_hours": 24, "absolute_rise": 2, "unit": "points", "basis": "engineering_candidate_not_RCP_trigger" },
+    "sofa_rise": { "metric": "sofa", "max_hours": 24, "absolute_rise": 1, "unit": "points", "basis": "engineering_candidate_not_sepsis_diagnosis" }
+  },
+  "drugs": [
+    { "id": "furosemide", "atc": "C03CA01", "class": "loop_diuretic", "aliases": ["furosemide", "呋塞米", "呋塞米注射液", "注射用呋塞米"] },
+    { "id": "bumetanide", "atc": "C03CA02", "class": "loop_diuretic", "aliases": ["bumetanide", "布美他尼", "布美他尼注射液"] },
+    { "id": "torasemide", "atc": "C03CA04", "class": "loop_diuretic", "aliases": ["torasemide", "托拉塞米", "托拉塞米注射液", "注射用托拉塞米"] },
+    { "id": "meropenem", "atc": "J01DH02", "class": "antibacterial", "aliases": ["meropenem", "美罗培南", "注射用美罗培南"] },
+    { "id": "ertapenem", "atc": "J01DH03", "class": "antibacterial", "aliases": ["ertapenem", "厄他培南", "注射用厄他培南"] },
+    { "id": "biapenem", "atc": "J01DH05", "class": "antibacterial", "aliases": ["biapenem", "比阿培南", "注射用比阿培南"] }
+  ],
+  "sources": {
+    "kdigo": { "url": "https://kdigo.org/wp-content/uploads/2019/01/KDIGO-2012-AKI-Guideline-English.pdf", "locator": "Summary recommendation 2.1.1, printed page 8", "scope": "48-hour absolute serum creatinine component; no AKI diagnosis/staging or negative exclusion" },
+    "news2": { "url": "https://www.rcp.ac.uk/media/2acdezkd/news2-chart-2_news-thresholds-and-triggers_0.pdf", "locator": "Chart 2", "scope": "RCP absolute thresholds are distinct from this experimental delta rule" },
+    "sofa": { "url": "https://jamanetwork.com/journals/jama/fullarticle/2492881", "locator": "Box 3 and SOFA discussion", "scope": "SOFA context; any-rise candidate is not the Sepsis-3 diagnostic definition" },
+    "drug_classes": { "urls": ["https://atcddd.fhi.no/atc_ddd_index/?code=C03CA&showdescription=no", "https://atcddd.fhi.no/atc_ddd_index/?code=J01DH&showdescription=no"], "scope": "Exact generic-name/ATC mapping only; not a prescribing or potency catalog" }
+  },
+  "limitations": ["No causal attribution", "No treatment-effect claim", "No live clinical alert", "No automatic antibiotic escalation inference", "No assumed treatment-day count", "Unknown generic names abstain", "SOFA is source-reported classic SOFA only; not calculated from incomplete components"]
+}

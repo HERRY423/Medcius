@@ -10,6 +10,23 @@ A clinical finding's relationship to the patient is captured on **three independ
 
 The axes are independent: "mother denied prior MI" is `{presence: absent, temporality: historical, experiencer: family_member}`. No precedence rule, no information loss.
 
+## Chinese note parser
+
+The versioned Chinese rules use `positive`, `negative`, `uncertain`,
+`not_evaluated`, and `not_mentioned` for presence. A pending test stays
+`not_evaluated`. Explicitly missing documentation stays `not_mentioned`.
+For “家属代诉患者昨晚发热”, the patient is the experiencer and the time is
+historical. Each cue and mention retains its original UTF-16 offsets.
+
+The development fixtures exercise these cases with
+`node scripts/measure-cn-note-development.mjs`. To measure performance on
+hospital notes, freeze the rule version and use an authorized patient-disjoint
+set. Have two clinicians independently label mentions and their three axes on
+the guarded text, reconcile disagreements, and report per-label support,
+precision and recall, especially errors between `negative`,
+`not_evaluated`, and `not_mentioned`. Record the note types and site covered.
+The current clinical accuracy status is `NOT_ESTABLISHED`.
+
 ## Examples
 
 | note text | presence | temporality | experiencer |

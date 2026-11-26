@@ -1,6 +1,7 @@
 // Offsets are UTF-16 code units in an exact decoded, PHI-guarded snapshot.
 // They must never be applied directly to a live/reformatted EHR document.
 import { canonicalJson, sha256Hex } from "../servers/shared/crypto.mjs";
+import { projectRichTextSpan } from './rich-note-normalization.mjs';
 
 const version = r => r.version_id ?? r.meta?.versionId ?? r.source_version ?? null;
 const validText = t => typeof t === "string" && !t.includes("\ufffd") && t.isWellFormed();
@@ -33,13 +34,22 @@ export function resolveTextAnchor(anchor, record) {
 }
 
 // Verifies location only. A resource association is never a truth judgment.
+// Caller supplies the exact source only within the trusted local boundary.
+export function resolveRichSourceAnchor(anchor, record, originalSource) {
+  const resolved = resolveTextAnchor(anchor, record);
+  if (!resolved.highlight) return { status: 'unavailable', reason: 'GUARDED_ANCHOR_UNVERIFIED', source_spans: [] };
+  return projectRichTextSpan(record, originalSource, { start: anchor.start, end: anchor.end });
+}
+
 export function inspectEvidenceAnchor(item, records = []) {
   const matches = records.filter((r) => r?.id && r.id === item.source_id);
   if (item.category === "DATA_GAP" || item.source_type === "AuditGap") {
     return { evidence_kind: "gap", anchor_status: "not_applicable", highlight: null };
   }
-  if (item.source_type === "MultiSourceCrossAlignment") {
-    const refs = (item.source_references || []).map(ref => ({ ...ref, anchor_status: ref.source_id && records.filter(r => r?.id === ref.source_id).length === 1 ? "resource_linked" : "unverified" }));
+  if (item.source_type === "MultiSourceCrossAlignment" || (item.source_type === "Observation" && item.source_references?.length)) {
+    const refs = (item.source_references || []).map(ref => ({ ...ref, anchor_status: ref.source_id && records.filter(r => r?.id === ref.source_id
+      && (ref.source_system == null || ref.source_system === (r.source_system ?? r._source?.system))
+      && (ref.version_id == null || ref.version_id === version(r))).length === 1 ? "resource_linked" : "unverified" }));
     return { evidence_kind: "derived", anchor_status: refs.length && refs.every(r => r.anchor_status === "resource_linked") ? "sources_linked" : "unverified", source_references: refs, highlight: null };
   }
   if (typeof item.span === "string" && item.span.length) {

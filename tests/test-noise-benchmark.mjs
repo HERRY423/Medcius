@@ -82,7 +82,8 @@ console.log("✓ Bracket/alias/midline/scan-junk hardening verified");
 // Test 5: benchmark CLI gate passes and is deterministic
 // ----------------------------------------------------
 console.log("\n[Test 5] Benchmark CLI gate + determinism...");
-const run1 = execFileSync("node", [BENCH, "--out"], { encoding: "utf8" });
+// A regression run must not overwrite the historical baseline evidence.
+const run1 = execFileSync("node", [BENCH], { encoding: "utf8" });
 const run2 = execFileSync("node", [BENCH], { encoding: "utf8" });
 const digest1 = /digest: ([0-9a-f]+)/.exec(run1)[1];
 const digest2 = /digest: ([0-9a-f]+)/.exec(run2)[1];

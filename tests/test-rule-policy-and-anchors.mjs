@@ -66,6 +66,8 @@ test("follow-up has no deadline without a pack and changes with the approved pol
 test("pack rejects expired, cross-site, missing approval and invalid numeric policy", () => {
   assert.throws(()=>{pack.clinical_rules.critical_values.k.high=100;},TypeError);
   const p=clone(); p.data_class="official"; p.status="approved"; p.authority={...p.authority,approved_by:"fixture-only",hospital_scope:"site",approval_document:"synthetic-approval",approval_sha256:"a".repeat(64)};
+  assert.ok(validateSpecialtyRulePack(p,{production:true,hospitalScope:"site",now}).errors.includes("INVALID_OR_DUPLICATE_ANTIBIOTIC_RULE"));
+  p.clinical_rules.restricted_antibiotics.forEach((rule,i) => { rule.nhsa_code = "XJ01DDT001A001TEST" + String(i+1).padStart(5,"0"); });
   assert.equal(validateSpecialtyRulePack(p,{production:true,hospitalScope:"site",now}).ok,true); // Metadata contract, not actual approval.
   assert.equal(validateSpecialtyRulePack(p,{production:true,hospitalScope:"other",now}).ok,false);
   p.authority.review_due="2026-01-01";

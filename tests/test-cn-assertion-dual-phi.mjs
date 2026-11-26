@@ -104,9 +104,9 @@ test('later snapshots inject new clinician names into the same context-bound ses
   assert.throws(()=>HospitalAgentAdapter.executePreRoundWorkflow({host:'codex',context:{...context,as_of:asOf},dataFeeds:{...input(),encounter:{id:'wrong'}}}),/CONTEXT_MISMATCH/);
 });
 
-test('hosted extraction carries the private session into both prompt and response guards', async () => {
+test('local extraction carries the private session into both prompt and response guards', async () => {
   const s=createPhiEntitySession(input()); let sent;
-  const c=createLlmInferenceClient({config:{topology:'B',model_id:'synthetic',model_version:'v1',prompt_pack_version:'v1',endpoint:'https://example.invalid',
+  const c=createLlmInferenceClient({config:{topology:'A',model_id:'synthetic',model_version:'v1',prompt_pack_version:'v1',endpoint:'http://127.0.0.1/v1',
     desensitization_attestation:true,phi_exit_guard_version:'v1',egress_human_sampling_attested:true,bare_name_limitation_acknowledged:true},
     localPhiDetector:emptyDetector,transport:async r=>{sent=r.prompt;return {text:'王玮自述胸闷'};}});
   const result=await c.extract({text:'王玮自述胸闷',entitySession:s,context});

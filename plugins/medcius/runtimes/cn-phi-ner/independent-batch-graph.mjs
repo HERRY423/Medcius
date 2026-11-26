@@ -6,7 +6,7 @@ import proto from 'onnx-proto';
 import { createHash } from 'node:crypto';
 const { onnx } = proto;
 const SOURCE_SHA256 = '7f8e1a4dac9c65d880b41c8ebedda02f074536f5ab249bdae66cfe41ae709dee';
-export const BATCH_GRAPH_VERSION = 'independent-quantization-v1';
+export const BATCH_GRAPH_VERSION = 'independent-quantization-v2';
 const fail = () => { throw new Error('LOCAL_NER_GRAPH_UNSUPPORTED'); };
 const tensor = (name, dims, dataType, rawData) => ({ name, dims, dataType, rawData });
 const f32 = values => Buffer.from(new Float32Array(values).buffer);
@@ -53,6 +53,8 @@ export function buildIndependentBatchGraph(bytes) {
     steps.push(node('QuantizeLinear',[n.input[0],s,z],[n.output[0]],{axis:0}));
     replacements.set(n,steps); removed.add(n);
   }
+  const flattenShape = new Map(), restoreShape = new Map();
+  const shapeNodes = [node('Shape', ['input_ids'], ['ib_token_shape'])];
   let groups=0, tripleGroups=0, maximumDotBound=0;
   for (const first of matrices) {
     if (removed.has(first)) continue;
@@ -107,7 +109,21 @@ export function buildIndependentBatchGraph(bytes) {
     const bscale=add(tensor(p+'bscale',[width],1,concatenate('bscale')));
     const bias=add(tensor(p+'bias',[width],1,concatenate('biasName')));
     const final=peers.length===1 ? rows[0].bias.output[0] : p+'output';
-    const steps=[node('MatMulIntegerToFloat',[first.input[0],weight,'ib_one','ib_one','ib_zero_u8'],[p+'dot'],{},'com.microsoft'),
+    // Flatten only after per-example quantization. One 2-D integer GEMM
+    // reuses packed weights across token rows, then restores batch/sequence
+    // axes before applying each example's zero point and scale.
+    if (!flattenShape.has(height)) {
+      flattenShape.set(height, add(tensor(`ib_flat_shape_${height}`, [2], 7, i64([-1, height]))));
+    }
+    if (!restoreShape.has(width)) {
+      const extent = add(tensor(`ib_width_${width}`, [1], 7, i64([width])));
+      const shape = `ib_restore_shape_${width}`;
+      shapeNodes.push(node('Concat', ['ib_token_shape', extent], [shape], { axis: 0 }));
+      restoreShape.set(width, shape);
+    }
+    const steps=[node('Reshape', [first.input[0], flattenShape.get(height)], [p+'flat_input']),
+      node('MatMulIntegerToFloat',[p+'flat_input',weight,'ib_one','ib_one','ib_zero_u8'],[p+'flat_dot'],{},'com.microsoft'),
+      node('Reshape', [p+'flat_dot', restoreShape.get(width)], [p+'dot']),
       node('Cast',[first.input[2]],[p+'zp'],{to:1}),node('Mul',[p+'zp',colsum],[p+'offset']),
       node('Sub',[p+'dot',p+'offset'],[p+'centered']),node('Mul',[rows[0].ascale,bscale],[p+'scale']),
       node('Mul',[p+'centered',p+'scale'],[p+'scaled']),node('Add',[p+'scaled',bias],[final])];
@@ -119,7 +135,7 @@ export function buildIndependentBatchGraph(bytes) {
   }
   if(groups!==49 || tripleGroups!==12 || maximumDotBound!==7292745) fail();
   const maskAxis=add(tensor('ib_mask_axis',[1],7,i64([2])));
-  const output=[node('Unsqueeze',['attention_mask',maskAxis],['ib_mask0']),node('Cast',['ib_mask0'],['ib_mask'],{to:9}),
+  const output=[...shapeNodes,node('Unsqueeze',['attention_mask',maskAxis],['ib_mask0']),node('Cast',['ib_mask0'],['ib_mask'],{to:9}),
     node('Cast',['attention_mask'],['ib_mha_mask'],{to:6})];
   let attentionCount=0;
   for (const n of original) {

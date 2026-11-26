@@ -162,7 +162,7 @@ const CORE_HANDLERS = {
     return { ...r, payload: guardEventForRelease(r, signs), signoffs: signs };
   },
 
-  query_events({ actor, action, subject_ref, tenant_id, since, until, limit }) {
+  query_events({ actor, action, subject_ref, tenant_id, since, until, limit, order, ward_as_of }) {
     const lim = Math.max(1, Math.min(200, Number(limit ?? 20)));
     const where = [];
     const params = [];
@@ -172,7 +172,12 @@ const CORE_HANDLERS = {
     if (tenant_id) { where.push("tenant_id = ?"); params.push(tenant_id); }
     if (since) { where.push("ts >= ?"); params.push(since); }
     if (until) { where.push("ts <= ?"); params.push(until); }
-    const sql = `SELECT id, seq, tenant_id, ts, actor, action, subject_ref, payload_hash, chain_hash FROM audit_events ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY seq DESC LIMIT ?`;
+    if (order === "ward_cutoff" && action === "ward_preround_precompute" && ward_as_of) {
+      where.push("julianday(json_extract(payload_json, '$.as_of')) <= julianday(?)");
+      params.push(ward_as_of);
+    }
+    const sorting = order === "ward_cutoff" && action === "ward_preround_precompute" ? "json_extract(payload_json, '$.as_of') DESC, seq DESC" : "seq DESC";
+    const sql = `SELECT id, seq, tenant_id, ts, actor, action, subject_ref, payload_hash, chain_hash FROM audit_events ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY ${sorting} LIMIT ?`;
     const rows = db.prepare(sql).all(...params, lim);
     for (const row of rows) for (const field of [row.actor, row.action, row.subject_ref, row.tenant_id]) guardNoPhi(field);
     return { events: rows, count: rows.length };

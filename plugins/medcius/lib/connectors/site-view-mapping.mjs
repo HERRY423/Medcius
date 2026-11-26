@@ -12,7 +12,8 @@ const fields = new Set(('id patient_id encounter_id tenant_id name gender birth_
   + 'order_id code test_code test_name result_value unit ref_low ref_high reference_range_text is_critical sample_time '
   + 'is_medication drug_name dosage route frequency authored_on end_date stopped_at order_kind execution_status previous_execution_status '
   + 'record_kind administration_id performed_at administered_volume_ml order_type department purpose priority stop_reason '
-  + 'modality study_time study_uid findings impression report_text ordered_at scheduled_time').split(' '));
+  + 'modality study_time study_uid findings impression report_text ordered_at scheduled_time '
+  + 'pregnant news2_scale supplemental_oxygen volume_basis specimen_type method_code code_system assay_id assay_version assigned_to_id followup_due_at actual_dose dose_unit drug_code drug_code_system intervention_kind').split(' '));
 const restrictedEnums = { order_kind: ORDER_KINDS, execution_status: EXECUTION_STATES, previous_execution_status: EXECUTION_STATES,
   record_kind: ['order', 'administration', 'nursing_measurement', 'planned_infusion', 'unknown'] };
 const own = (o,k) => Object.hasOwn(o,k);

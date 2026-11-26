@@ -21,7 +21,7 @@ console.log("== Testing runtime product form (缺口六: container/deploy/probe/
 // ----------------------------------------------------
 // Test 1: LLM inference config — topology enforcement & fail-closed validation
 // ----------------------------------------------------
-console.log("\n[Test 1] LLM config: A valid, C rejected outright, B requires attestation...");
+console.log("\n[Test 1] LLM config: A valid, C rejected outright, B rejected...");
 const baseA = {
   topology: "A",
   model_id: "qwen2.5-14b-instruct（合成）",
@@ -40,29 +40,14 @@ assert.ok(vC.errors.some((e) => e.includes("LLM_TOPOLOGY_C_REJECTED")), "C 档�
 
 const vB = validateLlmConfig({ ...baseA, topology: "B", desensitization_attestation: false });
 assert.equal(vB.ok, false);
-assert.ok(vB.errors.some((e) => e.includes("LLM_B_ATTESTATION_REQUIRED")));
-// P0-3: B 档四项缺一即拒绝（默认关闭）。
-const bPartial = { ...baseA, topology: "B", desensitization_attestation: true, provider_registration_ref: "R20:服务商备案核验留档-001" };
-const vBPartial = validateLlmConfig(bPartial);
-assert.equal(vBPartial.ok, false, "B 档缺守卫版本/抽检/裸姓名确认必须拒绝");
-assert.ok(vBPartial.errors.some((e) => e.includes("LLM_B_PHI_GUARD_VERSION_REQUIRED")));
-assert.ok(vBPartial.errors.some((e) => e.includes("LLM_B_HUMAN_SAMPLING_REQUIRED")));
-assert.ok(vBPartial.errors.some((e) => e.includes("LLM_B_BARE_NAME_ACK_REQUIRED")));
-const vBOk = validateLlmConfig({
-  ...baseA,
-  topology: "B",
-  desensitization_attestation: true,
-  phi_exit_guard_version: "phiguard-v1:config-digest-dev",
-  egress_human_sampling_attested: true,
-  bare_name_limitation_acknowledged: true,
-  provider_registration_ref: "R20:服务商备案核验留档-001",
-});
-assert.equal(vBOk.ok, true);
-
+assert.ok(vB.errors.includes("LLM_LOCAL_ONLY_REQUIRED"));
+assert.equal(validateLlmConfig({ ...baseA, topology: "B", desensitization_attestation: true,
+  phi_exit_guard_version: "test", egress_human_sampling_attested: true, bare_name_limitation_acknowledged: true }).ok, false);
+assert.equal(validateLlmConfig({ ...baseA, endpoint: "https://api.example.org/v1" }).ok, false);
 const vBad = validateLlmConfig({ ...baseA, model_id: "", capacity: { max_concurrency: 9999 } });
 assert.ok(vBad.errors.some((e) => e.includes("LLM_CONFIG_FIELD_REQUIRED")));
 assert.ok(vBad.errors.some((e) => e.includes("LLM_CAPACITY_CONCURRENCY_INVALID")));
-console.log("✓ Topology A/B/C enforcement + attestation + capacity budgets validated");
+console.log("✓ Local-only model topology and capacity budgets validated");
 
 // ----------------------------------------------------
 // Test 2: extraction-only client — D1 structural limit, provenance, budgets

@@ -1,0 +1,11 @@
+{
+  "recorded_at": "2026-11-19T15:29:26.020333+00:00",
+  "development": [
+    "v4",
+    "v5/A",
+    "v5/B"
+  ],
+  "holdout": "Only author and select new names and text AFTER production sources are frozen. No tuning after scoring. One unrepeated draw; three strata (compound, low-frequency single, ordinary single), 12 distinct names each x 2 different scenes, 24 clinical controls. At least six distinct immediate contexts. Synthetic, same author.",
+  "scoring": "All UTF16 units of each identity masked and every annotated clinical character intact. Blocks count as neither successes. Check names, delexicalized texts and local frames against development. Report distinct names, paired changes, all residuals.",
+  "performance": "64 simultaneous requests, balanced 12 rounds for crop-heavy v4/v5/v6. Paired legacy workload v5/v6. Retain identical CPU, queue and admission limits."
+}

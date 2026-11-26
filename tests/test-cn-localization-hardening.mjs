@@ -71,11 +71,11 @@ test('signature binds tenant, workflow, time, note and provider metadata', async
   }
 });
 
-test('hosted inference cannot be enabled by attestations without an executing local detector', () => {
+test('attestations cannot activate hosted inference', () => {
   assert.throws(() => createLlmInferenceClient({ config: { topology: 'B', model_id: 'synthetic', model_version: 'v1',
     prompt_pack_version: 'v1', endpoint: 'https://example.invalid', desensitization_attestation: true,
     phi_exit_guard_version: 'v1', egress_human_sampling_attested: true, bare_name_limitation_acknowledged: true },
-    transport: async () => ({ text: 'never called' }) }), /LOCAL_PHI_DETECTOR_REQUIRED/);
+    transport: async () => ({ text: 'never called' }) }), /LLM_LOCAL_ONLY_REQUIRED/);
 });
 
 test('SQL dialect rejects unsupported values and emits SQL Server parameter placeholders', async () => {
@@ -126,13 +126,12 @@ test('comparators, unit absence and analyte identity are not converted to point 
 const detector = { id: 'synthetic-local-detector', version: 'fixture-v1', execution: 'local',
   async detect(text) { return { text_sha256: sha256Hex(text), complete: true,
     spans: [...text.matchAll(/张合成/g)].map(m => ({ start: m.index, end: m.index + m[0].length, label: 'PERSON' })) }; } };
-const hosted = { topology: 'B', model_id: 'synthetic', model_version: 'v1', prompt_pack_version: 'v1',
-  endpoint: 'https://example.invalid', desensitization_attestation: true, phi_exit_guard_version: 'v1',
-  egress_human_sampling_attested: true, bare_name_limitation_acknowledged: true };
+const localModel = { topology: 'A', model_id: 'synthetic', model_version: 'v1', prompt_pack_version: 'v1',
+  endpoint: 'http://127.0.0.1/v1' };
 
 test('local detector executes before transport; bare names and contextual family names are removed', async () => {
   let prompt;
-  const client = createLlmInferenceClient({ config: hosted, localPhiDetector: detector,
+  const client = createLlmInferenceClient({ config: localModel, localPhiDetector: detector,
     transport: async req => { prompt = req.prompt; return { text: '已抽取' }; } });
   const response = await client.extract({ text: '张合成因胸闷入院，妻子李合成陪同。赵合成主任医师查房。' });
   assert.doesNotMatch(prompt, /张合成|李合成|赵合成/);
@@ -147,7 +146,7 @@ test('unbound, incomplete, invalid-span and failing detectors cannot release a p
     { complete: false, spans: [], text_sha256: sha256Hex('输入') },
     { complete: true, spans: [{ start: -1, end: 2, label: 'PERSON' }], text_sha256: sha256Hex('输入') }]) {
     let sent = false;
-    const client = createLlmInferenceClient({ config: hosted, localPhiDetector: { ...detector, detect: async () => result },
+    const client = createLlmInferenceClient({ config: localModel, localPhiDetector: { ...detector, detect: async () => result },
       transport: async () => { sent = true; return { text: 'bad' }; } });
     await assert.rejects(client.extract({ text: '输入' }), /LOCAL_PHI/); assert.equal(sent, false);
   }
@@ -157,14 +156,14 @@ test('unbound, incomplete, invalid-span and failing detectors cannot release a p
 test('a slow local detector is bounded, retains backpressure and never sends after the deadline', async () => {
   let sent = false;
   const slow = { ...detector, detect: async text => { await new Promise(r => setTimeout(r, 25)); return { complete: true, spans: [], text_sha256: sha256Hex(text) }; } };
-  const c = createLlmInferenceClient({ config: { ...hosted, capacity: { max_concurrency: 1 } }, localPhiDetector: slow, timeoutMs: 5,
+  const c = createLlmInferenceClient({ config: { ...localModel, capacity: { max_concurrency: 1 } }, localPhiDetector: slow, timeoutMs: 5,
     transport: async () => { sent = true; return { text: 'bad' }; } });
   await assert.rejects(c.extract({ text: '输入' }), /LLM_TIMEOUT/);
   assert.equal(c.capacity().inflight, 1);
   await assert.rejects(c.extract({ text: '输入' }), /CONCURRENCY/);
   await new Promise(r => setTimeout(r, 35)); assert.equal(sent, false);
   assert.equal(c.capacity().inflight, 0);
-  const fail = createLlmInferenceClient({ config: hosted, localPhiDetector: detector,
+  const fail = createLlmInferenceClient({ config: localModel, localPhiDetector: detector,
     transport: async () => { throw new Error('private-provider-content'); } });
   await assert.rejects(fail.extract({ text: '输入' }), e => e.message === 'LLM_TRANSPORT_FAILED');
 });

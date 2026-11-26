@@ -1,6 +1,6 @@
 // Source workflow facts, not prescribing logic. Local numeric codes must be
 // translated by a versioned site mapping before reaching this module.
-import { resolveRecordVersions, classifyRecordLifecycle } from './record-lifecycle.mjs';
+import { resolveRecordVersions, classifyRecordLifecycle, lifecycleFields } from './record-lifecycle.mjs';
 
 export const ORDER_KINDS = Object.freeze(['long_term', 'temporary', 'unknown']);
 export const EXECUTION_STATES = Object.freeze(['ordered', 'nurse_unverified', 'nurse_verified',
@@ -38,7 +38,7 @@ export function actualFluidRecord(record) {
     && time(record.performed_at ?? record.event_time ?? record.timestamp) != null;
   return kind === 'nursing_measurement';
 }
-export function normalizeOrderExecution(item, { now = new Date(), timezoneOffset = null } = {}) {
+export function normalizeOrderExecution(item, { now = new Date(), timezoneOffset = null, timeZone = null } = {}) {
   const orderKind = ORDER_KINDS.includes(item.order_kind) ? item.order_kind : 'unknown';
   let state = stateOf(item.execution_status);
   const gaps = [];
@@ -63,9 +63,21 @@ export function normalizeOrderExecution(item, { now = new Date(), timezoneOffset
     const t = time(event.performed_at);
     if (t == null || t > new Date(now).getTime()) { gaps.push('ADMINISTRATION_TIME_UNKNOWN'); continue; }
     const lifecycle = classifyRecordLifecycle(event, { now });
+    if (event.execution_status === 'administered' && (event.drug_binding_ambiguous ||
+        ((event.drug_code != null || event.drug_code_system != null)
+          && (event.drug_code !== item.drug_code || event.drug_code_system !== item.drug_code_system)))) {
+      gaps.push('ADMINISTRATION_DRUG_BINDING_UNKNOWN'); continue;
+    }
+    if (event.execution_status === 'administered' && (['not-done','on-hold','in-progress','stopped'].includes(event.status)
+        || event.actual_dose != null && (typeof event.actual_dose !== 'number' || !Number.isFinite(event.actual_dose) || event.actual_dose <= 0))) {
+      gaps.push('ADMINISTRATION_EXECUTION_CONFLICT'); continue;
+    }
     if (['cancelled', 'entered_in_error'].includes(lifecycle.result_status) || event.execution_status !== 'administered') continue;
-    administrations.push({ id: event.id, order_id: item.id, version_id: event.version_id ?? null,
+    administrations.push({ ...lifecycleFields(event), status: event.status ?? null,
+      id: event.id, order_id: item.id, version_id: event.version_id ?? null,
       performed_at: event.performed_at, execution_status: 'administered',
+      actual_dose: typeof event.actual_dose === 'number' && Number.isFinite(event.actual_dose) && event.actual_dose >= 0 ? event.actual_dose : null,
+      dose_unit: event.dose_unit ?? null, route: event.route ?? null,
       // Quantities must be actual measured values; planned dosage is never copied here.
       administered_volume_ml: typeof event.administered_volume_ml === 'number' && Number.isFinite(event.administered_volume_ml)
         && event.administered_volume_ml >= 0 ? event.administered_volume_ml : null,
@@ -74,7 +86,13 @@ export function normalizeOrderExecution(item, { now = new Date(), timezoneOffset
   const offset = typeof timezoneOffset === 'string' && /^[+-](?:0\d|1[0-4]):[0-5]\d$/.test(timezoneOffset)
     && !/^[+-]14:(?!00)/.test(timezoneOffset) ? (timezoneOffset[0] === '-' ? -1 : 1)
       * (Number(timezoneOffset.slice(1,3))*60 + Number(timezoneOffset.slice(4))) : null;
-  const days = offset == null ? null : [...new Set(administrations.map(e => new Date(Date.parse(e.performed_at) + offset*60000).toISOString().slice(0,10)))].sort();
+  let calendar = null;
+  if (timeZone) {
+    try { calendar = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }); }
+    catch { gaps.push("ADMINISTRATION_TIMEZONE_UNKNOWN"); }
+  }
+  const days = !calendar && (timeZone || offset == null) ? null : [...new Set(administrations.map(e =>
+    calendar ? calendar.format(new Date(e.performed_at)) : new Date(Date.parse(e.performed_at) + offset*60000).toISOString().slice(0,10)))].sort();
   return { order_kind: orderKind, execution_status: item.execution_status == null ? null : state,
     execution_status_basis: item.execution_status == null ? 'not_provided' : state === 'unknown' ? 'unmapped_or_conflicted' : 'source_explicit',
     // An order-review clock can continue for legacy feeds, but is never a treatment-duration clock.

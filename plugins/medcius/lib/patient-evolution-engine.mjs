@@ -5,10 +5,10 @@ import { assessCriticalVisibility } from "./critical-visibility.mjs";
 
 import { splitSectionSpans, extractConTextAssertions } from "./parse-cn-note.mjs";
 import { inspectEvidenceAnchor, createTextAnchor } from "./evidence-anchors.mjs";
-import { CALCULATION_PROVENANCE, renalStabilityPolicy } from "./calculation-reference.mjs";
-import { rulePackDigest, validateSpecialtyRulePack } from "./specialty-rule-pack.mjs";
+import { CALCULATION_PROVENANCE, renalStabilityPolicy, checkCreatinineDataQuality } from "./calculation-reference.mjs";
+import { assertApprovedSpecialtyRulePack, rulePackDigest } from "./specialty-rule-pack.mjs";
 import { HospitalDataAdapter, calculateEgfrCkdEpi, normalizeLabUnit } from "./hospital-data-adapter.mjs";
-import { trackHighRiskFollowup, isExplicitCritical } from "./high-risk-followup-tracker.mjs";
+import { trackHighRiskFollowup, sourceTaskFields, isExplicitCritical } from "./high-risk-followup-tracker.mjs";
 import { PostHocClaimVerifier } from "./post-hoc-verifier.mjs";
 import { classifySourceTime } from "./clinical-boundary.mjs";
 import { classifyRecordLifecycle, resolveRecordVersions, describeRecordLifecycle } from "./record-lifecycle.mjs";
@@ -16,6 +16,9 @@ import { assertEvolutionConsistency, detachedFrozenOutput } from "./output-consi
 import { assertSyncPhiAllowed, requiresProductionPhi } from './production-phi-policy.mjs';
 import { guardPatientSourceInput } from './patient-source-phi.mjs';
 import { evaluateChinaClinicalRules, formatChinaClinicalCheck } from './china-clinical-rules.mjs';
+import { analyzeTemporalEvolution, isElectrolyteMeasurement, reviewedElectrolyteTrends } from './temporal-evolution.mjs';
+import { prepareRichTextTree } from './rich-note-normalization.mjs';
+import { inspectLaboratoryTerminology, inspectCreatinineSpecimen, normalizeLaboratoryMeasurement, LAB_TERMINOLOGY_PROVENANCE } from './laboratory-terminology.mjs';
 
 export const ITEM_CATEGORIES = {
   FACT: "FACT",           // 【原文事实】
@@ -37,12 +40,18 @@ import { normalizeOrderExecution } from './order-execution.mjs';
 export class PatientEvolutionEngine {
   static analyzePatientEvolution(input) {
     assertSyncPhiAllowed(input?.context);
-    return this.#analyzePatientEvolution(input);
+    const safeInput = { ...input, notes: prepareRichTextTree(structuredClone(input?.notes ?? [])) };
+    return this.#analyzePatientEvolution(safeInput);
   }
 
   static async analyzePatientEvolutionAsync(input, { localPhiDetector, signal } = {}) {
     const source = structuredClone(input);
     if (source.now instanceof Date) source.now = source.now.toISOString();
+    let approvedDigest;
+    if (source.rulePack && requiresProductionPhi(source.context)) {
+      assertApprovedSpecialtyRulePack(source.rulePack, { hospitalScope: source.context?.tenant_id, now: source.now });
+      approvedDigest = rulePackDigest(source.rulePack);
+    }
     // `name` is an identity key. Preserve explicitly typed drug rule names.
     if (source.rulePack?.clinical_rules?.restricted_antibiotics) {
       source.rulePack.clinical_rules.restricted_antibiotics = source.rulePack.clinical_rules.restricted_antibiotics
@@ -55,6 +64,9 @@ export class PatientEvolutionEngine {
       if (safe.rulePack?.clinical_rules?.restricted_antibiotics) {
         safe.rulePack.clinical_rules.restricted_antibiotics = safe.rulePack.clinical_rules.restricted_antibiotics
           .map(({ drug_name, ...rule }) => ({ ...rule, name: drug_name }));
+      }
+      if (approvedDigest && (!safe.rulePack || rulePackDigest(safe.rulePack) !== approvedDigest)) {
+        throw new Error("RULE_PACK_REJECTED: GUARDED_CONTENT_CHANGED");
       }
       return this.#analyzePatientEvolution(safe);
     } finally { session.dispose(); }
@@ -82,6 +94,7 @@ export class PatientEvolutionEngine {
     recordHistory = {},
     pacsViewerProfile = null,
     chinaClinical = null,
+    temporalAnalysis = true,
     now = new Date(),
   }) {
     const patientId = patient?.id || context?.patient_id;
@@ -109,10 +122,6 @@ export class PatientEvolutionEngine {
     if (!Number.isFinite(nowMs)) throw new Error("INVALID_TIME_CONTEXT: now must be a valid timestamp");
     const cutoffTime = nowMs - windowHours * 60 * 60 * 1000;
     const production = requiresProductionPhi(context);
-    if (production && rulePack) {
-      const validation = validateSpecialtyRulePack(rulePack, { production, hospitalScope: context?.tenant_id, now });
-      if (!validation.ok) throw new Error(`RULE_PACK_REJECTED: ${validation.errors.join(",")}`);
-    }
     const stabilityPolicy = renalStabilityPolicy(rulePack);
 
     const assertFeedIdentity = (record, label) => {
@@ -188,7 +197,7 @@ export class PatientEvolutionEngine {
 
     let combinedMedications = [...medications];
     let antibioticAlerts = [];
-    const hisResult = HospitalDataAdapter.normalizeHisOrders(combinedMedications, { rulePack, now: nowMs });
+    const hisResult = HospitalDataAdapter.normalizeHisOrders(combinedMedications, { rulePack, now: nowMs, timeZone: context?.timezone, timezoneOffset: context?.timezone_offset });
     antibioticAlerts = hisResult.antibiotic_alerts;
     const orderTimeGaps = hisResult.time_gaps || [];
 
@@ -214,6 +223,15 @@ export class PatientEvolutionEngine {
     });
     const usableResult = (record, sourceType) => !["cancelled", "entered_in_error"].includes(classifyRecordLifecycle(record, { sourceType, now: nowMs, cutoffTime }).result_status);
     combinedObservations = resolutions[0].current_records.filter((record) => usableResult(record, "observation"));
+    const labTerminologyCandidates = combinedObservations.map(record => {
+      const code = typeof record.code === 'string' ? record.code : record.code?.coding?.[0]?.code ?? record.test_code ?? null;
+      const rawValue = record.value ?? record.valueQuantity?.value;
+      const candidate = normalizeLaboratoryMeasurement({ code, code_system: record.code_system ?? record.code?.coding?.[0]?.system ?? null,
+        name: record.test_name ?? record.display_name ?? record.name ?? null,
+        value: typeof rawValue === 'number' ? rawValue : null, unit: record.unit ?? record.valueQuantity?.unit ?? null });
+      return { source_id: record.id ?? null, source_system: record.source_system ?? record._source?.system ?? null,
+        version_id: record.version_id ?? record.meta?.versionId ?? null, ...candidate };
+    }).filter(candidate => candidate.mapping.status !== 'unknown');
     combinedReports = resolutions[1].current_records;
     orders = resolutions[2].current_records;
     combinedMedications = resolutions[3].current_records;
@@ -289,6 +307,16 @@ export class PatientEvolutionEngine {
       });
     }
 
+    if (typeof temporalAnalysis !== 'boolean') throw new Error('TEMPORAL_ANALYSIS_SWITCH_INVALID');
+    // Research-only block: never add experimental alerts to clinician cards,
+    // selectable facts, or note drafts. Hospital display gates remain in force.
+    const temporalEvolution = analyzeTemporalEvolution({ context, patient,
+      observations: combinedObservations, nursing: resolutions[4].current_records,
+      orders: [...orders, ...combinedMedications], now: nowMs, cutoffTime, disabled: !temporalAnalysis });
+
+    const electrolyteTrends = temporalAnalysis ? temporalEvolution.electrolyte_trends
+      : reviewedElectrolyteTrends(combinedObservations, context, nowMs, cutoffTime);
+
     // 0b. Structured Multi-Source Cross-System Clinical Alignment
     const structuredAlignments = HospitalDataAdapter.alignMultiSourceTimeline({
       vitalsSummary: normalizedVitals,
@@ -360,6 +388,13 @@ export class PatientEvolutionEngine {
 
     // 1b. Clinical Symptoms from Notes (Verbatim Spans ONLY)
     for (const note of notes) {
+      if (note.rich_text_normalization?.status === 'quarantined') {
+        gaps.push({ id: genId('GAP-RICH'), category: ITEM_CATEGORIES.DATA_GAP, tag: CATEGORY_LABELS[ITEM_CATEGORIES.DATA_GAP],
+          gap_type: 'RICH_TEXT_QUARANTINED', severity: 'MEDIUM', title: '富文本无法可靠解析',
+          summary: '病历格式或编码无法可靠解析，未提取原文事实；请核对原始来源。', source_type: 'ClinicalNote',
+          source_id: note.id ?? null, timestamp: note.event_time ?? note.timestamp ?? null, span: null });
+        continue;
+      }
       const noteEventTime = note.event_time || note.timing?.t_event || note.effective_time || note.timestamp;
       const noteTime = classifySourceTime(noteEventTime, { nowMs, cutoffMs: cutoffTime });
       if (noteTime.status !== "in_window") {
@@ -381,14 +416,20 @@ export class PatientEvolutionEngine {
       {
         const sections = splitSectionSpans(note.text || "");
         const docName = note.title || note.note_type || "病程记录";
-        const selected = ["病程记录", "现病史", "主诉", "诊疗经过"].find(name => sections.some(s => s.name === name));
-        for (const section of sections.filter(s => s.name === selected || s.name === "体格检查")) {
+        const clinicalSections = new Set(["病程记录", "病程", "现病史", "主诉", "诊疗经过", "查房记录", "护理记录", "体格检查"]);
+        // All relevant sections remain visible, including repeated headings.
+        // A heading-free note must not silently produce zero symptoms.
+        const selected = sections.length ? sections.filter(s => clinicalSections.has(s.name))
+          : [{name:'unsectioned',text:note.text || '',start:0}];
+        for (const section of selected) {
           for (const clause of extractConTextAssertions(section.text)) {
             const s = clause.text;
-            if (/体温|热|发热|最高|血压|心率|胸闷|胸痛|气促|喘|呼吸|腹痛|咳嗽|咳痰|水肿|出入量|尿量|啰音|神清语利/.test(s)) {
+            if (/体温|热|发烧|最高|血压|心率|胸闷|胸痛|气促|喘|呼吸|腹痛|咳嗽|咳痰|水肿|出入量|尿量|啰音|神清语利/.test(s)) {
               const start = section.start + clause.start;
               const end = section.start + clause.end;
               const { text, span, start: localStart, end: localEnd, ...conText } = clause;
+              conText.mentions = conText.mentions.map(m=>({...m,start:m.start+section.start,end:m.end+section.start,
+                cue:m.cue ? {...m.cue,start:m.cue.start+section.start,end:m.cue.end+section.start} : null}));
               changes.clinical_symptoms.push({
                 id: genId("SYM"), category: ITEM_CATEGORIES.FACT, tag: conText.presence_label,
                 title: "症状/体征演变", summary: s, span: s,
@@ -456,6 +497,30 @@ export class PatientEvolutionEngine {
       const latestVal = latest.value == null || typeof latest.value === "boolean" || String(latest.value).trim() === "" ? NaN : Number(latest.value);
       const testName = latest.display_name || latest.name || code;
       const unit = latest.unit || "";
+      const isSerumCreatinine = /^(?:scr|serum creatinine|creatinine|肌酐|血肌酐|血清肌酐)$/i.test(code)
+        || (['2160-0', '14682-9'].includes(code) && ['LOINC', 'http://loinc.org'].includes(latest.code_system ?? latest.code?.coding?.[0]?.system));
+      const creatinineCheck = (record, value, sourceUnit) => {
+        const quality = checkCreatinineDataQuality(value, sourceUnit);
+        const specimen = inspectCreatinineSpecimen(record);
+        if (!specimen.eligible) return { ...quality, eligible: false, reason: specimen.reason };
+        if (['2160-0', '14682-9'].includes(code)) {
+          const mapped = normalizeLaboratoryMeasurement({ code, code_system: record.code_system ?? record.code?.coding?.[0]?.system,
+            value, unit: sourceUnit });
+          if (mapped.quantity.reason === 'LOINC_PROPERTY_UNIT_MISMATCH') return { ...quality, eligible: false, reason: mapped.quantity.reason };
+        }
+        return quality;
+      };
+      const creatinineQuality = isSerumCreatinine ? creatinineCheck(latest, latestVal, unit) : null;
+      const baselineQuality = isSerumCreatinine && baseline ? creatinineCheck(baseline, Number(baseline.value), baseline.unit) : null;
+      const troponin = /(?:肌钙蛋白|troponin|ctn[ti])/i.test(`${code} ${testName}`);
+      const labConcept = record => inspectLaboratoryTerminology({ code: typeof record.code === 'string' ? record.code : record.code?.coding?.[0]?.code ?? null,
+        code_system: record.code_system ?? record.code?.coding?.[0]?.system ?? null, name: record.display_name ?? record.test_name ?? record.name ?? null }).concept_id;
+      const troponinComparable = !troponin || (baseline && latest.assay_id && latest.assay_version && latest.specimen_type
+        && latest.assay_id === baseline.assay_id && latest.assay_version === baseline.assay_version
+        && latest.specimen_type === baseline.specimen_type && (latest.source_system ?? latest._source?.system)
+        && (latest.source_system ?? latest._source?.system) === (baseline.source_system ?? baseline._source?.system)
+        && ['tenant_id', 'patient_id', 'encounter_id'].every(k => context?.[k] && latest[k] === context[k] && baseline[k] === context[k])
+        && labConcept(latest) && labConcept(latest) === labConcept(baseline));
       const fhirRef = Array.isArray(latest.referenceRange) ? latest.referenceRange[0] : latest.referenceRange;
       const rawRefLow = fhirRef?.low?.value ?? latest.ref_low ?? null;
       const rawRefHigh = fhirRef?.high?.value ?? latest.ref_high ?? null;
@@ -479,15 +544,26 @@ export class PatientEvolutionEngine {
       let isCritical = isExplicitCritical(latest);
       let statusLabel = isCritical ? "来源标记危急；参考区间未确认" : "无参考区间 (仅呈现趋势)";
 
-      if (hasReferenceRange && Number.isFinite(latestVal)) {
+      const referenceUsableForResult = hasReferenceRange && (!isSerumCreatinine || creatinineQuality?.eligible);
+      if (isSerumCreatinine && !creatinineQuality?.eligible) {
+        statusLabel = isCritical ? '来源标记危急；数值或单位待核对' : '数值或单位待核对，暂不判定参考区间状态';
+      } else if (referenceUsableForResult && Number.isFinite(latestVal)) {
         isHigh = refHigh != null && latestVal > refHigh;
         isLow = refLow != null && latestVal < refLow;
         statusLabel = isCritical ? "🚨 危急值" : (isHigh ? "⚠️ 偏高" : (isLow ? "⚠️ 偏低" : "正常"));
       }
 
       // Check eGFR if test is serum creatinine (Strict: require age, gender, compatible unit & steady-state)
-      if (inWindow && /(?:scr|肌酐|creatinine)/i.test(code) && Number.isFinite(latestVal)) {
-        if (patient.age != null && patient.gender != null) {
+      if (inWindow && isSerumCreatinine && Number.isFinite(latestVal)) {
+        if (!creatinineQuality.eligible || (baselineQuality && !baselineQuality.eligible)) {
+          patientEgfr = null;
+          const qualityReason = !creatinineQuality.eligible ? creatinineQuality.reason : baselineQuality.reason;
+          gaps.push({ id: genId('GAP-SCR-QUALITY'), category: ITEM_CATEGORIES.DATA_GAP, tag: CATEGORY_LABELS[ITEM_CATEGORIES.DATA_GAP],
+            gap_type: /UNIT_MISSING_OR_AMBIGUOUS|UNIT_UNSUPPORTED/.test(qualityReason) ? 'CREATININE_UNIT_INCOMPATIBLE' : 'CREATININE_DATA_QUALITY_HOLD', severity: 'MEDIUM', title: '肌酐数值或单位待核对',
+            summary: '肌酐数值、单位或历史配对不符合工程数据质量检查；保留来源数值，暂停相关计算，不自动更改单位或作诊断。',
+            source_type: 'Observation', source_id: !creatinineQuality.eligible ? latest.id ?? null : baseline?.id ?? null,
+            timestamp: !creatinineQuality.eligible ? sourceTime : baseline?.effective_time ?? baseline?.timestamp ?? null, span: null });
+        } else if (patient.age != null && patient.gender != null) {
           const normLatest = normalizeLabUnit(latestVal, unit, "umol/L", "scr");
           if (!normLatest.compatible || normLatest.comparableValue == null) {
             patientEgfr = null;
@@ -549,29 +625,45 @@ export class PatientEvolutionEngine {
       }
 
       if (inWindow) {
-        let trendDirection = "→";
+        let trendDirection = null;
         let deltaStr = "无历史对比";
-        let deltaVal = 0;
-        let deltaPct = 0;
+        let deltaVal = null;
+        let deltaPct = null;
 
-        if (baseline != null) {
+        const electrolyte = isElectrolyteMeasurement(latest);
+        const verifiedPair = electrolyte && electrolyteTrends.find(t => t.status === "calculated"
+          && t.after.source_reference.source_id === latest.id && t.after.source_reference.version_id === resultLifecycle.version_id
+          && t.after.source_reference.source_system === resultLifecycle.source_system);
+        if (electrolyte) {
+          if (verifiedPair) {
+            trendDirection = { rising: "↑", falling: "↓", unchanged: "→" }[verifiedPair.direction];
+            deltaStr = `基线 ${verifiedPair.before.value} → 当前 ${verifiedPair.after.value} ${verifiedPair.unit}，间隔 ${verifiedPair.elapsed_hours} 小时，差值 ${Number(verifiedPair.delta.toPrecision(6))} ${verifiedPair.unit}`;
+          } else {
+            deltaStr = "缺少可核对的配对测量，趋势待核对";
+          }
+        } else if (baseline != null) {
           const baseVal = Number(baseline.value);
           const normalizedBaseline = normalizeLabUnit(baseVal, baseline.unit, unit, code);
-          if (baseline.value != null && String(baseline.value).trim() !== "" && normalizedBaseline.compatible && Number.isFinite(latestVal)) {
+          if (baseline.value != null && String(baseline.value).trim() !== "" && normalizedBaseline.compatible && Number.isFinite(latestVal)
+            && (!isSerumCreatinine || creatinineQuality.eligible && baselineQuality?.eligible) && troponinComparable) {
           deltaVal = latestVal - normalizedBaseline.comparableValue;
           deltaPct = normalizedBaseline.comparableValue !== 0 ? (deltaVal / normalizedBaseline.comparableValue) * 100 : null;
           if (deltaVal > 0) trendDirection = "↑";
           else if (deltaVal < 0) trendDirection = "↓";
+          else trendDirection = "→";
 
           deltaStr = `基线: ${normalizedBaseline.comparableValue} ${unit} → 当前: ${latestVal} ${unit} (${trendDirection} ${deltaVal > 0 ? "+" : ""}${deltaVal.toFixed(1)} ${unit} / ${deltaPct == null ? "百分比不可计算" : `${deltaPct > 0 ? "+" : ""}${deltaPct.toFixed(1)}%`})`;
-          } else { deltaStr = "历史对比不可用：数值或单位不完整/不兼容"; trendDirection = null; }
+          } else { deltaStr = !troponinComparable ? "历史对比不可用：肌钙蛋白检测体系或标本未确认一致"
+            : isSerumCreatinine && (!creatinineQuality.eligible || !baselineQuality?.eligible)
+              ? "历史对比不可用：肌酐数值或单位需核对" : "历史对比不可用：数值或单位不完整/不兼容"; trendDirection = null; }
         } else {
           deltaStr = hasReferenceRange
             ? `当前: ${Number.isFinite(latestVal) ? latestVal : "未提供有效数值"} ${unit} (参考区间: ${refLow ?? '未提供'}-${refHigh ?? '未提供'} ${unit})`
             : `当前: ${Number.isFinite(latestVal) ? latestVal : "未提供有效数值"} ${unit}`;
         }
 
-        const isAbnormal = hasReferenceRange ? (isHigh || isLow || isCritical) : Boolean(isCritical);
+        const isAbnormal = isSerumCreatinine && !creatinineQuality?.eligible ? (isCritical ? true : null)
+          : referenceUsableForResult ? (isHigh || isLow || isCritical) : Boolean(isCritical);
         const verbatimSpan = latest.span || null;
 
         const labItem = {
@@ -594,6 +686,7 @@ export class PatientEvolutionEngine {
           is_critical: isCritical,
           critical_reason: latest.critical_reason || null,
           trend_direction: trendDirection,
+          ...(verifiedPair ? { source_references: verifiedPair.source_references } : {}),
           delta_summary: deltaStr,
           summary: `${testName}: ${Number.isFinite(latestVal) ? latestVal : "未提供有效数值"} ${unit} [${statusLabel}] (${deltaStr})${resultLifecycle.result_status === "unknown" ? "；来源结果状态未知，不能据此视为已出具或已确认" : resultLifecycle.change_type === "revision" ? "；来源修订结果，需核对当前版本" : resultLifecycle.result_status === "preliminary" ? "；来源初步结果，非正式报告" : ""}`,
           span: verbatimSpan,
@@ -733,7 +826,7 @@ export class PatientEvolutionEngine {
     for (const rep of combinedReports) {
       if (rep.status === "registered" || rep.status === "preliminary" || rep.status === "pending") {
         pending.pending_reports.push({
-          id: genId("REP-PEND"),
+          id: genId("REP-PEND"), ...sourceTaskFields(rep),
           category: ITEM_CATEGORIES.FACT,
           tag: CATEGORY_LABELS[ITEM_CATEGORIES.FACT],
           report_name: rep.name || rep.title || "待回报检查",
@@ -753,7 +846,7 @@ export class PatientEvolutionEngine {
       if (ord.status === "draft" || ord.status === "active" || ord.status === "pending_execution") {
         if (ord.order_type === "consult" || /会诊/.test(ord.title || "")) {
           pending.scheduled_consults.push({
-            id: genId("ORD-CON"),
+            id: genId("ORD-CON"), ...sourceTaskFields(ord),
             category: ITEM_CATEGORIES.FACT,
             tag: CATEGORY_LABELS[ITEM_CATEGORIES.FACT],
             consult_department: ord.department || "专科会诊",
@@ -766,7 +859,7 @@ export class PatientEvolutionEngine {
           });
         } else {
           pending.pending_orders.push({
-            id: genId("ORD-PEND"),
+            id: genId("ORD-PEND"), ...sourceTaskFields(ord),
             category: ITEM_CATEGORIES.FACT,
             tag: CATEGORY_LABELS[ITEM_CATEGORIES.FACT],
             order_name: ord.title || ord.name || "待执行医嘱",
@@ -774,7 +867,7 @@ export class PatientEvolutionEngine {
             summary: `医嘱阶段待追踪: ${ord.title || ord.name || "医嘱"} (来源状态: ${ord.status}；${ord.scheduled_time || "执行时间未确认"})`,
             span: ord.span || null,
             source_type: "ServiceRequest",
-            source_id: ord.id || "ord-pend",
+            source_id: ord.id || null,
             source_title: "医嘱执行单",
           });
         }
@@ -792,11 +885,12 @@ export class PatientEvolutionEngine {
         id: genId("RULE-ANTI"),
         category: ITEM_CATEGORIES.RULE_ALERT,
         tag: CATEGORY_LABELS[ITEM_CATEGORIES.RULE_ALERT],
-        title: `抗菌药物时长监控 (${anti.drug_name})`,
-        summary: anti.alert_message,
+        title: `抗菌药物实际给药日复核 (${anti.drug_name})`,
+        summary: `${anti.drug_name}（${anti.level}）：${anti.alert_message}`,
+        source_references: anti.administration_evidence,
         is_overdue: anti.is_overdue,
-        source_type: "AntimicrobialStewardship",
-        source_id: `anti-${anti.drug_name}`,
+        source_type: anti.source_order_id ? "MedicationRequest" : "AntimicrobialStewardship",
+        source_id: anti.source_order_id ?? null,
       });
     }
 
@@ -929,6 +1023,7 @@ export class PatientEvolutionEngine {
     changes.fluid_balance_24h = normalizedFluids;
     changes.critical_values = topCriticalValues;
     changes.antibiotic_duration_alerts = antibioticAlerts;
+    if (hisResult.observed_antibiotic_days?.length) changes.observed_antibiotic_days = hisResult.observed_antibiotic_days;
     changes.imaging_impressions = imagingImpressions;
     const chinaChecks = chinaClinical != null || rulePack?.clinical_rules?.china_reference_checks === true
       ? evaluateChinaClinicalRules({ records: chinaClinical?.records || [], patient, context, asOf: new Date(nowMs).toISOString(),
@@ -1001,6 +1096,8 @@ export class PatientEvolutionEngine {
         record_changes: recordChanges,
         source_availability: sourceAvailability.map((source) => ({ ...source })),
         structured_multisource_alignment: structuredAlignments,
+        temporal_analysis: temporalEvolution,
+        laboratory_terminology: { status: 'engineering_candidates_only', provenance: LAB_TERMINOLOGY_PROVENANCE, candidates: labTerminologyCandidates },
         what_changed: changes,
         whats_pending: pending,
         rule_reminders: ruleReminders,

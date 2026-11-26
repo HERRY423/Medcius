@@ -19,6 +19,7 @@
 
 import { bindSourceOwnership } from "../clinical-boundary.mjs";
 import { hl7ResultStatus, sourceLifecycle } from "./source-lifecycle.mjs";
+import { validatePrivateZProfile, projectPrivateZCandidates } from './private-z-profile.mjs';
 
 function splitLines(raw) {
   return String(raw ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").filter((line) => line.trim());
@@ -115,7 +116,15 @@ function normalizeHl7Time(value) {
     : `${m[1]}-${m[2]}-${m[3]}`;
 }
 
-const CRITICAL_FLAGS = new Set(["C", "LL", "HH", "A"]);
+const CRITICAL_FLAGS = new Set(["C", "LL", "HH", "AA"]);
+
+// A local Z segment has no universal semantics. Report only its three-character
+// identifier, never its values, and keep source completeness unknown.
+export function privateSegmentWarnings(message) {
+  return [...new Set((message?.segments ?? []).map(s => s.fields?.[0])
+    .filter(name => typeof name === 'string' && /^Z[A-Z0-9]{2}$/.test(name)))].sort()
+    .map(name => `PRIVATE_SEGMENT_UNMAPPED:${name}`);
+}
 
 /** ORU^R01 -> LIS records from OBR/OBX groups (deterministic mapping). */
 export function mapOruObservations(message) {
@@ -147,6 +156,7 @@ export function mapOruObservations(message) {
       version_id: message.controlId,
       order_id: orderId,
       code,
+      code_system: read(3, 2) === 'LN' ? 'LOINC' : read(3, 2) ?? null,
       name,
       result_value: /^[\d.]+$/.test(value) ? Number(value) : value,
       unit: read(6),
@@ -160,6 +170,7 @@ export function mapOruObservations(message) {
       resulted_at: statusChangedAt,
       message_timestamp: normalizeHl7Time(message.get("MSH", 7)),
       is_critical: CRITICAL_FLAGS.has(String(flag ?? "").toUpperCase()),
+      interpretation: flag ?? null,
       reference_range_text: read(7) && /^[\d.\-至到\s]/.test(read(7)) ? read(7) : null,
     });
   }
@@ -226,7 +237,7 @@ export function mapRdeMedicationOrders(message) {
   return { records, warnings };
 }
 
-function buildEnvelope(connectorId, context, records, sourceVersion, parseWarnings = []) {
+function buildEnvelope(connectorId, context, records, sourceVersion, parseWarnings = [], privateCandidates = []) {
   const env = {
     source_system: connectorId,
     tenant_id: context.tenant_id,
@@ -239,6 +250,7 @@ function buildEnvelope(connectorId, context, records, sourceVersion, parseWarnin
   if (parseWarnings && parseWarnings.length > 0) {
     env.parse_warnings = parseWarnings;
   }
+  if (privateCandidates.length) env.private_segment_candidates = privateCandidates;
   return env;
 }
 
@@ -330,7 +342,9 @@ export function createHl7v2Connectors({
   listMessages,
   loadMessage,
   sourceVersion = null,
+  privateSegmentProfile = null,
 } = {}) {
+  const privateProfile = validatePrivateZProfile(privateSegmentProfile);
   if (fetchMessages) {
     if (typeof fetchMessages !== "function") throw new Error("CONNECTOR_HL7_FETCH_MESSAGES_REQUIRED");
 
@@ -340,6 +354,7 @@ export function createHl7v2Connectors({
       if (!Array.isArray(rawMessages)) throw new Error("CONNECTOR_HL7_MESSAGES_INVALID");
       let records = [];
       const warnings = [];
+      const privateCandidates = [];
       for (const raw of rawMessages) {
         const message = parseHl7v2Message(raw);
         const extracted = predicate(message);
@@ -352,7 +367,11 @@ export function createHl7v2Connectors({
             requireEncounter: true,
           }));
           records.push(...stamped);
-          warnings.push(...(extracted.warnings ?? []));
+          warnings.push(...(extracted.warnings ?? []), ...privateSegmentWarnings(message));
+          if (sourceSystem === 'hl7v2-lis') {
+            const privateResult = projectPrivateZCandidates(message, privateProfile, context, { sourceSystem });
+            privateCandidates.push(...privateResult.candidates); warnings.push(...privateResult.warnings);
+          }
         }
       }
       if (dedupeLast) {
@@ -363,7 +382,7 @@ export function createHl7v2Connectors({
         for (const record of records) byId.set(record.id, record);
         records = [...byId.values()];
       }
-      return buildEnvelope(sourceSystem, context, records, sourceVersion, warnings);
+      return buildEnvelope(sourceSystem, context, records, sourceVersion, warnings, privateCandidates);
     };
 
     return [
@@ -439,7 +458,7 @@ export function createHl7v2Connectors({
         if (messages.length !== 1) throw new Error("CONNECTOR_HL7V2_ADT_CARDINALITY: expected exactly one ADT message per snapshot");
         const parsed = parsePid(messages[0].raw);
         assertPatientMatch(parsed, context, "hl7v2-patient");
-        return buildEnvelope("hl7v2-patient", context, [stamp(context, parsed, { patientId: parsed.id, requireEncounter: false })], sourceVersion);
+        return buildEnvelope("hl7v2-patient", context, [stamp(context, parsed, { patientId: parsed.id, requireEncounter: false })], sourceVersion, privateSegmentWarnings(parseHl7v2Message(messages[0].raw)));
       },
     },
     {
@@ -459,7 +478,7 @@ export function createHl7v2Connectors({
           patientId: pid.id,
           encounterId: encounter.id,
           requireEncounter: true,
-        })], sourceVersion);
+        })], sourceVersion, privateSegmentWarnings(parseHl7v2Message(messages[0].raw)));
       },
     },
     {
@@ -469,17 +488,20 @@ export function createHl7v2Connectors({
       async readPatient(context) {
         const messages = await readMessages(context, new Set(["ORU^R01"]));
         const warnings = [];
+        const privateCandidates = [];
         const records = messages.flatMap(({ raw, entry }) => {
           const identity = sourceIdentity(raw);
-          const extracted = mapOruObservations(parseHl7v2Message(raw));
-          warnings.push(...extracted.warnings);
+          const message = parseHl7v2Message(raw), extracted = mapOruObservations(message);
+          warnings.push(...extracted.warnings, ...privateSegmentWarnings(message));
+          const privateResult = projectPrivateZCandidates(message, privateProfile, context, { sourceSystem: 'hl7v2-lis' });
+          privateCandidates.push(...privateResult.candidates); warnings.push(...privateResult.warnings);
           return extracted.records.map((record) => stamp(context, { ...sourceLifecycle(entry), ...record, recorded_at: entry.recorded_at ?? record.recorded_at, updated_at: entry.updated_at ?? record.updated_at, version_id: entry.version_id ?? record.version_id }, {
             patientId: identity.patientId,
             encounterId: identity.encounterId,
             requireEncounter: true,
           }));
         });
-        return buildEnvelope("hl7v2-lis", context, records, sourceVersion, warnings);
+        return buildEnvelope("hl7v2-lis", context, records, sourceVersion, warnings, privateCandidates);
       },
     },
     {
@@ -491,8 +513,8 @@ export function createHl7v2Connectors({
         const warnings = [];
         const records = messages.flatMap(({ raw, entry }) => {
           const identity = sourceIdentity(raw);
-          const extracted = mapRdeMedicationOrders(parseHl7v2Message(raw));
-          warnings.push(...extracted.warnings);
+          const message = parseHl7v2Message(raw), extracted = mapRdeMedicationOrders(message);
+          warnings.push(...extracted.warnings, ...privateSegmentWarnings(message));
           return extracted.records.map((record) => stamp(context, { ...sourceLifecycle(entry), ...record, recorded_at: entry.recorded_at ?? record.recorded_at, updated_at: entry.updated_at ?? record.updated_at, version_id: entry.version_id ?? record.version_id }, {
             patientId: identity.patientId,
             encounterId: identity.encounterId,

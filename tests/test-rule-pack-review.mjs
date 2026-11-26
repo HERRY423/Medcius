@@ -13,6 +13,8 @@ const folder=mkdtempSync(join(tmpdir(),"medcius-rule-review-test-"));
 const document="SYNTHETIC TEST ONLY: unverified declaration";writeFileSync(join(folder,"synthetic.txt"),document);
 const candidate=structuredClone(pack);candidate.status="approved";candidate.data_class="official";
 Object.assign(candidate.authority,{approved_by:"synthetic-reviewer",hospital_scope:"synthetic-hospital",effective_from:"2026-01-01",review_due:"2027-01-01",approval_document:"synthetic.txt",approval_sha256:sha256Hex(document)});
+// Synthetic identifiers exercise the shape and version binding only.
+candidate.clinical_rules.restricted_antibiotics.forEach((rule, i) => { rule.nhsa_code = "XJ01DDT001A001TEST" + String(i+1).padStart(5, "0"); });
 const review={rule_payload_sha256:reviewPayloadDigest(candidate),hospital_scope:"synthetic-hospital",approved_by:"synthetic-reviewer"};
 const options={hospitalScope:"synthetic-hospital",approvalRoot:folder,review,now:new Date("2026-10-06")};
 const declared=inspectRulePackReview(candidate,options);

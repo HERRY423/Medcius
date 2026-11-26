@@ -6,8 +6,8 @@
 import { extractConTextAssertion, extractConTextAssertions } from "./cn-assertions.mjs";
 export { extractConTextAssertion, extractConTextAssertions };
 import { parseLabs, parseCompactVitals } from "./cn-measurements.mjs";
+import { extractCnTerms } from './cn-note-terms.mjs';
 export { parseLabs, parseCompactVitals };
-const FAMILY = /母亲|父亲|父母|兄|弟|姐|妹|家族/;
 const DENY_ALLERGY = /否认.{0,12}过敏/;
 // 手术栏以“无/未”开头即未实施；允许扫描伪影跟在后面（页码/水印/分隔线）。
 const NONE_PROC = /^(无|无手术|未见|未实施)(?![a-zA-Z\u4e00-\u9fa5])/;
@@ -24,6 +24,7 @@ const SECTION_ALIASES = {
   查体: "体格检查",
   PE: "体格检查",
   出院处理: "出院医嘱",
+  出院医嘱及注意事项: "出院医嘱",
   手术及操作名称: "手术及操作",
   手术操作名称: "手术操作",
   "手术/操作": "手术及操作",
@@ -56,11 +57,11 @@ export function splitSections(text) {
 }
 
 /** Sections against the original string; duplicate headings remain separate. */
-export function splitSectionSpans(text) {
+export function splitSectionSpans(text, additionalHeadings = []) {
   const src = String(text ?? '');
   const escape = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const names = [...HEADING_NAMES.split('|'), ...Object.keys(SECTION_ALIASES)].sort((a,b) => b.length-a.length).map(escape).join('|');
-  const re = new RegExp(`(^|[\\r\\n \\t　])(?:【(${names})】[：:]?|(${names})[ \\t]*[：:])[ \\t]*`, 'g');
+  const names = [...HEADING_NAMES.split('|'), ...Object.keys(SECTION_ALIASES), ...additionalHeadings].sort((a,b) => b.length-a.length).map(escape).join('|');
+  const re = new RegExp(`(^|[。；;\\r\\n \\t　])(?:【(${names})】[：:]?|(${names})[ \\t]*[：:])[ \\t]*`, 'g');
   const hits = [...src.matchAll(re)].map(m => ({ name: SECTION_ALIASES[m[2] ?? m[3]] ?? (m[2] ?? m[3]),
     heading_start: m.index + m[1].length, start: m.index + m[0].length }));
   return hits.map((hit, index) => {
@@ -84,8 +85,8 @@ export function detectNoteType(text) {
 
 export function parseDemographics(text) {
   const t = String(text ?? "");
-  const sexC = /性别[：:]\s*([男女])/.exec(t)?.[1] ?? null;
-  const ageN = /年龄[：:]\s*(\d+)\s*岁/.exec(t)?.[1];
+  const sexC = /性别[：:]?\s*([男女])/.exec(t)?.[1] ?? null;
+  const ageN = /年龄[：:]?\s*(\d+)\s*岁/.exec(t)?.[1];
   return {
     sex: sexC === "男" ? "male" : sexC === "女" ? "female" : null,
     sex_cn: sexC,
@@ -189,13 +190,20 @@ function clip(s) {
   return String(s ?? "").replace(/\s+/g, " ").trim();
 }
 
+function administrativeFragment(text) {
+  return /^[\p{P}\p{S}\s]+$/u.test(text)
+    || /^第\s*\d+\s*页(?:\s*共\s*\d+\s*页)?$/.test(text)
+    || /^(?:入院|出院)(?:日期|时间)[：:]/.test(text)
+    || (!/过敏/.test(text) && /(?:入院|出院|门诊)记录/.test(text) && /住院号[：:]|性别[：:]?\s*[男女]/.test(text));
+}
+
 function itemsFromDxBlock(block) {
   const raw = String(block ?? "").trim();
   if (!raw) return [];
   const lines = raw.split("\n").map((l) => l.trim()).filter(Boolean);
   const items = [];
   for (const line of lines) {
-    const markers = [...line.matchAll(/(?:^|[；; \t])\d+\s*[.、．]\s*/g)];
+    const markers = [...line.matchAll(/(?:^|[；;\s　])\d+\s*[.、．]\s*/g)];
     if (markers.length && markers[0].index === 0) {
       for (let i = 0; i < markers.length; i++) {
         const part = clip(line.slice(markers[i].index + markers[i][0].length, markers[i+1]?.index ?? line.length));
@@ -240,6 +248,7 @@ export function parseCnNote(text) {
   const src = String(text ?? "");
   const sec = splitSections(src);
   const note_type = detectNoteType(src);
+  const assertion_clauses = extractNoteAssertions(src);
 
   const admItems = itemsFromDxBlock(sec["入院诊断"] || (note_type === "admission" ? sec["初步诊断"] : "") || "");
   const confirmedPatientDx = x => { const a = extractConTextAssertion(x); return a.presence === "positive"
@@ -265,18 +274,27 @@ export function parseCnNote(text) {
   } else {
     const procVal = procBlock.replace(/[。.\s]+$/, "");
     const a = extractConTextAssertion(procVal);
-    procedures = field(procVal, procVal, { location: "手术", temporality: a.temporality });
+    procedures = a.presence !== 'positive' || a.experiencer !== 'patient' || a.temporality === 'hypothetical'
+      ? field(null, null, { location:'手术', null_reason:'mentioned_unclear' })
+      : field(procVal, procVal, { location: "手术", temporality: a.temporality });
     procedures.clinical_status = a.clinical_status;
   }
 
-  const allgPatient = String(sec["过敏史"] ?? "")
-    .split(/[。；;\n]/)
-    .map(clip)
-    .filter(Boolean)
-    .filter((s) => !FAMILY.test(s));
+  const allergyAssertions = extractConTextAssertions(String(sec['过敏史']??''))
+    .flatMap(c=>c.mentions).filter(m=>m.experiencer==='patient' && !administrativeFragment(m.span));
+  const allgPatient = allergyAssertions.map(m=>m.span);
   const denyLine = allgPatient.find((s) => DENY_ALLERGY.test(s));
+  const allergyAxes = new Set(allergyAssertions.map(a=>a.presence));
   let allergy_history;
-  if (denyLine) allergy_history = field(denyLine, denyLine, { location: "过敏史", presence: "absent" });
+  if (allergyAxes.size === 1 && allergyAxes.has('not_mentioned')) {
+    allergy_history = field(null, null, { location: '过敏史', null_reason: 'not_mentioned' });
+  }
+  else if (allergyAxes.size > 1 || allergyAxes.has('uncertain') || allergyAxes.has('not_evaluated')) {
+    // A general denial must not erase a specific positive allergy or vice versa.
+    // Preserve all source mentions below instead of picking a "winning" clause.
+    allergy_history = field(null, null, {location:'过敏史',null_reason:'mentioned_unclear'});
+  }
+  else if (denyLine || allergyAxes.has('negative')) allergy_history = field(denyLine || allgPatient.join('；'), denyLine || allgPatient[0], { location: "过敏史", presence: "absent" });
   else if (allgPatient.length) allergy_history = field(allgPatient.join("；"), allgPatient[0], { location: "过敏史", presence: "present" });
   else allergy_history = field(null, null, { location: "过敏史" });
 
@@ -297,8 +315,11 @@ export function parseCnNote(text) {
     note_type,
     // Every mention and cue indexes the original note, including CRLF and
     // repeated headings. Historical events are retained as historical evidence.
-    assertion_clauses: extractNoteAssertions(src),
+    assertion_clauses,
+    term_mentions: extractCnTerms(src),
     diagnosis_mentions: dcItems.map((text, index) => ({ text, ordinal: index + 1, assertion: extractConTextAssertion(text) })),
+    procedure_mentions: assertion_clauses.filter(c=>['手术及操作','手术操作','手术名称'].includes(c.section)),
+    allergy_mentions: assertion_clauses.filter(c=>c.section==='过敏史'),
     demographics: parseDemographics(src),
     labs: parseLabs(src),
     compact_vitals: parseCompactVitals(src),

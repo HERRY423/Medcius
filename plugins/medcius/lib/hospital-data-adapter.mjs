@@ -2,13 +2,14 @@
 // Ingests: NIS (Nursing vitals & 24h fluid balance), LIS (Labs & Critical Values), PACS (Imaging & Impressions), HIS (Orders & Notes)
 // Outputs: Standardized FHIR R4 Bundles & Normalized Clinical Feeds for PatientEvolutionEngine
 
-import { loadSpecialtyRulePack } from "./specialty-rule-pack.mjs";
+import { DEFAULT_RULE_PACK_DIRECTORY, isNhsaWesternDrugCode, formularyNameKey, loadSpecialtyRulePack } from "./specialty-rule-pack.mjs";
 import { canonicalJson, sha256Hex } from "../servers/shared/crypto.mjs";
 import { classifyRecordLifecycle, lifecycleFields, resolveRecordVersions } from "./record-lifecycle.mjs";
 
-import { CALCULATION_REFERENCE as CALC, CALCULATION_PROVENANCE, newsSubscore } from "./calculation-reference.mjs";
+import { CALCULATION_REFERENCE as CALC, CALCULATION_PROVENANCE, newsSubscore, checkCreatinineDataQuality, isAmbiguousMassUnit, temporalTimestamp } from "./calculation-reference.mjs";
+import { normalizeLaboratoryMeasurement, inspectCreatinineSpecimen } from './laboratory-terminology.mjs';
 
-const LEGACY_SANDBOX_RULE_PACK = loadSpecialtyRulePack("cardiology-inpatient-sandbox");
+const LEGACY_SANDBOX_RULE_PACK = loadSpecialtyRulePack("cardiology-inpatient-sandbox", { directory: DEFAULT_RULE_PACK_DIRECTORY });
 
 /**
  * Normalized comparison helper for clinical lab values (F-06).
@@ -18,6 +19,9 @@ const LEGACY_SANDBOX_RULE_PACK = loadSpecialtyRulePack("cardiology-inpatient-san
 export function normalizeLabUnit(val, fromUnit = "", targetUnit = "", testCode = "") {
   if (typeof val !== "number" || !Number.isFinite(val)) {
     return { comparableValue: null, compatible: false, error: "NON_NUMERIC_VALUE" };
+  }
+  if (isAmbiguousMassUnit(fromUnit) || isAmbiguousMassUnit(targetUnit)) {
+    return { comparableValue: null, compatible: false, error: "UNIT_CASE_AMBIGUOUS" };
   }
   const cleanFrom = String(fromUnit || "").trim().toLowerCase().replace(/\s+/g, "").replace(/µ/g, "μ");
   const cleanTarget = String(targetUnit || "").trim().toLowerCase().replace(/\s+/g, "").replace(/µ/g, "μ");
@@ -114,7 +118,8 @@ export const RESTRICTED_ANTIBIOTICS = LEGACY_SANDBOX_RULE_PACK.clinical_rules.re
  */
 export function calculateEgfrCkdEpi(scr, age, gender) {
   if (!Number.isFinite(Number(scr)) || Number(scr) <= 0 || !Number.isFinite(Number(age)) || Number(age) < CALC.egfr.minimum_age
-    || !["男", "女", "male", "female", "M", "F"].includes(gender)) return null;
+    || !["男", "女", "male", "female", "M", "F"].includes(gender)
+    || !checkCreatinineDataQuality(Number(scr), 'umol/L').eligible) return null;
   const isFemale = gender === "女" || gender === "female" || gender === "F";
   // Convert μmol/L to mg/dL: mg/dL = μmol/L / 88.4
   const scrMgDl = scr / CALC.unit_factors.creatinine;
@@ -544,7 +549,7 @@ export class HospitalDataAdapter {
     const nowMs = now != null ? (typeof now === "number" ? now : new Date(now).getTime()) : null;
 
     for (const item of lisFeed) {
-      const codeKey = (item.code || item.test_code || "").toLowerCase();
+      const codeKey = String(typeof item.code === 'string' ? item.code : item.code?.coding?.[0]?.code ?? item.test_code ?? '').toLowerCase();
       const rawValue = item.value ?? item.result_value;
       const val = rawValue == null || typeof rawValue === "boolean" || String(rawValue).trim() === "" ? NaN : Number(rawValue);
       const unit = item.unit || "";
@@ -584,9 +589,19 @@ export class HospitalDataAdapter {
       let isCritical = false;
       let criticalReason = null;
 
+      const sourceSystem = item.code_system ?? item.code?.coding?.[0]?.system;
+      const isCreatinine = /^(?:scr|creatinine|serum creatinine|肌酐|血肌酐|血清肌酐)$/.test(codeKey)
+        || (['2160-0', '14682-9'].includes(codeKey) && ['LOINC', 'http://loinc.org'].includes(sourceSystem));
+      const q = isCreatinine ? checkCreatinineDataQuality(val, unit) : null;
+      const mapped = isCreatinine && ['2160-0', '14682-9'].includes(codeKey)
+        ? normalizeLaboratoryMeasurement({ code: codeKey, code_system: sourceSystem, value: val, unit }) : null;
+      const calculationHeld = isCreatinine && (!q.eligible || !inspectCreatinineSpecimen(item).eligible || mapped?.quantity.reason === 'LOINC_PROPERTY_UNIT_MISMATCH');
+      if (calculationHeld) dataGaps.push({ code: codeKey, name: reportName, value: Number.isFinite(val) ? val : null,
+        unit, reason: 'CREATININE_DATA_QUALITY_HOLD: 来源数值或单位需核对；已保留原值，暂停派生计算与阈值推断。' });
+
       // F-06: Unit-aware comparison with fail-closed safety
       const thresh = rulePack?.clinical_rules?.critical_values?.[codeKey];
-      if (thresh && !isNaN(val)) {
+      if (thresh && !isNaN(val) && !calculationHeld) {
         const normResult = normalizeLabUnit(val, unit, thresh.unit, codeKey);
         if (normResult.compatible && normResult.comparableValue != null) {
           const compVal = normResult.comparableValue;
@@ -635,7 +650,12 @@ export class HospitalDataAdapter {
         ref_text: item.ref_text ?? null,
         reference_range: item.reference_range ?? null,
         reference_range_text: item.reference_range_text ?? null,
+        specimen_type: item.specimen_type ?? null,
+        method_code: item.method_code ?? null,
+        assay_id: item.assay_id ?? null,
+        assay_version: item.assay_version ?? null,
         is_critical: isCritical,
+        interpretation: item.interpretation ?? null,
         critical_reason: criticalReason,
         span: item.span || null,
         status: item.status || item.result_status || null,
@@ -758,7 +778,7 @@ export class HospitalDataAdapter {
   /**
    * 4. Normalize HIS (Hospital Info System) Orders & Track Antibiotic Durations
    */
-  static normalizeHisOrders(ordersFeed = [], { rulePack = null, now = Date.now(), timezoneOffset = null } = {}) {
+  static normalizeHisOrders(ordersFeed = [], { rulePack = null, now = Date.now(), timezoneOffset = null, timeZone = null } = {}) {
     if (!Array.isArray(ordersFeed)) return { medications: [], orders: [], antibiotic_alerts: [] };
     const administrationHistory = ordersFeed.filter(item => item.record_kind === 'administration');
     ordersFeed = ordersFeed.filter(item => item.record_kind !== 'administration').map(item => {
@@ -771,18 +791,48 @@ export class HospitalDataAdapter {
     const antibioticAlerts = [];
     const timeGaps = [];
     const antibioticRules = rulePack?.clinical_rules?.restricted_antibiotics || [];
+    const officialPack = rulePack?.data_class === "official" && rulePack.status === "approved";
     const nowMs = new Date(now).getTime();
-    const isMedication = item => item.is_medication || item.drug_name;
+    const isMedication = item => item.is_medication || item.drug_name || item.drug_code_system === "NHSA";
     const selectedMedications = new Set(resolveRecordVersions(ordersFeed.filter(isMedication), { sourceType: "medication", now }).current_records);
     const selectedOrders = new Set(resolveRecordVersions(ordersFeed.filter(item => !isMedication(item)), { sourceType: "order", now }).current_records);
     const currentMedications = [];
     const currentOrders = [];
 
+    // Pool verified administrations across repeat orders for the same coded product.
+    const codedDays = new Map();
+    function scopedProductKey(item) {
+      const scope = [item.tenant_id, item.patient_id, item.encounter_id];
+      return scope.every(v => typeof v === "string" && v.trim()) ? canonicalJson([...scope, item.drug_code]) : null;
+    }
+    const executions = new Map(ordersFeed.map(item => [item, normalizeOrderExecution(item, { now, timezoneOffset, timeZone })]));
+    for (const item of selectedMedications) {
+      const orderState = classifyRecordLifecycle(item, { sourceType: "medication", now }).result_status;
+      const stopped = ["stopped","discontinued"].includes(String(item.status ?? item.source_status ?? "").toLowerCase());
+      if (item.drug_code_system !== "NHSA" || !isNhsaWesternDrugCode(item.drug_code)
+          || orderState === "entered_in_error" || (orderState === "cancelled" && !stopped)) continue;
+      const groupKey = scopedProductKey(item);
+      if (!groupKey || !item.id || item.source_order_id === null) continue;
+      const group = codedDays.get(groupKey) ?? { code: item.drug_code, days: new Set(), orders: [], evidence: [], held: false };
+      group.orders.push({ source_type: "MedicationRequest", source_id: item.id, version_id: item.version_id ?? null,
+        source_system: item.source_system ?? item._source?.system ?? null });
+      const executed = executions.get(item);
+      const stopTime = stopped ? temporalTimestamp(item.stopped_at ?? item.end_date) : null;
+      if (stopped && (stopTime == null || executed.administrations.some(e => Date.parse(e.performed_at) > stopTime))) group.held = true;
+      group.held ||= !executed.administration_dates || executed.gaps.length > 0 || (item.gaps?.length ?? 0) > 0;
+      for (const day of executed.administration_dates ?? []) group.days.add(day);
+      group.evidence.push(...executed.administrations.map(e => ({ source_type: "MedicationAdministration", source_id: e.id,
+        order_id: item.id, version_id: e.version_id, source_system: e.source_system ?? e._source?.system ?? null, performed_at: e.performed_at })));
+      codedDays.set(groupKey, group);
+    }
+
     for (const item of ordersFeed) {
-      const execution = normalizeOrderExecution(item, { now, timezoneOffset });
-      if (item.is_medication || item.drug_name) {
+      const execution = executions.get(item);
+      if (isMedication(item)) {
         const drugName = item.drug_name || item.name;
-        const authoredRaw = item.authored_on || item.start_time || null;
+        const authoredRaw = item.authored_on || (officialPack ? null : item.start_time) || null;
+        const sourceOrderId = Object.hasOwn(item, "source_order_id") ? item.source_order_id : item.id;
+        const sourceOrderFields = officialPack ? { source_order_id: sourceOrderId ?? null } : {};
         const authoredMs = authoredRaw == null ? NaN : new Date(authoredRaw).getTime();
         const authoredFuture = Number.isFinite(authoredMs) && authoredMs > nowMs;
         const authoredKnown = Number.isFinite(authoredMs) && !authoredFuture;
@@ -803,6 +853,7 @@ export class HospitalDataAdapter {
           medications.push({
             ...lifecycleFields(item),
             ...execution,
+            ...sourceOrderFields,
             id: item.id || `med-his-undated-${sha256Hex(`${drugName || ""}:${item.dosage || ""}`).slice(0, 12)}`,
             drug_name: drugName,
             dosage: item.dosage || "",
@@ -820,32 +871,38 @@ export class HospitalDataAdapter {
           continue;
         }
         const authoredOn = authoredRaw;
-        const startTimestamp = new Date(authoredOn).getTime();
-        const durationDays = Math.max(1, Math.ceil((nowMs - startTimestamp) / (24 * 3600000)));
-
-        // Check if restricted/special antibiotic
-        const matchAnti = antibioticRules.find((a) => String(drugName || "").includes(a.name));
+        const coded = item.drug_code_system === "NHSA" && isNhsaWesternDrugCode(item.drug_code);
+        const matchAnti = officialPack || item.drug_code_system != null
+          ? (coded ? antibioticRules.find(rule => rule.nhsa_code === item.drug_code) : null)
+          : antibioticRules.find(rule => formularyNameKey(rule?.name) && String(drugName || "").includes(rule.name));
+        const anchored = typeof sourceOrderId === "string" && sourceOrderId.trim() && temporalTimestamp(authoredOn) != null;
+        if (officialPack && antibioticRules.length && !coded && selectedMedications.has(item)) {
+          timeGaps.push({ gap_type: "NHSA_DRUG_CODE_UNVERIFIED", severity: "MEDIUM", title: "医保药品编码待核对",
+            summary: "缺少已映射的国家医保药品编码，无法匹配本院药品规则。", source_type: "MedicationRequest", source_id: sourceOrderId ?? null });
+        }
         let antiInfo = null;
-
-        if (matchAnti && isCurrentActive) {
-          const reviewAfterDays = matchAnti.review_after_days;
-          const isOverdue = Number.isFinite(reviewAfterDays) ? durationDays >= reviewAfterDays : null;
-          antiInfo = {
-            drug_name: drugName,
-            class: matchAnti.class,
-            level: matchAnti.level,
-            duration_days: durationDays,
-            duration_basis: "elapsed_since_order_authored_not_administration",
-            review_after_days: reviewAfterDays ?? null,
-            is_overdue: isOverdue,
-            alert_message: `【${matchAnti.level}】${drugName}的来源医嘱仍标记有效，距开立第 ${durationDays} 天，实际给药天数未确认。${isOverdue === true ? "已达到院内规则包配置的复核时间点，需由临床团队复核。" : isOverdue === false ? "尚未达到规则包复核时间点。" : "规则包复核时间点未提供。"}`,
-          };
+        if (matchAnti && isCurrentActive && (!officialPack || anchored)) {
+          const group = codedDays.get(scopedProductKey(item));
+          const dates = group ? (group.held ? null : [...group.days].sort()) : coded || execution.gaps.length || item.gaps?.length ? null : execution.administration_dates;
+          const observed = dates?.length ? dates.length : null;
+          const reviewAfterDays = matchAnti.review_after_days ?? null;
+          const reached = observed != null && Number.isSafeInteger(reviewAfterDays) && observed >= reviewAfterDays ? true : null;
+          const administrationEvidence = group?.evidence ?? (coded ? [] : execution.administrations).map(e => ({ source_type: "MedicationAdministration",
+            source_id: e.id, order_id: item.id, version_id: e.version_id, source_system: e.source_system ?? e._source?.system ?? null, performed_at: e.performed_at }));
+          antiInfo = { drug_name: officialPack ? matchAnti.name : drugName, class: matchAnti.class, level: matchAnti.level,
+            drug_code: coded ? item.drug_code : null, match_basis: coded ? "nhsa_product_code" : "synthetic_name_fixture",
+            source_order_id: sourceOrderId ?? null, source_order_authored_at: authoredOn,
+            duration_days: observed, duration_basis: "observed_administration_calendar_days", administration_dates: dates ?? null,
+            administration_evidence: administrationEvidence, coverage_status: "unknown", review_after_days: reviewAfterDays, is_overdue: reached,
+            alert_message: observed == null ? "实际给药天数未确认，请核对护理执行记录。"
+              : `护理执行记录覆盖 ${observed} 个给药日。${reached ? "已达到规则包复核天数。" : "记录覆盖完整性待核对。"}` };
           antibioticAlerts.push(antiInfo);
         }
 
         medications.push({
           ...lifecycleFields(item),
           ...execution,
+          ...sourceOrderFields,
           id: item.id || `med-his-${sha256Hex(canonicalJson(item)).slice(0, 16)}`,
           drug_name: drugName,
           dosage: item.dosage || "",
@@ -885,8 +942,17 @@ export class HospitalDataAdapter {
       }
     }
 
+    const administrationDays = [];
+    for (const group of codedDays.values()) {
+      const medication = antibioticRules.find(rule => rule.nhsa_code === group.code);
+      if (!medication) continue;
+      const dates = group.held ? null : [...group.days].sort();
+      administrationDays.push({ drug_name: medication.name, drug_code: group.code, duration_basis: "observed_administration_calendar_days",
+        duration_days: dates?.length || null, administration_dates: dates, coverage_status: "unknown",
+        source_references: [...group.orders, ...group.evidence] });
+    }
     return { medications, orders, history_records: [...medications, ...orders], current_medications: currentMedications,
-      current_orders: currentOrders, antibiotic_alerts: antibioticAlerts, time_gaps: timeGaps,
+      current_orders: currentOrders, antibiotic_alerts: antibioticAlerts, observed_antibiotic_days: administrationDays, time_gaps: timeGaps,
       administration_history_records: administrationHistory,
       orphan_administration_count: administrationHistory.filter(event => !ordersFeed.some(item => item.id === event.order_id)).length };
   }
@@ -993,7 +1059,7 @@ export class HospitalDataAdapter {
       return /白细胞|wbc|中性粒|crp|c反应蛋白|pct|降钙素原|培养/.test(n.toLowerCase());
     });
     const antibiotics = medications.filter((m) => {
-      return m.antibiotic_info != null || /头孢|青霉素|他唑巴坦|舒巴坦|卡巴培南|培南|莫西沙星|左氧氟沙星|阿奇霉素|万古霉素|替考拉宁|利奈唑胺|阿米卡星/.test(m.drug_name || m.medication || "");
+      return m.antibiotic_info != null || (rulePack?.data_class !== "official" && /头孢|青霉素|他唑巴坦|舒巴坦|卡巴培南|培南|莫西沙星|左氧氟沙星|阿奇霉素|万古霉素|替考拉宁|利奈唑胺|阿米卡星/.test(m.drug_name || m.medication || ""));
     });
 
     if (vitalsSummary?.t_max != null || infObs.length > 0 || antibiotics.length > 0) {
@@ -1005,7 +1071,7 @@ export class HospitalDataAdapter {
       const lisParts = infObs.map((o) => labText(o));
       const hisParts = antibiotics.map((a) => {
         const name = a.drug_name || a.medication;
-        const dur = a.antibiotic_info?.duration_days ? `距医嘱开立第${a.antibiotic_info.duration_days}天，实际给药天数未知` : "";
+        const dur = a.antibiotic_info?.duration_days ? `护理执行记录覆盖 ${a.antibiotic_info.duration_days} 个给药日` : "";
         const lvl = a.antibiotic_info?.level ? `[${a.antibiotic_info.level}]` : "";
         return `${name} ${dur} ${lvl}`.trim();
       });

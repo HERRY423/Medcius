@@ -210,7 +210,7 @@ assert.equal(hisResult.antibiotic_alerts.length, 1, "Must detect restricted anti
 const antiAlert = hisResult.antibiotic_alerts[0];
 assert.equal(antiAlert.drug_name, "注射用头孢曲松钠");
 assert.equal(antiAlert.level, "限制使用级");
-assert.ok(antiAlert.duration_days >= 5, `Expected >= 5 days, got ${antiAlert.duration_days}`);
+assert.equal(antiAlert.duration_days, null, "An order alone cannot establish any administration days");
 
 console.log(`✓ HIS Antimicrobial Monitor detected: ${antiAlert.alert_message}`);
 

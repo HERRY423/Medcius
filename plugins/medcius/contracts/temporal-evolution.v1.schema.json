@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Temporal evolution research output boundary",
+  "type": "object",
+  "required": ["schema_version", "status", "mode", "clinical_alerts_enabled", "causal_attribution", "provenance", "interventions", "delta_checks", "candidate_alerts", "data_gaps", "graph"],
+  "properties": {
+    "schema_version": { "const": "medcius.temporal-evolution.v1" },
+    "status": { "enum": ["evaluated", "not_evaluable", "disabled"] },
+    "mode": { "const": "engineering_silent_only" },
+    "clinical_alerts_enabled": { "const": false },
+    "causal_attribution": { "const": "not_established" },
+    "provenance": { "type": "object", "required": ["id", "version", "sha256", "status"] },
+    "interventions": { "type": "array", "items": {
+      "type": "object", "required": ["id", "kind", "timestamp", "source_references", "relation", "causal_attribution", "treatment_day", "summary"],
+      "properties": { "kind": { "enum": ["order", "administration"] }, "relation": { "const": "temporal_association_only" },
+        "causal_attribution": { "const": "not_established" }, "treatment_day": { "const": null },
+        "source_references": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["source_id", "source_system", "version_id", "timestamp", "record_sha256"] } }
+      }
+    } },
+    "electrolyte_trends": { "type": "array", "items": { "type": "object", "required": ["metric", "status", "delta", "direction", "source_references"] } },
+    "delta_checks": { "type": "array", "items": { "type": "object", "required": ["rule_id", "status", "triggered"],
+      "properties": { "status": { "enum": ["triggered", "not_triggered", "not_evaluable"] }, "triggered": { "type": ["boolean", "null"] } }
+    } },
+    "candidate_alerts": { "type": "array", "items": {
+      "type": "object", "required": ["id", "category", "clinical_alerts_enabled", "diagnosis", "clinical_action", "before", "after", "source_references"],
+      "properties": { "category": { "const": "RULE_ALERT" }, "clinical_alerts_enabled": { "const": false }, "diagnosis": { "const": null }, "clinical_action": { "const": null },
+        "source_references": { "type": "array", "minItems": 2, "maxItems": 2 } }
+    } },
+    "data_gaps": { "type": "array" },
+    "graph": { "type": "object", "required": ["nodes", "edges"], "properties": {
+      "nodes": { "type": "array" },
+      "edges": { "type": "array", "items": { "type": "object", "required": ["id", "from", "to", "relation", "causal"],
+        "properties": { "relation": { "enum": ["observed_after", "baseline_before", "coincident"] }, "causal": { "const": false } }
+      } }
+    } }
+  }
+}

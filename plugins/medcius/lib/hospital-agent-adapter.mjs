@@ -7,7 +7,7 @@ import { ShiftHandoverEngine, SHIFT_TYPES } from "./shift-handover-engine.mjs";
 import { ConsultPreparationEngine } from "./consult-preparation-engine.mjs";
 import { DischargeReadinessEngine } from "./discharge-readiness-engine.mjs";
 import { HospitalDataAdapter } from "./hospital-data-adapter.mjs";
-import { loadSpecialtyRulePack } from "./specialty-rule-pack.mjs";
+import { assertApprovedSpecialtyRulePack, loadSpecialtyRulePack } from "./specialty-rule-pack.mjs";
 import { StagedDraftService } from "./staged-draft-service.mjs";
 import { ClinicalSkillCatalog } from "./clinical-skill-catalog.mjs";
 import { scanStructuredValue } from "../servers/phiguard/src/lib.mjs";
@@ -16,11 +16,12 @@ import { assertExplicitFeedOwnership, toModelSafe, containsRawStructuredPhi } fr
 import { createPhiEntitySession, guardSessionValue } from './phi-entity-session.mjs';
 import { guardPatientSourceInput } from './patient-source-phi.mjs';
 import { withPhiInferenceScope } from './phi-inference-scope.mjs';
-import { assertSyncPhiAllowed } from './production-phi-policy.mjs';
+import { assertSyncPhiAllowed, requiresProductionPhi } from './production-phi-policy.mjs';
 import { resolvePhiDetector } from './phi-runtime.mjs';
 import { loadChinaPharmacyCatalog, selectChinaPharmacyCatalog } from './china-pharmacy-catalog.mjs';
-import { requiresProductionPhi } from './production-phi-policy.mjs';
 import { PLUGIN_VERSION } from './plugin-version.mjs';
+import { projectPreRoundFacts } from './preround-fact-pack.mjs';
+import { prepareRichTextTree, finalizeRichTextTree } from './rich-note-normalization.mjs';
 
 const HARD_IDENTIFIER_TYPES = new Set(["id_card", "phone_cn_mobile", "phone_cn_fixed", "bank_card", "email", "mrn_label"]);
 // Raw research material never travels in the serializable host response.
@@ -101,6 +102,16 @@ export const HOST_TYPES = {
 };
 
 export class HospitalAgentAdapter {
+  static buildPreRoundFactPack(result) {
+    const { engineOutput, replayInput } = getPreRoundResearchSnapshot(result);
+    const { context } = replayInput;
+    assertSyncPhiAllowed(context);
+    if (resolveClinicalLanding({ host: result.host_info?.host_type, clinicalLanding: context.clinical_landing })) {
+      throw new Error("PREROUND_FACT_PACK_ENGINEERING_ONLY");
+    }
+    return projectPreRoundFacts(engineOutput, context);
+  }
+
   /** Explicit dual-track ingress; raw free text never enters the sync engine. */
   static async executePreRoundWorkflowAsync({ localPhiDetector, signal, ...args }) {
     args = structuredClone(args);
@@ -124,8 +135,11 @@ export class HospitalAgentAdapter {
   static resolveRulePack(context) {
     const packId = context?.specialty_rule_pack_id;
     if (!packId) return null;
-    const production = context?.profile === "production" || process.env.NODE_ENV === "production" || process.env.MEDCIUS_PROFILE === "production";
-    return loadSpecialtyRulePack(packId, { production });
+    return loadSpecialtyRulePack(packId, {
+      production: requiresProductionPhi(context),
+      hospitalScope: context.tenant_id,
+      now: context.as_of ?? context.now,
+    });
   }
 
   /**
@@ -178,7 +192,6 @@ export class HospitalAgentAdapter {
 
     const { tenant_id, doctor_id, doctor_name, patient_id, encounter_id, time_window = "24h" } = context;
     const { patient, notes = [], nis = [], lis = [], pacs = [], his_orders = [], allergies = null } = dataFeeds || {};
-    const rulePack = frozenRulePack === undefined ? this.resolveRulePack(context) : frozenRulePack;
 
     if (!patient || patient.id !== patient_id) {
       throw new Error(`FAIL_CLOSED: Patient record mismatch or missing in active ward context (expected ${patient_id})`);
@@ -189,24 +202,30 @@ export class HospitalAgentAdapter {
     assertExplicitFeedOwnership({ tenant_id, patient_id, encounter_id }, lis, "lis");
     assertExplicitFeedOwnership({ tenant_id, patient_id, encounter_id }, pacs, "pacs");
     assertExplicitFeedOwnership({ tenant_id, patient_id, encounter_id }, his_orders, "his");
-    assertNoHardIdentifiers({ patient, notes, nis, lis, pacs, his_orders });
+    const preparedNotes = prepareRichTextTree(structuredClone(notes));
+    assertNoHardIdentifiers({ patient, notes: preparedNotes, nis, lis, pacs, his_orders });
     // Anchor and replay the same guarded note representation. Redacting only
     // after extraction changes offsets/digests and can break a frozen replay.
     const phiSession = createPhiEntitySession({ ...dataFeeds, context, encounter: dataFeeds.encounter ?? { id: encounter_id } });
     let guardedNotes;
-    try { guardedNotes = JSON.parse(JSON.stringify(guardSessionValue(notes, { session: phiSession, context }), (_key, value) => value === undefined ? null : value)); }
+    try { guardedNotes = JSON.parse(JSON.stringify(guardSessionValue(preparedNotes, { session: phiSession, context }), (_key, value) => value === undefined ? null : value));
+      guardedNotes = finalizeRichTextTree(preparedNotes, guardedNotes); }
     finally { phiSession.dispose(); }
 
     const asOf = context.as_of || context.now || new Date().toISOString();
     const asOfMs = new Date(asOf).getTime();
     if (!Number.isFinite(asOfMs)) throw new Error("FAIL_CLOSED: as_of is not a valid timestamp");
+    const rulePack = frozenRulePack === undefined ? this.resolveRulePack({ ...context, as_of: asOf }) : frozenRulePack;
+    if (frozenRulePack && requiresProductionPhi(context)) {
+      assertApprovedSpecialtyRulePack(rulePack, { hospitalScope: tenant_id, now: asOf });
+    }
     const windowHours = time_window === "72h" ? 72 : 24;
     const cutoff = new Date(asOfMs - windowHours * 60 * 60 * 1000).toISOString();
 
     const nisNormalized = HospitalDataAdapter.normalizeNisFeed(nis, { rulePack, cutoffTime: cutoff, now: asOf });
     const lisNormalized = HospitalDataAdapter.normalizeLisFeed(lis, { rulePack, cutoffTime: cutoff, now: asOf });
     const pacsNormalized = HospitalDataAdapter.normalizePacsFeed(pacs, { cutoffTime: cutoff, now: asOf });
-    const hisNormalized = HospitalDataAdapter.normalizeHisOrders(his_orders, { rulePack, now: asOfMs });
+    const hisNormalized = HospitalDataAdapter.normalizeHisOrders(his_orders, { rulePack, now: asOfMs, timeZone: context.timezone, timezoneOffset: context.timezone_offset });
 
     const mergedObservations = [...(lisNormalized.observations || []), ...(nisNormalized.fhir_observations || [])];
     const chinaClinicalSource = dataFeeds.chinaClinical ?? (dataFeeds.clinical_quality?.length || rulePack?.clinical_rules?.china_reference_checks === true
@@ -216,7 +235,10 @@ export class HospitalAgentAdapter {
         [...hisNormalized.medications, ...(chinaClinicalSource.records || []).filter(r => r.kind === "medication")], { production: requiresProductionPhi(context) }) } : null;
     const engineInput = {
       patient,
-      context: { tenant_id, doctor_id, patient_id, encounter_id, ...(requiresProductionPhi(context) ? { profile: "production" } : {}) },
+      context: { tenant_id, doctor_id, patient_id, encounter_id,
+        ...(context.timezone != null ? { timezone: context.timezone } : {}),
+        ...(context.timezone_offset != null ? { timezone_offset: context.timezone_offset } : {}),
+        ...(requiresProductionPhi(context) ? { profile: "production" } : {}) },
       pacsViewerProfile,
       timeWindow: time_window,
       notes: guardedNotes,
@@ -282,7 +304,7 @@ export class HospitalAgentAdapter {
       rule_pack: rulePack ? {
         pack_id: rulePack.pack_id,
         version: rulePack.version,
-        sha256: rulePack.sha256,
+        sha256: evolutionSummary.rule_provenance.sha256,
         data_class: rulePack.data_class,
       } : {
         pack_id: null,
@@ -314,7 +336,8 @@ export class HospitalAgentAdapter {
    * then execute the same pre-round workflow. The source manifest is returned
    * separately from clinician-facing output for audit and troubleshooting.
    */
-  static async executePreRoundFromBridge({ host = HOST_TYPES.HOSPITAL_CUSTOM_AGENT, context, bridge, localPhiDetector, signal }) {
+  static async executePreRoundFromBridge({ host = HOST_TYPES.HOSPITAL_CUSTOM_AGENT, context, bridge, requireActiveInpatient = false,
+    expectedWardId = null, localPhiDetector, signal, beforeSourceRead }) {
     this.validateContextEnvelope(context);
     if (!bridge || typeof bridge.readPatientSnapshot !== "function") {
       throw new Error("FAIL_CLOSED: A ReadOnlyHospitalDataBridge instance is required");
@@ -322,8 +345,18 @@ export class HospitalAgentAdapter {
     const fixedContext = { ...context, as_of: context.as_of || context.now || new Date().toISOString() };
     localPhiDetector = await resolvePhiDetector({ detector: localPhiDetector, context: fixedContext });
     return withPhiInferenceScope(fixedContext, localPhiDetector, async () => {
-    const snapshot = await bridge.readPatientSnapshot({ ...fixedContext }, { localPhiDetector, signal });
+    signal?.throwIfAborted();
+    beforeSourceRead?.();
+    const snapshot = await bridge.readPatientSnapshot({ ...fixedContext }, { localPhiDetector, signal, beforeSourceRead });
     if (snapshot?.security_contract?.read_only_enforced !== true) throw new Error("FAIL_CLOSED: Source read-only contract is unverified");
+    if (requireActiveInpatient) {
+      const encounter = snapshot.dataFeeds?.encounter;
+      if (encounter?.id !== fixedContext.encounter_id || encounter.status !== "in-progress"
+          || (encounter.class?.code ?? encounter.class) !== "IMP") throw new Error("WARD_ACTIVE_ENCOUNTER_REQUIRED");
+      if (expectedWardId != null && encounter.ward_id != null && encounter.ward_id !== expectedWardId) {
+        throw new Error("WARD_ENCOUNTER_LOCATION_MISMATCH");
+      }
+    }
     if (snapshot.source_availability != null && snapshot.dataFeeds?.source_availability != null
         && canonicalJson(snapshot.source_availability) !== canonicalJson(snapshot.dataFeeds.source_availability)) {
       throw new Error("FAIL_CLOSED_SOURCE_AVAILABILITY: bridge and feed availability disagree");
@@ -351,7 +384,7 @@ export class HospitalAgentAdapter {
    * Execute shift handover workflow (SBAR / I-PASS model).
    */
   static executeShiftHandoverWorkflow({ host = HOST_TYPES.HOSPITAL_CUSTOM_AGENT, context, dataFeeds, shiftType = SHIFT_TYPES.MORNING_TO_EVENING,
-    handoverContext = {}, handoverEvents = [], verifyHandoverEvent, verifyHandoverHistory, eventsAsOf, windowStart }) {
+    handoverContext = {}, handoverEvents = [], verifyHandoverEvent, verifyHandoverHistory, previousHandover, verifyPreviousHandover, eventsAsOf, windowStart }) {
     this.validateContextEnvelope(context);
     assertSkillInvocable({
       skillId: "shift-handover",
@@ -371,7 +404,7 @@ export class HospitalAgentAdapter {
     const handoverPackage = ShiftHandoverEngine.analyzePatientHandover({
       context: { tenant_id, patient_id, encounter_id }, asOf,
       windowStart: windowStart || context.window_start || new Date(new Date(asOf).getTime() - 24 * 3600_000).toISOString(),
-      eventsAsOf, handoverContext, handoverEvents, verifyHandoverEvent, verifyHandoverHistory, rulePack,
+      eventsAsOf, handoverContext, handoverEvents, verifyHandoverEvent, verifyHandoverHistory, previousHandover, verifyPreviousHandover, rulePack,
       patient,
       encounter,
       notes,
@@ -625,7 +658,7 @@ export class HospitalAgentAdapter {
           shiftType: options.shiftType || SHIFT_TYPES.MORNING_TO_EVENING,
           handoverContext: options.handoverContext, handoverEvents: options.handoverEvents,
           verifyHandoverEvent: options.verifyHandoverEvent, eventsAsOf: options.eventsAsOf, windowStart: options.windowStart,
-          verifyHandoverHistory: options.verifyHandoverHistory,
+          verifyHandoverHistory: options.verifyHandoverHistory, previousHandover: options.previousHandover, verifyPreviousHandover: options.verifyPreviousHandover,
         });
       }
 

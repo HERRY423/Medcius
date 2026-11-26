@@ -2,7 +2,7 @@ import { requiresRecordReconciliation } from "./record-lifecycle.mjs";
 // Handover preparation: shared source state plus explicitly authored human events.
 import { createPatientSourceSnapshot, assertPatientSourceSnapshot } from "./patient-source-snapshot.mjs";
 import { classifyRecordLifecycle, describeRecordLifecycle, lifecycleTime } from "./record-lifecycle.mjs";
-import { trackHighRiskFollowup, isExplicitCritical } from "./high-risk-followup-tracker.mjs";
+import { trackHighRiskFollowup, sourceTaskFields, isExplicitCritical } from "./high-risk-followup-tracker.mjs";
 import { readHandoverEvents, deriveHandoverResponsibility } from "./handover-events.mjs";
 import { canonicalJson, sha256Hex } from "../servers/shared/crypto.mjs";
 import { assertHandoverConsistency, detachedFrozenOutput } from "./output-consistency.mjs";
@@ -15,7 +15,7 @@ export class ShiftHandoverEngine {
   static createSnapshot(params) { return createPatientSourceSnapshot(params); }
 
   static analyzePatientHandover({ snapshot, windowStart, eventsAsOf, handoverContext = {}, handoverEvents = [], verifyHandoverEvent,
-    verifyHandoverHistory, rulePack = null, shiftType = SHIFT_TYPES.MORNING_TO_EVENING, ...input }) {
+    verifyHandoverHistory, previousHandover, verifyPreviousHandover, rulePack = null, shiftType = SHIFT_TYPES.MORNING_TO_EVENING, ...input }) {
     snapshot = snapshot ? assertPatientSourceSnapshot(snapshot) : createPatientSourceSnapshot(input);
     if (!Object.values(SHIFT_TYPES).includes(shiftType)) throw new Error("FAIL_CLOSED: Invalid handover shift type");
     if (typeof windowStart !== "string" || !/T.*(?:Z|[+-]\d{2}:\d{2})$/i.test(windowStart)
@@ -42,6 +42,36 @@ export class ShiftHandoverEngine {
     const followup = trackHighRiskFollowup({ orders: current("orders").map(recordForState), observations: current("observations").map(recordForState),
       diagnosticReports: current("diagnosticReports").map(recordForState), rulePack, now: snapshot.as_of, cutoffTime: windowStart,
       sourceAvailability: snapshot.source_availability });
+    // Retain tasks missing from a later feed only from a verified earlier packet.
+    const orderKey = entry => "order:" + (entry.evidence.source_system ?? "") + ":" + entry.evidence.source_id;
+    const taskOrders = clinical("orders").filter(entry => {
+      const status = String(entry.record.status ?? "").replaceAll("-", "_");
+      return (["ordered", "scheduled", "pending_execution"].includes(status) || (status === "active"
+          && ["ordered", "nurse_unverified", "nurse_verified", "pharmacy_reviewed", "dispensed"].includes(entry.record.execution_status)))
+      && !["administered","stopped","voided","pharmacy_returned"].includes(entry.record.execution_status) && !entry.record.administrations?.length;
+    });
+    const pendingTasks = taskOrders.map(entry => ({ tracking_id: orderKey(entry), stage: "pending_execution", closure_status: "open",
+      label: label(entry.record), ...sourceTaskFields(entry.record), evidence: [entry.evidence] }));
+    const carryover = [];
+    if (previousHandover != null) {
+      const prior = assertHandoverConsistency(structuredClone(previousHandover));
+      if (["tenant_id", "patient_id", "encounter_id"].some(k => prior.context[k] !== snapshot.context[k])
+          || lifecycleTime(prior.as_of) == null || lifecycleTime(prior.as_of) > lifecycleTime(windowStart)
+          || typeof verifyPreviousHandover !== "function" || verifyPreviousHandover(prior.packet_digest, { ...snapshot.context }) !== true) {
+        throw new Error("HANDOVER_PREVIOUS_PACKET_UNVERIFIED");
+      }
+      const seen = new Set([...followup.items, ...pendingTasks].map(row => row.tracking_id));
+      for (const done of current("orders").filter(entry =>
+        ["completed","cancelled","entered-in-error"].includes(entry.record.status) || entry.record.execution_status === "administered")) seen.add(orderKey(done));
+      for (const task of [...prior.high_risk_followup.items, ...(prior.pending_tasks ?? []), ...(prior.carryover ?? [])]) {
+        if (seen.has(task.tracking_id) || task.closure_status === "closed") continue;
+        seen.add(task.tracking_id);
+        carryover.push({ tracking_id: task.tracking_id, label: task.label, stage: "unknown", closure_status: "unknown",
+          review_status: "source_recheck_required", owner_id: null, due_at: null,
+          last_known_owner_id: task.owner_id ?? task.last_known_owner_id ?? null, last_known_due_at: task.due_at ?? task.last_known_due_at ?? null,
+          origin_as_of: task.origin_as_of ?? prior.as_of, evidence: task.evidence });
+      }
+    }
     const dataGaps = [];
     if (!snapshot.source_availability.length) dataGaps.push("来源覆盖未知；未检索到不等于没有待跟进事项。");
     if (snapshot.excluded.length) dataGaps.push(`${snapshot.excluded.length} 条旧版本、冲突、缺来源/时间或未来记录未进入当前事实。`);
@@ -63,7 +93,7 @@ export class ShiftHandoverEngine {
     };
     const packet = { schema_version: "medcius.shift-handover.v2", snapshot_id: snapshot.snapshot_id, as_of: snapshot.as_of,
       window_start: windowStart, shift_type: shiftType, context: snapshot.context, handover_context: session,
-      sbar, record_changes: changes, high_risk_followup: followup, data_gaps: dataGaps,
+      sbar, record_changes: changes, high_risk_followup: followup, pending_tasks: pendingTasks, carryover, data_gaps: dataGaps,
       source_availability: snapshot.source_availability, source_visibility: snapshot.source_visibility, excluded_records: snapshot.excluded };
     const packetDigest = hash(packet);
     const responsibility = deriveHandoverResponsibility({ history: human.history, session, packetDigest, snapshotAsOf: snapshot.as_of });
@@ -85,7 +115,10 @@ export class ShiftHandoverEngine {
     add(d.sbar.background.source_notes);
     lines.push("三、A（变化与待跟进）");
     for (const change of d.record_changes) lines.push(`• ${change.description} [来源 ${change.evidence.locator}]`);
-    for (const pending of d.high_risk_followup.items) lines.push(`• ${pending.label}：结果复核 ${pending.review_status}；跟进 ${pending.closure_status}`);
+    for (const task of [...d.high_risk_followup.items, ...(d.pending_tasks ?? []), ...(d.carryover ?? [])]) {
+      const prior = task.origin_as_of ? `。上班记录（${task.origin_as_of}）：责任人 ${task.last_known_owner_id ?? "未提供"}，截止 ${task.last_known_due_at ?? "未提供"}` : "";
+      lines.push(`• ${task.label}：结果复核 ${task.review_status ?? "待核实"}，跟进 ${task.closure_status}，责任人 ${task.owner_id ?? "待核实"}，截止 ${task.due_at ?? "待核实"}${prior} [来源 ${task.evidence.map(e => e.source_id).filter(Boolean).join("、") || "未知"}]`);
+    }
     add(d.sbar.assessment.nursing_records);
     lines.push("四、R（来源医嘱与医生原话预案）"); add(d.sbar.recommendation.scheduled_follow_ups);
     for (const plan of d.sbar.recommendation.contingency_plans) lines.push(`• ${plan.trigger_text ?? "触发条件未提供"}：${plan.action_text} [交班医生 ${plan.author_id}；来源事件 ${plan.evidence.source_id}]`);

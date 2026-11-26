@@ -16,23 +16,21 @@
   <div class="panel">
     <div class="tag">SILENT PILOT · 不对临床医生弹窗</div>
     <h1>HIS 患者页内嵌入口</h1>
-    <p class="muted" id="status">等待医院 HIS 通过 postMessage 下发患者上下文。静默试点只做旁路计算与审计落盘，不向医师展示摘要、不生成病程草稿、不写回。</p>
+    <p class="muted" id="status">等待院内 HIS 打开患者。静默试点将在已授权的就诊下核对今日采集状态。</p>
   </div>
   <script>
-    const allowedRaw = (window.location.search.match(/[?&]origin=([^&]+)/) || [])[1];
-    const allowed = allowedRaw ? decodeURIComponent(allowedRaw) : "";
-    function ack(detail) {
-      const target = window.parent === window ? null : window.parent;
-      if (!target || !allowed) return;
-      target.postMessage({ type: "medcius:silent-ack", detail }, allowed);
-    }
-    if (!allowed) {
-      document.getElementById("status").textContent = "缺少 HIS parent origin（?origin=），已 fail-closed，拒绝 postMessage *。";
+    const allowed = new Set([location.origin,...__WARD_ORIGINS__]);
+    let generation = 0;
+    function ack(origin,detail) {
+      if (window.parent !== window && allowed.has(origin)) window.parent.postMessage({ type:"medcius:silent-ack",detail },origin);
     }
     window.addEventListener("message", async (event) => {
-      if (!allowed || event.origin !== allowed) return;
+      if (window.parent === window || event.source !== window.parent || !allowed.has(event.origin)) return;
       const data = event.data || {};
+      if (data.type === "his:context-cleared") { ++generation; document.getElementById("status").textContent="患者上下文已关闭。"; return; }
       if (data.type !== "his:patient-context") return;
+      const ticket = ++generation;
+      document.getElementById("status").textContent="正在核对本轮预计算状态…";
       try {
         const payload = data.payload || data;
         const sso = payload.sso_token || payload.ssoToken || data.sso_token;
@@ -41,22 +39,23 @@
           headers.Authorization = "Bearer " + sso;
           headers["X-Hospital-Token"] = sso;
         }
-        const response = await fetch("/api/v1/his/embed/silent-capture", {
+        const response = await fetch("/api/v1/his/embed/ward-status", {
           method: "POST",
           headers,
-          body: JSON.stringify(data),
+          cache:"no-store", redirect:"error", credentials:"omit",
+          body: JSON.stringify({patient_id:payload.patient_id ?? payload.patientId,encounter_id:payload.encounter_id ?? payload.encounterId,tenant_id:payload.tenant_id ?? payload.tenantId}),
         });
         const json = await response.json();
-        document.getElementById("status").textContent = json.shadow
-          ? "静默捕获已记录。本窗不向临床医生展示摘要。"
-          : (json.error || "静默捕获失败，已 fail-closed。");
-        ack({ ok: response.ok, silent: true, cards: [] });
-      } catch (error) {
-        document.getElementById("status").textContent = "静默捕获失败，已 fail-closed。";
-        ack({ ok: false, silent: true, cards: [] });
+        if (ticket !== generation) return;
+        document.getElementById("status").textContent = response.ok ? (json.captured ? "本班次已完成静默预计算。" : "本班次尚无匹配的预计算记录。") : "静默状态暂不可用。";
+        ack(event.origin,{ ok: response.ok, silent:true, cards:[] });
+      } catch {
+        if (ticket !== generation) return;
+        document.getElementById("status").textContent = "静默状态暂不可用。";
+        ack(event.origin,{ ok:false, silent:true, cards:[] });
       }
     });
-    ack({ ready: true, silent: true });
+    for(const origin of allowed) ack(origin,{ready:true,silent:true});
   </script>
 </body>
 </html>

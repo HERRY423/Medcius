@@ -4,6 +4,7 @@ import { requiresProductionPhi } from './production-phi-policy.mjs';
 import { resolvePhiDetector } from './phi-runtime.mjs';
 import { createPhiEntitySession } from './phi-entity-session.mjs';
 import { guardPatientSourceInput } from './patient-source-phi.mjs';
+import { prepareRichTextTree } from './rich-note-normalization.mjs';
 
 const ALLOWED_KINDS = new Set(["patient", "encounter", "notes", "nis", "lis", "pacs", "his", "financial_access", "clinical_quality"]);
 const WRITE_CAPABILITY_NAMES = new Set(["write", "create", "update", "delete", "patch", "execute", "order", "create_resource", "update_resource", "delete_resource", "write_back"]);
@@ -49,9 +50,11 @@ function validateEnvelope(envelope, connector, context) {
 }
 
 function withProvenance(record, connector, envelope) {
+  if (record?.tenant_id != null && record.tenant_id !== envelope.tenant_id) throw new Error("BRIDGE_RECORD_TENANT_MISMATCH");
   const sourceRecordId = record?.id || record?.resource_id || null;
   return {
     ...record,
+    tenant_id: envelope.tenant_id,
     _source: {
       system: connector.id,
       kind: connector.kind,
@@ -84,7 +87,7 @@ export class ReadOnlyHospitalDataBridge {
     this.production = requiresProductionPhi();
   }
 
-  async readPatientSnapshot(context, { localPhiDetector = this.localPhiDetector, signal } = {}) {
+  async readPatientSnapshot(context, { localPhiDetector = this.localPhiDetector, signal, beforeSourceRead } = {}) {
     context = structuredClone(context);
     requireContext(context);
     const dual = this.production || requiresProductionPhi(context) || !!localPhiDetector;
@@ -107,8 +110,11 @@ export class ReadOnlyHospitalDataBridge {
     const unavailable = [];
     const degradedRecords = [];
     const sourceAvailability = [];
+    const privateSegmentCandidates = [];
 
     for (const connector of this.connectors) {
+      signal?.throwIfAborted();
+      beforeSourceRead?.();
       let envelope;
       try {
         envelope = await connector.readPatient({
@@ -135,7 +141,27 @@ export class ReadOnlyHospitalDataBridge {
         continue;
       }
 
-      const records = envelope.records.map((record) => withProvenance(record, connector, envelope));
+      const records = envelope.records.map((record) => connector.kind === 'notes'
+        ? prepareRichTextTree(structuredClone(withProvenance(record, connector, envelope)))
+        : withProvenance(record, connector, envelope));
+      if (envelope.private_segment_candidates != null) {
+        if (connector.kind !== 'lis' || !Array.isArray(envelope.private_segment_candidates)
+          || envelope.private_segment_candidates.length > 10000) throw new Error('BRIDGE_PRIVATE_CANDIDATES_INVALID');
+        for (const candidate of envelope.private_segment_candidates) {
+          if (candidate?.tenant_id !== context.tenant_id || candidate?.patient_id !== context.patient_id
+            || candidate?.encounter_id !== context.encounter_id || candidate?.source_system !== connector.id
+            || candidate?.clinical_observation !== false || candidate?.calculation_authorized !== false
+            || candidate?.status !== 'unapproved_research_candidate'
+            || !candidate.id || !/^Z[A-Z0-9]{2}$/.test(candidate.source_segment ?? '')
+            || !/^[a-f0-9]{64}$/.test(candidate.profile_sha256 ?? '') || !Number.isFinite(candidate.reported_value)
+            || candidate.reported_value < 0 || !/^[A-Za-z0-9_.:-]{1,64}$/.test(candidate.local_code ?? '')
+            || !/^[A-Za-zµμ0-9/\^*._%-]{1,32}$/.test(candidate.reported_unit ?? '')
+            || Object.keys(candidate).some(k => !['id','source_system','source_segment','source_segment_index','source_message_id',
+              'patient_id','encounter_id','tenant_id','local_code','reported_value','reported_unit','profile_id','profile_version',
+              'profile_sha256','status','clinical_observation','calculation_authorized'].includes(k))) throw new Error('BRIDGE_PRIVATE_CANDIDATE_REJECTED');
+          privateSegmentCandidates.push(candidate);
+        }
+      }
       const owned = [];
       for (const record of records) {
         if (!record.id && !record.resource_id) {
@@ -166,7 +192,8 @@ export class ReadOnlyHospitalDataBridge {
       }
 
       const hasDegradedRecords = owned.length !== records.length;
-      const hasParseWarnings = Array.isArray(envelope.parse_warnings) && envelope.parse_warnings.length > 0;
+      const hasParseWarnings = (Array.isArray(envelope.parse_warnings) && envelope.parse_warnings.length > 0)
+        || (connector.kind === 'notes' && owned.some(record => record.rich_text_normalization?.status === 'quarantined'));
       const incomplete = envelope.complete === false || envelope.truncated === true || envelope.source_status === "unknown";
       sourceAvailability.push({
         connector_id: connector.id, kind: connector.kind,
@@ -197,6 +224,7 @@ export class ReadOnlyHospitalDataBridge {
         source_version: envelope.source_version || null,
         record_count: records.length,
         payload_sha256: sha256Hex(canonicalJson(envelope.records)),
+        ...(envelope.private_segment_candidates?.length ? { private_candidates_sha256: sha256Hex(canonicalJson(envelope.private_segment_candidates)) } : {}),
         read_only: true,
       });
     }
@@ -218,6 +246,7 @@ export class ReadOnlyHospitalDataBridge {
       source_availability: sourceAvailability,
       unavailable_sources: unavailable,
       degraded_records: degradedRecords,
+      private_segment_candidates: privateSegmentCandidates,
       completeness: unavailable.length > 0 ? "partial_with_explicit_unavailable_sources" : sourceAvailability.some((entry) => entry.status === "unknown") ? "partial_with_explicit_unknown_sources" : "complete_for_configured_connectors",
       security_contract: {
         read_only_enforced: true,
@@ -226,10 +255,12 @@ export class ReadOnlyHospitalDataBridge {
       },
     };
     if (!dual) return output;
+    // These fields are generated locally from connector read state.
+    const { security_contract: _security, completeness, dataFeeds: _feeds, ...bridgeMetadata } = output;
     const { input: guarded, receipt } = await guardPatientSourceInput({ ...feeds, context,
-      bridge_metadata: { ...output, dataFeeds: null } }, { detector: localPhiDetector, entitySession, signal });
+      bridge_metadata: bridgeMetadata }, { detector: localPhiDetector, entitySession, signal });
     const { context: _context, bridge_metadata: metadata, ...dataFeeds } = guarded;
-    return { ...metadata, dataFeeds: { ...dataFeeds, source_availability: metadata.source_availability }, phi_guard: receipt,
+    return { ...metadata, completeness, dataFeeds: { ...dataFeeds, source_availability: metadata.source_availability }, phi_guard: receipt,
       security_contract: { read_only_enforced: true, model_safe: true, assurance: 'dual_track_executed', complete_deidentification: 'NOT_ESTABLISHED' } };
     } finally { entitySession?.dispose(); }
   }

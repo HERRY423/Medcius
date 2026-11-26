@@ -15,21 +15,31 @@ const ANALYTES = [
   ['凝血酶原时间', '凝血酶原时间|PT'], ['INR', '国际标准化比值|INR'], ['D-二聚体', 'D-二聚体|D-Dimer|DD'],
   ['血糖', '空腹血糖|随机血糖|血糖|GLU'], ['HbA1c', '糖化血红蛋白|HbA1c'],
 ];
-const UNIT = '(?:[*×]\\s*)?10\\s*\\^\\s*(?:12|9)\\s*/\\s*L|(?:[μµu]mol|mmol|mol|mg|[μµu]g|ng|pg|g|U|G)\\s*/\\s*(?:dL|mL|L)|%|秒|s';
+const UNIT = '(?:[*×]\\s*)?10\\s*(?:\\^\\s*(?:12|9)|⁹|¹²)\\s*/\\s*L|(?:[μµu]mol|mmol|mol|mg|[μµu]g|ng|pg|g|U|G)\\s*/\\s*(?:dL|mL|L)|%|秒|s';
+// Full-width ASCII has a one-code-unit mapping. Never NFKC the whole source:
+// compatibility characters can change length and invalidate evidence offsets.
+const asciiView = text => text.replace(/[！-～]/g,ch=>String.fromCharCode(ch.charCodeAt(0)-0xfee0));
+const NUMBER = '[+-]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)(?:[eE][+-]?\\d+)?';
 
 export function parseLabs(input) {
   const text = String(input ?? '');
+  const view = asciiView(text);
   const labs = [];
   for (const [name, aliases] of ANALYTES) {
-    const re = new RegExp(`(?<![A-Za-z])(?:${aliases})\\s*[：:为]?\\s*([<>≤≥＜＞]?)\\s*([+-]?\\d+(?:\\.\\d+)?)(?![\\d.])(?:[ \\t]*(${UNIT})(?![A-Za-z]))?`, 'gi');
-    for (const m of text.matchAll(re)) {
-      const span = m[0];
-      const sourceUnit = m[3] ?? null;
-      let unit = sourceUnit?.replace(/\s+/g, '').replace(/^[*×]/, '').replace(/[μµ]/g, 'u') ?? null;
+    const re = new RegExp(`(?<![A-Za-z])(?:${aliases})[ \\t]*[：:为=]?[ \\t]*([<>]=?|[≤≥]?)[ \\t]*(${NUMBER})(?![\\d.eE]|[,，]\\d)(?:[ \\t]*(${UNIT})(?![A-Za-z/\\d]))?`, 'gi');
+    for (const m of view.matchAll(re)) {
+      const tail=view.slice(m.index+m[0].length);
+      // OCR-damaged values (8O, 3.l), ranges and unsupported unit suffixes
+      // must not yield plausible-looking partial numbers or units.
+      if (/^[A-Za-z\d./^%μµ⁰-⁹]/.test(tail) || /^[ \t]*[-~～至][ \t]*\d/.test(tail)) continue;
+      const value=Number(m[2]);if(!Number.isFinite(value)) continue;
+      const span = text.slice(m.index,m.index+m[0].length);
+      const sourceUnit = m[3] ? span.slice(m[0].lastIndexOf(m[3])) : null;
+      let unit = m[3]?.replace(/\s+/g, '').replace(/^[*×]/, '').replace(/[μµ]/g, 'u').replace('¹²','^12').replace('⁹','^9') ?? null;
       // Preserve the existing creatinine API alias only for an explicitly written unit.
       if (name === '肌酐' && unit?.toLowerCase() === 'umol/l') unit = 'umol_L';
       if (name === 'INR' && unit == null) unit = 'ratio';
-      labs.push({ name, value: Number(m[2]), unit, source_unit: sourceUnit,
+      labs.push({ name, value, unit, source_unit: sourceUnit,
         unit_status: sourceUnit ? 'reported' : name === 'INR' ? 'dimensionless' : 'not_mentioned',
         comparator: m[1] || '=', span, start: m.index, end: m.index + span.length, offset_unit: 'utf16' });
     }
@@ -39,13 +49,14 @@ export function parseLabs(input) {
 
 export function parseCompactVitals(input) {
   const text = String(input ?? '');
+  const view=asciiView(text);
   const out = [];
   // Five numeric fields only; a missing BP component never gets guessed.
   const re = /\bT\s*\/\s*P\s*\/\s*R\s*\/\s*BP\s*[：:=]\s*(\d+(?:\.\d+)?)\s*\/\s*(\d+)\s*\/\s*(\d+)\s*\/\s*(\d+)\s*\/\s*(\d+)(?![\d/])/gi;
-  for (const m of text.matchAll(re)) {
+  for (const m of view.matchAll(re)) {
     out.push({ values: { temperature: +m[1], pulse: +m[2], respiratory_rate: +m[3], systolic_bp: +m[4], diastolic_bp: +m[5] },
       units: null, unit_status: 'not_mentioned', interpretation: null,
-      span: m[0], start: m.index, end: m.index + m[0].length, offset_unit: 'utf16' });
+      span: text.slice(m.index,m.index+m[0].length), start: m.index, end: m.index + m[0].length, offset_unit: 'utf16' });
   }
   return out;
 }

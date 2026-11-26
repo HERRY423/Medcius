@@ -109,7 +109,7 @@ function renderReport({ok,data},workflow,request={}){
   const encounter=p.header?.encounter_id || p.context?.encounter_id || data.patient_context?.encounter_id;
   if(data.patient_context?.patient_id && data.patient_context.patient_id!==id) throw Error('CONTEXT_MISMATCH');
   if(request.encounter_id && encounter && encounter!==request.encounter_id) throw Error('CONTEXT_MISMATCH');
-  const body=workflow==='evolution' ? renderEvolution(p) : workflow==='consult-preparation' ? renderConsult(p) : workflow==='shift-handover' ? renderHandover(p) : renderDischarge(p);
+  const body=workflow==='evolution' ? renderEvolution(p) : workflow==='consult-preparation' ? renderConsult(p) : workflow==='shift-handover' ? renderHandover(p) : renderDischarge(p, {copyEnabled:true});
   currentReport=data; $('report-body').innerHTML=(workflow==='evolution'?'':visibilityNotice(p.source_visibility))+body; $('report-error').textContent=''; $('report-empty').classList.add('hidden'); $('report-card').classList.remove('hidden'); renderReview(true);
   const cutoff=p.as_of || p.generated_at;
   $('patient-label').textContent=request.demo_ward ? `合成患者 · ${request.bed}` : '当前患者';
@@ -179,14 +179,35 @@ function renderHandover(d){
   <div class="card attention"><h3>资料缺口</h3>${d.data_gaps.slice(0,3).map(g=>`<p>${esc(g)}</p>`).join('')}${d.data_gaps.length>3?`<details><summary>展开其余 ${d.data_gaps.length-3} 项</summary>${d.data_gaps.slice(3).map(g=>`<p>${esc(g)}</p>`).join('')}</details>`:''}<details><summary>来源覆盖与排除记录</summary>${renderTree(d.source_availability)}${renderTree(d.excluded_records)}</details></div><p class="boundary">${esc(d.responsibility.boundary)} ${esc(d.boundary)}</p>`;
 }
 function humanFinding(message){const map={drug_name:'药品名称',dosage:'剂量',route:'用药途径',frequency:'频次',duration_or_stop_rule:'疗程或停药规则',purpose:'目的',destination:'去向',responsible_party:'责任人',contact_route:'联络途径',author_id:'提供者',timing:'时间',arrangement_status:'安排状态',appointment_reference:'预约来源',SOURCE_REFERENCE_MISSING:'缺少来源标识',SOURCE_TIME_MISSING_OR_INVALID:'记录时间未确认',SOURCE_TIME_INVALID:'来源时间无效',source_withdrawn:'来源已撤回',future:'晚于资料截止时间',conflict:'来源版本冲突',INPATIENT_LINK_STALE_OR_MISSING:'在院用药来源链接缺失或失效',DISCHARGE_LINK_STALE_OR_MISSING:'出院用药来源链接缺失或失效',AUTHOR_MISSING:'提供者缺失',RATIONALE_MISSING:'衔接原因未提供',CONTINUE_FIELDS_DIFFER:'记载为继续但前后字段不同',ACTION_UNKNOWN:'衔接方式未知',result_link_stale_or_missing:'结果来源链接缺失或失效',scheduled_time_invalid_or_past:'安排时间无效或已过',final:'正式结果',revised:'更正结果',preliminary:'初步结果',unknown:'未知',cancelled:'已取消',entered_in_error:'录入错误'};let s=String(message);for(const k of Object.keys(map).sort((a,b)=>b.length-a.length))s=s.replaceAll(k,map[k]);return s;}
-function renderDischarge(d){
+function renderDischargeTemplate(template, copyEnabled){
+  if(!template) return '';
+  const documentNames={discharge_summary:'出院小结',front_sheet:'病案首页',settlement_list:'医保结算清单'};
+  const statuses={source_linked:'已关联来源',missing_or_unverified:'待核对来源',conflict:'来源版本冲突',source_conflict:'来源冲突',
+    recorded_text_differs:'原文字段有差异',recorded_text_agrees:'所提供原文一致',coverage_unknown:'资料不足，待核对',
+    not_provided:'栏目未提供',ambiguous:'存在多个对应栏目'};
+  const docRows=Object.entries(template.document_sources).map(([kind,row])=>`<p>${documentNames[kind]} · ${esc(statuses[row.status])}${row.reference ? ` · ${esc(row.reference.locator)}` : ''}</p>`).join('');
+  const checkNames={discharge_diagnoses:'出院诊断',procedures:'手术及操作'};
+  const comparisons=Object.entries(template.comparisons).map(([key,row])=>`<details><summary>${checkNames[key]} · ${esc(statuses[row.status])}</summary>
+    ${Object.entries(row.documents).map(([kind,field])=>`<p><b>${documentNames[kind]}</b> · ${esc(field.value ?? statuses[field.status])}</p>`).join('')}</details>`).join('');
+  const preview=template.copy_text ? `<label for="discharge-template-text">待医生核对的模板字段</label><textarea id="discharge-template-text" readonly>${esc(template.copy_text)}</textarea>${copyEnabled ? '<button onclick="copyDischargeTemplate()">复制模板字段</button> <span id="discharge-copy-status" role="status"></span>' : ''}` : '<p>当前资料里没有可复制的来源字段。</p>';
+  return `<section class="card"><h3>出院小结模板</h3>${docRows}${comparisons}${preview}</section>`;
+}
+async function copyDischargeTemplate(){
+  const report=currentReport, epoch=requestEpoch;
+  const text=report?.workflow==='discharge-readiness' ? report.payload?.discharge_template?.copy_text : null;
+  if(!text) return;
+  let message='已复制模板字段，请核对后粘贴。';
+  try{await navigator.clipboard.writeText(text);}catch{message='剪贴板不可用，可在上方选中并手动复制。';}
+  if(epoch===requestEpoch && report===currentReport) $('discharge-copy-status').textContent=message;
+}
+function renderDischarge(d, {copyEnabled=false}={}){
   const med=item=>item?[item.record.drug_name,item.record.dosage,item.record.route,item.record.frequency].map(esc).join(' · '):'未提供或未绑定当前来源';
   const gaps=domain=>domain.findings.length?`<div class="attention card">${domain.findings.slice(0,3).map(f=>`<p>${esc(humanFinding(f.message))}</p>`).join('')}${domain.findings.length>3?`<details><summary>展开其余 ${domain.findings.length-3} 项待核对资料</summary>${domain.findings.slice(3).map(f=>`<p>${esc(humanFinding(f.message))}</p>`).join('')}</details>`:''}</div>`:'';
   const names={results:'结果资料',medications:'用药衔接',follow_up:'后续安排'};
   const resultRow=r=>`<div class="clinical-row"><b>${esc(r.title)}</b><p>${esc(stateNames[r.result_status]||'未知')} · ${esc(stateNames[r.review_status]||'复核未确认')}</p><p>${esc(r.record.impression ?? (r.record.value != null || r.record.valueQuantity?.value != null ? `${r.record.value ?? r.record.valueQuantity.value} ${r.record.unit ?? r.record.valueQuantity?.unit ?? '单位未提供'}` : '结果内容未提供'))}</p>${evidenceDetails(r.evidence,r.record)}</div>`;
   const transition=r=>`<div class="clinical-row"><b>来源记录：${esc(stateNames[r.record.action]||'衔接方式未知')}</b><p>在院：${med(r.inpatient)}</p><p>出院：${med(r.discharge)}</p>${r.record.rationale_text?`<p>来源说明：${esc(r.record.rationale_text)}</p>`:''}${evidenceDetails(r.evidence,r.record,'衔接记录依据')}${r.inpatient?evidenceDetails(r.inpatient.evidence,r.inpatient.record,'在院用药依据'):''}${r.discharge?evidenceDetails(r.discharge.evidence,r.discharge.record,'出院用药依据'):''}</div>`;
   const plan=r=>`<div class="clinical-row"><b>${esc(r.record.purpose)}</b><p>${esc(stateNames[r.record.arrangement_status]||'安排未知')} · 预约未外部核验</p><p>时间：${esc(r.record.scheduled_at?displayTime(r.record.scheduled_at):r.record.timing_text)} · 去向：${esc(r.record.destination)}</p><p>责任人：${esc(r.record.responsible_party)} · 联络：${esc(r.record.contact_route)}</p>${evidenceDetails(r.evidence,r.record)}</div>`;
-  return `<h2 class="report-title">出院资料核对</h2><p class="boundary">${esc(d.clinical_suitability.note)} 全部字段齐备也不表示可以出院。</p><div class="overview">${Object.entries(names).map(([k,title])=>`<a href="#discharge-${k}"><b>${title}</b><p>${esc(d.domains[k].status_label)}</p></a>`).join('')}</div>
+  return `<h2 class="report-title">出院资料核对</h2><p class="boundary">${esc(d.clinical_suitability.note)} 全部字段齐备也不表示可以出院。</p><div class="overview">${Object.entries(names).map(([k,title])=>`<a href="#discharge-${k}"><b>${title}</b><p>${esc(d.domains[k].status_label)}</p></a>`).join('')}</div>${renderDischargeTemplate(d.discharge_template,copyEnabled)}
   <section id="discharge-results" class="card"><h3>一、结果资料</h3>${gaps(d.domains.results)}${d.domains.results.items.map(resultRow).join('')}</section><section id="discharge-medications" class="card"><h3>二、用药衔接</h3><p class="muted">仅核对来源记录，未评估治疗合理性。</p>${gaps(d.domains.medications)}${d.domains.medications.items.map(transition).join('')}<details><summary>全部在院与出院用药来源</summary>${[...d.domains.medications.inpatient,...d.domains.medications.discharge].map(r=>`<p>${med(r)}</p>${evidenceDetails(r.evidence,r.record)}`).join('')}</details></section><section id="discharge-follow_up" class="card"><h3>三、后续安排</h3>${gaps(d.domains.follow_up)}${d.domains.follow_up.items.map(plan).join('')}<h4>医生提供的患者说明</h4>${d.domains.follow_up.patient_instructions.map(r=>`<p>${esc(r.record.text)}</p>${evidenceDetails(r.evidence,r.record)}`).join('')||'<p>未提供，不自动补写。</p>'}</section>
   <div class="card attention"><b>资料覆盖仍需核对</b>${d.findings.filter(f=>['source','access'].includes(f.domain)).map(f=>`<p>${esc(humanFinding(f.message))}</p>`).join('')}</div><details><summary>费用与可获得性资料</summary><p>费用资料不决定医学上是否适合出院；未提供不等于没有障碍。</p>${renderTree(d.patient_affordability)}</details><details><summary>来源覆盖与排除记录</summary>${renderTree(d.source_availability)}${renderTree(d.excluded_records)}</details><p class="boundary">${esc(d.boundary)}</p>`;
 }

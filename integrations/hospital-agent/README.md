@@ -56,6 +56,8 @@ const result = await HospitalAgentAdapter.executePreRoundWorkflowAsync({
 console.log(result.summary.blocks);
 ```
 
+宿主可以通过 `HospitalAgentAdapter.buildPreRoundFactPack(result)` 取得这份查房结果对应的 EMR 事实包。事实保留原词、断言、来源标识和版本。可追溯的变化、待回报与未闭环事项保留在 `worklist`，引用无法核实的条目标记在 `held`。此 SDK 入口用于工程宿主，输出由宿主交医生核对。
+
 ### 2. REST API / CDS Hooks 接入
 
 医院 Agent 亦可通过本地/专网部署的 `plugins/medcius/servers/api` 接口：

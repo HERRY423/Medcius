@@ -1,0 +1,144 @@
+{
+  "schema_version": "medcius.temporal-upgrade-verification.v1",
+  "evidence_kind": "engineering_and_synthetic_only",
+  "sources_unchanged": true,
+  "source_files": [
+    {
+      "path": "plugins/medcius/contracts/temporal-evolution.v1.schema.json",
+      "sha256": "67b6e0d7bbf9feb50843c93712312f30e4d776278da6b719cbe58d919ce9b254",
+      "after_sha256": "67b6e0d7bbf9feb50843c93712312f30e4d776278da6b719cbe58d919ce9b254",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/medcius/lib/calculation-reference.mjs",
+      "sha256": "ebb7129171d9726249bd2195e0016108f0874d987ece47610a1f195451785780",
+      "after_sha256": "ebb7129171d9726249bd2195e0016108f0874d987ece47610a1f195451785780",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/medcius/lib/connectors/site-view-mapping.mjs",
+      "sha256": "0b83db8314d835f9034f11cf7e57f1be0325ada2befec33851a3625b17b8c378",
+      "after_sha256": "0b83db8314d835f9034f11cf7e57f1be0325ada2befec33851a3625b17b8c378",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/medcius/lib/hospital-agent-adapter.mjs",
+      "sha256": "2499f32c96d366d7e8a1d4d3c59703fb140f98c27a54644863df046c30144d7e",
+      "after_sha256": "2499f32c96d366d7e8a1d4d3c59703fb140f98c27a54644863df046c30144d7e",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/medcius/lib/hospital-data-adapter.mjs",
+      "sha256": "b3f55294256e1178065a77504de8a936813e9b03e90d434f87f4920c1bdd3c66",
+      "after_sha256": "b3f55294256e1178065a77504de8a936813e9b03e90d434f87f4920c1bdd3c66",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/medcius/lib/order-execution.mjs",
+      "sha256": "e9adef8f6c18b5fbfe83628b7f56d4dc518bee6eeb385c8fd27fc4c9ff11a080",
+      "after_sha256": "e9adef8f6c18b5fbfe83628b7f56d4dc518bee6eeb385c8fd27fc4c9ff11a080",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/medcius/lib/output-consistency.mjs",
+      "sha256": "7513986f8668d8c00938347cbf91bc8de71667342b3398c623007e0d4b81efbe",
+      "after_sha256": "7513986f8668d8c00938347cbf91bc8de71667342b3398c623007e0d4b81efbe",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/medcius/lib/patient-evolution-engine.mjs",
+      "sha256": "08eb0f4bee9cfb8ce5e2ecd6bbac560b78df79af94e230dbc2fd19a357c36022",
+      "after_sha256": "08eb0f4bee9cfb8ce5e2ecd6bbac560b78df79af94e230dbc2fd19a357c36022",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/medcius/lib/patient-source-phi.mjs",
+      "sha256": "604e60778fde8c33b3fa5c9e5b3fab6f53ada89d64b3834b8faaa0640c500c47",
+      "after_sha256": "604e60778fde8c33b3fa5c9e5b3fab6f53ada89d64b3834b8faaa0640c500c47",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/medcius/lib/record-lifecycle.mjs",
+      "sha256": "7462dc9b3d660fef750fa3dcdae70404e277419465a460320b4e30f7bed0acd9",
+      "after_sha256": "7462dc9b3d660fef750fa3dcdae70404e277419465a460320b4e30f7bed0acd9",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/medcius/lib/temporal-evolution.mjs",
+      "sha256": "4019af17e5f68497f14b5a14221f14ef2559a0deebf97bbe5b7629b086495dbb",
+      "after_sha256": "4019af17e5f68497f14b5a14221f14ef2559a0deebf97bbe5b7629b086495dbb",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/medcius/rule-packs/temporal-reference.v1.json",
+      "sha256": "50d6c8b9cc857e563c32d796caa977efc6ee8ad55db81c683fa3e48c43802ec7",
+      "after_sha256": "50d6c8b9cc857e563c32d796caa977efc6ee8ad55db81c683fa3e48c43802ec7",
+      "unchanged": true
+    },
+    {
+      "path": "scripts/demo-temporal-evolution.mjs",
+      "sha256": "726b12a7638b7441624870ba90d0c314dccbab54278c5f7ba2f9bad690d71052",
+      "after_sha256": "726b12a7638b7441624870ba90d0c314dccbab54278c5f7ba2f9bad690d71052",
+      "unchanged": true
+    },
+    {
+      "path": "scripts/run-all-checks.mjs",
+      "sha256": "2c333bc8ecb5e85162918569becb7d8f8abda3398e085c794e5655b9d8c391e8",
+      "after_sha256": "2c333bc8ecb5e85162918569becb7d8f8abda3398e085c794e5655b9d8c391e8",
+      "unchanged": true
+    },
+    {
+      "path": "scripts/validate-json.mjs",
+      "sha256": "bfafef01e418667f15c52d3c8e0ce48629d27a03e7311053a53b407b6cb71eeb",
+      "after_sha256": "bfafef01e418667f15c52d3c8e0ce48629d27a03e7311053a53b407b6cb71eeb",
+      "unchanged": true
+    },
+    {
+      "path": "tests/fixtures/temporal-evolution.mjs",
+      "sha256": "a721f09bf37580611c07f773e7847d4ef28455e2d3399efb1b4ed9714d4c0ec9",
+      "after_sha256": "a721f09bf37580611c07f773e7847d4ef28455e2d3399efb1b4ed9714d4c0ec9",
+      "unchanged": true
+    },
+    {
+      "path": "tests/test-temporal-evolution.mjs",
+      "sha256": "e1d55bccf89d66c5638b769c67aca8dbfeb67d858c0dccb75d382fc085cc2a91",
+      "after_sha256": "e1d55bccf89d66c5638b769c67aca8dbfeb67d858c0dccb75d382fc085cc2a91",
+      "unchanged": true
+    }
+  ],
+  "original_full_suite": {
+    "run_id": "d7eecfab-df50-4f9a-b272-99a4e097d450",
+    "started_at": "2026-11-06T02:25:41.267Z",
+    "completed_at": "2026-11-06T02:29:04.325Z",
+    "completed": 92,
+    "failed": 1,
+    "total": 93,
+    "receipt": "full-suite-receipt.json"
+  },
+  "focused_retest": {
+    "command": [
+      "node",
+      "tests/test-deployment-runtime.mjs"
+    ],
+    "exit_code": 0,
+    "log": "deployment-retest.log",
+    "log_sha256": "2b13f3fb78d861507ab9a319521d5dffbe9fcbd7e193ceb2a1692e3eb2b116dd",
+    "change": "System temporary directory outside source; same source hashes; local loopback allowed"
+  },
+  "effective_checks": {
+    "all_listed_checks_passed_across_runs": true,
+    "single_full_run_all_passed": false,
+    "engineering_checks": 80,
+    "report_executions": 13
+  },
+  "new_temporal_tests": {
+    "tests": 30,
+    "passed": 30,
+    "failed": 0,
+    "log": "temporal-tests.log",
+    "sha256": "2392856ebf4ac47c2fcc15f093daf5585d0f87adac31e1738089616ebb497d9c"
+  },
+  "clinical_validation": "NOT_RUN",
+  "hospital_deployment": "NOT_RUN",
+  "paid_provider_calls": 0
+}

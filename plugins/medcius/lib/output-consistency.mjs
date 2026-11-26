@@ -28,6 +28,23 @@ export function assertEvolutionConsistency(d) {
     equal(b.evidence[i][key] ?? null, items[i][key] ?? null, `EVIDENCE_${key}`);
   }
   equal(changes.critical_values, d.critical_values, "CRITICAL_PANELS");
+  const temporal = b.temporal_analysis;
+  if (temporal) {
+    if (temporal.mode !== 'engineering_silent_only' || temporal.clinical_alerts_enabled !== false
+      || temporal.causal_attribution !== 'not_established') fail('TEMPORAL_CLINICAL_BOUNDARY');
+    const nodeIds = new Set(temporal.graph.nodes.map(n => n.id));
+    if (nodeIds.size !== temporal.graph.nodes.length || temporal.graph.edges.some(e => e.causal !== false
+      || !nodeIds.has(e.from) || !nodeIds.has(e.to))) fail('TEMPORAL_GRAPH');
+    for (const alert of temporal.candidate_alerts) {
+      if (alert.category !== 'RULE_ALERT' || alert.clinical_alerts_enabled !== false || alert.diagnosis !== null
+        || alert.clinical_action !== null || items.some(i => i.id === alert.id)) fail('TEMPORAL_ALERT_BOUNDARY');
+      equal(alert.source_references, [alert.before.source_reference, alert.after.source_reference], 'TEMPORAL_ALERT_SOURCES');
+    }
+  }
+  const laboratory = b.laboratory_terminology;
+  if (laboratory && (laboratory.status !== 'engineering_candidates_only' || !Array.isArray(laboratory.candidates)
+    || laboratory.candidates.some(c => c.calculation_authorized !== false || c.mapping?.calculation_authorized !== false
+      || c.mapping?.clinical_mapping_approved !== false))) fail('LAB_TERMINOLOGY_CANDIDATE_BOUNDARY');
   if (d.critical_visibility) equal(d.critical_visibility, assessCriticalVisibility({ sources: b.source_availability,
     asOf: d.generated_at, flaggedCount: d.critical_values.length }), "CRITICAL_VISIBILITY");
   for (const c of d.critical_values) {

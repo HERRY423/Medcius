@@ -4,9 +4,9 @@
 import { createPublicKey } from 'node:crypto';
 
 const SHA256_FIELDS = new Set([
-  'sha256', 'approval_sha256', 'data_agreement_sha256', 'content_sha256', 'doc_sha256',
+  'sha256', 'approval_sha256', 'data_agreement_sha256', 'content_sha256', 'bed_binding_sha256', 'doc_sha256',
   'dossier_sha256', 'envelope_sha256', 'expected_sha256', 'file_sha256', 'input_sha256',
-  'output_sha256', 'packet_sha256', 'payload_sha256', 'record_sha256', 'replay_input_sha256',
+  'output_sha256', 'packet_sha256', 'payload_sha256', 'profile_sha256', 'private_candidates_sha256', 'record_sha256', 'replay_input_sha256',
   'row_sha256', 'source_sha256', 'sources_sha256', 'summary_sha256',
   'chain_hash', 'content_hash', 'context_hash', 'envelope_hash', 'evidence_hash', 'head_hash',
   'item_hash', 'payload_hash', 'prev_hash', 'provenance_hash', 'signed_hash', 'signoff_head_hash', 'snapshot_hash',

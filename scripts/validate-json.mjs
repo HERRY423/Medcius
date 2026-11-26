@@ -5,13 +5,20 @@ import { validateSpecialtyRulePack } from "../plugins/medcius/lib/specialty-rule
 import { validateSiteViewMapping } from "../plugins/medcius/lib/connectors/site-view-mapping.mjs";
 import { validateRecordReviewPolicy } from '../plugins/medcius/lib/record-evidence-reconciliation.mjs';
 import { validateGrouperProfile } from '../plugins/medcius/lib/local-grouper-precheck.mjs';
+import { validateLaboratoryTerminologyReference } from '../plugins/medcius/lib/laboratory-terminology.mjs';
+import { validateRegionalRuleRegistry, validateSyntheticExclusionPack } from '../plugins/medcius/lib/reconciliation-rule-packs.mjs';
 
 const files = [
   'plugins/medcius/config/record-review/jiangsu-reference.v1.json',
   'plugins/medcius/config/groupers/jiangsu-unconfigured.v1.json',
+  'plugins/medcius/config/groupers/regional-rule-registry.v1.json',
+  'plugins/medcius/config/groupers/synthetic-exclusion-pack.v1.json',
   "plugins/medcius/contracts/site-view-mapping.v1.schema.json",
   "plugins/medcius/config/site-mappings/synthetic-cn-views.v1.json",
   "plugins/medcius/rule-packs/calculation-reference.v1.json",
+  "plugins/medcius/rule-packs/temporal-reference.v1.json",
+  "plugins/medcius/rule-packs/laboratory-terminology.v1.json",
+  "plugins/medcius/contracts/temporal-evolution.v1.schema.json",
   "plugins/medcius/rule-packs/china-clinical-reference.v1.json",
   "plugins/medcius/evals/shadow-mode/engine-challenge.cases.json",
   "plugins/medcius/evals/shadow-mode/engine-challenge.expected.json",
@@ -36,8 +43,14 @@ let ok = true;
 for (const f of files) {
   try {
     const value=JSON.parse(readFileSync(f, "utf8"));
-    if (f.includes('/config/record-review/')) {
+    if (f.endsWith('/laboratory-terminology.v1.json')) {
+      validateLaboratoryTerminologyReference(value); console.log(`✓ CONTRACT ${f}`);
+    } else if (f.includes('/config/record-review/')) {
       validateRecordReviewPolicy(value); console.log(`✓ CONTRACT ${f}`);
+    } else if (f.endsWith('/regional-rule-registry.v1.json')) {
+      validateRegionalRuleRegistry(value); console.log(`✓ UNCONFIGURED_REGISTRY ${f}`);
+    } else if (f.endsWith('/synthetic-exclusion-pack.v1.json')) {
+      validateSyntheticExclusionPack(value); console.log(`✓ SYNTHETIC_PACK ${f}`);
     } else if (f.includes('/config/groupers/')) {
       if (value.province !== 'CN-32' || value.acceptance !== 'NOT_ESTABLISHED' || validateGrouperProfile(value).configured) throw new Error('Expected explicit unconfigured Jiangsu profile');
       console.log(`✓ UNCONFIGURED_PROFILE (expected) ${f}`);

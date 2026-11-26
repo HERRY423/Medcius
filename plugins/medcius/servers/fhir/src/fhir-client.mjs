@@ -118,48 +118,22 @@ function scrub(e) {
   return new Error(message.replace(/Bearer\s+\S+/gi, "Bearer [redacted]"));
 }
 
-/** Build the fetch init for a request. A caller-provided contentType sends
- *  body verbatim (the form-encoded POST _search requires it); otherwise the
- *  body is JSON.stringify'd under application/fhir+json.
- *  @param {string} method
- *  @param {FhirSession} session
- *  @param {string} accept
- *  @param {{ method: "POST" | "PUT", body: unknown, contentType?: string }} [write]
- *  @returns {RequestInit} */
-function buildInit(method, session, accept, write) {
-  /** @type {Record<string, string>} */
-  const headers = { Accept: accept };
-  if (write) headers["Content-Type"] = write.contentType ?? "application/fhir+json";
-  if (session.token) headers.Authorization = `Bearer ${session.token}`;
-  return {
-    method,
-    redirect: "error",
-    headers,
-    body: write
-      ? write.contentType
-        ? String(write.body)
-        : JSON.stringify(write.body)
-      : undefined,
-  };
-}
-
-/**
- * The choke point for every request. Resource-derived URLs (fhirGetRaw /
- * fhirGetBytes) are already origin-pinned by resolveSameOrigin, so following
- * any redirect — or replaying a write at a Location — would bypass the pin.
- *
+/** Read a resource or run a form-encoded search. Redirects are never followed.
  * @param {FhirSession} session
  * @param {URL} url
  * @param {string} accept
- * @param {{ method: "POST" | "PUT", body: unknown, contentType?: string }} [write]
+ * @param {URLSearchParams} [searchForm]
  * @returns {Promise<Response>}
  */
-async function transmit(session, url, accept, write) {
-  const method = write?.method ?? "GET";
+async function transmit(session, url, accept, searchForm) {
+  const method = searchForm ? "POST" : "GET";
+  const headers = new Headers({ Accept: accept });
+  if (session.token) headers.set("Authorization", `Bearer ${session.token}`);
+  if (searchForm) headers.set("Content-Type", "application/x-www-form-urlencoded");
   /** @type {Response} */
   let res;
   try {
-    res = await fetch(url, buildInit(method, session, accept, write));
+    res = await fetch(url, { method, headers, redirect: "error", body: searchForm?.toString() });
   } catch (e) {
     throw scrub(e);
   }
@@ -237,27 +211,9 @@ export async function fhirGet(session, path, params) {
  * @returns {Promise<T>}
  */
 export async function fhirSearch(session, type, params) {
-  const url = new URL(`${baseHref(session)}/${type}/_search`);
+  const url = new URL(`${baseHref(session)}/${validateResourceType(type)}/_search`);
   const form = appendParams(new URLSearchParams(), params);
-  const res = await transmit(session, url, "application/fhir+json", {
-    method: "POST",
-    body: form.toString(),
-    contentType: "application/x-www-form-urlencoded",
-  });
-  return /** @type {T} */ (await res.json());
-}
-
-/**
- * @template T
- * @param {FhirSession} session
- * @param {"POST" | "PUT"} method
- * @param {string} path
- * @param {unknown} body
- * @returns {Promise<T>}
- */
-export async function fhirWrite(session, method, path, body) {
-  const url = new URL(`${baseHref(session)}/${path}`);
-  const res = await transmit(session, url, "application/fhir+json", { method, body });
+  const res = await transmit(session, url, "application/fhir+json", form);
   return /** @type {T} */ (await res.json());
 }
 

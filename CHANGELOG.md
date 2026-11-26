@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.0 · 2026-11-26
+
+- Add audited ward pre-round precomputation with a shared cutoff, per-bed source review, and deadline-aware delivery.
+- Expand source-bound patient evolution, shift handover, discharge documentation, and retrospective record-quality checks.
+- Harden Chinese note extraction, site-bound PHI protection, and bounded local CPU inference.
+- Retain read-only FHIR and silent-pilot governance. Release acceptance requires functional, secret-scan, and reference-performance results for the exact commit.
+
+See [V1.1.0 release notes](docs/releases/V1.1.0.md).
+
 ## 1.0.0 — 2026-11-05
 
 - Publish the integrated plugin as V1.0.0 without changing clinical permissions.

@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { PatientEvolutionEngine } from "../../../lib/patient-evolution-engine.mjs";
 import { CDS_SERVICES, handleCdsHookRequest } from "./cds-hooks.mjs";
 import { HANDLERS as auditHandlers, encodeAuditDigest, decodeAuditDigest, encodeAuditResearchReference } from "../../audit/src/tools.mjs";
+import { appendSilentCaptureAudit, latestWardEvent } from "../../audit/src/silent-capture.mjs";
 import { extractAuthContext, authorizeRequest, ROLES, generateToken } from "./auth-middleware.mjs";
 import { globalGovernance } from "../../../lib/governance-mode.mjs";
 import { createRateLimiter, createBruteForceGuard, clientKey } from "./security-hardening.mjs";
@@ -11,12 +12,14 @@ import { workstationHandler } from "./workstation-routes.mjs";
 import { executeHisEmbedPreRound } from "../../../lib/his-embed-adapter.mjs";
 import { isClinicalLandingEnabled, isLiveHospitalDataEnabled } from "../../../lib/clinical-landing-policy.mjs";
 import { loadSiteActivationFromEnv } from "../../../lib/site-activation-gate.mjs";
-import { isFormalHospitalPath, resolveAuthorizedHospitalSource } from "../../../lib/authorized-hospital-source.mjs";
+import { isFormalHospitalPath, resolveAuthorizedHospitalSource, resolveAuthorizedCaptureContext } from "../../../lib/authorized-hospital-source.mjs";
 import { readFrozenResearchRecordAsync, replayFrozenResearchRecordAsync } from "../../../lib/silent-research-archive.mjs";
-import { getResearchReviewPacketAsync, prepareResearchReviewAsync, confirmResearchReviewAsync, getResearchReviewStatusAsync } from "../../../lib/research-review-workflow.mjs";
+import { getResearchReviewPacketAsync, getTodayWardOverview, getWardPreRoundWorklistAsync, prepareResearchReviewAsync, confirmResearchReviewAsync, getResearchReviewStatusAsync } from "../../../lib/research-review-workflow.mjs";
 import { requiresProductionPhi } from '../../../lib/production-phi-policy.mjs';
 import { resolvePhiDetector } from '../../../lib/phi-runtime.mjs';
 import { guardPhiValue } from '../../../lib/phi-value-guard.mjs';
+import { syntheticWardView } from "./ward-demo.mjs";
+import { canonicalJson, sha256Hex } from "../../shared/crypto.mjs";
 import { PLUGIN_VERSION } from '../../../lib/plugin-version.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -70,6 +73,7 @@ export async function routeRequest(req, res, body) {
     }
     res.writeHead(status, {
       "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "private, no-store",
       "Access-Control-Allow-Origin": corsOrigin,
       "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, X-Tenant-ID, X-Hospital-Token",
       "Access-Control-Allow-Methods": "GET, POST, OPTIONS, HEAD",
@@ -102,24 +106,36 @@ export async function routeRequest(req, res, body) {
   // REFERENCE WORKFLOW UI: Inpatient Pre-Round EHR Sidebar (HTML)
   // ----------------------------------------------------
   if (method === "GET" && (pathname === "/" || pathname === "/sidebar" || pathname === "/preround" || pathname === "/index.html")) {
-    if (isClinicalLandingEnabled()) {
-      return sendJson(403, {
-        error: "P0_CLINICIAN_SURFACE_SUPPRESSED: doctor-facing sidebar is disabled on the clinical landing surface; use /his/embed silent pilot",
-      });
+    if (isClinicalLandingEnabled() || isFormalHospitalPath(globalGovernance.getCurrentStage().id) || globalGovernance.getCurrentStage().id === "silent_pilot") {
+      return sendJson(403, { error: "P0_CLINICIAN_SURFACE_SUPPRESSED" });
     }
-    const sidebarPath = join(__dirname, "ui", "preround-sidebar.html");
-    if (existsSync(sidebarPath)) {
-      const html = readFileSync(sidebarPath, "utf8");
-      return sendHtml(200, html);
-    }
-    return sendJson(404, { error: "Sidebar UI not found" });
+    return wardFrame("synthetic");
   }
+
+  function frameOrigins() {
+    return (process.env.MEDCIUS_HIS_FRAME_ANCESTORS ?? "").split(/\s+/).filter(origin => {
+      try { const u = new URL(origin); return ["https:", "http:"].includes(u.protocol) && u.origin === origin; } catch { return false; }
+    });
+  }
+  function wardFrame(mode) {
+    const origins = frameOrigins();
+    const html = readFileSync(join(__dirname, "ui", "preround-sidebar.html"), "utf8")
+      .replace("__WARD_MODE__", mode).replace("__WARD_ORIGINS__", JSON.stringify(origins));
+    res.removeHeader?.("X-Frame-Options");
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "private, no-store",
+      "Content-Security-Policy": `default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; frame-ancestors 'self' ${origins.join(" ")}; base-uri 'none'; form-action 'none'`,
+      "Referrer-Policy": "no-referrer", ...(origins.length ? {} : { "X-Frame-Options": "SAMEORIGIN" }) });
+    return res.end(html);
+  }
+
+  if (method === "GET" && pathname === "/research/ward") return wardFrame("research");
 
   if (method === "GET" && (pathname === "/his/embed" || pathname === "/his-embed")) {
     const embedPath = join(__dirname, "ui", "his-embed.html");
     if (!existsSync(embedPath)) return sendJson(404, { error: "HIS embed UI not found" });
-    const html = readFileSync(embedPath, "utf8");
-    const ancestors = process.env.MEDCIUS_HIS_FRAME_ANCESTORS || "'self'";
+    const html = readFileSync(embedPath, "utf8").replace("__WARD_ORIGINS__", JSON.stringify(frameOrigins()));
+    const ancestors = ["'self'", ...frameOrigins()].join(" ");
+    res.removeHeader?.("X-Frame-Options");
     res.writeHead(200, {
       "Content-Type": "text/html; charset=utf-8",
       "Content-Security-Policy": `frame-ancestors ${ancestors}`,
@@ -302,6 +318,26 @@ export async function routeRequest(req, res, body) {
   // ----------------------------------------------------
   // REFERENCE WORKFLOW: Insert Selected Summary into Progress Note Draft
   // ----------------------------------------------------
+  if (method === "POST" && pathname === "/api/v1/his/embed/ward-status") {
+    const check = guardedAuthorize("round:summary");
+    if (!check.allowed) return sendJson(check.status, { error: check.error });
+    try {
+      const site = loadSiteActivationFromEnv();
+      if (!site.ok || site.tenant_id !== auth.tenantId) throw new Error("WARD_STATUS_FORBIDDEN");
+      const source = resolveAuthorizedHospitalSource();
+      const context = await resolveAuthorizedCaptureContext({ auth, requestedContext: body ?? {}, source });
+      if (!(await auditHandlers.verify_chain({})).ok) throw new Error("WARD_STATUS_UNAVAILABLE");
+      const id = await latestWardEvent({ tenantId: site.tenant_id, wardId: site.ward_id, timeZone: process.env.MEDCIUS_WARD_TIME_ZONE || "Asia/Shanghai",
+        now: new Date(context.as_of) });
+      const batch = id ? await auditHandlers.get_event({ event_id: id }) : null;
+      const binding = sha256Hex(canonicalJson([auth.tenantId, context.patient_id, context.encounter_id]));
+      const captured = batch?.payload.entries.some(e => e.status === "captured" && e.context_hash && decodeAuditDigest(e.context_hash) === binding) ?? false;
+      await auditHandlers.record_event({ tenant_id: auth.tenantId, actor: "his-embed", action: "ward_capture_status_read",
+        subject_ref: batch?.subject_ref ?? "ward:pending", payload: { batch_event_id: id, captured } });
+      return sendJson(200, { captured, silent: true, cards: [], draft: null, writeback: false });
+    } catch { return sendJson(403, { error: "WARD_STATUS_UNAVAILABLE" }); }
+  }
+
   if (method === "POST" && pathname === "/api/v1/his/embed/silent-capture") {
     const authCheck = guardedAuthorize("round:summary");
     if (!authCheck.allowed) return sendJson(authCheck.status, { error: authCheck.error });
@@ -322,23 +358,7 @@ export async function routeRequest(req, res, body) {
         governance: globalGovernance,
         siteActivation,
         authContext: auth,
-        auditAppend: async (event) => {
-          await auditHandlers.record_event({
-            actor: "his-embed",
-            action: event.event_type,
-            subject_ref: encodeAuditResearchReference(event.research_record_id),
-            payload: {
-              item_count: event.item_count,
-              governance_stage: event.governance_stage,
-              envelope_sha256: event.envelope_sha256 == null ? null : encodeAuditDigest(event.envelope_sha256),
-              research_record_id: encodeAuditResearchReference(event.research_record_id),
-              output_sha256: encodeAuditDigest(event.output_sha256),
-              input_sha256: encodeAuditDigest(event.input_sha256),
-              record_sha256: encodeAuditDigest(event.record_sha256),
-            },
-            tenant_id: event.tenant_id,
-          });
-        },
+        auditAppend: appendSilentCaptureAudit,
       });
       return sendJson(200, capture);
     } catch (err) {
@@ -366,6 +386,37 @@ export async function routeRequest(req, res, body) {
       return sendJson(200, result);
     } catch (err) {
       return sendJson(err.message === "RESEARCH_REVIEW_FORBIDDEN" ? 403 : 400, { error: err.message });
+    }
+  }
+
+  if ((method === "GET" && pathname === "/api/v1/demo/ward-preround") || (method === "POST" && pathname === "/api/v1/demo/ward-preround/patient")) {
+    if (isClinicalLandingEnabled() || isFormalHospitalPath(globalGovernance.getCurrentStage().id) || globalGovernance.getCurrentStage().id === "silent_pilot") {
+      return sendJson(403, { error: "P0_CLINICIAN_SURFACE_SUPPRESSED" });
+    }
+    const pos = url.searchParams.get("position");
+    const view = syntheticWardView(pos === null ? null : Number(pos), method === "POST" ? body ?? {} : null);
+    return sendJson(view ? 200 : 404, view ?? { error: "WARD_WORKLIST_NOT_FOUND" });
+  }
+
+  const wardPath = "/api/v1/research/ward-preround";
+  if ((method === "GET" && [wardPath, wardPath + "/today"].includes(pathname))
+      || (method === "POST" && pathname === wardPath + "/patient")) {
+    const authCheck = guardedAuthorize("research:read");
+    if (!authCheck.allowed) return sendJson(authCheck.status, { error: authCheck.error });
+    try {
+      if (pathname.endsWith("/today")) return sendJson(200, await getTodayWardOverview(auth, {
+        tenantId: process.env.MEDCIUS_TENANT_ID, wardId: process.env.MEDCIUS_WARD_ID, timeZone: process.env.MEDCIUS_WARD_TIME_ZONE || "Asia/Shanghai" }));
+      if (method === "POST") {
+        if (body?.tenant_id !== auth.tenantId || !body?.patient_id || !body?.encounter_id) throw new Error("WARD_WORKLIST_CONTEXT_REQUIRED");
+        return sendJson(200, await getWardPreRoundWorklistAsync(body.audit_event_id, auth, { patientContext: body }));
+      }
+      const id = Number(url.searchParams.get("audit_event_id"));
+      const pos = url.searchParams.get("position");
+      return sendJson(200, await getWardPreRoundWorklistAsync(id, auth, { position: pos === null ? null : Number(pos) }));
+    } catch (err) {
+      const status = err.message === "WARD_WORKLIST_NOT_FOUND" ? 404 : err.message === "RESEARCH_REVIEW_FORBIDDEN" ? 403 : 400;
+      const code = /^WARD_WORKLIST_[A-Z_]+$/.test(err.message) ? err.message : "WARD_WORKLIST_READ_FAILED";
+      return sendJson(status, { error: code });
     }
   }
 
@@ -472,6 +523,7 @@ export async function routeRequest(req, res, body) {
     "POST /api/v1/his/embed/silent-capture",
     "GET  /api/v1/research/frozen-record",
     "GET  /api/v1/research/review-packet",
+    "GET  /api/v1/research/ward-preround",
     "POST /api/v1/research/review/prepare",
     "POST /api/v1/research/review/confirm",
     "GET  /api/v1/research/review/status",

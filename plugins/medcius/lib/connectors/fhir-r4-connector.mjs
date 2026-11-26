@@ -190,13 +190,13 @@ function mapEncounter(resource, context) {
   return ownResource(context, {
     id: resource.id,
     status: resource.status || null,
-    class: resource.class?.display || resource.class?.code || null,
+    class: resource.class?.code || null,
     period_start: resource.period?.start || null,
     period_end: resource.period?.end || null,
   }, resource, { requireEncounter: true });
 }
 
-const CRITICAL_INTERPRETATION_CODES = new Set(["CR", "HH", "LL", "critical"]);
+const CRITICAL_INTERPRETATION_CODES = new Set(["CR", "HH", "LL", "AA", "CRITICAL"]);
 
 function mapObservation(resource, context) {
   const quantity = resource.valueQuantity;
@@ -212,6 +212,7 @@ function mapObservation(resource, context) {
     id: resource.id,
     order_id: resource.basedOn?.[0]?.reference?.replace(/^.*\//, "") || null,
     code: resource.code?.coding?.[0]?.code || resource.code?.text || null,
+    code_system: resource.code?.coding?.[0]?.system ?? null,
     name: resource.code?.text || resource.code?.coding?.[0]?.display || null,
     result_value: quantity?.value ?? resource.valueString ?? resource.valueInteger ?? null,
     unit: quantity?.unit || quantity?.code || null,
@@ -225,7 +226,15 @@ function mapObservation(resource, context) {
   }, resource);
 }
 
-function mapMedicationRequest(resource, context) {
+function nhsaMedicationFields(resource, nhsaSystem) {
+  if (!nhsaSystem) return {};
+  const codes = new Set((resource.medicationCodeableConcept?.coding ?? []).filter(c => c.system === nhsaSystem).map(c => c.code));
+  if (codes.size === 0) return {};
+  if (codes.size !== 1 || ![...codes][0]) return { drug_binding_ambiguous: true };
+  return { drug_code: [...codes][0], drug_code_system: "NHSA" };
+}
+
+function mapMedicationRequest(resource, context, nhsaSystem) {
   const instruction = (resource.dosageInstruction || [])[0] || {};
   const dose = (instruction.doseAndRate || [])[0]?.doseQuantity;
   const repeat = instruction.timing?.repeat;
@@ -233,7 +242,7 @@ function mapMedicationRequest(resource, context) {
   if (repeat?.frequency && repeat?.periodUnit) frequency = `q${repeat.period}${repeat.periodUnit}/${repeat.frequency}次`;
   return ownResource(context, {
     id: resource.id,
-    is_medication: true,
+    is_medication: true, ...nhsaMedicationFields(resource, nhsaSystem),
     drug_name: resource.medicationCodeableConcept?.text
       || resource.medicationCodeableConcept?.coding?.[0]?.display
       || resource.medicationReference?.display
@@ -288,7 +297,7 @@ async function collectObservations(settings, context, query) {
 /** Collect MedicationRequest resources across paginated Bundle pages. */
 async function collectMedicationRequests(settings, context, query) {
   const pages = await fetchFhirBundlePages(settings, "MedicationRequest", query);
-  return mappedBundleRecords(pages, "MedicationRequest", resource => mapMedicationRequest(resource, context));
+  return mappedBundleRecords(pages, "MedicationRequest", resource => mapMedicationRequest(resource, context, settings.nhsaSystem));
 }
 
 const EXTRA_KIND_BUILDERS = {
@@ -358,12 +367,12 @@ export function createFhirR4Connectors({
   headers = {},
   sourceVersion = null,
   timeoutMs = DEFAULT_TIMEOUT_MS,
-  extraKinds = [],
+  nhsaSystem = null, includeAdministrations = false, extraKinds = [],
 } = {}) {
   if (!baseUrl || typeof baseUrl !== "string") throw new Error("CONNECTOR_BASE_URL_REQUIRED");
   if (typeof fetchImpl !== "function") throw new Error("CONNECTOR_FETCH_IMPL_REQUIRED");
   assertHttpsBaseUrl(baseUrl);
-  const settings = { baseUrl, fetchImpl, headers, timeoutMs };
+  const settings = { baseUrl, fetchImpl, headers, timeoutMs, nhsaSystem };
 
   const connectors = [
     {
@@ -403,6 +412,24 @@ export function createFhirR4Connectors({
         const records = await collectMedicationRequests(settings, context, {
           patient: context.patient_id, encounter: context.encounter_id, _count: 200,
         });
+        if (includeAdministrations === true) {
+          const pages = await fetchFhirBundlePages(settings, "MedicationAdministration", { patient: context.patient_id, context: context.encounter_id, _count: 200 });
+          const events = mappedBundleRecords(pages, "MedicationAdministration", resource => {
+            // FHIR R4 uses context for the encounter. A period does not prove a
+            // discrete administered dose at either boundary.
+            const reference = resource.request?.reference ?? "";
+            const drug = nhsaMedicationFields(resource, nhsaSystem);
+            return ownResource(context, { id: resource.id, record_kind: "administration", ...drug,
+              ...(nhsaSystem && !drug.drug_code ? { drug_binding_ambiguous: true } : {}),
+              order_id: /^MedicationRequest\/[A-Za-z0-9.-]{1,64}$/.test(reference) ? reference.split("/")[1] : null,
+              performed_at: resource.effectiveDateTime ?? null, status: resource.status,
+              execution_status: resource.status === "completed" ? "administered" : "unknown",
+              actual_dose: resource.dosage?.dose?.value ?? null, dose_unit: resource.dosage?.dose?.unit ?? null },
+              { ...resource, encounter: resource.context });
+          });
+          records.push(...events);
+          records.complete = records.complete && events.complete;
+        }
         return buildEnvelope("fhir-r4-his", "his", context, records, sourceVersion);
       },
     },

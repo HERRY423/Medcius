@@ -8,9 +8,9 @@ Medcius 为 Codex、Trae、WorkBuddy/CodeBuddy 或医院自建 Agent 增加受�
 
 Medcius 不是一套独立临床软件或平台，也不是一个能够自主诊疗的“临床智能体”。它不负责替代宿主 Agent 的对话与编排，不拥有患者主数据，不独立决定下一步临床行动，也不绕过医生执行 EHR 写回。
 
-当前版本为 **`1.0.0` 工程试点版**。已有代码和合成验证不能替代真实 EHR 验收、临床事实准确性、人因效率、安全性或监管证据。
+当前版本为 **`1.1.0` 工程试点版**。已有代码和合成验证不能替代真实 EHR 验收、临床事实准确性、人因效率、安全性或监管证据。
 
-安装包、校验清单和使用边界见 [V1.0.0 发布说明](docs/releases/V1.0.0.md)。
+安装包、校验清单和使用边界见 [V1.1.0 发布说明](docs/releases/V1.1.0.md)。
 
 院内接入的新实现与边界见 [CDA、只读视图、执行记录及 PACS 改进说明](docs/engineering/HOSPITAL-INGESTION-2026-11-02.md)。
 
@@ -71,6 +71,8 @@ Medcius 以“小而可验证的独立技能包”分步扩展，每个技能包
 
 诊断推断、治疗推荐、处方裁决、自动下医嘱、无人工确认的病历写回、自主多 Agent 行动和在线自学习严格禁止进入核心能力。
 
+在工程环境运行 `node scripts/serve.mjs --port 8080`，打开 `/sidebar` 即可查看 16 床合成病区的清单。正式试点由院内定时任务先计算整区，授权复核页 `/research/ward` 读取当天快照，HIS 患者页 `/his/embed` 仅显示相应就诊的采集状态。[病区预计算与部署](deploy/DEPLOYMENT.md)
+
 ## 架构
 
 ```text
@@ -125,7 +127,7 @@ Medcius Agent Plugin
 | `packs/official-sources.json` + `scripts/fetch-official-corpus.mjs` + `scripts/corpus-freshness.mjs` | 官方语料供应链：来源登记表、拉取/暂存校验（永不自动导入）、新鲜度 SLA 监控 |
 | `plugins/medcius/scripts/gen-classification-pack.mjs` + `scripts/qms-internal-audit.mjs` | 分类界定材料包就绪门（R04→R05）与可执行 QMS 内审（R09 落地） |
 | `Dockerfile`/`docker-compose.yml`/`deploy/` + `scripts/deploy.mjs` + `scripts/resident-probe.mjs` | 运行时产品形态：容器化交付、安装/升级/回滚（sha256 清单）、常驻探针与 Prometheus 指标 |
-| `lib/llm-inference-config.mjs` | A/B 档 extract-only 推理；B 档必须实际执行院端 PHI detector，超时/残留拒绝；C 档拒绝 |
+| `lib/llm-inference-config.mjs` | 院内私有模型抽取，固定模型与提示版本，输入输出均受生产 PHI Guard 约束 |
 | `lib/idp-jwks-verifier.mjs` | 企业级 IdP / OIDC / JWKS 动态公钥验签与多租户隔离中间件 |
 | `lib/mtls-gateway-guard.mjs` | 院内前置机 mTLS 双向认证守卫与零信任只读安全信封 |
 | `lib/clinical-skill-catalog.mjs` + `rule-packs/catalogs/` | 临床技能目录全生命周期治理引擎（专家审批、哈希签名、一键熔断与回滚） |

@@ -3,6 +3,7 @@ import { checkSettlementList, searchProvincialBenefit, checkCatalogRestriction }
 import { buildRecordQualityReport } from "../../../lib/nhsa-record-quality-engine.mjs";
 import { queryCodeMappings, checkCodePair, validDate, searchVersionedCodes } from '../../../lib/terminology-crosswalk.mjs';
 import { loadCrosswalk, crosswalkInventory } from './crosswalk-store.mjs';
+import { inspectLaboratoryTerminology, normalizeLaboratoryMeasurement } from '../../../lib/laboratory-terminology.mjs';
 
 function latestHash(codeId) {
   const r = db.prepare("SELECT snapshot_hash FROM code_snapshots WHERE code_id=? ORDER BY captured_at DESC, id DESC LIMIT 1").get(codeId);
@@ -45,6 +46,8 @@ function resolveCode(code, codeSystem, codeVersion, asOf) {
 
 /** @type {Record<string, (a: Record<string, unknown>) => unknown>} */
 export const HANDLERS = {
+  inspect_laboratory_terminology(args) { return inspectLaboratoryTerminology(args); },
+  normalize_laboratory_quantity(args) { return normalizeLaboratoryMeasurement(args); },
   crosswalk_status() { return { packs: crosswalkInventory(), production_ready: false }; },
   query_code_mappings(a) {
     const pack = loadCrosswalk(a.pack_id);

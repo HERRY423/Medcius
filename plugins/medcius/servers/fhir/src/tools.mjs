@@ -15,7 +15,6 @@ import { getDocumentContent, saveDocumentForExtraction } from "./documents.mjs";
 import {
   fhirGet,
   fhirSearch,
-  fhirWrite,
   validateBaseUrl,
   validateFhirId,
   validateResourceType,
@@ -505,35 +504,4 @@ export const HANDLERS = {
   // writes a local temp file, so its frozen schema carries no readOnlyHint — it should prompt
   save_document_for_extraction: async () =>
     json({ status: "BLOCKED", reason: "PHI_UNSCANNABLE_ATTACHMENT_EXPORT", path: null }),
-
-  // Writes — registered without readOnlyHint so they always prompt. They will
-  // 403 unless the user passed a write scope (e.g. user/*.cruds) to connect();
-  // the default scope is read+search only.
-  create_resource: async (a) => {
-    const resource_type = /** @type {string} */ (a.resource_type);
-    const resource = /** @type {Record<string, unknown>} */ (a.resource);
-    return json(
-      await fhirWrite(
-        requireSession(),
-        "POST",
-        validateResourceType(resource_type),
-        // validated values win — body cannot override the path
-        { ...resource, resourceType: resource_type },
-      ),
-    );
-  },
-
-  update_resource: async (a) => {
-    const resource_type = /** @type {string} */ (a.resource_type);
-    const id = /** @type {string} */ (a.id);
-    const resource = /** @type {Record<string, unknown>} */ (a.resource);
-    return json(
-      await fhirWrite(
-        requireSession(),
-        "PUT",
-        `${validateResourceType(resource_type)}/${validateFhirId(id, resource_type)}`,
-        { ...resource, resourceType: resource_type, id },
-      ),
-    );
-  },
 };

@@ -143,7 +143,7 @@ const alerts = resBed3.summary.blocks.what_changed.antibiotic_duration_alerts;
 assert.ok(alerts?.length > 0);
 assert.equal(alerts[0].drug_name, "注射用美罗培南");
 assert.equal(alerts[0].level, "特殊使用级");
-assert.equal(alerts[0].is_overdue, true);
+assert.equal(alerts[0].is_overdue, null);
 console.log(`✓ Detected restricted antibiotic alert: ${alerts[0].alert_message.slice(0, 45)}...`);
 
 // ----------------------------------------------------

@@ -1,0 +1,61 @@
+{
+  "schema_version": "medcius.regional-rule-registry.v1",
+  "status": "REFERENCE_ONLY_NOT_CONFIGURED",
+  "profiles": [
+    {
+      "id": "national-drg-2.0-reference",
+      "scheme": "drg",
+      "published_version": "2.0",
+      "pooling_area": null,
+      "effective_from": null,
+      "effective_until": null,
+      "status": "NOT_CONFIGURED",
+      "rule_data": "NOT_INGESTED",
+      "source_url": "https://www.nhsa.gov.cn/art/2024/7/23/art_104_13313.html"
+    },
+    {
+      "id": "national-drg-dip-3.0-reference",
+      "scheme": "drg_dip",
+      "published_version": "3.0",
+      "pooling_area": null,
+      "effective_from": null,
+      "effective_until": null,
+      "status": "NOT_CONFIGURED",
+      "rule_data": "NOT_INGESTED",
+      "source_url": "https://www.nhsa.gov.cn/art/2026/9/2/art_104_21975.html"
+    },
+    {
+      "id": "jiangsu-local-unconfigured",
+      "scheme": null,
+      "published_version": null,
+      "pooling_area": null,
+      "effective_from": null,
+      "effective_until": null,
+      "status": "NOT_CONFIGURED",
+      "rule_data": "NOT_INGESTED",
+      "source_url": null
+    },
+    {
+      "id": "shanghai-local-unconfigured",
+      "scheme": null,
+      "published_version": null,
+      "pooling_area": null,
+      "effective_from": null,
+      "effective_until": null,
+      "status": "NOT_CONFIGURED",
+      "rule_data": "NOT_INGESTED",
+      "source_url": null
+    },
+    {
+      "id": "guangdong-local-unconfigured",
+      "scheme": null,
+      "published_version": null,
+      "pooling_area": null,
+      "effective_from": null,
+      "effective_until": null,
+      "status": "NOT_CONFIGURED",
+      "rule_data": "NOT_INGESTED",
+      "source_url": null
+    }
+  ]
+}

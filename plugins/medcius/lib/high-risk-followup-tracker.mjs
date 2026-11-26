@@ -1,3 +1,4 @@
+import { temporalTimestamp } from './calculation-reference.mjs';
 import { requiresRecordReconciliation } from "./record-lifecycle.mjs";
 import { canonicalJson } from "../servers/shared/crypto.mjs";
 import { classifyRecordLifecycle } from "./record-lifecycle.mjs";
@@ -37,6 +38,12 @@ function sourceEvidence(record, sourceType, lifecycle) {
     acknowledged_at: lifecycle.acknowledged_at,
     acknowledged_version_id: lifecycle.acknowledged_version_id,
   };
+}
+
+export function sourceTaskFields(record) {
+  return { owner_id: typeof record?.assigned_to_id === "string" && record.assigned_to_id.trim() ? record.assigned_to_id : null,
+    due_at: temporalTimestamp(record?.followup_due_at) != null ? record.followup_due_at : null,
+    source_status: record?.status ?? record?.source_status ?? null };
 }
 
 function recordCode(record) {
@@ -187,6 +194,9 @@ function stateForGroup(entries, nowMs) {
     review_status: reviewStatus,
     closure_status: closureStatus,
     change_type: lifecycle?.change_type || "unknown",
+    owner_id: temporalKnown ? sourceTaskFields(selected?.record).owner_id : null,
+    source_due_at: temporalKnown && temporalTimestamp(selected?.record.followup_due_at) != null ? selected.record.followup_due_at : null,
+    deadline_supplied: selected?.record.followup_due_at != null,
     stage_timestamp: lifecycle?.change_time || null,
     arrival_status: lifecycle?.arrival_status || "unknown",
     current_window_event: lifecycle && CURRENT_TIME_STATUSES.has(lifecycle.event_time_status) ? lifecycle.event_time_status === "in_window" : null,
@@ -349,9 +359,15 @@ export function trackHighRiskFollowup({
       const state = aggregateStates(states, sourceStatus);
       const dueValue = rule?.due_minutes?.[state.stage];
       const dueMinutes = dueValue == null || dueValue === "" || typeof dueValue === "boolean" ? null : Number(dueValue);
-      const overdue = state.closure_status === "open" && Number.isFinite(dueMinutes) && dueMinutes >= 0 && timeValue(state.stage_timestamp) != null
-        ? nowMs - timeValue(state.stage_timestamp) > dueMinutes * 60_000
-        : null;
+      const unresolved = states.filter(row => row.closure_status !== "closed");
+      const assigned = new Set(unresolved.map(row => row.owner_id));
+      const owner = state.closure_status !== "unknown" && assigned.size === 1 ? [...assigned][0] : null;
+      const deadlines = new Set(unresolved.filter(row => row.deadline_supplied).map(row => row.source_due_at));
+      const baseTime = temporalTimestamp(state.stage_timestamp);
+      const ruleDue = Number.isSafeInteger(dueMinutes) && dueMinutes >= 0 && baseTime != null ? baseTime + dueMinutes * 60_000 : NaN;
+      const ruleDate = Number.isFinite(new Date(ruleDue).getTime()) ? new Date(ruleDue).toISOString() : null;
+      const dueAt = state.closure_status !== "open" ? null : deadlines.size ? (deadlines.size === 1 && unresolved.every(row => row.deadline_supplied) ? [...deadlines][0] : null) : ruleDate;
+      const overdue = dueAt == null ? null : nowMs > Date.parse(dueAt);
       const representative = trajectory.records.find((record) => record.name || record.title || record.test_name || record.study_name) || trajectory.records[0];
       items.push({
         tracking_id: `${rule.rule_id}:${trajectory.key}`,
@@ -362,6 +378,9 @@ export function trackHighRiskFollowup({
         ...state,
         availability_status: sourceStatus,
         record_states: states,
+        owner_id: owner ?? null,
+        ownership_status: owner ? "source_assigned" : "assignment_unverified",
+        due_at: dueAt, deadline_basis: !dueAt ? "unknown" : deadlines.size ? "source_record" : "rule_pack",
         required_stages: rule.required_stages,
         gap: gapForState(state, sourceStatus),
         overdue,

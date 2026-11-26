@@ -18,6 +18,7 @@ import { sealIdentityRecord, containsRawStructuredPhi } from "../clinical-bounda
 import { guardPatientSourceInput } from '../patient-source-phi.mjs';
 import { requiresProductionPhi } from '../production-phi-policy.mjs';
 import { resolvePhiDetector } from '../phi-runtime.mjs';
+import { prepareRichTextTree, finalizeRichTextTree } from '../rich-note-normalization.mjs';
 
 function requireSalt(salt) {
   if (!salt || typeof salt !== "string" || salt.length < 8) {
@@ -72,8 +73,14 @@ export function withPhiExitGuard(connector, { salt, mode = "pseudonymize" } = {}
           return { ...result.input.envelope, phi_exit_guard: { applied: true, mode: 'dual_track', ...result.receipt } };
         } finally { if (!entitySession) result.session.dispose(); }
       }
-      const records =
-        mode === "pseudonymize" ? pseudonymizeDeep(envelope.records, salt) : envelope.records;
+      // Decode or quarantine rich source before the compatibility guard scans
+      // it: encoded identifiers must not bypass the connector-exit check.
+      const prepared = prepareRichTextTree(structuredClone(envelope.records));
+      if (mode === 'assert' && canonicalJson(prepared) !== canonicalJson(envelope.records)) {
+        throw new Error('PHI_EXIT_GUARD_RAW_PHI_BLOCKED');
+      }
+      const records = mode === "pseudonymize"
+        ? finalizeRichTextTree(prepared, pseudonymizeDeep(prepared, salt)) : prepared;
       assertNoRawPhi(records, connector.id);
       return {
         ...envelope,

@@ -1,0 +1,23 @@
+{
+  "id": "medcius-laboratory-terminology",
+  "version": "1.0.0",
+  "status": "engineering_candidates_not_hospital_approved",
+  "concepts": [
+    { "id": "serum_creatinine", "display": "血清或血浆肌酐", "aliases": ["scr", "creatinine", "肌酐", "血肌酐", "血清肌酐"],
+      "loinc": [{ "code": "2160-0", "property": "mass_concentration" }, { "code": "14682-9", "property": "molar_concentration" }], "canonical_unit": "umol/L", "specimen": ["serum", "plasma"], "method": "unspecified" },
+    { "id": "hs_troponin_i", "display": "高敏心肌肌钙蛋白I", "aliases": ["hs-ctni", "ctni-hs", "超敏肌钙蛋白i", "高敏肌钙蛋白i"],
+      "loinc": [{ "code": "89579-7", "property": "mass_concentration" }], "canonical_unit": "ng/L", "specimen": ["serum", "plasma"], "method": "high_sensitivity" },
+    { "id": "hs_troponin_t", "display": "高敏心肌肌钙蛋白T", "aliases": ["hs-ctnt", "ctnt-hs", "超敏肌钙蛋白t", "高敏肌钙蛋白t"],
+      "loinc": [{ "code": "67151-1", "property": "mass_concentration" }], "canonical_unit": "ng/L", "specimen": ["serum", "plasma"], "method": "high_sensitivity" },
+    { "id": "serum_potassium", "display": "血清或血浆钾", "aliases": ["k", "potassium", "血钾", "钾"],
+      "loinc": [{ "code": "2823-3", "property": "molar_concentration" }], "canonical_unit": "mmol/L", "specimen": ["serum", "plasma"], "method": "unspecified" },
+    { "id": "serum_crp", "display": "血清或血浆C反应蛋白", "aliases": ["crp", "c-reactive protein", "c反应蛋白"],
+      "loinc": [{ "code": "1988-5", "property": "mass_concentration" }], "canonical_unit": "mg/L", "specimen": ["serum", "plasma"], "method": "unspecified" },
+    { "id": "serum_procalcitonin", "display": "血清或血浆降钙素原", "aliases": ["pct", "procalcitonin", "降钙素原"],
+      "loinc": [{ "code": "33959-8", "property": "mass_concentration" }], "canonical_unit": "ng/mL", "specimen": ["serum", "plasma"], "method": "unspecified" },
+    { "id": "blood_wbc_automated", "display": "全血白细胞自动计数", "aliases": ["wbc", "白细胞", "白细胞计数"],
+      "loinc": [{ "code": "6690-2", "property": "number_concentration" }], "canonical_unit": "10^9/L", "specimen": ["blood"], "method": "automated" }
+  ],
+  "sources": ["https://loinc.org/2160-0/", "https://loinc.org/14682-9/", "https://loinc.org/89579-7/", "https://loinc.org/67151-1/", "https://loinc.org/2823-3/", "https://loinc.org/1988-5/", "https://loinc.org/33959-8/", "https://loinc.org/6690-2/", "https://ucum.org/ucum"],
+  "limitations": ["Aliases are candidates only", "No site mapping approval", "Same LOINC does not prove assay comparability", "No reference-range or clinical interpretation", "No automatic unit correction", "Unknown or ambiguous terms abstain"]
+}

@@ -4,6 +4,9 @@ import { createPatientSourceSnapshot, assertPatientSourceSnapshot } from "./pati
 import { readDischargeDocuments } from "./discharge-source-documents.mjs";
 import { getSourceRecordFollowupState } from "./high-risk-followup-tracker.mjs";
 import { buildPatientAffordabilityContext } from "./patient-affordability-context.mjs";
+import { buildDischargeTemplate } from "./discharge-template.mjs";
+import { isClinicalLandingEnabled } from "./clinical-landing-policy.mjs";
+import { requiresProductionPhi } from "./production-phi-policy.mjs";
 import { canonicalJson, sha256Hex } from "../servers/shared/crypto.mjs";
 import { assertDischargeConsistency, detachedFrozenOutput } from "./output-consistency.mjs";
 
@@ -136,6 +139,9 @@ export class DischargeReadinessEngine {
       source_notes: sources("notes").map(e => ({ record: e.record, evidence: e.evidence })),
       excluded_records: { source: snapshot.excluded, documents: Object.fromEntries(Object.entries(documentSets).map(([key, set]) => [key, set.excluded])) },
       boundary: "只读资料核对；不生成处方、医疗建议、出院批准、电子签名或医院写回。" };
+    if (!isClinicalLandingEnabled() && !snapshot.context.clinical_landing && !requiresProductionPhi(snapshot.context)) {
+      result.discharge_template = buildDischargeTemplate(snapshot, result.domains);
+    }
     result.packet_digest = hash(result);
     return detachedFrozenOutput(assertDischargeConsistency(result));
   }

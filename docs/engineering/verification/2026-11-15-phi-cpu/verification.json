@@ -1,0 +1,84 @@
+{
+  "schema_version": "medcius.phi-cpu-verification.v1",
+  "created_at": "2026-11-15T12:52:13.936Z",
+  "scope": "LOCAL_ENGINEERING_AND_AUTHORED_SYNTHETIC_DEVELOPMENT",
+  "source_binding": "MATCHED_CURRENT_BYTES",
+  "sources": {
+    "tests/fixtures/phi-clinical-development.mjs": "51b3cd7420b33df346e14d3a4c27cbafb5cc102cfbedaa9ca9c6b1c48f07cbb3",
+    "plugins/medcius/lib/phi-entity-session.mjs": "64418a4952262f57279d0447d6f707a1ee823edba2879e949c2aa6df36e4300c",
+    "plugins/medcius/lib/local-phi-egress.mjs": "3583fc80e19cc1a644ba673d0eeeb409c67f3734b5087594fdf853364ad5c4ea",
+    "plugins/medcius/runtimes/cn-phi-ner/detector.mjs": "94d35ec48f360ece406fe433754ef9ef78edf35a8d41cdfc61297119b54c95c5",
+    "scripts/benchmark-phi-peak.mjs": "fbb86bbd0e2d7d38a5dba06c1bd6f0ada85daf4b4630ad5f8bc7f5f2c5df6891",
+    "plugins/medcius/runtimes/cn-phi-ner/process-pool.mjs": "28bbe9e9d76ff537afc5a9af30aa65302c7b90336a0535465dfc2de2f61ac7f6",
+    "plugins/medcius/runtimes/cn-phi-ner/process-worker.mjs": "f685ba7128ff508f10d85bc0debf92996457215cbead1babd5a18b809519f4d2",
+    "plugins/medcius/runtimes/cn-phi-ner/inference-queue.mjs": "032d6eb3c2abe564264e902b02abd595afa80de4acc7a6cbe281045e62d70f1c",
+    "plugins/medcius/runtimes/cn-phi-ner/batch-pool.mjs": "fcbfa5ea84499215b0611a8a9c172f13826d29fb29125bdec844a5be3d1fe87e",
+    "plugins/medcius/runtimes/cn-phi-ner/batch-worker.mjs": "5341301fc822f7a46edcd67a3cc8dd1888b3170dc17a4b367bf4dbffbc7c54aa",
+    "plugins/medcius/runtimes/cn-phi-ner/independent-batch-graph.mjs": "5a8e05512f401d68196671a1aaff4bd4e8da3fb5f0b91c91a95059966ec7485c",
+    "plugins/medcius/runtimes/cn-phi-ner/bert-tokenizer.mjs": "50a7955f0504313c8c026204f88869eb3b9d5d2e58746c7a4c3b576c248efe1f",
+    "plugins/medcius/lib/phi-inference-scope.mjs": "b92a2c88c06724d593bebbf067d2ac6e1fda8e977b3df5dfa9ee36007d762324",
+    "plugins/medcius/lib/phi-runtime.mjs": "50b311a35695e26634c23bbfb45a0f3e8bb6e0eace52a52321771d68d5c28d48",
+    "plugins/medcius/lib/phi-clinical-literals.mjs": "5ef9fc276d0a25e143c6890d0766f40a537f833d8aee6cf003aa5a72ce4729bc",
+    "plugins/medcius/lib/patient-source-phi.mjs": "3e37321fc4db8c37ead75bc1fcd4a583e62023793c1acc8c26311fc8200a2d1a",
+    "plugins/medcius/lib/patient-source-snapshot.mjs": "28f92db52f07e9939b45c11454890da4ed283f11ab66085f2da9ce7be62e87c4",
+    "plugins/medcius/servers/phiguard/src/lib.mjs": "242c52ea6ab46ae51ef2ec08e8c00b951f4579c30b45d9e5d84220bfcdcc7a1a",
+    "plugins/medcius/lib/phi-ward-cache.mjs": "8d0a0b965f3b158da3917d10867c796a28d663eb9830709fd1884fe3fe669779",
+    "plugins/medcius/lib/local-cn-ner.mjs": "6f9936cb13b1dbf43fe5a4884127eeff5a1f66e7639753234c4ff525359c1181",
+    "plugins/medcius/runtimes/cn-phi-ner/README.md": "cecefa2fa8c62c8c1d6c77e06cf300bdb1bbb68a6f0ebe7e57e8875033a0209b",
+    "scripts/measure-phi-clinical-development.mjs": "4739db56bbbc546c36e001acf4fb4d1b78982abd2d58ae96248cacfec49c6fa8",
+    "scripts/run-all-checks.mjs": "edaa19730f1b12d7c9b11617e99895ab87673c4e5b15950910380ab95fabbce5",
+    "scripts/build-evidence-index.mjs": "95b962372743c280df59a0ed449675e62aac28e997278600aa84ec188b04d43f",
+    "tests/test-ner-process-pool.mjs": "f3a163faf7b117b0a3324dde3c321c35ba637ab7848bfcb35a425cf6e8f81791",
+    "tests/test-phi-clinical-coverage.mjs": "f5c44dc3d40dc44359cd3379308af151ca7ce9cdd86577bfac6054f82e43085c",
+    "tests/test-production-dual-phi.mjs": "cebf30fa6cf4e7d8d5e6b347f499b764991c522e557de9f332e96e8a797261da"
+  },
+  "artifacts": {
+    "coverage-before.json": "dfda3519c1f59dcec347aa436637f4d9702bf4efe3625e9beda1e833e3df0a3f",
+    "coverage-final.json": "f98a25471a0039ffac9778793ca84e34d5f1b41575d39caf90dd3947b103f62a",
+    "peak-preliminary-1.json": "9e60fb18528fff128bcc9934b12f4cb1c51c15e56404755854dcf647a505a690",
+    "peak-preliminary-2.json": "1bbf236da6f03ebcaf33ab18c242486bd949d90cf9aa6a1c65cee294a2a035d9",
+    "peak-final.json": "2a53d5a99f6690912fe5222879597b32ff5bfd0377a4da24d7d10cba240692c0",
+    "focused.txt": "d61a83e04164e89360b4688faa2b483a7e5b583f3921a1b872dcaf4665e372da",
+    "functional.txt": "1dcab05a0f9f5cf40c9d553fa883fe10dc8a72a92d07a7103af446d065207549",
+    "functional-receipt.json": "c57c915da442467ec30661132500c677944acad2b04d2241f5dcb31d1cb447ae",
+    "generated-reports.json": "453808913c8785f8d37ce81b97660c49fe4af1a4a7c529edd5db13c4f528689d"
+  },
+  "focused": {
+    "tests": 34,
+    "passed": 34,
+    "failed": 0
+  },
+  "functional": {
+    "run_id": "5fba79d1-6747-456e-a470-e3abd7e86363",
+    "summary": {
+      "completed": 96,
+      "failed": 0,
+      "deferred": 1,
+      "full_suite_pass": null,
+      "reference_performance": "NOT_RUN",
+      "engineering_pass": true,
+      "synthetic_execution_pass": null,
+      "synthetic_validation_pass": "NOT_ESTABLISHED",
+      "clinical_evidence_pass": "BLOCKED"
+    },
+    "checks_passed": 83,
+    "report_executions_completed": 13
+  },
+  "plugin_validation": {
+    "requested_host_validator": "UNAVAILABLE_PATH_MISSING",
+    "repository_pinned_official_validator": "PASSED"
+  },
+  "clinical_deidentification": "NOT_ESTABLISHED",
+  "hospital_acceptance": "NOT_RUN",
+  "installed_plugin_host_acceptance": "NOT_RUN",
+  "reference_80ms_gate": "NOT_RUN_UNCHANGED",
+  "unresolved_development_cases": [
+    "rare-unseeded",
+    "astral-unseeded"
+  ],
+  "preserved_negative_results": [
+    "two preliminary low-thread comparisons without stable speedup",
+    "64-request burst queue overflow",
+    "unseeded rare-name misses"
+  ]
+}

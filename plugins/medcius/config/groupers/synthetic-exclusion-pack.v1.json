@@ -1,0 +1,29 @@
+{
+  "schema_version": "medcius.synthetic-exclusion-pack.v1",
+  "id": "synthetic-exclusion-pack",
+  "version": "fixture-v1",
+  "status": "SYNTHETIC_ONLY",
+  "scope": {
+    "tenant_id": "synthetic-tenant",
+    "scheme": "drg",
+    "pooling_area": "SYNTH-POOL-A",
+    "grouping_version": "SYNTH-DRG-V1",
+    "diagnosis_system": "SYNTH-DX",
+    "diagnosis_version": "SYNTH-V1",
+    "valid_from": "2026-01-01",
+    "valid_until": "2026-12-31"
+  },
+  "source": {
+    "kind": "SYNTHETIC_FIXTURE",
+    "id": "SYNTH-EXCLUSION-TABLE",
+    "version": "fixture-v1"
+  },
+  "rules": [
+    {
+      "id": "SYNTH-RULE-1",
+      "primary_code": "SYNTH-PRIMARY-1",
+      "secondary_code": "SYNTH-SECONDARY-1",
+      "source_locator": "fixture-row-1"
+    }
+  ]
+}

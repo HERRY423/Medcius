@@ -141,6 +141,10 @@ const selector = { type: 'object', required: ['system', 'version'], properties: 
   system: { type: 'string', minLength: 1 }, version: { type: 'string', minLength: 1 },
   code: { type: 'string', minLength: 1 }, term: { type: 'string', minLength: 1 },
 }, additionalProperties: false };
+TOOLS.push({ name: 'inspect_laboratory_terminology', description: 'Inspect limited LOINC and local-name candidates; no hospital mapping is approved.',
+  inputSchema: { type: 'object', properties: { code: { type: 'string', maxLength: 160 }, code_system: { type: 'string', maxLength: 160 }, name: { type: 'string', maxLength: 160 } }, additionalProperties: false } });
+TOOLS.push({ name: 'normalize_laboratory_quantity', description: 'Convert explicit compatible units for a candidate analyte; never authorize clinical interpretation or comparison.',
+  inputSchema: { type: 'object', required: ['value', 'unit'], properties: { code: { type: 'string', maxLength: 160 }, code_system: { type: 'string', maxLength: 160 }, name: { type: 'string', maxLength: 160 }, value: { type: 'number' }, unit: { type: 'string', maxLength: 32 } }, additionalProperties: false } });
 TOOLS.push({ name: 'crosswalk_status', description: 'List immutable local terminology release packs; no import or activation.',
   inputSchema: { type: 'object', properties: {}, additionalProperties: false } });
 for (const name of ['query_code_mappings', 'check_code_pair']) {

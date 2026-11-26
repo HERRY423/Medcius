@@ -70,7 +70,7 @@ export function lifecycleFields(record = {}) {
     "replaces_id", "previous_version_id", "acknowledged_version_id", "acknowledged_version", "acknowledged_result_id", "source_system", "source_record_id",
     "end_date", "changed_at", "start_time", "stopped_at", "study_time", "issued", "resulted_at", "collected_at", "specimen_received_at",
     "scheduled_time", "scheduled_at", "authored_on", "ordered_at", "effective_time", "effectiveDateTime", "sample_time", "timestamp", "occurred_at",
-    "patient_id", "encounter_id", "tenant_id"];
+    "patient_id", "encounter_id", "tenant_id", "assigned_to_id", "followup_due_at", "drug_code", "drug_code_system", "intervention_kind", "assay_id", "assay_version", "specimen_type", "method_code", "code_system"];
   return Object.fromEntries(keys.filter((key) => record[key] !== undefined).map((key) => [key, record[key]]));
 }
 
@@ -122,6 +122,13 @@ function clinicalProjection(record, state) {
     scheduled_time: first(record.scheduled_time, record.scheduled_at),
     patient_id: record.patient_id ?? null, encounter_id: record.encounter_id ?? null, tenant_id: record.tenant_id ?? null,
     measurements: Object.fromEntries(Object.entries(measurements(record)).map(([key, value]) => [key, normalizedValue(value)])),
+    // These fields affect longitudinal calculations. Conflicting copies of a
+    // version must not collapse just because their window/dose/score differs.
+    temporal: Object.fromEntries(['period_start', 'period_end', 'volume_basis', 'record_kind', 'news2_scale', 'sofa',
+      'specimen_type', 'method_code', 'performed_at', 'execution_status', 'administrations', 'administration_id',
+      'actual_dose', 'dose_unit', 'administered_volume_ml', 'intervention_kind', 'drug_code', 'drug_code_system',
+      'assigned_to_id', 'followup_due_at', 'drug_binding_ambiguous', 'supplemental_oxygen', 'respiration_rate', 'rr', 'assay_id', 'assay_version'].filter(key => record[key] != null)
+      .map(key => [key, record[key]])),
   };
 }
 

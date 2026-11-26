@@ -4,8 +4,10 @@ import { createPhiEntitySession, assertPhiEntitySession, guardSessionValue } fro
 import { assertLocalPhiDetector, guardFreeTextEgress } from './local-phi-egress.mjs';
 import { assertExplicitFeedOwnership, sealIdentityRecord } from './clinical-boundary.mjs';
 import { isIntegrityMetadata } from '../servers/shared/integrity-metadata.mjs';
-import { resolvePhiDetector, isVerifiedLocalChineseNer } from './phi-runtime.mjs';
+import { resolvePhiDetector, isVerifiedLocalChineseNer, getClinicalPhiModelBinding } from './phi-runtime.mjs';
 import { withPhiInferenceScope, primePhiInferenceScope } from './phi-inference-scope.mjs';
+import { prepareRichTextTree, finalizeRichTextTree } from './rich-note-normalization.mjs';
+import { temporalTimestamp } from './calculation-reference.mjs';
 const guardedInputs = new WeakMap();
 export function isProductionGuardedSource(input) { return guardedInputs.get(input) === true; }
 // Closed vocabulary only: feeding isolated English enum tokens to a Chinese
@@ -15,21 +17,37 @@ const MACHINE_VALUES = new Set(['unknown','current','historical','resolved','pat
   'present','absent','possible','negated','uncertain','not_mentioned','not_evaluated','active','inactive',
   'final','preliminary','amended','corrected','cancelled','canceled','entered-in-error','unavailable',
   'available','available_empty','male','female','yes','no','none','normal','positive','negative',
-  'pending','complete','incomplete','unknown_time','not_applicable','in-progress']);
+  'pending','complete','incomplete','unknown_time','not_applicable','in-progress',
+  'normalized','quarantined','normalized_mapping_unavailable','unapproved_research_candidate']);
 const MACHINE_FIELDS = {
+  direction: new Set(["rising","falling","unchanged","unknown"]),
   kind: new Set(['patient','encounter','notes','nis','lis','pacs','his','financial_access','clinical_quality',
     'renal_assessment','anthropometry','disease_enrollment','core_quality_scope','quality_node','vte_requirement','vte_assessment',
-    'perioperative_antibiotic','medication','antibiotic_administration','microbiology','antibiotic_authorization','senior_round']),
+    'perioperative_antibiotic','medication','antibiotic_administration','microbiology','antibiotic_authorization','senior_round',
+    'literal','entity','inserted_separator','rtf_escape','rtf_unicode','rtf_hex']),
+  format: new Set(['html','rtf']),
+  expected_specimens: new Set(['serum','plasma','blood']),
   tool: new Set(['Padua','Caprini']), population: new Set(['medical','surgical']),
   therapy_horizon: new Set(['long_term','discharge']),
   creatinine_unit: new Set(['umol/L','μmol/L','µmol/L','mg/dL']),
   purpose: new Set(['treatment','prophylaxis']), agent_class: new Set(['standard','vancomycin','fluoroquinolone']),
-  route: new Set(['IV']), incision_class: new Set(['I','II','III','IV']), test_type: new Set(['culture']),
+  route: new Set(['IV','iv','ivgtt','po','im','sc']), frequency: new Set(['qd','bid','tid','qid','qhs','prn','stat']),
+  gender: new Set(['男','女']), timeWindow: new Set(['24h','72h']), timestamp_status: new Set(['known']),
+  execution_status_basis: new Set(['not_provided','source_explicit','unmapped_or_conflicted']),
+  report_name: new Set(['检验报告']),
+  incision_class: new Set(['I','II','III','IV']), test_type: new Set(['culture']),
   source_mode: new Set(['authorized_bridge','caller_feeds','synthetic_authorized_replay']),
   ownership_status: new Set(['verified','query_scoped','verified_by_source_context','source_record','source_subject_absent','source_encounter_absent']),
 };
 function machineValue(key, value) {
+  if (key === 'source_segment' && /^Z[A-Z0-9]{2}$/.test(value)) return true;
+  if (key === 'timezone_offset' && /^[+-](?:0\d|1[0-4]):[0-5]\d$/.test(value) && !/^[+-]14:(?!00)/.test(value)) return true;
+  if (key === 'timezone' && value.length <= 64) {
+    try { new Intl.DateTimeFormat('en', { timeZone: value }); return true; } catch { /* Not a recognized timezone: execute PHI guard. */ }
+  }
   if (MACHINE_FIELDS[key]?.has(value)) return true;
+  if (key === 'authored_on' && temporalTimestamp(value) != null) return true;
+  if (key === 'dosage' && /^\d{1,4}(?:\.\d{1,4})?(?:mg|g|mcg|μg|ug|mL|ml|IU|U)$/.test(value)) return true;
   if (key === 'dosage_instruction' && /^\d+(?:\.\d+)?(?:mg|g|mcg|μg|ug|mL|ml|IU|U)(?:\s+(?:po|iv|ivgtt|im|sc|qd|bid|tid|qid|qhs|prn|stat)){0,4}$/i.test(value)) return true;
   if (/^(?:id|.*_id|record_identity|reference|version|.*_version|source_system|system|.*_at|.*_time|as_of|asOf|now|timestamp)$/.test(key)
     && /^[A-Za-z0-9_.:/+@-]{1,256}$/.test(value)) return true;
@@ -40,7 +58,7 @@ function machineValue(key, value) {
 export async function guardPatientSourceInput(input, { detector, signal, entitySession } = {}) {
   // Freeze caller-supplied data before the first await; mid-flight context or
   // note mutations cannot bind a response to a different patient.
-  const source = structuredClone(input);
+  const source = prepareRichTextTree(structuredClone(input));
   const { context, patient, encounter } = source;
   detector = await resolvePhiDetector({ detector, context });
   assertLocalPhiDetector(detector);
@@ -99,9 +117,11 @@ export async function guardPatientSourceInput(input, { detector, signal, entityS
       }
       return out;
     };
-    const guarded = await visit(source);
+    const guarded = finalizeRichTextTree(source, await visit(source));
     guardedInputs.set(guarded, isVerifiedLocalChineseNer(detector));
+    const clinicalModel = getClinicalPhiModelBinding(detector);
     return { input: guarded, session, receipt: { assurance: 'dual_track_executed', detector_id: detector.id,
+      ...(clinicalModel ? { detector_manifest_sha256: clinicalModel.manifest_sha256 } : {}),
       detector_version: detector.version, ner_status: 'EXECUTED', passes_completed: passes,
       complete_deidentification: 'NOT_ESTABLISHED' } };
   } catch (error) {

@@ -58,6 +58,8 @@ export async function executeHisEmbedPreRound({
   siteActivation = null,
   auditAppend = null,
   authContext = null,
+  captureAsOf,
+  beforeSourceRead,
   localPhiDetector,
   signal,
 } = {}) {
@@ -80,7 +82,7 @@ export async function executeHisEmbedPreRound({
     const source = resolveAuthorizedHospitalSource();
     if (activeBridge && activeBridge !== source.bridge) throw new Error("AUTHORIZED_SOURCE_OVERRIDE_FORBIDDEN");
     activeBridge = source.bridge;
-    resolvedContext = await resolveAuthorizedCaptureContext({ auth: authContext, requestedContext: resolvedContext, source });
+    resolvedContext = await resolveAuthorizedCaptureContext({ auth: authContext, requestedContext: resolvedContext, source, captureAsOf });
     if (siteActivation?.tenant_id && siteActivation.tenant_id !== resolvedContext.tenant_id) throw new Error("SITE_ACTIVATION_TENANT_MISMATCH");
     if (typeof auditAppend !== "function") throw new Error("AUTHORIZED_CAPTURE_AUDIT_REQUIRED");
     sourceMode = "authorized_bridge";
@@ -94,7 +96,9 @@ export async function executeHisEmbedPreRound({
       host: resolvedHost,
       context: resolvedContext,
       bridge: activeBridge,
-      localPhiDetector, signal,
+      requireActiveInpatient: captureAsOf != null,
+      expectedWardId: captureAsOf == null ? null : siteActivation?.ward_id,
+      localPhiDetector, signal, beforeSourceRead,
     });
   } else {
     result = await HospitalAgentAdapter.executePreRoundWorkflowAsync({
@@ -135,6 +139,7 @@ export async function executeHisEmbedPreRound({
   };
 
   if (typeof auditAppend === "function") {
+    const blocks = result.summary.blocks;
     await auditAppend({
       event_type: "his_embed_silent_capture",
       tenant_id: resolvedContext.tenant_id,
@@ -147,6 +152,12 @@ export async function executeHisEmbedPreRound({
       output_sha256: frozen.output_sha256,
       input_sha256: frozen.input_sha256,
       record_sha256: frozen.record_sha256,
+      worklist_counts: {
+        record_changes: blocks.record_changes.counts,
+        pending_items: ["pending_reports", "pending_orders", "scheduled_consults"].reduce((sum, key) => sum + blocks.whats_pending[key].length, 0),
+        followup_open_or_unknown: blocks.high_risk_followup.counts.open,
+        followup_unknown: blocks.high_risk_followup.counts.unknown,
+      },
     });
   }
 

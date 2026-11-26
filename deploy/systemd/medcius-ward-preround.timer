@@ -1,0 +1,9 @@
+[Unit]
+Description=Run Medcius ward precompute before morning rounds
+
+[Timer]
+OnCalendar=*-*-* 06:30:00 Asia/Shanghai
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

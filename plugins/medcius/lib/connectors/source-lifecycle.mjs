@@ -4,7 +4,7 @@ export const SOURCE_LIFECYCLE_FIELDS = Object.freeze([
   "status", "source_status", "result_status", "version_id", "source_record_id",
   "event_time", "recorded_at", "updated_at", "resulted_at", "cancelled_at",
   "acknowledged_at", "acknowledged_version_id", "acknowledged_result_version",
-  "supersedes_id", "supersedes_version_id", "change_type", "end_date", "changed_at",
+  "assigned_to_id", "followup_due_at", "supersedes_id", "supersedes_version_id", "change_type", "end_date", "changed_at",
 ]);
 
 export function sourceLifecycle(row = {}) {

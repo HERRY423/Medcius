@@ -236,12 +236,12 @@ try {
   const resSidebar = await fetch(`${baseUrl}/sidebar`);
   assert.equal(resSidebar.status, 200);
   const html = await resSidebar.text();
-  assert.ok(html.includes("住院医生查房前“患者变化摘要”"));
+  assert.ok(html.includes("病区查房清单"));
   assert.ok(html.includes("发生了什么变化"));
   assert.ok(html.includes("今天仍待处理什么"));
   assert.ok(html.includes("哪些资料不足"));
   assert.ok(html.includes("查看原始证据"));
-  assert.ok(html.includes("插入查房记录"));
+  assert.ok(html.includes("复制核实段落"));
   console.log("  ✓ EHR Sidebar HTML UI served correctly with 4 dedicated blocks");
 
   // Test 3b: POST /api/v1/patient/evolution-summary

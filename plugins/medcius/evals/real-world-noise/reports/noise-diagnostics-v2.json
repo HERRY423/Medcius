@@ -1,0 +1,1874 @@
+{
+  "identity": "noise-diagnostics-v2",
+  "status": "SYNTHETIC_DEVELOPMENT_ONLY",
+  "case_count": 10,
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "input_sha256": "08885389df49a98cab5d4769deead20f2a08cf4a8069b4d8c58245bf2d3a188b",
+  "lexicon_version": "cn-note-terms-1",
+  "code_sha256": {
+    "../../lib/parse-cn-note.mjs": "51194e87641da0a5c52ac9a72347d0f93456ae012065f8c48044dfa3cbf4af5d",
+    "../../lib/cn-assertions.mjs": "6014f612d34a34a7eb0e920accbbe57f2d7f70fff5b9e234033a88bbe09dae8e",
+    "../../lib/cn-assertion-rules.mjs": "b6a4e1379a8c22afd70464d6852e76ddf6dfd3d841cd07bfe82b334cbe215524",
+    "../../lib/cn-measurements.mjs": "f871027d7b97657e6ac7263a4b5eafd0b91c05cacc01db565764e18c6431bddb",
+    "../../lib/cn-note-terms.mjs": "85a5f18fad0d302f89134ba83bf66e17ea822a686751dae1e77338157151cec3",
+    "noise-models.mjs": "8d23143df5da1d5d5899efd55d4aa4aacaad936fcca9ce47d1bf93f35e68ce57",
+    "grader.mjs": "f1a901246675c6d9b20a0f1d892ae3777eab9641f2c1d97f8a638f7330c1152d",
+    "run-noise-diagnostics.mjs": "bf74e805dfb15c82352b8b6e524db064a5274ba1a63fe4d51cd8b8b7958dd4b4"
+  },
+  "uncertainty": "No patient-population CI: three variants of each of ten notes are dependent development fixtures.",
+  "scoring_scope": "Legacy structured-field predicates plus two explicit safety predicates; narrative must_not prose is not scored.",
+  "original_v1_report": "reports/noise-robustness-baseline.json (historical, unchanged)",
+  "model_inference": "NOT_RUN",
+  "clinical_recall": "NOT_EVALUATED",
+  "models": {
+    "clean": {
+      "runs": 30,
+      "literal_exact": 30,
+      "alias_exact": 30,
+      "literal_field_passed": 72,
+      "field_total": 72,
+      "notes_all_seeds_alias_exact": 10,
+      "failures": [],
+      "by_note": {
+        "01-allergy-negation": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "e3070bf26bb70f46a012b5d5ff304bd47ab22e760f79ab9cf1196a01e36e1490"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "e3070bf26bb70f46a012b5d5ff304bd47ab22e760f79ab9cf1196a01e36e1490"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "e3070bf26bb70f46a012b5d5ff304bd47ab22e760f79ab9cf1196a01e36e1490"
+          }
+        ],
+        "02-family-history": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "c4db538f7d48d218d5e5f60b3c0be21e25f9c13ddfd1509673581f44bc52ad38"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "c4db538f7d48d218d5e5f60b3c0be21e25f9c13ddfd1509673581f44bc52ad38"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "c4db538f7d48d218d5e5f60b3c0be21e25f9c13ddfd1509673581f44bc52ad38"
+          }
+        ],
+        "03-uncertain-admission": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "6b63d7ac9e07f57f7f1552e754749aead808027e1ab8b8ec746dc04316fc5cd5"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "6b63d7ac9e07f57f7f1552e754749aead808027e1ab8b8ec746dc04316fc5cd5"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "6b63d7ac9e07f57f7f1552e754749aead808027e1ab8b8ec746dc04316fc5cd5"
+          }
+        ],
+        "04-admission-vs-discharge": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "3e99b3baeea4b7416d9baa79809b5bc58e1d8f3133a596128a8e9e20babc5343"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "3e99b3baeea4b7416d9baa79809b5bc58e1d8f3133a596128a8e9e20babc5343"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "3e99b3baeea4b7416d9baa79809b5bc58e1d8f3133a596128a8e9e20babc5343"
+          }
+        ],
+        "05-prior-vs-current-procedure": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "03e7c9035f4dc1a757bdfb43f411a48844deba2b1ed4ec069205f55669822e12"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "03e7c9035f4dc1a757bdfb43f411a48844deba2b1ed4ec069205f55669822e12"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "03e7c9035f4dc1a757bdfb43f411a48844deba2b1ed4ec069205f55669822e12"
+          }
+        ],
+        "06-planned-procedure": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "cd0c3ec8983eb6604d0effc57b2cbfb5d624104eba46445a3ca71d527cfcb5d2"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "cd0c3ec8983eb6604d0effc57b2cbfb5d624104eba46445a3ca71d527cfcb5d2"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "cd0c3ec8983eb6604d0effc57b2cbfb5d624104eba46445a3ca71d527cfcb5d2"
+          }
+        ],
+        "07-negative-physical-exam": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "2545847f8866eadce78b54801273080aa751f0e99fab9b0551b0dd35bb6709e9"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "2545847f8866eadce78b54801273080aa751f0e99fab9b0551b0dd35bb6709e9"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "2545847f8866eadce78b54801273080aa751f0e99fab9b0551b0dd35bb6709e9"
+          }
+        ],
+        "08-prophylaxis-not-diagnosis": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "a5d8d2a6ed1a307f40cc1961c1baf2cb0794ebd7a415884d252b6584d6769914"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "a5d8d2a6ed1a307f40cc1961c1baf2cb0794ebd7a415884d252b6584d6769914"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "a5d8d2a6ed1a307f40cc1961c1baf2cb0794ebd7a415884d252b6584d6769914"
+          }
+        ],
+        "09-lab-not-complication": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "a3da627c8e9bc212b3fa3c80a34d500e62420f9fb308f99087fe3143ba423efb"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "a3da627c8e9bc212b3fa3c80a34d500e62420f9fb308f99087fe3143ba423efb"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "a3da627c8e9bc212b3fa3c80a34d500e62420f9fb308f99087fe3143ba423efb"
+          }
+        ],
+        "10-rule-out-mi": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "2f54fc23ca69f54be2b056f92edca763120497956549f614bd27b77efde2e38d"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "2f54fc23ca69f54be2b056f92edca763120497956549f614bd27b77efde2e38d"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "2f54fc23ca69f54be2b056f92edca763120497956549f614bd27b77efde2e38d"
+          }
+        ]
+      }
+    },
+    "heading_variants": {
+      "runs": 30,
+      "literal_exact": 30,
+      "alias_exact": 30,
+      "literal_field_passed": 72,
+      "field_total": 72,
+      "notes_all_seeds_alias_exact": 10,
+      "failures": [],
+      "by_note": {
+        "01-allergy-negation": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "6273618c47635ca99c3862bce9ed16561fe748ee202893760bba993e8c25b504"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "96f59961f009dd7f3b0632129d6f13898232386fd97688d9907c3806bb1eb746"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "19ef9c310c62ccb8d1e736a99f1c0422c8804d70414451df596fd235bbf07490"
+          }
+        ],
+        "02-family-history": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "05dc3f05d47123e62609d644a127995650247f78ef377d70d6ed2d031d2f2c69"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "b74ec1ad44f5178fdf4ad0eb1f45f52187a011939aed3360d2711cbc1c134a16"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "eaf623025bec23ae97779fadf97c0ca9f0aa45374e7dc3b5a95a6739167f9a9d"
+          }
+        ],
+        "03-uncertain-admission": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "6b83c74343a076af1f56ec4f9ef4eee3966b25f5b62ed661a6196dbabf1b96a8"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "56bcb3a48c8da28a194b996017017800777c5355c03aeb0ee19346ac3159104c"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "8a5fa449f8001d869e04a35c78163af7d33fba4a2210b0117264914fd8c36144"
+          }
+        ],
+        "04-admission-vs-discharge": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "66c715c20cdb8ebd71fcf4f490f886ebe6da2a04043794267d33922176a364e9"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "be891ee4e7f379d6d0e1a27f1c9d3a71a6bca66ac7a040c17138ba33409c92df"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "335b1761a55d63204899e6cc2024f13f29a6b67f942a3406a733b61aa5b0cd69"
+          }
+        ],
+        "05-prior-vs-current-procedure": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "51dcc6fc381be84fb3c158c0a7fcc19ae4dc01986b519d30cd4ea217ca98fed9"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "61634720fe8fe51f11e725e86c4508d7db8d80cfe8bad22122969537e4218cc1"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "b637da2cd65e6582b003cc72b3b4bc029bba88e1c2eaa701ea9dfc78155fe717"
+          }
+        ],
+        "06-planned-procedure": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "0562f3c34ed338d6fcce3dda4c1e7fe759e4fff3ecc12be4e9efebdb3e6c7f9e"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "79b5528e2ed2273959d414c5e94c9f7c9b39c566cda6d3bfcdf95e16cdc25b2f"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "e9693df3ab1be03fb573b16f9493f849386a34b1d19752cb8260d0cd0a8cfcfa"
+          }
+        ],
+        "07-negative-physical-exam": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "5b24faaa6a55281833854bdc149ece841108195cc598ab75943201a45795c197"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "bc5fd20dfcec2e6845f9655d6f71fdfaf4ed0ff1195e0dcf4fea7c9840f2a482"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "6321c03e74b32458832175f4a215f6a666aae7ad05c3cf8032f5f27e1b6d628c"
+          }
+        ],
+        "08-prophylaxis-not-diagnosis": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "70de3ed650404beed9109f65ce50754ff64ced68e0aae3729697e19166370e8f"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "96561e9353ad6306a4204bb09eb5e366dfae609a28bfd8e5ff1dd886918a2826"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "55577af762ac5326b3197ce46ed790aa0293fc8b4ff9655329e18eaf2fb0b485"
+          }
+        ],
+        "09-lab-not-complication": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "757a13ab8d308cf411a8145a477b7b40bcc65c89e78d4459c2a4e01fb52cc6fe"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "6a17f6cba68fc82997cb3db6377b357588ab41133fafdc4198cd6fde6f23440d"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "8a1608f7471c50e418a935ab59ef70d91e7fe478dc01be0b88590f6c55d3682e"
+          }
+        ],
+        "10-rule-out-mi": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "ef5ba7d1c1bd317d8639c5e80f168fefc57aa1a6a3fced54ed4b4d0d6f3a69ed"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "f5e8b585eee607322d90436cd86e42797746d3de2cc28c221e0340720f85bc3f"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "1e8c9cfff7f16dee734dbd18f6dcb13753039fad67c9dac40c1f7e1a52a76c74"
+          }
+        ]
+      }
+    },
+    "whitespace_chaos": {
+      "runs": 30,
+      "literal_exact": 30,
+      "alias_exact": 30,
+      "literal_field_passed": 72,
+      "field_total": 72,
+      "notes_all_seeds_alias_exact": 10,
+      "failures": [],
+      "by_note": {
+        "01-allergy-negation": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "e5396fd26c90970b940c5384d4e565be472ae7102063b73f211f0ae7ca341092"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "1cd9ad9738d51c320a93e927c01954ac9606873d31814f9c2f532e6d1b82bede"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "ef546f19c2ab409a1dc1e4093dcb1ded249bd37025943e1e6239c780baddb3ed"
+          }
+        ],
+        "02-family-history": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "17b16f4141cd742f0a9948ff54ef6b5a332705d00d0002fbaa51d2619c594496"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "40865e92986d7be9d3279ba7f914b53ab522b8bba6f64bbd9969bbfa38327bef"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "ab5774717faba851fcd05dcf68c40512c7b91d68f02bab530079497941bd27b0"
+          }
+        ],
+        "03-uncertain-admission": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "ad0fce7e5b4835a64b976bd750cd336da62b7bd51616a80d5d64bc152bc4759c"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "740d989841103f6de29c7c22d0a93db9a222a68dbff7c705ef92727a69dc9da5"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "1a3d4e32f78f69ed20fc3a7834f5258bd4ed3e425ee0ceea8c10e893983bd912"
+          }
+        ],
+        "04-admission-vs-discharge": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "cebb4b04a5c2e066936f8392b660c1edde5699516308018985dfa14f3f92cfd2"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "27bc17fe47439b686ad5ebfa66fa4ea6f9dd54a0287b0f1110298ff2cb3e35a6"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "76f632f4eaa3e616c76e126bc8fc122bb2a1dde921ae63ffe6032fa0e9a6291b"
+          }
+        ],
+        "05-prior-vs-current-procedure": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "e8c93209fd70c3b66e7c09f5fdeaebc8ed0d5ad43185c65f9d693b0463634e7c"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "169e7984329f7957c4d5a194559199d5a34c1d55e60611991725ba7a6a301229"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "5b3c382fe82a6e08ae32d1362615b940b54c11f9d8a5e34b227152987659aa6f"
+          }
+        ],
+        "06-planned-procedure": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "61a08f626a38f03af70c822f7dc9106b4c9701a7079dc674b050019a3404e5ec"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "87873af4b7458cb1b55c35e4e02b6711e7d0711e84c5b23904b052387054d183"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "d447ac772d539ce0e77d7c02eb9ee6e52c5ac1ad7cd224ee5c180d5b8a10e9a9"
+          }
+        ],
+        "07-negative-physical-exam": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "bd21732b74e927cb746ad40d077d7093c059005b27b17c6ce0631d513e6b8b82"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "a1e96a551354c2819a3561193868fe3fad1550371cd8ec9a033727f5790594dd"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "63aefa88348b67aae1d4ee1c2a0c5a3ec06953259105a6bf1b491ce00159775c"
+          }
+        ],
+        "08-prophylaxis-not-diagnosis": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "47473e630cb6f878d5f0414d88d233bf421f43d4a1cc5b6acc95075cf1571953"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "eedbef8ab381d5fc44123db3c93b6ae1a27266696409d0d40965e71329788ce7"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "62df8e3fc61a49fb31515fce750e3ac0692d555dc4b2fa22d0d006fdd5d1f969"
+          }
+        ],
+        "09-lab-not-complication": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "dd6c26290580ac7dc62ebda0a5f76f937e4dd6f68dd6eda5296de282e6e97fc4"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "41dd9bf6ad7caec6a1db1fb15a3285baedd19fb103c47525b6c84ca3ba840c09"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "2dbded7a40f3cedf98109e8132ba8d7b33bee3a0477d17fed192c7b08e5b14fb"
+          }
+        ],
+        "10-rule-out-mi": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "f4df0f36dc94c67430c60d6a77efdb98f70d1bac44b1c0810b764399a022cf10"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "5823cb096d07a4765651621bb4f11f31c5fd37ffa13791fcbc6d2ebe201ed4e2"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "c883c35ff18b768f62d45505fc3424dfc5e8cef1240c7861df1ebbc641736e0e"
+          }
+        ]
+      }
+    },
+    "section_reorder": {
+      "runs": 30,
+      "literal_exact": 30,
+      "alias_exact": 30,
+      "literal_field_passed": 72,
+      "field_total": 72,
+      "notes_all_seeds_alias_exact": 10,
+      "failures": [],
+      "by_note": {
+        "01-allergy-negation": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "4d9645eee93704e3cf277eb84c8ec9dfcc318e6614d1db342b0a71aa30b258b9"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "79b25e9507712fe727af698685ce159ea2dd85eda1825f15775c2e429c6c662e"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "1e44680a1e520b5a3ebcf6321ca2b4f51ba5904f64cddb2a1eb686c2bf27169c"
+          }
+        ],
+        "02-family-history": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "a54c403f589f505155adef6202630b14534524a183e3024dc92ff91c2bba4659"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "5412c0602001a36df9068fab3aa1eaa281d09e3955a4a1fa6742c0b53b77b774"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "4a68581272b0366214dfffe1021e11a6680bc47074dfccd5b034e125727ef4f6"
+          }
+        ],
+        "03-uncertain-admission": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "226b90fd979b9072abdaee551cba519aa836f339bbeb5132bcd065889403fa04"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "d70145c4d0816719c29f7276dabcf44c0cc9d13ee2b1fabc47c969dd36a363ce"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "a230e910277529b442ee17fa95d493129db12dd0516cca6d3b432f183015951a"
+          }
+        ],
+        "04-admission-vs-discharge": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "65ba23b518cd735417b8bb6a39eb7dc8a91780839620d17f7d0a3c8307a77dd7"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "faaecbe90d0af29739b6c44fef25df5351d5fea39191d67d102f9cd983af6ae7"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "65acd8663fc2239eff9f23b6cfb097f966b7310801d139ede863fc7f2a46bcec"
+          }
+        ],
+        "05-prior-vs-current-procedure": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "3c00b536464164722f3f0a11fde4d68b03c566fb3eb9d6e2b629eab3ab8e0c80"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "1f40a16d140d24391be61515f7bfe45915c630816fca3cebc0614e1a701bcc0b"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "0e844181ea4782b4eed4674487bd349fd3a1a8c4a015359192ebe605493bb279"
+          }
+        ],
+        "06-planned-procedure": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "e3638d5022ef09a66cfdda61ce840c9484feefce28ec0e2b6b38d53fec71055c"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "8f1d589d3e349d5127e8248d43cc1318d6afa821e7f28c49746ec1efbf6de790"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "ba759cd1597aac23eafeb90208b1221ffdf062d390af8ddf713bf5162289e9dc"
+          }
+        ],
+        "07-negative-physical-exam": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "bafc76b7a90d41ec616f76169ffd3a2c2165225ac36f5743631ba2a61f944b61"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "8af5f9f6e4a852fef5e0f414f1a00edbf79201d2d6d932048a1401f8700ccdae"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "37955180f50d3c6628e330eb04c8a9cd4b9a87b5cff20713fa07a7aac3ceaea1"
+          }
+        ],
+        "08-prophylaxis-not-diagnosis": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "6725801bf91448d0f0acf66a61bfb7b7152f5592b369f317b147769fe325e001"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "82ae50e0c6dbed86ab9cc04a9b7dd36656ffa5150878f4c11ce3f8662af44ff5"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "1a9c4ab72103951ffad4869dae681041ae24b698b4fdb84c984aa5420ac9aba3"
+          }
+        ],
+        "09-lab-not-complication": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "365b60e92d68e8fd3adefe641312c1f2139006fbd2fc2bdd6fcd9f5ca8595322"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "bc68021d2c4584619b11304fb1f68c53d9a42c4cfeb91ff67fb05e54751dd2e0"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "398b5a2d510d9ca75db82b6463ddc14379b66bbb59d03a2003ce19b55e849089"
+          }
+        ],
+        "10-rule-out-mi": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "51cbbd502e24cb73f7c65fb9c9d2239fc375b3b558a9c559f7f5f6b0fa8cf0db"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "e4aea10e47aa2bb3d93e75475d156bb4d852ea0015b156b45cd53f7349c67732"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "d236e1b1e6a4ade66c940d2b8a31f00bd78b3a7153a93ccf3aad7651893eb9d8"
+          }
+        ]
+      }
+    },
+    "ocr_confusion": {
+      "runs": 30,
+      "literal_exact": 30,
+      "alias_exact": 30,
+      "literal_field_passed": 72,
+      "field_total": 72,
+      "notes_all_seeds_alias_exact": 10,
+      "failures": [],
+      "by_note": {
+        "01-allergy-negation": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "3305d00d8f0b50a2b359959d393eb31c0fafcd025648887fb075c3dfcf11272c"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "b2f33b639c343e7d13944c16c3ddb3d1c7217957fb686fc112889dfb1cc17338"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "e3070bf26bb70f46a012b5d5ff304bd47ab22e760f79ab9cf1196a01e36e1490"
+          }
+        ],
+        "02-family-history": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "d98a75e0af191f7a1b1ae8ff62dac928ec98d705e675a53ee2da38cb882131a7"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "1e06d509d0055600dafe5839ac14b3107c11bc07a64c376626b8fc9ee0994f23"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "495958c6177fc801777676056462a165f2dc3e6a92a4b28a32c03383eb616e49"
+          }
+        ],
+        "03-uncertain-admission": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "50c2f9951bddb1ac4277a2e8f186c60c46561a034ef450f5f325e14cabb3be1a"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "686881756caed4bc7545851121fc686edc05bce6679a792ad3f09d3fd056a932"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "6b63d7ac9e07f57f7f1552e754749aead808027e1ab8b8ec746dc04316fc5cd5"
+          }
+        ],
+        "04-admission-vs-discharge": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "83171f7fb63ba6eef96772eb98538035bd26d709ba94f4358031da5a2b7f58ea"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "c789466a97671141671568f6817d80cf0581528ed39f7343068c72b0f2372b38"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "3e99b3baeea4b7416d9baa79809b5bc58e1d8f3133a596128a8e9e20babc5343"
+          }
+        ],
+        "05-prior-vs-current-procedure": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "dfe4f1457ad4e44e7825c63059e23f919dbe45b8cb182b4c72d086e711d7c1bf"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "c3f2baabe445e9567c330cbf21a0ce450f3f977aea086dd30d02fdb2bc5cb28e"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "03e7c9035f4dc1a757bdfb43f411a48844deba2b1ed4ec069205f55669822e12"
+          }
+        ],
+        "06-planned-procedure": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "93f86b8d090c32c1a8a7a2e686e69cba38d482f3bda73da0626d4594704a0baa"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "fc8f1023e3e1c5bb965161dc415e6f3dfb0591b10dd55a00548b8e3fedabc196"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "33dbbaa5ed96d18626a61ae1bb47620ac76dcecf3a0bdd66884b2b62d87efe63"
+          }
+        ],
+        "07-negative-physical-exam": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "fe4a9932cfa68488a9781c25924134ec9742b6c1a3f3116230c92c6b538e2076"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "9ec506ab283275b594f9960c0e49729b1fdb8948560452df379bda2377c4aba6"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "0a2d8fb56b4aa2798d7ad81e93f84d229505fa7d5c54b33a49f6cf0ed7a4c72d"
+          }
+        ],
+        "08-prophylaxis-not-diagnosis": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "d4b2fd62529a577e874ba3e036bf2aad080cd7022b0e4b92322cdf30599bfef0"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "f18f4b5a82547b30e519901b37394d416432bc1ca68740d352ebb235027b6888"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "a5cecdc347fc503080050f14bc8bcc1429d0d8527a582cfb61ce87a5dee68464"
+          }
+        ],
+        "09-lab-not-complication": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "20c381853a2ac7e0863549474055c7a517e17bdad4c04f792b392bc021c7cbe0"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "65b23e51afe90c4da77fe9fa577e1bd3dc5d311752145d0762587cf8b2435279"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "15a5cdc95ab8246de2576a92429d07d7cd3159b9e858ad62ecacf80a17d0ff28"
+          }
+        ],
+        "10-rule-out-mi": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "a77ac9e76780f6e16d6bfa45ac1e59e3bc5c83afafe4c90eaedc89c396ecd1ae"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "7892fd23a95d0abbbbb7ce047aab5a6498d2b7274c1a8514b3af080ed6576fad"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "18fa4df58a04d363ec7348eff64370de569624c1920595a11f9c95fa8882c2ee"
+          }
+        ]
+      }
+    },
+    "abbreviation_dialect": {
+      "runs": 30,
+      "literal_exact": 22,
+      "alias_exact": 30,
+      "literal_field_passed": 64,
+      "field_total": 72,
+      "notes_all_seeds_alias_exact": 10,
+      "failures": [
+        {
+          "note_id": "01-allergy-negation",
+          "seed": 1,
+          "literal_failures": [
+            "procedures missing 腹腔镜胆囊切除"
+          ],
+          "alias_failures": [],
+          "status": "lexical_alias_mismatch_only"
+        },
+        {
+          "note_id": "01-allergy-negation",
+          "seed": 2,
+          "literal_failures": [
+            "procedures missing 腹腔镜胆囊切除"
+          ],
+          "alias_failures": [],
+          "status": "lexical_alias_mismatch_only"
+        },
+        {
+          "note_id": "01-allergy-negation",
+          "seed": 3,
+          "literal_failures": [
+            "procedures missing 腹腔镜胆囊切除"
+          ],
+          "alias_failures": [],
+          "status": "lexical_alias_mismatch_only"
+        },
+        {
+          "note_id": "04-admission-vs-discharge",
+          "seed": 1,
+          "literal_failures": [
+            "admission_diagnosis missing 急性阑尾炎"
+          ],
+          "alias_failures": [],
+          "status": "lexical_alias_mismatch_only"
+        },
+        {
+          "note_id": "04-admission-vs-discharge",
+          "seed": 2,
+          "literal_failures": [
+            "admission_diagnosis missing 急性阑尾炎"
+          ],
+          "alias_failures": [],
+          "status": "lexical_alias_mismatch_only"
+        },
+        {
+          "note_id": "04-admission-vs-discharge",
+          "seed": 3,
+          "literal_failures": [
+            "admission_diagnosis missing 急性阑尾炎"
+          ],
+          "alias_failures": [],
+          "status": "lexical_alias_mismatch_only"
+        },
+        {
+          "note_id": "05-prior-vs-current-procedure",
+          "seed": 2,
+          "literal_failures": [
+            "procedures missing 腹腔镜胆囊切除"
+          ],
+          "alias_failures": [],
+          "status": "lexical_alias_mismatch_only"
+        },
+        {
+          "note_id": "05-prior-vs-current-procedure",
+          "seed": 3,
+          "literal_failures": [
+            "procedures missing 腹腔镜胆囊切除"
+          ],
+          "alias_failures": [],
+          "status": "lexical_alias_mismatch_only"
+        }
+      ],
+      "by_note": {
+        "01-allergy-negation": [
+          {
+            "seed": 1,
+            "literal_exact": false,
+            "alias_exact": true,
+            "input_sha256": "7fc3c70bed541717e1cbf48fa0666bc91ca2288a4884937d20f8671e415b1d52"
+          },
+          {
+            "seed": 2,
+            "literal_exact": false,
+            "alias_exact": true,
+            "input_sha256": "34fb2e9702a19727cd50889f50e5a4f1871da65d3fdf0b8bd076ced67479c590"
+          },
+          {
+            "seed": 3,
+            "literal_exact": false,
+            "alias_exact": true,
+            "input_sha256": "34fb2e9702a19727cd50889f50e5a4f1871da65d3fdf0b8bd076ced67479c590"
+          }
+        ],
+        "02-family-history": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "302fce189b1c24b7149e181aad0450d60338e065bd42852c6299f71bc51817f4"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "7c05e4b963e5ca8dbae28f0c853ef02ceb902e2b4244e684769799fe7d6e720b"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "7c05e4b963e5ca8dbae28f0c853ef02ceb902e2b4244e684769799fe7d6e720b"
+          }
+        ],
+        "03-uncertain-admission": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "674ae981f6c86c2377a4216e2183f38e515f4fc432d73ddb2ba13079751d4e3a"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "24be318b0c939d00e2e4b60261b02e7ed13a59ed1899b0d056d5fc9735e62a19"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "24be318b0c939d00e2e4b60261b02e7ed13a59ed1899b0d056d5fc9735e62a19"
+          }
+        ],
+        "04-admission-vs-discharge": [
+          {
+            "seed": 1,
+            "literal_exact": false,
+            "alias_exact": true,
+            "input_sha256": "a033a40ddefc460055a45d805f4c876568c75129adf4d088819930dd1879d5aa"
+          },
+          {
+            "seed": 2,
+            "literal_exact": false,
+            "alias_exact": true,
+            "input_sha256": "62c9eb38dfc6ab35fbb4aa7e93f4ad99e54a058f8c6aa7c1590dadf038864181"
+          },
+          {
+            "seed": 3,
+            "literal_exact": false,
+            "alias_exact": true,
+            "input_sha256": "62c9eb38dfc6ab35fbb4aa7e93f4ad99e54a058f8c6aa7c1590dadf038864181"
+          }
+        ],
+        "05-prior-vs-current-procedure": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "692c21740cd90f92d07028379e2ecec1b422d2493da0c1c001b7f7589dd9a0d4"
+          },
+          {
+            "seed": 2,
+            "literal_exact": false,
+            "alias_exact": true,
+            "input_sha256": "19e6247b5472b189fb8cc252afd445a098cd98845742288293d5939a05dd1d4f"
+          },
+          {
+            "seed": 3,
+            "literal_exact": false,
+            "alias_exact": true,
+            "input_sha256": "bb8c07bdb4913039737ee4f181e37c35094b364411b5950862ae7359fb73229e"
+          }
+        ],
+        "06-planned-procedure": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "7e316fafef8625300f76c475713d31f64dab5dbf02084242bcd9ee25e2f256d3"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "05ef6d4376a48294627a48a3b22288bf9fa8d3a68ada2e6083ac92487926b80a"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "05ef6d4376a48294627a48a3b22288bf9fa8d3a68ada2e6083ac92487926b80a"
+          }
+        ],
+        "07-negative-physical-exam": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "eb300048bab12238143eb485f38e715485933c04319e6a3135ef78a4de640e6f"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "60d0b7041002b9aa92ea7c4330e2d6455aa65245427f768cfe468fec778b1112"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "60d0b7041002b9aa92ea7c4330e2d6455aa65245427f768cfe468fec778b1112"
+          }
+        ],
+        "08-prophylaxis-not-diagnosis": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "22bb4e1a2f00d7b5e44a1a0a8815a7dcd8788f9c501c8f88de54dc05d6fbe0ad"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "10f321aaa0d445d92a8df917b858ef682a590ad8c4de76f04bfa4a098e2c4e82"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "10f321aaa0d445d92a8df917b858ef682a590ad8c4de76f04bfa4a098e2c4e82"
+          }
+        ],
+        "09-lab-not-complication": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "2d2ae2121401021502b91c8053265cc08e83e42460bd344329b90330e5cf884f"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "bf77850b431e233464c2ccb3985f12c396e15b7fdadb4e9d56a196dbb609e9c5"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "bf77850b431e233464c2ccb3985f12c396e15b7fdadb4e9d56a196dbb609e9c5"
+          }
+        ],
+        "10-rule-out-mi": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "7cf0df421b974bbd9b4ff5565b21900abd98adb3f2092c1e9f84510d72c2937a"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "daf1e870abcd236e64425531ffb09e0ae63aadb26dc69b66119d327929a7ce28"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "daf1e870abcd236e64425531ffb09e0ae63aadb26dc69b66119d327929a7ce28"
+          }
+        ]
+      }
+    },
+    "scan_artifacts": {
+      "runs": 30,
+      "literal_exact": 30,
+      "alias_exact": 30,
+      "literal_field_passed": 72,
+      "field_total": 72,
+      "notes_all_seeds_alias_exact": 10,
+      "failures": [],
+      "by_note": {
+        "01-allergy-negation": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "1b1d06aa7bb111b08d23a72997cc7b592097044000ce96416e9403619fa0c383"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "cc7090e88784774d6067d464b068407e4b4022ef104dfe72b2cf5e2afbbd321d"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "235eae5a9ac6d22281077ba070cc5418c324289dbffaf6c0eeb5c5c23b1ae98c"
+          }
+        ],
+        "02-family-history": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "683a18b449f6214c4f56ab0132e9dcf71002371a165b1c3401fbb9908e4b5528"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "849e6d79d3b2a41d61a09369bdae8b2592a3931d93888e8ff45aac604b40a010"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "108e243d186d3af82b399eb70b7f7d37683506d474ce3b1cc0aa50e9e848a22d"
+          }
+        ],
+        "03-uncertain-admission": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "796f1c6c7dc53608156abf8eed461a8e055f357e92ab38e2247202bff8001c40"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "ba0c0eda7e001a2838718a2660e9bdcfbb8ef8dedb08965bbca92217e13ce110"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "7423037fdde37c51bee6ff0497afa532932a11dc60e2e0410b50092e36917054"
+          }
+        ],
+        "04-admission-vs-discharge": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "8729bc4e836940dde0c4f253d8c243c554bb5ee2a607ec7d20d5a9cc1a8a7ad9"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "0aff1029c155a9091ed3157f09007661cd581f0a43f02a10d0dc327f0f3bc0ff"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "dbad03c1acedafbcbbae19efc4ae83341f64c9511dc57462fe73ee15baffec3b"
+          }
+        ],
+        "05-prior-vs-current-procedure": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "f65ff8839cf92b983bd73864e4e095da3ca2d9fd7e5ed8054a90f4031367be57"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "8cc4ec99a1fd1957f50ee09dd0f4899eb6669226c8acf0e74382e91ae37519ea"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "ad77f1e6e312d383ca039a08a770ef2dca675274c70a48715fd54b1e07f42d14"
+          }
+        ],
+        "06-planned-procedure": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "efa8ca6d7c39cbf11fedd29f6722ae745977f34a2d46bfd22639fc42cf0bbfc9"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "47cc0323b99ed1a6f18381e598f5f6b6492cd881b8e6edfa30e65c68f7475558"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "22170729dd5a9de7622514c55bb8c70df6979894ef2f80f1df5147bdf0564b10"
+          }
+        ],
+        "07-negative-physical-exam": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "40af80b7e7dc5292d898245b973554358612c908ac07ab7ff80b52ae174911b6"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "e30466f5b0d246a5fc3d153e172f87fc888c0727461370a2996ac84c1cfde53e"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "86dcf4145bba019c77d0b5eb780ff28fc111e8274ea8256179957e86544b5226"
+          }
+        ],
+        "08-prophylaxis-not-diagnosis": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "228a6ed0fde899573c4c77a21fd67713beaab42a17a463da21934cc937abafd5"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "c9ea5700c0432e0fc29e880774236c2acabec5c553027f8cd4c1b439c671a61f"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "c3eface10b47ba193311cb65ae8514198b2052a3127cd5c548512cc1382cba03"
+          }
+        ],
+        "09-lab-not-complication": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "c0a4d1192ab85d78f86a012fea4529d7f857d0628de72b70241b1d81b692abe7"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "e18d43eacf7113f2eec011eeae511cedccf421759fa2926bf188adc890c3f983"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "328eb990d064e435bf6d06bcdea43616f02c4e26b97e90e212603b44c0a7e9b7"
+          }
+        ],
+        "10-rule-out-mi": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "602bdf2128eff8bd233f0fd2b085cdc51578b90c7f816e34460206c8d35d6cd8"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "afca4c61fa9dec4db86e5a9a109a90899f3b5106a5a0405dd9f8066f61c0c87b"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "21f9e78b90c40b2dbdd1026b11dab3a005702c87178e38e0b48160f995523da5"
+          }
+        ]
+      }
+    },
+    "combined": {
+      "runs": 30,
+      "literal_exact": 21,
+      "alias_exact": 29,
+      "literal_field_passed": 63,
+      "field_total": 72,
+      "notes_all_seeds_alias_exact": 9,
+      "failures": [
+        {
+          "note_id": "01-allergy-negation",
+          "seed": 1,
+          "literal_failures": [
+            "procedures missing 腹腔镜胆囊切除"
+          ],
+          "alias_failures": [],
+          "status": "lexical_alias_mismatch_only"
+        },
+        {
+          "note_id": "01-allergy-negation",
+          "seed": 2,
+          "literal_failures": [
+            "procedures missing 腹腔镜胆囊切除"
+          ],
+          "alias_failures": [],
+          "status": "lexical_alias_mismatch_only"
+        },
+        {
+          "note_id": "01-allergy-negation",
+          "seed": 3,
+          "literal_failures": [
+            "procedures missing 腹腔镜胆囊切除"
+          ],
+          "alias_failures": [],
+          "status": "lexical_alias_mismatch_only"
+        },
+        {
+          "note_id": "04-admission-vs-discharge",
+          "seed": 1,
+          "literal_failures": [
+            "admission_diagnosis missing 急性阑尾炎"
+          ],
+          "alias_failures": [],
+          "status": "lexical_alias_mismatch_only"
+        },
+        {
+          "note_id": "04-admission-vs-discharge",
+          "seed": 2,
+          "literal_failures": [
+            "admission_diagnosis missing 急性阑尾炎"
+          ],
+          "alias_failures": [],
+          "status": "lexical_alias_mismatch_only"
+        },
+        {
+          "note_id": "04-admission-vs-discharge",
+          "seed": 3,
+          "literal_failures": [
+            "admission_diagnosis missing 急性阑尾炎"
+          ],
+          "alias_failures": [],
+          "status": "lexical_alias_mismatch_only"
+        },
+        {
+          "note_id": "05-prior-vs-current-procedure",
+          "seed": 1,
+          "literal_failures": [
+            "procedures missing 腹腔镜胆囊切除"
+          ],
+          "alias_failures": [],
+          "status": "lexical_alias_mismatch_only"
+        },
+        {
+          "note_id": "05-prior-vs-current-procedure",
+          "seed": 2,
+          "literal_failures": [
+            "procedures missing 腹腔镜胆囊切除"
+          ],
+          "alias_failures": [],
+          "status": "lexical_alias_mismatch_only"
+        },
+        {
+          "note_id": "08-prophylaxis-not-diagnosis",
+          "seed": 1,
+          "literal_failures": [
+            "procedures missing 人工股骨头置换"
+          ],
+          "alias_failures": [
+            "procedures missing 人工股骨头置换"
+          ],
+          "status": "remaining_failure"
+        }
+      ],
+      "by_note": {
+        "01-allergy-negation": [
+          {
+            "seed": 1,
+            "literal_exact": false,
+            "alias_exact": true,
+            "input_sha256": "bbc007959b99d11a4d31094fb22b8074e14678b14d1e2013213ba5f8ab660121"
+          },
+          {
+            "seed": 2,
+            "literal_exact": false,
+            "alias_exact": true,
+            "input_sha256": "c5f602655db1dcf73d5e8517aa979fa3d3538f7c369ae07e45a133443694520a"
+          },
+          {
+            "seed": 3,
+            "literal_exact": false,
+            "alias_exact": true,
+            "input_sha256": "d097cb28d4509855b68a3c8d356437e38ba357de303b8f48150b5a215eb0664b"
+          }
+        ],
+        "02-family-history": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "2058f90470042405f647c50608db537e576b929eb1faed12dcfa32afc1786757"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "295b6b72a53a351b0235afdd86fa80be30933d2f4276f9687952314f64d83cf5"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "976b111d3a120e8d96df1c89a8e7a9f9ef05061fc9b29bd3940067f577e9f127"
+          }
+        ],
+        "03-uncertain-admission": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "c2ba1546a63e3d8bbf46a9cf212ce747e48f5b05a6545465ef709acededb9c39"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "10d3bce5d5aea9ec87b844b220a2d40632077bd6c03ecebfaa39479c5bbb38b8"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "edaa8238d402035f0b281d4929f68e7444502d31dab756a3881c08f1250d371e"
+          }
+        ],
+        "04-admission-vs-discharge": [
+          {
+            "seed": 1,
+            "literal_exact": false,
+            "alias_exact": true,
+            "input_sha256": "f615c637d776e764b068cd037150d64320e9411fc066fb38ca386ca8b6128d17"
+          },
+          {
+            "seed": 2,
+            "literal_exact": false,
+            "alias_exact": true,
+            "input_sha256": "70fcd901d59d23fe38d0e14471ee266210d147d492441baf8a1de8d23bb7c65b"
+          },
+          {
+            "seed": 3,
+            "literal_exact": false,
+            "alias_exact": true,
+            "input_sha256": "f06fda9acc2be99b68c14fd7fecbcb096e7caa80e0c3eb114a0fdc0303ad5a08"
+          }
+        ],
+        "05-prior-vs-current-procedure": [
+          {
+            "seed": 1,
+            "literal_exact": false,
+            "alias_exact": true,
+            "input_sha256": "4870334b16ee66056a21dfeb3c57d02b60f45f71e1821d2a1216bdeb4a05a008"
+          },
+          {
+            "seed": 2,
+            "literal_exact": false,
+            "alias_exact": true,
+            "input_sha256": "09de93bcecfc84a8fad2e162bc5006126512f288b74ecae88e16c0dd4d802701"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "bc94cf887b4fd192a18c2c9b4e88d5f2bbf26407551b91df8944441b190b2883"
+          }
+        ],
+        "06-planned-procedure": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "b7ec250bb4eb25a4944cfd42c39947e92f3218309451386d432da6610dac642c"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "7460d3d7fe80ce71518700ddda22b64e86284e6f0e861d7558fe09ad9f547ae5"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "a17892d26bcb61253cb39aec946bf94b6a6b57d70e4ea386b0b8cdfa43bd50ac"
+          }
+        ],
+        "07-negative-physical-exam": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "d210f50fab5c031e40aa2fd482dc0c5a4dbbf2622e3ded660cc34a89cadbdd07"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "9b633d8e42ec220ab63f014c3aecf41a92bf1c6057128d707beefdac1d0e9a4b"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "9104b3d269562c0ff7bad7314b9237675d40fddd866bc5b1d5b9e0853168ec5c"
+          }
+        ],
+        "08-prophylaxis-not-diagnosis": [
+          {
+            "seed": 1,
+            "literal_exact": false,
+            "alias_exact": false,
+            "input_sha256": "0eb5765a26b3fed48f886c9b6cba93437949853bbb572137ff9935ace56c11bc"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "f16052f59831f0b87f93f59bda7ee256c7dd6acbbe1078fa5b00acd5bb5a460d"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "53e4b5abf6112b70d34d500e6561034996664dcacea1f88d246e4906ace92c57"
+          }
+        ],
+        "09-lab-not-complication": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "4130dc16b9f02c7648c31981ad96195b45e074ddbc1cea9c905f75ee3e07364b"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "f7d19b077f54a9e570a26438b24f5dcba5ff19d917acb402ee5fbead62296679"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "91d3edbafdd1bed05288a6ecd52504973cf815beccbd5c37df2c2d74e992be01"
+          }
+        ],
+        "10-rule-out-mi": [
+          {
+            "seed": 1,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "131f330f7096e12f0fde27e973dce65148bc54095f9c670b91eafc73b0dda61f"
+          },
+          {
+            "seed": 2,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "ad7dffd5950a84b9bc9a61ab5f4f2141a2d30b98b0a95d9796a82cdbbd4a878d"
+          },
+          {
+            "seed": 3,
+            "literal_exact": true,
+            "alias_exact": true,
+            "input_sha256": "5f5638d146231bf374b97cccaa9f71fb62a1a68f5a017477aaf657d271436d26"
+          }
+        ]
+      }
+    }
+  }
+}

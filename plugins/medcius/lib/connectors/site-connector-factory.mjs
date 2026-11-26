@@ -69,7 +69,7 @@ export function createSiteConnectors(siteActivation, deps = {}) {
       headers: deps.headers || {},
       sourceVersion,
       timeoutMs: deps.timeoutMs,
-      extraKinds: deps.extraKinds || [],
+      extraKinds: deps.extraKinds || [], nhsaSystem: deps.nhsaSystem, includeAdministrations: deps.includeAdministrations,
     });
   } else if (channel === "view-library" || channel === "views") {
     connectors = createViewLibraryConnectors({

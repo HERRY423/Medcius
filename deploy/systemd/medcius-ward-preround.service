@@ -1,0 +1,18 @@
+[Unit]
+Description=Medcius ward pre-round silent precompute
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=medcius
+Group=medcius
+WorkingDirectory=/opt/medcius
+EnvironmentFile=/opt/medcius/medcius.env
+ExecStart=/usr/bin/node /opt/medcius/launch.mjs --precompute-ward
+TimeoutStartSec=30min
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/medcius/data

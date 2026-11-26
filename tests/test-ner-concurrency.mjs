@@ -5,6 +5,12 @@ import { createLocalChineseNer } from '../plugins/medcius/lib/local-cn-ner.mjs';
 import { createPatientSourceSnapshotAsync } from '../plugins/medcius/lib/patient-source-snapshot.mjs';
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r; }); return { promise, resolve }; };
 
+test('FIFO rejects an expired result even when a blocked event loop delays the timer',async()=>{
+  const q=createInferenceQueue({timeoutMs:10});
+  await assert.rejects(q.run(()=>{const end=performance.now()+20;while(performance.now()<end){}return 'late';}),/INFERENCE_FAILED/);
+  await q.close();assert.equal(q.diagnostics().expired,1);
+});
+
 test('bounded FIFO: overlapping calls queue; overflow rejects; cancelled work never runs', async () => {
   const q = createInferenceQueue({ maxPending: 2, timeoutMs: 1000 }), gate = deferred(), order = [];
   const a = q.run(async () => { order.push('a'); await gate.promise; return 'a'; });
