@@ -1,0 +1,1968 @@
+{
+  "schema_version": "medcius.phi-unseen-challenge.v1",
+  "authorship": "SAME_AGENT_SYNTHETIC_NOT_BLINDED",
+  "rows": [
+    {
+      "id": "name-0-time",
+      "category": "bare_name",
+      "text": "今晨单芷仍诉头晕，食欲尚可。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "name-0-denial",
+      "category": "bare_name",
+      "text": "病程：单芷否认恶心，夜间睡眠可。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 5,
+          "end": 16
+        }
+      ]
+    },
+    {
+      "id": "name-0-onset",
+      "category": "bare_name",
+      "text": "单芷出现心悸，无胸痛。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keep": [
+        {
+          "start": 2,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "name-1-time",
+      "category": "bare_name",
+      "text": "今晨仇栩仍诉头晕，食欲尚可。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "name-1-denial",
+      "category": "bare_name",
+      "text": "病程：仇栩否认恶心，夜间睡眠可。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 5,
+          "end": 16
+        }
+      ]
+    },
+    {
+      "id": "name-1-onset",
+      "category": "bare_name",
+      "text": "仇栩出现心悸，无胸痛。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keep": [
+        {
+          "start": 2,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "name-2-time",
+      "category": "bare_name",
+      "text": "今晨解菡仍诉头晕，食欲尚可。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "name-2-denial",
+      "category": "bare_name",
+      "text": "病程：解菡否认恶心，夜间睡眠可。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 5,
+          "end": 16
+        }
+      ]
+    },
+    {
+      "id": "name-2-onset",
+      "category": "bare_name",
+      "text": "解菡出现心悸，无胸痛。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keep": [
+        {
+          "start": 2,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "name-3-time",
+      "category": "bare_name",
+      "text": "今晨查祎仍诉头晕，食欲尚可。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "name-3-denial",
+      "category": "bare_name",
+      "text": "病程：查祎否认恶心，夜间睡眠可。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 5,
+          "end": 16
+        }
+      ]
+    },
+    {
+      "id": "name-3-onset",
+      "category": "bare_name",
+      "text": "查祎出现心悸，无胸痛。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keep": [
+        {
+          "start": 2,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "name-4-time",
+      "category": "bare_name",
+      "text": "今晨翟祯仍诉头晕，食欲尚可。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "name-4-denial",
+      "category": "bare_name",
+      "text": "病程：翟祯否认恶心，夜间睡眠可。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 5,
+          "end": 16
+        }
+      ]
+    },
+    {
+      "id": "name-4-onset",
+      "category": "bare_name",
+      "text": "翟祯出现心悸，无胸痛。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keep": [
+        {
+          "start": 2,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "name-5-time",
+      "category": "bare_name",
+      "text": "今晨缪澄仍诉头晕，食欲尚可。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "name-5-denial",
+      "category": "bare_name",
+      "text": "病程：缪澄否认恶心，夜间睡眠可。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 5,
+          "end": 16
+        }
+      ]
+    },
+    {
+      "id": "name-5-onset",
+      "category": "bare_name",
+      "text": "缪澄出现心悸，无胸痛。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keep": [
+        {
+          "start": 2,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "name-6-time",
+      "category": "bare_name",
+      "text": "今晨区沅仍诉头晕，食欲尚可。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "name-6-denial",
+      "category": "bare_name",
+      "text": "病程：区沅否认恶心，夜间睡眠可。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 5,
+          "end": 16
+        }
+      ]
+    },
+    {
+      "id": "name-6-onset",
+      "category": "bare_name",
+      "text": "区沅出现心悸，无胸痛。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keep": [
+        {
+          "start": 2,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "name-7-time",
+      "category": "bare_name",
+      "text": "今晨覃栎仍诉头晕，食欲尚可。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "name-7-denial",
+      "category": "bare_name",
+      "text": "病程：覃栎否认恶心，夜间睡眠可。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 5,
+          "end": 16
+        }
+      ]
+    },
+    {
+      "id": "name-7-onset",
+      "category": "bare_name",
+      "text": "覃栎出现心悸，无胸痛。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keep": [
+        {
+          "start": 2,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "name-8-time",
+      "category": "bare_name",
+      "text": "今晨逯昕仍诉头晕，食欲尚可。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "name-8-denial",
+      "category": "bare_name",
+      "text": "病程：逯昕否认恶心，夜间睡眠可。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 5,
+          "end": 16
+        }
+      ]
+    },
+    {
+      "id": "name-8-onset",
+      "category": "bare_name",
+      "text": "逯昕出现心悸，无胸痛。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keep": [
+        {
+          "start": 2,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "name-9-time",
+      "category": "bare_name",
+      "text": "今晨訾霖仍诉头晕，食欲尚可。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "name-9-denial",
+      "category": "bare_name",
+      "text": "病程：訾霖否认恶心，夜间睡眠可。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 5,
+          "end": 16
+        }
+      ]
+    },
+    {
+      "id": "name-9-onset",
+      "category": "bare_name",
+      "text": "訾霖出现心悸，无胸痛。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keep": [
+        {
+          "start": 2,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "name-10-time",
+      "category": "bare_name",
+      "text": "今晨毋珩仍诉头晕，食欲尚可。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "name-10-denial",
+      "category": "bare_name",
+      "text": "病程：毋珩否认恶心，夜间睡眠可。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 5,
+          "end": 16
+        }
+      ]
+    },
+    {
+      "id": "name-10-onset",
+      "category": "bare_name",
+      "text": "毋珩出现心悸，无胸痛。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keep": [
+        {
+          "start": 2,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "name-11-time",
+      "category": "bare_name",
+      "text": "今晨仉宁仍诉头晕，食欲尚可。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "name-11-denial",
+      "category": "bare_name",
+      "text": "病程：仉宁否认恶心，夜间睡眠可。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 5,
+          "end": 16
+        }
+      ]
+    },
+    {
+      "id": "name-11-onset",
+      "category": "bare_name",
+      "text": "仉宁出现心悸，无胸痛。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keep": [
+        {
+          "start": 2,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "name-12-time",
+      "category": "bare_name",
+      "text": "今晨隗岑仍诉头晕，食欲尚可。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "name-12-denial",
+      "category": "bare_name",
+      "text": "病程：隗岑否认恶心，夜间睡眠可。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 5,
+          "end": 16
+        }
+      ]
+    },
+    {
+      "id": "name-12-onset",
+      "category": "bare_name",
+      "text": "隗岑出现心悸，无胸痛。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keep": [
+        {
+          "start": 2,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "name-13-time",
+      "category": "bare_name",
+      "text": "今晨郗恬仍诉头晕，食欲尚可。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "name-13-denial",
+      "category": "bare_name",
+      "text": "病程：郗恬否认恶心，夜间睡眠可。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 5,
+          "end": 16
+        }
+      ]
+    },
+    {
+      "id": "name-13-onset",
+      "category": "bare_name",
+      "text": "郗恬出现心悸，无胸痛。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keep": [
+        {
+          "start": 2,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "name-14-time",
+      "category": "bare_name",
+      "text": "今晨澹台玮仍诉头晕，食欲尚可。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 5,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "name-14-denial",
+      "category": "bare_name",
+      "text": "病程：澹台玮否认恶心，夜间睡眠可。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 6
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 6,
+          "end": 17
+        }
+      ]
+    },
+    {
+      "id": "name-14-onset",
+      "category": "bare_name",
+      "text": "澹台玮出现心悸，无胸痛。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 3
+        }
+      ],
+      "keep": [
+        {
+          "start": 3,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "name-15-time",
+      "category": "bare_name",
+      "text": "今晨尉迟璟仍诉头晕，食欲尚可。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 5,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "name-15-denial",
+      "category": "bare_name",
+      "text": "病程：尉迟璟否认恶心，夜间睡眠可。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 6
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 6,
+          "end": 17
+        }
+      ]
+    },
+    {
+      "id": "name-15-onset",
+      "category": "bare_name",
+      "text": "尉迟璟出现心悸，无胸痛。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 3
+        }
+      ],
+      "keep": [
+        {
+          "start": 3,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "name-16-time",
+      "category": "bare_name",
+      "text": "今晨皇甫琛仍诉头晕，食欲尚可。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 5,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "name-16-denial",
+      "category": "bare_name",
+      "text": "病程：皇甫琛否认恶心，夜间睡眠可。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 6
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 6,
+          "end": 17
+        }
+      ]
+    },
+    {
+      "id": "name-16-onset",
+      "category": "bare_name",
+      "text": "皇甫琛出现心悸，无胸痛。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 3
+        }
+      ],
+      "keep": [
+        {
+          "start": 3,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "name-17-time",
+      "category": "bare_name",
+      "text": "今晨闻人泠仍诉头晕，食欲尚可。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 5,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "name-17-denial",
+      "category": "bare_name",
+      "text": "病程：闻人泠否认恶心，夜间睡眠可。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 6
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 6,
+          "end": 17
+        }
+      ]
+    },
+    {
+      "id": "name-17-onset",
+      "category": "bare_name",
+      "text": "闻人泠出现心悸，无胸痛。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 3
+        }
+      ],
+      "keep": [
+        {
+          "start": 3,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "clinical-0",
+      "category": "clinical_negative",
+      "text": "窦缓无头晕。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 6
+        }
+      ]
+    },
+    {
+      "id": "clinical-1",
+      "category": "clinical_negative",
+      "text": "窦速有心悸。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 6
+        }
+      ]
+    },
+    {
+      "id": "clinical-2",
+      "category": "clinical_negative",
+      "text": "房早有胸闷。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 6
+        }
+      ]
+    },
+    {
+      "id": "clinical-3",
+      "category": "clinical_negative",
+      "text": "室早无胸痛。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 6
+        }
+      ]
+    },
+    {
+      "id": "clinical-4",
+      "category": "clinical_negative",
+      "text": "心衰有水肿。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 6
+        }
+      ]
+    },
+    {
+      "id": "clinical-5",
+      "category": "clinical_negative",
+      "text": "高钾无心悸。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 6
+        }
+      ]
+    },
+    {
+      "id": "clinical-6",
+      "category": "clinical_negative",
+      "text": "低镁有乏力。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 6
+        }
+      ]
+    },
+    {
+      "id": "clinical-7",
+      "category": "clinical_negative",
+      "text": "缺铁无头晕。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 6
+        }
+      ]
+    },
+    {
+      "id": "clinical-8",
+      "category": "clinical_negative",
+      "text": "肾衰有恶心。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 6
+        }
+      ]
+    },
+    {
+      "id": "clinical-9",
+      "category": "clinical_negative",
+      "text": "脓胸无寒战。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 6
+        }
+      ]
+    },
+    {
+      "id": "clinical-10",
+      "category": "clinical_negative",
+      "text": "晨起无恶心，午后精神可。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "clinical-11",
+      "category": "clinical_negative",
+      "text": "饭后有腹痛，排便后缓解。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "clinical-12",
+      "category": "clinical_negative",
+      "text": "排尿无出血，尿量正常。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "clinical-13",
+      "category": "clinical_negative",
+      "text": "吸气有胸痛，呼气时缓解。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "clinical-14",
+      "category": "clinical_negative",
+      "text": "咽部有压痛。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 6
+        }
+      ]
+    },
+    {
+      "id": "clinical-15",
+      "category": "clinical_negative",
+      "text": "颈部无皮疹。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 6
+        }
+      ]
+    },
+    {
+      "id": "clinical-16",
+      "category": "clinical_negative",
+      "text": "左膝有水肿。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 6
+        }
+      ]
+    },
+    {
+      "id": "clinical-17",
+      "category": "clinical_negative",
+      "text": "右踝无压痛。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 6
+        }
+      ]
+    },
+    {
+      "id": "clinical-18",
+      "category": "clinical_negative",
+      "text": "皮肤有瘙痒，无皮疹。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 10
+        }
+      ]
+    },
+    {
+      "id": "clinical-19",
+      "category": "clinical_negative",
+      "text": "查体无发热，神志清。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 10
+        }
+      ]
+    },
+    {
+      "id": "clinical-20",
+      "category": "clinical_negative",
+      "text": "动脉血气正常，无气促。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "clinical-21",
+      "category": "clinical_negative",
+      "text": "冠脉造影后无胸痛。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 9
+        }
+      ]
+    },
+    {
+      "id": "clinical-22",
+      "category": "clinical_negative",
+      "text": "窦房结功能待评估。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 9
+        }
+      ]
+    },
+    {
+      "id": "clinical-23",
+      "category": "clinical_negative",
+      "text": "高血压病史十年。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 8
+        }
+      ]
+    },
+    {
+      "id": "clinical-24",
+      "category": "clinical_negative",
+      "text": "心电图：完全性右束支传导阻滞。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "clinical-25",
+      "category": "clinical_negative",
+      "text": "胆红素下降，无腹痛。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 10
+        }
+      ]
+    },
+    {
+      "id": "clinical-26",
+      "category": "clinical_negative",
+      "text": "切口周围无出血。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 8
+        }
+      ]
+    },
+    {
+      "id": "clinical-27",
+      "category": "clinical_negative",
+      "text": "双侧腓肠肌无压痛。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 9
+        }
+      ]
+    },
+    {
+      "id": "clinical-28",
+      "category": "clinical_negative",
+      "text": "腓总神经查体无异常。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 10
+        }
+      ]
+    },
+    {
+      "id": "clinical-29",
+      "category": "clinical_negative",
+      "text": "胸骨后有胸闷，无冷汗。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "med-0-dose",
+      "category": "medication_negative",
+      "text": "中草药处方：紫苏 6.5g，分次服。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "med-0-stop",
+      "category": "medication_negative",
+      "text": "停用紫苏期间无头晕，继续观察。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "med-1-dose",
+      "category": "medication_negative",
+      "text": "中草药处方：桔梗 6.5g，分次服。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "med-1-stop",
+      "category": "medication_negative",
+      "text": "停用桔梗期间无头晕，继续观察。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "med-2-dose",
+      "category": "medication_negative",
+      "text": "中草药处方：射干 6.5g，分次服。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "med-2-stop",
+      "category": "medication_negative",
+      "text": "停用射干期间无头晕，继续观察。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "med-3-dose",
+      "category": "medication_negative",
+      "text": "中草药处方：厚朴 6.5g，分次服。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "med-3-stop",
+      "category": "medication_negative",
+      "text": "停用厚朴期间无头晕，继续观察。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "med-4-dose",
+      "category": "medication_negative",
+      "text": "中草药处方：连翘 6.5g，分次服。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "med-4-stop",
+      "category": "medication_negative",
+      "text": "停用连翘期间无头晕，继续观察。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "med-5-dose",
+      "category": "medication_negative",
+      "text": "中草药处方：葛根 6.5g，分次服。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "med-5-stop",
+      "category": "medication_negative",
+      "text": "停用葛根期间无头晕，继续观察。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "med-6-dose",
+      "category": "medication_negative",
+      "text": "中草药处方：牡丹皮 6.5g，分次服。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 19
+        }
+      ]
+    },
+    {
+      "id": "med-6-stop",
+      "category": "medication_negative",
+      "text": "停用牡丹皮期间无头晕，继续观察。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 16
+        }
+      ]
+    },
+    {
+      "id": "med-7-dose",
+      "category": "medication_negative",
+      "text": "中草药处方：丹参 6.5g，分次服。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "med-7-stop",
+      "category": "medication_negative",
+      "text": "停用丹参期间无头晕，继续观察。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "med-8-dose",
+      "category": "medication_negative",
+      "text": "中草药处方：杜仲 6.5g，分次服。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "med-8-stop",
+      "category": "medication_negative",
+      "text": "停用杜仲期间无头晕，继续观察。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "med-9-dose",
+      "category": "medication_negative",
+      "text": "中草药处方：刘寄奴 6.5g，分次服。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 19
+        }
+      ]
+    },
+    {
+      "id": "med-9-stop",
+      "category": "medication_negative",
+      "text": "停用刘寄奴期间无头晕，继续观察。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 16
+        }
+      ]
+    },
+    {
+      "id": "med-10-dose",
+      "category": "medication_negative",
+      "text": "中草药处方：徐长卿 6.5g，分次服。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 19
+        }
+      ]
+    },
+    {
+      "id": "med-10-stop",
+      "category": "medication_negative",
+      "text": "停用徐长卿期间无头晕，继续观察。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 16
+        }
+      ]
+    },
+    {
+      "id": "med-11-dose",
+      "category": "medication_negative",
+      "text": "中草药处方：王不留行 6.5g，分次服。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 20
+        }
+      ]
+    },
+    {
+      "id": "med-11-stop",
+      "category": "medication_negative",
+      "text": "停用王不留行期间无头晕，继续观察。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 17
+        }
+      ]
+    },
+    {
+      "id": "mixed-0",
+      "category": "mixed",
+      "text": "口服徐长卿后无恶心。患者单芷仍诉胸痛。",
+      "phi": [
+        {
+          "start": 12,
+          "end": 14
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 12
+        },
+        {
+          "start": 14,
+          "end": 19
+        }
+      ]
+    },
+    {
+      "id": "mixed-1",
+      "category": "mixed",
+      "text": "口服徐长卿后无恶心。患者仇栩仍诉胸痛。",
+      "phi": [
+        {
+          "start": 12,
+          "end": 14
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 12
+        },
+        {
+          "start": 14,
+          "end": 19
+        }
+      ]
+    },
+    {
+      "id": "mixed-2",
+      "category": "mixed",
+      "text": "口服徐长卿后无恶心。患者解菡仍诉胸痛。",
+      "phi": [
+        {
+          "start": 12,
+          "end": 14
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 12
+        },
+        {
+          "start": 14,
+          "end": 19
+        }
+      ]
+    },
+    {
+      "id": "mixed-3",
+      "category": "mixed",
+      "text": "口服徐长卿后无恶心。患者查祎仍诉胸痛。",
+      "phi": [
+        {
+          "start": 12,
+          "end": 14
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 12
+        },
+        {
+          "start": 14,
+          "end": 19
+        }
+      ]
+    },
+    {
+      "id": "mixed-4",
+      "category": "mixed",
+      "text": "口服徐长卿后无恶心。患者翟祯仍诉胸痛。",
+      "phi": [
+        {
+          "start": 12,
+          "end": 14
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 12
+        },
+        {
+          "start": 14,
+          "end": 19
+        }
+      ]
+    },
+    {
+      "id": "mixed-5",
+      "category": "mixed",
+      "text": "口服徐长卿后无恶心。患者缪澄仍诉胸痛。",
+      "phi": [
+        {
+          "start": 12,
+          "end": 14
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 12
+        },
+        {
+          "start": 14,
+          "end": 19
+        }
+      ]
+    },
+    {
+      "id": "boundary-0",
+      "category": "source_boundary",
+      "text": "复诊记录：\r\n😀区​ 沅无寒战，体温正常。",
+      "phi": [
+        {
+          "start": 9,
+          "end": 13
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 9
+        },
+        {
+          "start": 13,
+          "end": 22
+        }
+      ]
+    },
+    {
+      "id": "boundary-1",
+      "category": "source_boundary",
+      "text": "复诊记录：\r\n😀覃​ 栎无寒战，体温正常。",
+      "phi": [
+        {
+          "start": 9,
+          "end": 13
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 9
+        },
+        {
+          "start": 13,
+          "end": 22
+        }
+      ]
+    },
+    {
+      "id": "boundary-2",
+      "category": "source_boundary",
+      "text": "复诊记录：\r\n😀逯​ 昕无寒战，体温正常。",
+      "phi": [
+        {
+          "start": 9,
+          "end": 13
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 9
+        },
+        {
+          "start": 13,
+          "end": 22
+        }
+      ]
+    },
+    {
+      "id": "boundary-3",
+      "category": "source_boundary",
+      "text": "复诊记录：\r\n😀訾​ 霖无寒战，体温正常。",
+      "phi": [
+        {
+          "start": 9,
+          "end": 13
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 9
+        },
+        {
+          "start": 13,
+          "end": 22
+        }
+      ]
+    },
+    {
+      "id": "boundary-4",
+      "category": "source_boundary",
+      "text": "复诊记录：\r\n😀毋​ 珩无寒战，体温正常。",
+      "phi": [
+        {
+          "start": 9,
+          "end": 13
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 9
+        },
+        {
+          "start": 13,
+          "end": 22
+        }
+      ]
+    },
+    {
+      "id": "boundary-5",
+      "category": "source_boundary",
+      "text": "复诊记录：\r\n😀仉​ 宁无寒战，体温正常。",
+      "phi": [
+        {
+          "start": 9,
+          "end": 13
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 9
+        },
+        {
+          "start": 13,
+          "end": 22
+        }
+      ]
+    }
+  ]
+}

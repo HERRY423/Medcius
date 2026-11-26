@@ -1,0 +1,28 @@
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+
+  [[rules.allowlists]]
+  description = "Verified SHA-256 source digests in specific synthetic PHI evidence reports"
+  condition = "AND"
+  regexTarget = "line"
+  paths = [
+    '''^docs/engineering/verification/2026\-11\-15\-phi\-cpu/peak\-final\.json$''',
+    '''^docs/engineering/verification/2026\-11\-15\-phi\-v2/burst\-final\.json$''',
+    '''^docs/engineering/verification/2026\-11\-15\-phi\-v2/subjects\-final\.json$''',
+    '''^docs/engineering/verification/2026\-11\-15\-phi\-v3/coverage\-final\.json$''',
+    '''^docs/engineering/verification/2026\-11\-15\-phi\-v3/paired\-final\.json$''',
+    '''^docs/engineering/verification/2026\-11\-19\-phi\-v4/paired\-crop\-heavy\.json$''',
+    '''^docs/engineering/verification/2026\-11\-19\-phi\-v4/paired\-legacy\.json$''',
+    '''^docs/engineering/verification/phi\-v5/three\-way\-final\.json$''',
+    '''^docs/engineering/verification/phi\-v6/crop\-burst\.json$''',
+  ]
+  regexes = [
+    '''^\s*"plugins/medcius/lib/clinician\-directory\-auth\.mjs"\s*:\s*"7910816ab9956317ad2937208a42472ba9747ef7fb98c34a830ee933371cda60"\s*,?\s*$''',
+    '''^\s*"plugins/medcius/runtimes/cn\-phi\-ner/bert\-tokenizer\.mjs"\s*:\s*"50a7955f0504313c8c026204f88869eb3b9d5d2e58746c7a4c3b576c248efe1f"\s*,?\s*$''',
+    '''^\s*"plugins/medcius/runtimes/cn\-phi\-ner/bert\-tokenizer\.mjs"\s*:\s*"b2fe96a9db93344503cf6150771a5c7f083d7a6272ed206cf1bb61444cacb582"\s*,?\s*$''',
+    '''^\s*"plugins/medcius/servers/api/src/auth\-middleware\.mjs"\s*:\s*"d781f6ca270068931c274dd76afc721944f46a1441c8f6672b0c4b1e6f60481f"\s*,?\s*$''',
+    '''^\s*"plugins/medcius/servers/fhir/src/auth/token\-store\.mjs"\s*:\s*"9734a2a8afded2b64375ac11f3bff0dbb61fe8439f68b04dadee0c9a2c104414"\s*,?\s*$''',
+  ]

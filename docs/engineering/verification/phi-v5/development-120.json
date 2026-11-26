@@ -1,0 +1,1107 @@
+{
+  "scope": "SYNTHETIC_REPLAY",
+  "challenge_sha256": "1f708685f13aa722cf38e0faa12fe47fdcff51555e16124033eb15af6ecbd31e",
+  "summary": {
+    "cases": 120,
+    "entities": 66,
+    "masked": 66,
+    "segments": 168,
+    "retained": 168,
+    "changed_ids": [
+      "name-3-time",
+      "name-3-onset",
+      "name-17-time",
+      "name-17-denial",
+      "name-17-onset",
+      "clinical-0",
+      "clinical-1",
+      "clinical-28",
+      "med-3-dose",
+      "med-5-dose",
+      "med-5-stop",
+      "med-6-stop"
+    ]
+  },
+  "rows": [
+    {
+      "id": "name-0-time",
+      "output_sha256": "d9da4c8c79855e99da37e3a3a6fe991e4e7cb7fae855854faf9b517bc8349faa",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-0-denial",
+      "output_sha256": "457d8dc92eec008eaef107afa3e9bda4a72389606d21be242fdd957322027d1e",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-0-onset",
+      "output_sha256": "d66de3575c74ace7ecf2985d620e622a43d7c10e44475fa4063e2e6dd7384c34",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "name-1-time",
+      "output_sha256": "d9da4c8c79855e99da37e3a3a6fe991e4e7cb7fae855854faf9b517bc8349faa",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-1-denial",
+      "output_sha256": "457d8dc92eec008eaef107afa3e9bda4a72389606d21be242fdd957322027d1e",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-1-onset",
+      "output_sha256": "d66de3575c74ace7ecf2985d620e622a43d7c10e44475fa4063e2e6dd7384c34",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "name-2-time",
+      "output_sha256": "d9da4c8c79855e99da37e3a3a6fe991e4e7cb7fae855854faf9b517bc8349faa",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-2-denial",
+      "output_sha256": "457d8dc92eec008eaef107afa3e9bda4a72389606d21be242fdd957322027d1e",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-2-onset",
+      "output_sha256": "d66de3575c74ace7ecf2985d620e622a43d7c10e44475fa4063e2e6dd7384c34",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "name-3-time",
+      "output_sha256": "d9da4c8c79855e99da37e3a3a6fe991e4e7cb7fae855854faf9b517bc8349faa",
+      "prior_output_match": false,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-3-denial",
+      "output_sha256": "457d8dc92eec008eaef107afa3e9bda4a72389606d21be242fdd957322027d1e",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-3-onset",
+      "output_sha256": "d66de3575c74ace7ecf2985d620e622a43d7c10e44475fa4063e2e6dd7384c34",
+      "prior_output_match": false,
+      "entities": 1,
+      "masked": 1,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "name-4-time",
+      "output_sha256": "d9da4c8c79855e99da37e3a3a6fe991e4e7cb7fae855854faf9b517bc8349faa",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-4-denial",
+      "output_sha256": "457d8dc92eec008eaef107afa3e9bda4a72389606d21be242fdd957322027d1e",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-4-onset",
+      "output_sha256": "d66de3575c74ace7ecf2985d620e622a43d7c10e44475fa4063e2e6dd7384c34",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "name-5-time",
+      "output_sha256": "d9da4c8c79855e99da37e3a3a6fe991e4e7cb7fae855854faf9b517bc8349faa",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-5-denial",
+      "output_sha256": "457d8dc92eec008eaef107afa3e9bda4a72389606d21be242fdd957322027d1e",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-5-onset",
+      "output_sha256": "d66de3575c74ace7ecf2985d620e622a43d7c10e44475fa4063e2e6dd7384c34",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "name-6-time",
+      "output_sha256": "d9da4c8c79855e99da37e3a3a6fe991e4e7cb7fae855854faf9b517bc8349faa",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-6-denial",
+      "output_sha256": "457d8dc92eec008eaef107afa3e9bda4a72389606d21be242fdd957322027d1e",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-6-onset",
+      "output_sha256": "d66de3575c74ace7ecf2985d620e622a43d7c10e44475fa4063e2e6dd7384c34",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "name-7-time",
+      "output_sha256": "d9da4c8c79855e99da37e3a3a6fe991e4e7cb7fae855854faf9b517bc8349faa",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-7-denial",
+      "output_sha256": "457d8dc92eec008eaef107afa3e9bda4a72389606d21be242fdd957322027d1e",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-7-onset",
+      "output_sha256": "d66de3575c74ace7ecf2985d620e622a43d7c10e44475fa4063e2e6dd7384c34",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "name-8-time",
+      "output_sha256": "d9da4c8c79855e99da37e3a3a6fe991e4e7cb7fae855854faf9b517bc8349faa",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-8-denial",
+      "output_sha256": "457d8dc92eec008eaef107afa3e9bda4a72389606d21be242fdd957322027d1e",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-8-onset",
+      "output_sha256": "d66de3575c74ace7ecf2985d620e622a43d7c10e44475fa4063e2e6dd7384c34",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "name-9-time",
+      "output_sha256": "d9da4c8c79855e99da37e3a3a6fe991e4e7cb7fae855854faf9b517bc8349faa",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-9-denial",
+      "output_sha256": "457d8dc92eec008eaef107afa3e9bda4a72389606d21be242fdd957322027d1e",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-9-onset",
+      "output_sha256": "d66de3575c74ace7ecf2985d620e622a43d7c10e44475fa4063e2e6dd7384c34",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "name-10-time",
+      "output_sha256": "d9da4c8c79855e99da37e3a3a6fe991e4e7cb7fae855854faf9b517bc8349faa",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-10-denial",
+      "output_sha256": "457d8dc92eec008eaef107afa3e9bda4a72389606d21be242fdd957322027d1e",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-10-onset",
+      "output_sha256": "d66de3575c74ace7ecf2985d620e622a43d7c10e44475fa4063e2e6dd7384c34",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "name-11-time",
+      "output_sha256": "d9da4c8c79855e99da37e3a3a6fe991e4e7cb7fae855854faf9b517bc8349faa",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-11-denial",
+      "output_sha256": "457d8dc92eec008eaef107afa3e9bda4a72389606d21be242fdd957322027d1e",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-11-onset",
+      "output_sha256": "d66de3575c74ace7ecf2985d620e622a43d7c10e44475fa4063e2e6dd7384c34",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "name-12-time",
+      "output_sha256": "d9da4c8c79855e99da37e3a3a6fe991e4e7cb7fae855854faf9b517bc8349faa",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-12-denial",
+      "output_sha256": "457d8dc92eec008eaef107afa3e9bda4a72389606d21be242fdd957322027d1e",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-12-onset",
+      "output_sha256": "d66de3575c74ace7ecf2985d620e622a43d7c10e44475fa4063e2e6dd7384c34",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "name-13-time",
+      "output_sha256": "d9da4c8c79855e99da37e3a3a6fe991e4e7cb7fae855854faf9b517bc8349faa",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-13-denial",
+      "output_sha256": "457d8dc92eec008eaef107afa3e9bda4a72389606d21be242fdd957322027d1e",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-13-onset",
+      "output_sha256": "d66de3575c74ace7ecf2985d620e622a43d7c10e44475fa4063e2e6dd7384c34",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "name-14-time",
+      "output_sha256": "d9da4c8c79855e99da37e3a3a6fe991e4e7cb7fae855854faf9b517bc8349faa",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-14-denial",
+      "output_sha256": "457d8dc92eec008eaef107afa3e9bda4a72389606d21be242fdd957322027d1e",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-14-onset",
+      "output_sha256": "d66de3575c74ace7ecf2985d620e622a43d7c10e44475fa4063e2e6dd7384c34",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "name-15-time",
+      "output_sha256": "d9da4c8c79855e99da37e3a3a6fe991e4e7cb7fae855854faf9b517bc8349faa",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-15-denial",
+      "output_sha256": "457d8dc92eec008eaef107afa3e9bda4a72389606d21be242fdd957322027d1e",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-15-onset",
+      "output_sha256": "d66de3575c74ace7ecf2985d620e622a43d7c10e44475fa4063e2e6dd7384c34",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "name-16-time",
+      "output_sha256": "d9da4c8c79855e99da37e3a3a6fe991e4e7cb7fae855854faf9b517bc8349faa",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-16-denial",
+      "output_sha256": "457d8dc92eec008eaef107afa3e9bda4a72389606d21be242fdd957322027d1e",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-16-onset",
+      "output_sha256": "d66de3575c74ace7ecf2985d620e622a43d7c10e44475fa4063e2e6dd7384c34",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "name-17-time",
+      "output_sha256": "d9da4c8c79855e99da37e3a3a6fe991e4e7cb7fae855854faf9b517bc8349faa",
+      "prior_output_match": false,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-17-denial",
+      "output_sha256": "457d8dc92eec008eaef107afa3e9bda4a72389606d21be242fdd957322027d1e",
+      "prior_output_match": false,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "name-17-onset",
+      "output_sha256": "d66de3575c74ace7ecf2985d620e622a43d7c10e44475fa4063e2e6dd7384c34",
+      "prior_output_match": false,
+      "entities": 1,
+      "masked": 1,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-0",
+      "output_sha256": "42d30147c84630178ee6caefe24aae99ac5c98746e417c2caf5839251c14b57f",
+      "prior_output_match": false,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-1",
+      "output_sha256": "ac08c5d8bd52df2f4142ac9d0853bebf41e25ed04a584325001ae8d3188ef0f0",
+      "prior_output_match": false,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-2",
+      "output_sha256": "a12d23c7ae980b1f4b85f3f248b00a835699daca867b6120348575932ce5096c",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-3",
+      "output_sha256": "0eb324cefdd116802c9e885de2aa87e6ce5160d0ca3276d4628bb694c5d86012",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-4",
+      "output_sha256": "62d6fc331b3ba9a46c7138f55ee9836ecb5e73893d8a6bbcc47e89c94fd0580f",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-5",
+      "output_sha256": "ebd39f4cfead7d14f54acacb6b550e033605e55338790ff478a9afa8601c06fd",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-6",
+      "output_sha256": "9efa4a68c364499c79c3b27ed2b82326a234a344ea98d2da4447970d6856c49c",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-7",
+      "output_sha256": "22dfa6e6af62f0736c94c209e3acd7af99c4e727a3fd9f307dcfc8e5d3d9fdcf",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-8",
+      "output_sha256": "33350fed2ac22644b4973bafac5f36ca95e46191b76d92ede79dd4aa0b50ef31",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-9",
+      "output_sha256": "d00ac77d92ad16c559201db7902762eaa4813dcfbb8e30ab48a7171c934d8472",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-10",
+      "output_sha256": "883a0fbf1de22690ca343cb3dd02ebc212aa41d741d6865f7b2197f538cb5c1c",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-11",
+      "output_sha256": "33dbb6022b720964a8f604b4c692e3b842bd8d8c33b3cc1382077b2654078737",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-12",
+      "output_sha256": "a93a8c9e46134e8246d56d6024ecafb20c1b18311cb2cd491896952e2d43d2e7",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-13",
+      "output_sha256": "a2aa53ddfbb0dd0f7ab8845408b358756b83503a4869f1c672dd70c76a3145fd",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-14",
+      "output_sha256": "277360e314bf5560747406ef8acf678fdf0c6e5e6dfeaab134eb64397b19f1f6",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-15",
+      "output_sha256": "7525c000c5d60a9ab1ee4ff550e28773733d51bb5ff885795ffe44f798ece307",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-16",
+      "output_sha256": "7aa047b8642c907fca10aeca7ccfe58091354df0f108505b0bbd107c35226d50",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-17",
+      "output_sha256": "da9ab5192c6d2d4dcbcaf946948666f667971000c54fadd15c7d48c0dd256c48",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-18",
+      "output_sha256": "2adca4206d2c2c13258785e2cdd9f13749b161a26d2d42b59f3c3c8009448802",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-19",
+      "output_sha256": "b083ae9b9f2970229804a729e789e799d1803008894a4f79249bd377d4cfcd0f",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-20",
+      "output_sha256": "1645940333f5dd350d963d97a781c33dd7d7037622fd86b401f4bd73a2cc0bdf",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-21",
+      "output_sha256": "18ebab5f02254e3aa774528476ed95bafce44a19ae7ab12f0d7c1b1788a10fbf",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-22",
+      "output_sha256": "07eda8e5a3811f5bc2b942146d6567260338c886d05b17627f116ad9cf781265",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-23",
+      "output_sha256": "53c42dbb7d22afdcdc19c5c203b96cc8804d49d193b9fc860ece489bc491c89c",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-24",
+      "output_sha256": "025be3de7e540ca5e45e495fc9de8da2fce5e6e76eb9f3be787fb0d22056b232",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-25",
+      "output_sha256": "d01921ebada4d84917f3d90dd2e6161136d9fe84cf028c4ce64211e448d223d9",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-26",
+      "output_sha256": "165eeb28721fb1820f796644aa6776d9f666e07ee8e74229c52b2855e2e572e6",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-27",
+      "output_sha256": "d50aab76006037f566d0e129dca02593c06f8aebf5cda167d828372ad070dea5",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-28",
+      "output_sha256": "5e73efe2a63df4d582542c60eb33150fa77dfbe0126b3a38128033c1cfa264c2",
+      "prior_output_match": false,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "clinical-29",
+      "output_sha256": "3a519c1bb0163d8fa58c564007bd8fde02f8a53951f1d6e5c6f1b449443bd057",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "med-0-dose",
+      "output_sha256": "ffe3b34111f966972de336d02c4ef4e83f8887f453c9ccb6040945ec1f1a00a7",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "med-0-stop",
+      "output_sha256": "fb78091f3d178077e271ed1d54f065ad1981b8ca6f3035ab0072e2eb5677d0ab",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "med-1-dose",
+      "output_sha256": "728a27480c5c64bf31246da64b7fddcf0937227649b22c3e67f41fed0a5f80d5",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "med-1-stop",
+      "output_sha256": "5b453540c5aeadd98aa2b66b7e051c309fa4966b414f6f32fbdc0469ec02e1a1",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "med-2-dose",
+      "output_sha256": "9bf7a7db29388b341771f09d5436c39e3f98f239b6962ad5210d7ea1a55ed598",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "med-2-stop",
+      "output_sha256": "169e52ae9abfd03ee6dcea3b85248c102e6e2413f417032bc331f29d8f00dbd4",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "med-3-dose",
+      "output_sha256": "a8950e47812059411d75035ca4a0210dbfb32f5a2072bebfcc32c1a8e8908737",
+      "prior_output_match": false,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "med-3-stop",
+      "output_sha256": "dc199c664f0dcf8ce5ea22f39e01c2c753b218833428275e25d01c12915e8947",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "med-4-dose",
+      "output_sha256": "fa00e26e936ab4b426d29618bf892adb63b1b7c214d0d31f2c48d817425d0a78",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "med-4-stop",
+      "output_sha256": "8ea22133fc01b4cba1c77d0af3b9cbcc3dc94c2f8b8e896c219ccb2bb9bf22f4",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "med-5-dose",
+      "output_sha256": "eb12fac5ec36276ba0c6b59c358829e8c885bb1e6a0e0145e194a86f8d1f1216",
+      "prior_output_match": false,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "med-5-stop",
+      "output_sha256": "bf7c8257e3c9113069fe2a774fa598f55eb4443e53ab170e22de65abc01fcf72",
+      "prior_output_match": false,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "med-6-dose",
+      "output_sha256": "afcc8acf284d1d9663e86deb8f1261f7753006a29f802863dd682349b3e0040b",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "med-6-stop",
+      "output_sha256": "2900ad5ced300597aeb49116790c1822db166bac62d1c9b27b270f53c85f2d41",
+      "prior_output_match": false,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "med-7-dose",
+      "output_sha256": "a22d2e1dd3dfb0f0399a728421acc985df755b11040140f2a1c8f5571cecac95",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "med-7-stop",
+      "output_sha256": "b3d7d8442507e3ff8416e3498136a3822cb541b5776064a654cee3af6f28de70",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "med-8-dose",
+      "output_sha256": "33cdc0333f74d1f8cdfaf0a6127b67ca6864d560dcb0cc3aaa0a3802d0d7aa2c",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "med-8-stop",
+      "output_sha256": "6a46796c445c977ea2369433b1506abf5f226c0953d5fe17765cf851d89dfb62",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "med-9-dose",
+      "output_sha256": "665bd63763f6dbeb57728f267d99a6da35b27640d17b65d54569a487b64caa3f",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "med-9-stop",
+      "output_sha256": "5b0c037db4224b046fb546d359632387f9b2805b0ddab3b8f3ab6669c676756c",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "med-10-dose",
+      "output_sha256": "e73cb330dd831b2fc7a35be9bac72207c9f89dc21288cd8f8746d5d8eaa8c467",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "med-10-stop",
+      "output_sha256": "c5f8a52a7bdc944d1c4b0681515184410d765df012ca4e8efbc7742c99541ab8",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "med-11-dose",
+      "output_sha256": "33b94eb48ede93052166406a63bfea8dcdd8251379d695eda113c5ee165a3234",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "med-11-stop",
+      "output_sha256": "5a070e5ea884f4469aabf9d7dcb0100806f594b3beb53978afda68c474caef0f",
+      "prior_output_match": true,
+      "entities": 0,
+      "masked": 0,
+      "segments": 1,
+      "retained": 1
+    },
+    {
+      "id": "mixed-0",
+      "output_sha256": "636f3ec29dda2b77cefa33e4adc8bc80f90bda4e019388dcfbe95e8004e87ad5",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "mixed-1",
+      "output_sha256": "636f3ec29dda2b77cefa33e4adc8bc80f90bda4e019388dcfbe95e8004e87ad5",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "mixed-2",
+      "output_sha256": "636f3ec29dda2b77cefa33e4adc8bc80f90bda4e019388dcfbe95e8004e87ad5",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "mixed-3",
+      "output_sha256": "636f3ec29dda2b77cefa33e4adc8bc80f90bda4e019388dcfbe95e8004e87ad5",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "mixed-4",
+      "output_sha256": "636f3ec29dda2b77cefa33e4adc8bc80f90bda4e019388dcfbe95e8004e87ad5",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "mixed-5",
+      "output_sha256": "636f3ec29dda2b77cefa33e4adc8bc80f90bda4e019388dcfbe95e8004e87ad5",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "boundary-0",
+      "output_sha256": "9de0a1caaeeab2cf91c486577f18ddf5800514daf220390fc989a6824cfc73df",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "boundary-1",
+      "output_sha256": "9de0a1caaeeab2cf91c486577f18ddf5800514daf220390fc989a6824cfc73df",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "boundary-2",
+      "output_sha256": "9de0a1caaeeab2cf91c486577f18ddf5800514daf220390fc989a6824cfc73df",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "boundary-3",
+      "output_sha256": "9de0a1caaeeab2cf91c486577f18ddf5800514daf220390fc989a6824cfc73df",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "boundary-4",
+      "output_sha256": "9de0a1caaeeab2cf91c486577f18ddf5800514daf220390fc989a6824cfc73df",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    },
+    {
+      "id": "boundary-5",
+      "output_sha256": "9de0a1caaeeab2cf91c486577f18ddf5800514daf220390fc989a6824cfc73df",
+      "prior_output_match": true,
+      "entities": 1,
+      "masked": 1,
+      "segments": 2,
+      "retained": 2
+    }
+  ]
+}

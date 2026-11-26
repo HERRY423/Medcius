@@ -1,0 +1,2567 @@
+{
+  "schema_version": "medcius.phi-probe-burst-three-way.v1",
+  "created_at": "2026-11-19T15:05:40.259Z",
+  "scope": "SYNTHETIC_LOCAL_PHI_INGRESS_ONLY",
+  "host": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "node": "v24.13.0",
+    "cpu": "Intel(R) Core(TM) Ultra 5 225H",
+    "available_parallelism": 14
+  },
+  "options": {
+    "processes": 2,
+    "threads": 2,
+    "batchWorkers": 2,
+    "cpuBudget": 8,
+    "maxPending": 32,
+    "microBatchMaxRequests": 8,
+    "microBatchWaitMs": 0,
+    "maxOutstandingRequests": 128,
+    "maxOutstandingUtf16": 1000000,
+    "maxOutstandingTexts": 8192
+  },
+  "workload": {
+    "name": "crop_heavy",
+    "sources_sha256": "e1fc3ca58232fcb41963a0a2d3e43265c88aa85289b43f2013ef6a3e411da4d3",
+    "bursts": [
+      64
+    ],
+    "paired_rounds": 12,
+    "warmup_per_arm": 3
+  },
+  "sources": {
+    "plugins/medcius/.mcp.json": "3497a42dbaf256722080160df77824f049377de3f23c40eaab397ed0ba5d534f",
+    "plugins/medcius/mcp.json": "fd7e7998db39beb953160d851d4ea157cadd11b635c742483f1d21ceca35771f",
+    "plugins/medcius/plugin.json": "5f1738c02e6097c4d29d4fb6dd95200046ad3a79b8a1d8486071d0f42861caf7",
+    "plugins/medcius/.claude-plugin/plugin.json": "20f1e11beb051b9d2c1a06d1c5c905692f00d86a28061decfdb4dc252394c8cb",
+    "plugins/medcius/.codex-plugin/plugin.json": "0815a119298724376ab3eb49179591ffe3c0d51208e52268447711fc0c4f9cc7",
+    "plugins/medcius/config/groupers/jiangsu-unconfigured.v1.json": "964424e78ad7cb0f6cf7d4aba0ab7b97984de5060fcd1bb8df690d42f128c45d",
+    "plugins/medcius/config/groupers/regional-rule-registry.v1.json": "42765ed08b19e267ada9d76671fe12c2914c54c241060b13a5cbb612fe2e4f56",
+    "plugins/medcius/config/groupers/synthetic-exclusion-pack.v1.json": "9aa575241631aa7d46a5ae11b06cd04a43e81cc2fa90c30d8ae88b39d0e06592",
+    "plugins/medcius/config/record-review/jiangsu-reference.v1.json": "6e1ce3f0cd7fd58f3a9e215e522a6fa12e2b9f21009e314d190cc54d9ad5a2fb",
+    "plugins/medcius/config/site-mappings/synthetic-cn-views.v1.json": "d4ce767dc67a1f193fcc6514b6c29dc4b885c8b631afc55878054d28367972da",
+    "plugins/medcius/contracts/causal-evolution-report.v1.schema.json": "ebdf9838eb750c575992f06d8e4de4574e8cf3cb7c185207118dbc5c5b065a70",
+    "plugins/medcius/contracts/china-record-quality-report.v1.schema.json": "d0e2ec6515a69548380228c41cbd6152481332dfe12dd27b5da4d86944741649",
+    "plugins/medcius/contracts/clinical-skill-catalog.v1.schema.json": "b6b194480e0a04a42a2f2747d370324df5c3ffa56863751aca6c5f39e674300d",
+    "plugins/medcius/contracts/drg-dip-reconciliation.v1.schema.json": "80fc8dace8fda742c00c7210ac78430e966115e796fab11e8eca11a8375abc02",
+    "plugins/medcius/contracts/patient-financial-access-record.v1.schema.json": "bf20cc2e4b41efaa2e1a876a38dc93c6b06ec794f261d533847c243bbd65f779",
+    "plugins/medcius/contracts/site-view-mapping.v1.schema.json": "eb4b1bd7a4e6bd95fcf99571a33994084ac3bb1898f0dacb438856bf63560b26",
+    "plugins/medcius/contracts/temporal-evolution.v1.schema.json": "67b6e0d7bbf9feb50843c93712312f30e4d776278da6b719cbe58d919ce9b254",
+    "plugins/medcius/evals/evidence-status.mjs": "1d1d600c15f4db4113150061eede6b98bafb97e7e87a12de4551b1bba757442e",
+    "plugins/medcius/evals/report-consistency.mjs": "058d885ae55ae668114d2d083ab4f662fa283cd3b40741f1b46dda80a09be627",
+    "plugins/medcius/evals/china-skills/grade.mjs": "c1186c191f0b080660bcadacf93773eb62773894e8c3c724c52b9da4a3c5d536",
+    "plugins/medcius/evals/china-skills/run.mjs": "aa9bd403861603f5e9019b93066016663a920bd395d44ad1d28ce57f6614b376",
+    "plugins/medcius/evals/china-skills/cases/clinical-note-extract.json": "779d1b269ebda8c11a9235b0665534fb7c7c2dc42aa757b95de9887cc2702fb9",
+    "plugins/medcius/evals/china-skills/cases/nhsa-coding.json": "422e6ad90ee557c73aaf4b8ef4f9c3104beb22466c32a94eebc023d511bc3e6f",
+    "plugins/medcius/evals/china-skills/cases/nhsa-policy.json": "373ac48a4b78b436fa2d09f8b595ef40dd340951dc3486aeb57f519edcf9df52",
+    "plugins/medcius/evals/china-skills/cases/nmpa-and-trials.json": "f3199b13ad423407ef587b01c27c7686384a1ac01cbdbfe681e290edef6c3edd",
+    "plugins/medcius/evals/china-skills/cases/prescription-review.json": "ec915af58923ffcf5b9c0b291e4aef48408f6ba8aeb133f338a057fc06df2052",
+    "plugins/medcius/evals/china-skills/cases/record-quality.json": "7495af4688e3cb239f9b2ba5b7160560f22cc88e1d4a55755f4e5c4b4f2cd709",
+    "plugins/medcius/evals/china-skills/results/cne-01-allergy-negation.json": "2295089bf4ec20d0da7a05abd8e13562024e65636b0540b9dccc0d4c91ce6d82",
+    "plugins/medcius/evals/china-skills/results/cne-02-family-history.json": "2a6687df9f795f422045b2f4eccc67d5172308850c226023e640a911d2090e33",
+    "plugins/medcius/evals/china-skills/results/cne-03-uncertain-admission.json": "98c09146274b24e0f9a62d821c278df3bacba24c3bc6d9b5b3aefa059cc92312",
+    "plugins/medcius/evals/china-skills/results/cne-04-admission-vs-discharge.json": "659e51b7b157808dff5862bb6aec55d9be54306d8eeac16685f05577186b616e",
+    "plugins/medcius/evals/china-skills/results/cne-05-prior-vs-current-procedure.json": "ae82691a7ad34948c9e012de0ae3ca3631049e65ca3e3962e931f07210fe111c",
+    "plugins/medcius/evals/china-skills/results/cne-06-planned-procedure.json": "9f345b11182e428e9a299767841496c484ab3c5a02210785091a3f8cbcd7b3bf",
+    "plugins/medcius/evals/china-skills/results/cne-07-negative-physical-exam.json": "12187cf6e65359790ef0fc09637cfc3d3f693a51578b69386ebd0d92ae7e650d",
+    "plugins/medcius/evals/china-skills/results/cne-08-prophylaxis-not-diagnosis.json": "bb06b674bc78e08d4459d97351c9cecb6dc67a522e31a49d2b52cfe1bc8a5bb4",
+    "plugins/medcius/evals/china-skills/results/cne-09-lab-not-complication.json": "318db357a1a4c322051d56dfe7fdfaead952f2e7bf8d6446aef01f1d1e6520dc",
+    "plugins/medcius/evals/china-skills/results/cne-10-rule-out-mi.json": "3a3fd5288bf06b89e1be49dad48643a73c8f01813c0c0706de1c607913f79e7c",
+    "plugins/medcius/evals/china-skills/results/cne-11-outpatient.json": "0221db643203a9a3cf876202369e651228701ece939c413f9f2e1127e58e35b8",
+    "plugins/medcius/evals/china-skills/results/cne-16-labs-umol.json": "d34e184553a5eb96fbfe1a7a550747ef33ac553f414189fadd6e4de4e3c4c2f0",
+    "plugins/medcius/evals/china-skills/results/nhsa-coding-01-bare-category.json": "12cf4d14b568baf41f7fca638c8cdb40ceec42cc1e55120323d28aa370d2bf3a",
+    "plugins/medcius/evals/china-skills/results/nhsa-coding-02-specificity-8-vs-9.json": "68d1870ccda0ea523f185c4158f0f97020ccad1449642ddd08a916229cd77352",
+    "plugins/medcius/evals/china-skills/results/nhsa-coding-03-cchi-misuse.json": "f4201cc15a2f3e5caec08eb4cfa4b4e0b2633513edf2dd2b37d469df975585ee",
+    "plugins/medcius/evals/china-skills/results/nhsa-coding-04-version-unknown.json": "f76aa6bfed34155054a66350d5a9648308f9e0dd8b63e997ab07d2fccd409e6d",
+    "plugins/medcius/evals/china-skills/results/nhsa-coding-05-no-connector.json": "b9cf3d3c1ebdb374da35d9231c4bb900099922260e7821b2313824baf8605745",
+    "plugins/medcius/evals/china-skills/results/nhsa-coding-06-uncertain-diagnosis.json": "c02e64b47ed0c6509bfacf4377ede622a706c0e88c5d5a6f11a913d7ccef6761",
+    "plugins/medcius/evals/china-skills/results/nhsa-policy-01-directory-ne-reimbursement.json": "e6ea4b68e4f23ec03ab9f47fc195db82777b89e0c124dc398045893dca99e2d2",
+    "plugins/medcius/evals/china-skills/results/nhsa-policy-02-l3-number-without-citation.json": "a1d2cbc5af626cdb93bd9ee2cd9ab507212ddc564300487b6fe40f5353a36f43",
+    "plugins/medcius/evals/china-skills/results/nhsa-policy-03-l4-no-numbers.json": "d2243ab58da8a8d90e32fc28201295faec3d2b2a3df5d06b3fdd16a923fb50d8",
+    "plugins/medcius/evals/china-skills/results/nhsa-policy-04-province-no-formulary-supplement.json": "d8b74f3b3d2ba3b36a8979eee6b00f3663b20554059089fe3b3403c7a6f89b05",
+    "plugins/medcius/evals/china-skills/results/nhsa-policy-05-payment-restriction.json": "1c8e2d579e119cb1c03ac6f1a32a03be10c34ddf0a8b345b5a63cd932d7ba1b6",
+    "plugins/medcius/evals/china-skills/results/nhsa-policy-06-cross-province.json": "a304d5d9b81dc04b332976789faa7731d123e4a7bcdc203d34184900812b83bd",
+    "plugins/medcius/evals/china-skills/results/nhsa-policy-07-drug-negotiation-expiry.json": "24c662990bdc5ec1c0d41b8e8b2f9a1a88fe2d6a21296ebe8dcada7e95024c89",
+    "plugins/medcius/evals/china-skills/results/nmpa-01-approval-format.json": "e93e97c04942145b99260189c0ead4909fa99bc96795bfc799d09d0d87c3209b",
+    "plugins/medcius/evals/china-skills/results/nmpa-02-otc-rx-from-connector.json": "644f9687839be7f39836deb6d33b74060668fdba5084b094662510144c9979ce",
+    "plugins/medcius/evals/china-skills/results/nmpa-03-import-approval.json": "e58740661ce7348eb2ea47b4a4cba7eb289e7abd8e383c45eeecaa8a1f94c232",
+    "plugins/medcius/evals/china-skills/results/nmpa-04-expiry.json": "245bd29500cf78bb04930ac9252e9e8845b450151542e3cbcfec8872f8cf88f8",
+    "plugins/medcius/evals/china-skills/results/nmpa-05-no-invent-approval.json": "17a089fc41e139d758850bccc1fdf327a5eec24e64ac94eea3046d507dfabdff",
+    "plugins/medcius/evals/china-skills/results/prescription-01-missing-weight-pediatric.json": "8aaaa7eaccdbb698b210d49577cd4a06e43e2e0c8f2bd71bc6406645aa58b4d7",
+    "plugins/medcius/evals/china-skills/results/prescription-02-g3-no-query.json": "e612baa2ed420e7982f4eba9e3ee6dec85bb0935da366f488b6ea46892fe6311",
+    "plugins/medcius/evals/china-skills/results/prescription-03-memory-safety.json": "106a1e624f70c92577d31974bb00600a32a03326de61f92ec67536272e629ad9",
+    "plugins/medcius/evals/china-skills/results/prescription-04-tcm.json": "4f8aeabdbe0180fdc4459ea1dfe1baa8d2d6b487e1bb66d3f689a2b3868c0d24",
+    "plugins/medcius/evals/china-skills/results/prescription-05-duplicate-ingredient.json": "624c96720b1351e42deee61918bf8c762ca70f134f4f15f3ec22a0be1d96db9a",
+    "plugins/medcius/evals/china-skills/results/prescription-06-sample-data-flag.json": "7477b3fd7d5fb38a9fadd1ebbda149227db1dbb69b07d2a0044d884e7ce66e12",
+    "plugins/medcius/evals/china-skills/results/prescription-07-no-mention-not-no-interaction.json": "2f96e5e69dab4168ad01a8f33244cde9a37b8acf7d71e9a753e9ec5451274f4a",
+    "plugins/medcius/evals/china-skills/results/prescription-08-renal-missing.json": "581bcdc8f788e1e0107b8f50cb8cd62e4b4a4f588d7b6c9650068c381e71a145",
+    "plugins/medcius/evals/china-skills/results/prescription-09-allergy-flag.json": "f21329eb37893e7274b6bc1472c976c1bdb58f9564f080558d22f5069a68ab14",
+    "plugins/medcius/evals/china-skills/results/prescription-10-contraindication.json": "e7f328b5f82f612d6de141f9e914e538de8b4462edc78bff393a14904dff0ce7",
+    "plugins/medcius/evals/china-skills/results/prescription-11-renal-bucket.json": "5a67146f732d539d2294d704cd0b975b799c43ff3d85abb63e4d0b57fda5d9ba",
+    "plugins/medcius/evals/china-skills/results/prescription-12-pregnancy.json": "deab8ea85d3e89e4b689193363f157c992930c12af81069fa115fb376e19f0a7",
+    "plugins/medcius/evals/china-skills/results/prescription-13-duplicate.json": "a0b19069fc21e256d6baff31f0839db69f3c304ffc61ab48ca4f7088fa4a4a2c",
+    "plugins/medcius/evals/china-skills/results/prescription-14-no-mention-not-safe.json": "d98b09630a7c1249c72cadebc3144db91b1cc8215b15830a0808cdaa7fc10fb9",
+    "plugins/medcius/evals/china-skills/results/prescription-15-scr-umol.json": "8150ac736273316189442230c055519b6b202ea7d27d200a2a3e0783d10dbf71",
+    "plugins/medcius/evals/china-skills/results/prescription-16-cyp-class-signal.json": "cae6ef48742c55fe171a3c95bbe50122133bb1b3ff83baaa0ae9a5a90504077a",
+    "plugins/medcius/evals/china-skills/results/prescription-17-cross-allergy.json": "371a227a1170f9246ff25672b4219477151f3d5a9d5f4b844293f112c40a9cf4",
+    "plugins/medcius/evals/china-skills/results/prescription-18-tcm-fan.json": "f1e966727c808a12fafb5a9efb6c9edd7921e0ac84a31afb5894efb9f237b7bf",
+    "plugins/medcius/evals/china-skills/results/prescription-19-morphine-limit.json": "a9ff04f71020188fcf3702e66a9bf635f8c3da057ae3fb377c4757810f3feb0a",
+    "plugins/medcius/evals/china-skills/results/rq-01-primary-diagnosis-missing.json": "9b3255ab6fe559733a50c8ad22281996a4b8f566e147564f348cb26aba49e836",
+    "plugins/medcius/evals/china-skills/results/rq-02-discharge-method-illegal.json": "c8fc8bdc79d27edd475486eccc317b4e2c25f6fbbaae8e81dee31b5bccd8118f",
+    "plugins/medcius/evals/china-skills/results/rq-03-stay-days-algebra.json": "7da0d48905e533f80d2f1118a4c6080a1e9803fda4c4a7c3295b3546fe155e9a",
+    "plugins/medcius/evals/china-skills/results/rq-04-death-method-no-record.json": "5303fb366c68af419067da3a140a74055bea22f0f89e384702a95eb6e793a20b",
+    "plugins/medcius/evals/china-skills/results/rq-05-obstetric-sex-conflict.json": "9e1351cefd218e7e90dcd3e95a77efca1ecd570f8e498eb1623a8608d5d5f6cc",
+    "plugins/medcius/evals/china-skills/results/rq-06-fee-algebra.json": "ad177f555f97de1a80d53c40bb0133fba03da23089caa894ed9ad52ec6d871d2",
+    "plugins/medcius/evals/china-skills/results/rq-07-catalog-restriction-hint.json": "12a3701c86c6d52c2fab8f4265a78f18b809b35f5d825dca778ae1bff64380f8",
+    "plugins/medcius/evals/china-skills/results/rq-08-newborn-age-conflict.json": "5fabcafde1d6656b8bebb0c293b178eb895084301fcd6760efd2a0a5dbb4ec8d",
+    "plugins/medcius/evals/china-skills/results/rq-09-catalog-restriction-match.json": "d8646f7ddc7dcc4209ff99e93cba6981bc1d484db883b6353d3ce690863ce761",
+    "plugins/medcius/evals/china-skills/results/rq-10-death-with-documentation.json": "ed1c67f9922613362703c19d78755991c4fc17042ca5519d1bca72b121380f2c",
+    "plugins/medcius/evals/china-skills/results/trials-01-ctr-format.json": "af21e9037a7caad30f42f6eb73f0e375f741477593006ac9707e0750c851e1c9",
+    "plugins/medcius/evals/china-skills/results/trials-02-implicit-license.json": "50ab838dcbfd776026cea8132d5dafe9366fd7d633f3af40a0463ad28ee1dfc5",
+    "plugins/medcius/evals/china-skills/results/trials-03-not-in-corpus.json": "86fe3768a2e4ccc1153b6b4d24ef296c56594c74f4b90135beafe11469a052d1",
+    "plugins/medcius/evals/china-skills/results/trials-04-local-search-hit.json": "fdc71b5f85f6f5a7710ff13d782c9eecb216aaaefeaef23ff6d4492514feb16d",
+    "plugins/medcius/evals/clinical-benefit/observation-template.json": "409d6aa1addf81375d64a53026c33381e7c89c5d46253fbe81db84c16637f280",
+    "plugins/medcius/evals/clinical-benefit/observations.mjs": "24ffc0ab895650b2c55c49196f1ae7b413f51541653b70e9097afcc402ab8981",
+    "plugins/medcius/evals/clinical-benefit/run-synthetic.mjs": "898ebdd1d79f9a0546207ef77c4390ece9e73975ca9c1fdf25b603ee3a5cec1f",
+    "plugins/medcius/evals/clinical-validation/run.mjs": "32daf1de539e0390cc95cb12bdae205ed7ce06bb5b59fadc04df0d22ebec552b",
+    "plugins/medcius/evals/clinical-validation/ward-complexity-benchmark.mjs": "2e877c3fe2cb8ba653eef6b1671ea247bac37a3a3037a5c6efa3cbe358a1ff6d",
+    "plugins/medcius/evals/clinical-validation/scripts/init-batch01.mjs": "f09f72f3ed89cee4d3eec69e183d956fb267079f01e5f993e0f88603fdb976a1",
+    "plugins/medcius/evals/performance-baseline/bench.mjs": "1a1941106baca709aea92a86550b1dabc8a97494772b7265d6c252d4f6689316",
+    "plugins/medcius/evals/physician-annotation/physician-annotation-engine.mjs": "32e7d622eb4cca2f0efcf767a1c37d784614354ae31f06257bc796a060794f07",
+    "plugins/medcius/evals/physician-annotation/physician-annotation-report.mjs": "951cffcb766705da62ea84f7442f7c674ceda759984aaebd1a3f64eef37e7cd0",
+    "plugins/medcius/evals/physician-annotation/ward-annotation-cases.json": "49caa186f7e71186880923102315396ab755ff8ef803b73c0be90647f350f393",
+    "plugins/medcius/evals/public-benchmarks/convert-ccks-ner.mjs": "4d51db0633387f7e3e4f1acbc97ad5390fed4c2a5c109d72f0d16e61827264be",
+    "plugins/medcius/evals/public-reference-validation/public-reference-pack.json": "98fd7946b5f4e5e7b5ce0be3664a7dbcae7b5bac9f0eb29adaa3ff7fbb963f29",
+    "plugins/medcius/evals/public-reference-validation/reference-reviewer.mjs": "ca65271a304f335220868fe83687ebc204c7d487a9ba867449e35f1f9bcf961b",
+    "plugins/medcius/evals/public-reference-validation/run.mjs": "565775036e21cd3db0d28b682829c2f5f354b37e9b22d8bc6865afb5c10895a0",
+    "plugins/medcius/evals/public-reference-validation/scorer.mjs": "1ab9ed3a501e61f0a8df415c84c53361e123e72eb85ce296826ae029ed8d2fb0",
+    "plugins/medcius/evals/real-world-noise/grader.mjs": "f1a901246675c6d9b20a0f1d892ae3777eab9641f2c1d97f8a638f7330c1152d",
+    "plugins/medcius/evals/real-world-noise/ingest-real-data.mjs": "9aebc86dacc27796e3322824a6cab21252e66b28d06f39259ca591a7fd1ff92a",
+    "plugins/medcius/evals/real-world-noise/noise-models.mjs": "8d23143df5da1d5d5899efd55d4aa4aacaad936fcca9ce47d1bf93f35e68ce57",
+    "plugins/medcius/evals/real-world-noise/run-noise-benchmark.mjs": "8abe9f596e0ecf9235df9dfb7f5ca10506f00ed85984db402abe99b2565aa778",
+    "plugins/medcius/evals/real-world-noise/run-noise-diagnostics.mjs": "bf74e805dfb15c82352b8b6e524db064a5274ba1a63fe4d51cd8b8b7958dd4b4",
+    "plugins/medcius/evals/shadow-mode/engine-challenge.cases.json": "13a4dee78ba21e463f5d97b2dec907be61d78abccc8cd9185cbf0ef3695522c7",
+    "plugins/medcius/evals/shadow-mode/engine-challenge.expected.json": "17bc82a2ed47b875a615ad433cbdf83d8dd14c49b5f3f77c0a082369ea07bd67",
+    "plugins/medcius/evals/shadow-mode/engine-challenge.mjs": "f740075c58d2e82738fbfbcaec8bd63db7c6afaa9bed4ca3e21bbeb9b88c57bb",
+    "plugins/medcius/evals/shadow-mode/real-world-study-protocol.mjs": "536370817a321cd577973b9a01d98ebd7b971fac8b21a809549f551a60297195",
+    "plugins/medcius/evals/shadow-mode/shadow-study.mjs": "acce709bf0434e5dc4cfbce257cef0d2054e60f3baf61811b02e00d8a7a789c6",
+    "plugins/medcius/evals/shadow-mode/ward-consecutive-validation.mjs": "dcff043fcc99f9dcd8e2192aa6964f4cd47d9bcea1956b1a733e067b79e4ac57",
+    "plugins/medcius/evals/time-motion/stopwatch-protocol.mjs": "ce7e631dd83bb11015ed36513fdc6ca647e1e08e5dc9dbeb8e2b413caac4d001",
+    "plugins/medcius/evals/time-motion/time-motion-analyzer.mjs": "d331a62eaaf3cca76556f996df254143176b4c57c3320dfa8496ee06318bfb38",
+    "plugins/medcius/evals/time-motion/time-motion-study.mjs": "ee49c101f3d5bf55e5053aaefd6378b72d051f351bf7b3696af96e67e411896a",
+    "plugins/medcius/fixtures/connectors/cda-replay.json": "2a178da5aea34f7b3691ed968f940a0bdea68d1feeea259a3cc42afd70abe479",
+    "plugins/medcius/fixtures/connectors/fhir-r4-replay.json": "177905d8080708a5d1ad421f79480f6cad8a8f886e60864dde3ef9d06c5c5422",
+    "plugins/medcius/fixtures/connectors/hl7v2-replay.json": "ede6fdff524b93c6bc686288b42ecfae1c1000b0fa4ec47a2ab27e8dfa700527",
+    "plugins/medcius/fixtures/connectors/view-library-replay.json": "21790501efd54b43f2dcf64c40e417afb9c0c7c786de440c3cfe2e87259b8d2f",
+    "plugins/medcius/fixtures/connectors/viewdb-replay.json": "b094031610a142737f1c96395feb70e2a50ea05ada9cde2822274f686d11c6f0",
+    "plugins/medcius/lib/authorized-hospital-source.mjs": "fd0b8c5147f74a4db86879207c4f6d9ed7eb58245ab9dee3fe8353527c4c58f0",
+    "plugins/medcius/lib/ca-signature-adapter.mjs": "99e7e281812c766e65b6c627261b36cbf8239dc1f2863fde8384fbc452724cad",
+    "plugins/medcius/lib/calculation-reference.mjs": "95a0e8dfb744af6d67c55f9de57dc862058d524684836e6bc2094dbf53baac55",
+    "plugins/medcius/lib/causal-attribution-engine.mjs": "78cb90a2a6e8186402f2a1f8b843c0aaff8e88591f116a342fccc98f01e5e923",
+    "plugins/medcius/lib/china-clinical-rules.mjs": "b48c5a36d871217f7ae6bc630e97a2936afeb4b5615188bc54dc63ed1284edfe",
+    "plugins/medcius/lib/china-pharmacy-catalog.mjs": "5a07126272aa17e70890c8558451b18713610ba5ce3dcbc020edfa0db2e3e3f5",
+    "plugins/medcius/lib/clinical-boundary.mjs": "c8646d05b0320ac6fde4a5ef55f4bf15db9e1b045c791447ae5b70ec24d75a1d",
+    "plugins/medcius/lib/clinical-evaluation-intake.mjs": "c9f8bab1340993cd5310204a2f6416980fae1652d8a13b2e84e15114fd0a5421",
+    "plugins/medcius/lib/clinical-landing-policy.mjs": "a3f86b51304b39beae3de005aeafeb06b1de898158ede7bb4dd18013c9cd4778",
+    "plugins/medcius/lib/clinical-skill-catalog.mjs": "dd0ade7444a685bee52bee635134c47319b5d36d8007c495a69c6e791095c302",
+    "plugins/medcius/lib/clinician-directory-auth.mjs": "7910816ab9956317ad2937208a42472ba9747ef7fb98c34a830ee933371cda60",
+    "plugins/medcius/lib/clinician-review-session.mjs": "e983513a85355768d93f59360a5675e9e0963dd7f3d51be1127d0b5e0f4b5dba",
+    "plugins/medcius/lib/cn-assertion-rules.mjs": "b6a4e1379a8c22afd70464d6852e76ddf6dfd3d841cd07bfe82b334cbe215524",
+    "plugins/medcius/lib/cn-assertions.mjs": "6014f612d34a34a7eb0e920accbbe57f2d7f70fff5b9e234033a88bbe09dae8e",
+    "plugins/medcius/lib/cn-measurements.mjs": "f871027d7b97657e6ac7263a4b5eafd0b91c05cacc01db565764e18c6431bddb",
+    "plugins/medcius/lib/cn-note-candidate-contract.mjs": "d228bd5557a8f4803812826aa9c0c88ec89ce280e0c6aaf5e692e53bfc18fd9f",
+    "plugins/medcius/lib/cn-note-extraction.mjs": "edf42993d972b9cef66ca64ccc68090ef5f41469e9faae9012f4be92ea18f75b",
+    "plugins/medcius/lib/cn-note-terms.mjs": "85a5f18fad0d302f89134ba83bf66e17ea822a686751dae1e77338157151cec3",
+    "plugins/medcius/lib/consult-preparation-engine.mjs": "3d11c0ba843622accb6af12a9ae28f87f9b24d63983a65c62baa15c0070476eb",
+    "plugins/medcius/lib/consult-snapshot.mjs": "a7d4f876e1955bf5a28d2e7d8e5b20f6d9bbcf1dd01e61ef20de41e85e7c12d3",
+    "plugins/medcius/lib/critical-visibility.mjs": "f18b607a21be8c8665755cf09eb9f97dc946e8bc7c32c599e57aebe33dd50227",
+    "plugins/medcius/lib/csv.mjs": "295c6f45e95ed2d59f14a9db328c467949a0c61c74ee50946339e136295dbad9",
+    "plugins/medcius/lib/discharge-readiness-engine.mjs": "639e7f7f6174e23baf2a41d01b8d7f798582a3004a81cd0adb074d14d3261f86",
+    "plugins/medcius/lib/discharge-source-documents.mjs": "ae6624ecdceeafba7addca1e4e6c16a642e21e7dbc445e2bfcfb37fd1675c714",
+    "plugins/medcius/lib/drg-dip-reconciliation.mjs": "d347b7f8dd18f1c25d126d7636d89f59e7e41e2147253f26747e9501e666e143",
+    "plugins/medcius/lib/enhanced-phi-guard.mjs": "480dd32c45cfbe10532cd6604f195a6625b89b76f9c6c955a96c759f7d9b2714",
+    "plugins/medcius/lib/evidence-anchors.mjs": "df7328e00861557c17f8c986ec023cf030cef358cad8b3e070050d8c145b0187",
+    "plugins/medcius/lib/governance-mode.mjs": "12d67992bda3a07b2fdfd9d767bb9265e8ea76705f8dd3e57270cae3f2e7250f",
+    "plugins/medcius/lib/handover-events.mjs": "f770ef170c26257f6f660b58a160b7b3c0bfa03422e4ff5e0d9c3ff8cab44aeb",
+    "plugins/medcius/lib/high-risk-followup-tracker.mjs": "000e062f5f068afa33c84e8ba50f11bd33e26645640f0ef14ad48252b7906b1c",
+    "plugins/medcius/lib/his-embed-adapter.mjs": "18547ee87b83a8da1715de4ce02a1350755c02aeecd80b23d55b6bb66ea03916",
+    "plugins/medcius/lib/hospital-agent-adapter.mjs": "23f31653817bff0dde0796d5a86ccda54fec7e90bc71a0b8f4fed5e9b5c63bdc",
+    "plugins/medcius/lib/hospital-data-adapter.mjs": "90da918cbc9e136515305edbd155c8fc58b4388cb57455e74a9230873a0766fa",
+    "plugins/medcius/lib/idp-jwks-verifier.mjs": "98afa2a92de038ad0835997eb066008c4f60a969ce399b8dc6bb5764b1f20d8b",
+    "plugins/medcius/lib/imaging-report.mjs": "7959fcb34802784ea0b0864ecfd9c74d704983ef1018e818ab337378f4c0f372",
+    "plugins/medcius/lib/laboratory-terminology.mjs": "838bcc16f0df79b2a60b68290101837ffe8808ae67219476ffd012f518f66527",
+    "plugins/medcius/lib/llm-inference-config.mjs": "68d2e78e2e5180b673a2d86db245a893ecb046eea535fd15a378aaacb04ae93a",
+    "plugins/medcius/lib/local-cn-ner.mjs": "6f9936cb13b1dbf43fe5a4884127eeff5a1f66e7639753234c4ff525359c1181",
+    "plugins/medcius/lib/local-grouper-precheck.mjs": "6f8274d58ae15db14ae0b9f9395949bb0dde789956875ce1cbacb487b9c78d7a",
+    "plugins/medcius/lib/local-phi-egress.mjs": "722989c928003c20ef694c51d4801cd82ba27fca2b41e875e85c7987822cffe0",
+    "plugins/medcius/lib/mtls-gateway-guard.mjs": "428b4d6ad5b712740add5635f50329c2b9b47c77c5ce7ca3ebfc85e7ec810eff",
+    "plugins/medcius/lib/nhsa-record-quality-engine.mjs": "9db14e7c2a85886b44208864e3454f7e2875caa9516acca17836313707a9a16d",
+    "plugins/medcius/lib/onprem-airgap-guard.mjs": "02392ea101fffafa9851797579bd10fdad37039baddf4504ec0d785e73578181",
+    "plugins/medcius/lib/order-execution.mjs": "e9adef8f6c18b5fbfe83628b7f56d4dc518bee6eeb385c8fd27fc4c9ff11a080",
+    "plugins/medcius/lib/output-consistency.mjs": "7187dbbaf37edf5ef3a38869931cbf09f70b84682bbe1503a96216e233b3a429",
+    "plugins/medcius/lib/parse-cn-note.mjs": "51194e87641da0a5c52ac9a72347d0f93456ae012065f8c48044dfa3cbf4af5d",
+    "plugins/medcius/lib/patient-affordability-context.mjs": "cbdb5620920adcc6b0c6563810068e935f26b0e30f9503aff4bc2d918d348afc",
+    "plugins/medcius/lib/patient-evolution-engine.mjs": "c9a9b76f0cb9e78258f44391518755d99b04c1651cdc528df41fd02088b2e2c8",
+    "plugins/medcius/lib/patient-source-phi.mjs": "3e37321fc4db8c37ead75bc1fcd4a583e62023793c1acc8c26311fc8200a2d1a",
+    "plugins/medcius/lib/patient-source-snapshot.mjs": "28f92db52f07e9939b45c11454890da4ed283f11ab66085f2da9ce7be62e87c4",
+    "plugins/medcius/lib/phi-clinical-literals.mjs": "3a48eea820f6ac32533d164507d37edf3eb7b3a0dce550d71f8a69b471e139ee",
+    "plugins/medcius/lib/phi-entity-session.mjs": "b645b12f8ff609957d6b6eb4aa75117f7cb19086f5cd3017021924c10c2bd872",
+    "plugins/medcius/lib/phi-inference-scope.mjs": "b92a2c88c06724d593bebbf067d2ac6e1fda8e977b3df5dfa9ee36007d762324",
+    "plugins/medcius/lib/phi-oov-subjects.mjs": "5d5504ea1cf73c50bf9033f3b05fa31f885c45f188b0d5d1bf2c96be3b9b90d6",
+    "plugins/medcius/lib/phi-runtime.mjs": "910e40b7b462eea6885a59ab6df440846c82d5d2ae96157cb6b5f8d1427236d3",
+    "plugins/medcius/lib/phi-value-guard.mjs": "c60d955f658f22cb720b26a7e1c64f227eec70d10dce73c102f0ff261d1f7d25",
+    "plugins/medcius/lib/phi-ward-cache.mjs": "8d0a0b965f3b158da3917d10867c796a28d663eb9830709fd1884fe3fe669779",
+    "plugins/medcius/lib/plugin-version.mjs": "cdb6a6a15c114e8221a67c008a6818605d08ff2c90dc697fd3445e9bcb646b94",
+    "plugins/medcius/lib/post-hoc-verifier.mjs": "6b217e61bc0cd1c5f4dee5ec9302ebb276423171ec172443ea057947de7fad90",
+    "plugins/medcius/lib/production-guard.mjs": "12606d2982c9ea03daf268783718a869bb716a67254a59a8922fdc54fad9ec7a",
+    "plugins/medcius/lib/production-phi-policy.mjs": "b8971cfec19a2008daade4e7aa1638e19a2a87d54f6ac35a712807c6ab096d5f",
+    "plugins/medcius/lib/read-only-hospital-data-bridge.mjs": "ab2de9b463745cf03d90197b1d4a25e58f59229175fe20016237ac9f8950657d",
+    "plugins/medcius/lib/reconciliation-lifecycle.mjs": "7f228cd0117fd8edb96106264322e4d141e8cb5e09970d73a892bfd798f6c4e0",
+    "plugins/medcius/lib/reconciliation-rule-packs.mjs": "9cb05f0fb8a440d1beac03d0391c6ba6e9d5910ef96960aa1090ab6c4f48ca7b",
+    "plugins/medcius/lib/record-evidence-reconciliation.mjs": "dd82e1846874037144a16fbbadef411decaabf961c5ceed58bf3b43919d16c86",
+    "plugins/medcius/lib/record-lifecycle.mjs": "2e9f971bab955e927087e2ff434fc47566646ed1f429dacb04276f7cd3caf047",
+    "plugins/medcius/lib/research-review-workflow.mjs": "d1aa500c9bf2066a75b66137d2f3650d669f0033b160238a558acf9610ad43fc",
+    "plugins/medcius/lib/rich-note-normalization.mjs": "2e6a2c6e8e5569498059411d703c874336026f34188d2909bfb24c3d01c50a98",
+    "plugins/medcius/lib/samd-compliance-tracker.mjs": "71b2ec5a08d4aef9804589298829193fec62d2a8b8924cb2b3da48d11c7fc874",
+    "plugins/medcius/lib/settlement-from-note.mjs": "887925563512b8dc3adac0a290ebff2d5f1b46cfe404747155de03ed2baa3bb5",
+    "plugins/medcius/lib/settlement-review-workflow.mjs": "8b5a6ad4a598dc27cfd8d012c2c3ea14bd3d0996bec59d0aa705b7f9efa6b0f6",
+    "plugins/medcius/lib/shift-handover-engine.mjs": "43cb9786731b565a3351cd4b075a964d9090aa0d26d28778faccc114feb22714",
+    "plugins/medcius/lib/silent-research-archive.mjs": "f2a005795bdac5f2f3dc5fc32e73ef7fd95678c3fd7079fabbe0043907811114",
+    "plugins/medcius/lib/site-activation-gate.mjs": "cf179f236892386e6a87dac1b1aac55a1b82797523d5cc83c1f67f98c4edd28f",
+    "plugins/medcius/lib/specialty-rule-pack.mjs": "044034da24ab82440f6b2f81d01614684f1f28dad6a4c5feb18e31552cd12077",
+    "plugins/medcius/lib/staged-draft-service.mjs": "f4d1c2267e4de99cd60f43fb788d670a5df2a9d7ddd22f60be71ff3b09dc396f",
+    "plugins/medcius/lib/temporal-evolution.mjs": "1c670e4ce5e884666593ef57112766d7885e2a562ebf61818dc04fcb367e27a1",
+    "plugins/medcius/lib/terminology-crosswalk.mjs": "ed12c6d0f72b8fff7750b161ebdb9273087be57cf686300da1ef47a6033a2ff4",
+    "plugins/medcius/lib/timeline-reconstructor.mjs": "f1c7026ecf023bf0d7e11958f934751ee934b39af58d158c416960992d8b17a3",
+    "plugins/medcius/lib/connectors/bounded-xml.mjs": "ef8c10d36fa4c50ba9577d781c7e9e00836802f58450c9e2b670fb4cc6a625c2",
+    "plugins/medcius/lib/connectors/cda-document-connector.mjs": "fa7fa67da6d0c2cc723c52994b0545398fad56e74791a0c4672ae380aabdda26",
+    "plugins/medcius/lib/connectors/cn-cda-r2.mjs": "31c7739cc85565a5b1fdcbbf797e4a9dc9337bb77dc00c6eed0a882574e2b824",
+    "plugins/medcius/lib/connectors/fhir-r4-connector.mjs": "4b2fc0b934cc24a40ef36c47bc055c75ac104b0fa14e382f39a5296ef33389c5",
+    "plugins/medcius/lib/connectors/hl7v2-connector.mjs": "fea3da9f8358c73ec5e3413a6c0a145b5bc5590d7d4b2e98a6090c2706f999af",
+    "plugins/medcius/lib/connectors/phi-exit-guard.mjs": "546fa665a9dc8f523869652fd28d69f6d50b95109cf3ccb6a050b877723aa2af",
+    "plugins/medcius/lib/connectors/private-z-profile.mjs": "ac03ab9621a4964f4c61fc17f00ae6dd22df1b6e94c1d2e8b5a613f1965b318e",
+    "plugins/medcius/lib/connectors/site-connector-factory.mjs": "560db395a2aad1cae1d2902d5efb6abeb9197fb8dcd7fa49ccc6d7e82c7cc3e3",
+    "plugins/medcius/lib/connectors/site-view-mapping.mjs": "9666937f0a15034e8209232df9b4ab64100fc3b153f13024a422050708b22acd",
+    "plugins/medcius/lib/connectors/source-lifecycle.mjs": "1e5737f35120a562afc18b989d19383b107c2c152f9fca2d529406109c680fd0",
+    "plugins/medcius/lib/connectors/view-library-connector.mjs": "9bc38f54f78c8ef245c1d3cdeea983bb88e85bf1fdc82b26560f309d630235d0",
+    "plugins/medcius/lib/connectors/viewdb-connector.mjs": "2f757ac9a6e850d37f74ab01649b6cc587e6333c2ddd8a191b998b861dd5a034",
+    "plugins/medcius/packs/hospital-knowledge-pack.json": "9f428eac8146a368d39cec95898c862022ab1009570e8643770ef3fe97dd272b",
+    "plugins/medcius/packs/official-sources.json": "d108ba967fbbba3a0bfb9ee4c0330d6e30895894f8ac3de0191a3c267b63be0c",
+    "plugins/medcius/packs/site-activation.template.json": "e3d2034bb09da72c59dd107acc028e3f4316b8e0a1a211a13ca46b4f7b11ccee",
+    "plugins/medcius/rule-packs/calculation-reference.v1.json": "a6a3a9f9d3447bb7011fdcfac956028ed9f8fccc2c9a92bd9531c8863607dac3",
+    "plugins/medcius/rule-packs/china-clinical-reference.v1.json": "b170eef9a2a33cfbd6b19442693dec909f5509b35ac0bc904049fa18b67430cc",
+    "plugins/medcius/rule-packs/laboratory-terminology.v1.json": "20d61e4854493c809cd09fea6bced764037adc149a20ea2d0bdebdf9bc3efa5b",
+    "plugins/medcius/rule-packs/temporal-reference.v1.json": "50d6c8b9cc857e563c32d796caa977efc6ee8ad55db81c683fa3e48c43802ec7",
+    "plugins/medcius/rule-packs/catalogs/hospital-inpatient-skill-catalog.json": "957e5e8cea1e1289e9ee19ca0474a3b32c1200cf498fb7116b53d5c61f9143af",
+    "plugins/medcius/rule-packs/schema/medcius-specialty-rule-pack.v1.schema.json": "174fdea00615b707a63f9e3f844ff7f5c4597f85c5e0d0249844f30dbf3f837b",
+    "plugins/medcius/rule-packs/specialties/cardiology-inpatient-sandbox.json": "6e78e24456b2fdda02bebfa50a41ffd3d47ae7be53a0adce2d5905158d9f82cf",
+    "plugins/medcius/runtimes/cn-phi-ner/batch-pool.mjs": "f97864da07034c00b5a53e7f03ee94d60cba85fa43df6e0de446dbdeb7b2e3ca",
+    "plugins/medcius/runtimes/cn-phi-ner/batch-worker.mjs": "5341301fc822f7a46edcd67a3cc8dd1888b3170dc17a4b367bf4dbffbc7c54aa",
+    "plugins/medcius/runtimes/cn-phi-ner/bert-tokenizer.mjs": "b2fe96a9db93344503cf6150771a5c7f083d7a6272ed206cf1bb61444cacb582",
+    "plugins/medcius/runtimes/cn-phi-ner/detector.mjs": "e4eacd1045d7f55941e4c72b515fdc6bf5e7cf20be87a0c2280d6db59f53119a",
+    "plugins/medcius/runtimes/cn-phi-ner/independent-batch-graph.mjs": "5a8e05512f401d68196671a1aaff4bd4e8da3fb5f0b91c91a95059966ec7485c",
+    "plugins/medcius/runtimes/cn-phi-ner/inference-queue.mjs": "2b32bee595dae4664413891db90b44a1cb4df41c25783ae2993fb8a9e5eb2c6b",
+    "plugins/medcius/runtimes/cn-phi-ner/model-manifest.json": "d82132a125313514ec0822b7f2bee1e4ac8d5ffd48cf1e1c26d47bf36d449894",
+    "plugins/medcius/runtimes/cn-phi-ner/package-lock.json": "96a25a1643b88161ebd8d1e37a590487d02e5a5a0be1934574c4b4dd77c3b3da",
+    "plugins/medcius/runtimes/cn-phi-ner/package.json": "05ae8bd030375c34f58489891c4334914bb5063cd4fe883ea1f2be457524f2f9",
+    "plugins/medcius/runtimes/cn-phi-ner/process-pool.mjs": "16b0deeb9ec89b908d371c8bdeb60bc2b5d091858197c8a51e089c33925f87b6",
+    "plugins/medcius/runtimes/cn-phi-ner/process-worker.mjs": "7a3552cd7d4344f59ee302413392b11bc9700e0dc7be91fa0c9f13662a896bfa",
+    "plugins/medcius/runtimes/cn-phi-ner/request-batcher.mjs": "9f29a12d6bd111e3c7f190d9a634797e80619f7afa3f43a96cef411451112741",
+    "plugins/medcius/scripts/codex-mcp-server.mjs": "609de5c3e60f7c9b5a2e8254fff7adde346cc570b499198d0184664353e6203d",
+    "plugins/medcius/scripts/compliance-lint.mjs": "b8d1b04cb975477c7127c3a9d2fb87ea8d071606566ac76c5327839ffb5aed8d",
+    "plugins/medcius/scripts/doctor.mjs": "0c26ec76d14242f9e2e6f98a5998bc959c03f4734e5504c03b90faaaf76b4664",
+    "plugins/medcius/scripts/gen-classification-pack.mjs": "e66f170314a8276ca12f97b9df478adbe701e1be70604ba2b8f616655b6abaa0",
+    "plugins/medcius/scripts/gen-dhf-trace.mjs": "0efa9d135469586bbb604208dc0914d35ec179a666c1a1b39fd7accf0b0ef260",
+    "plugins/medcius/scripts/generate-coverage-report.mjs": "89a52a59c08a68a5fe864a1f149aa9751eb9ebd8528eb4ffdb29607519f1d842",
+    "plugins/medcius/scripts/import-official.mjs": "8b6a25d289a8f320a59fcf388c696f24b8a48151b285a163b3e334bec73c0e07",
+    "plugins/medcius/scripts/intake-discharge.mjs": "3664e20aa21ee47e1bfcdcdedab7a06fb9544138cc6adecf4be62040d6faff20",
+    "plugins/medcius/scripts/settlement-from-note.mjs": "a4b5d01b32c682c1fa221cd58205076b42bcdb25a9b627ab23708d4c7af90bf4",
+    "plugins/medcius/servers/api/src/auth-middleware.mjs": "d781f6ca270068931c274dd76afc721944f46a1441c8f6672b0c4b1e6f60481f",
+    "plugins/medcius/servers/api/src/cds-hooks.mjs": "b1094f6bacf74b7db3cf2d888ecfce29a45ba1b92eb1564d8a8986220ab5d5d9",
+    "plugins/medcius/servers/api/src/rest-routes.mjs": "136a093bbcf7a423dbdf2fbe5b3adbf2658f07ffe99f13550a989c567b0b9260",
+    "plugins/medcius/servers/api/src/security-hardening.mjs": "7ad76268e111be09c85ab77bb1d67ffbfda552f2f593db6f57c75d746e1c731d",
+    "plugins/medcius/servers/api/src/server.mjs": "f0486c5efe21e20a3baac898e41ef6df8752bdf01e2e6be66dc562078d8e8dc3",
+    "plugins/medcius/servers/api/src/workstation-routes.mjs": "35807ac647b312e6e0e4ade7615a5e359c1b04fcf99587a2cfa6ffd56fb7af90",
+    "plugins/medcius/servers/audit/package.json": "f4f3c9622ef4e3ca14526163b9fa0de76aa67d997d15aecd747bb80b150ccae1",
+    "plugins/medcius/servers/audit/tsconfig.json": "b08ad7dbf2a2e6585c65c4714466c21879c0a79902c3cb83e44723e38e67b41f",
+    "plugins/medcius/servers/audit/src/db.mjs": "29fa228f183e2702c5ebaec95441d86c1eaaef542c36fe3adeabf597e4c89cf8",
+    "plugins/medcius/servers/audit/src/index.mjs": "7c2d75388aa522b799ab819f5a78401326d73c63fa3046d2b994aa42361b84d2",
+    "plugins/medcius/servers/audit/src/schemas.mjs": "375f6eb4f33c0f4923f3926ee998c4c7f198c7368927c0253516d4b8b0d907bd",
+    "plugins/medcius/servers/audit/src/tools.mjs": "473c06bb560a175498f3d263fe013dbd23b01a2107a0ba52484fadf48f92ea71",
+    "plugins/medcius/servers/china-codes/package.json": "e507eb3e0ef3a50c1494268f3217ba69445c15c007cf6e98856d13e322a7b806",
+    "plugins/medcius/servers/china-codes/tsconfig.json": "fb1a99b0a493d74cefe7cc273c91152a4f441d177b9ad2b73b0d0647e12f054f",
+    "plugins/medcius/servers/china-codes/assets/sample-codes.json": "3f4f6341c5d02185d5ee043a7518c6abf1db5d2c9c1f6789c34fffd57e965da5",
+    "plugins/medcius/servers/china-codes/scripts/ingest.mjs": "f7e24864a8cf9986ab6a585c71085ef298e0ce775d85847bd6948f177c500c90",
+    "plugins/medcius/servers/china-codes/src/crosswalk-store.mjs": "edbd87fd1714dc1237cf8b9dadf1f0e8daab968b9f5259fdf87278ebb80feb6e",
+    "plugins/medcius/servers/china-codes/src/db.mjs": "a0cd6cd6402b6e04164398cab5b7f667fa18ecf3ca78fe7d179b5e3734aee9b5",
+    "plugins/medcius/servers/china-codes/src/index.mjs": "89da309784721a01eeeaa79c27f46894bf72d3fe60a011d3f8277bb54fc874f7",
+    "plugins/medcius/servers/china-codes/src/list-check.mjs": "08332bcb7ce29ffae7cdb660e4e3ea91f030f72a4e44fd2494fdc39b8632c505",
+    "plugins/medcius/servers/china-codes/src/schemas.mjs": "38588cdaf8baa10be91579e633d343987c4d0ab69108a60f5ce904dde631489a",
+    "plugins/medcius/servers/china-codes/src/tools.mjs": "9c007b7ffcb6841aa437f7129873518cc54a7c86829198d0b1c6e98b1778bed4",
+    "plugins/medcius/servers/documents/package-lock.json": "0175802f0513ffa464bbee7dea284381d3b3bbac1ab3308821cdfe1d63b9347c",
+    "plugins/medcius/servers/documents/package.json": "57d7e57e556414fee9aac36856be7dfeb7690da474f4541fdeea073b7dc5dbd9",
+    "plugins/medcius/servers/documents/tsconfig.json": "052afe309c13c99f437157fe91433bbb31188741ff06345c10821af76eaef14e",
+    "plugins/medcius/servers/documents/src/citations.mjs": "75bf435f28f28027cf67d7cdbdd3190d85d56ddb4c1773fbc26d68c0f49f00cc",
+    "plugins/medcius/servers/documents/src/db.mjs": "b8a4d14c1380e8ff31499513e6b1c197e2f5b6a64d8351fe4c98ac94e9c1c8b9",
+    "plugins/medcius/servers/documents/src/die.mjs": "185ada0be7675d664432b66d0c01991c4a7008a7b1782e44e508d589ac2e1443",
+    "plugins/medcius/servers/documents/src/engine.mjs": "4b941ff9bb9a334d54cf0405919833c6b7d21696f2e765de7ae609d80461d19b",
+    "plugins/medcius/servers/documents/src/extract.mjs": "9c5cfac28793b21d8cb54aba0d9515c60d475c350fbbcad391b31c8df5e0b02d",
+    "plugins/medcius/servers/documents/src/index.mjs": "5a1479c877c8f5e77bac4606fcc0f3b9735ddd05cdb388e1fba70855dd44778b",
+    "plugins/medcius/servers/documents/src/ingest.mjs": "6c41d7284dd6afedf0e96cdfa923c34e98cd09329f782b226c8e1e922e127bc9",
+    "plugins/medcius/servers/documents/src/requirements.mjs": "f3544e99ea6c15b48710e955382063c7771c986d24261fdfc90ab0da7b72da20",
+    "plugins/medcius/servers/documents/src/schemas.mjs": "160305703a7cd10ba6cc2c4972cce70dbfa78a9c7085dad236d0ad8e1c375aec",
+    "plugins/medcius/servers/drug-labels/package.json": "a72f74369b8fe3e9e8b1c6082d6ecfd8f85a44f2137f6e0f96278c57eb8bf244",
+    "plugins/medcius/servers/drug-labels/tsconfig.json": "fb1a99b0a493d74cefe7cc273c91152a4f441d177b9ad2b73b0d0647e12f054f",
+    "plugins/medcius/servers/drug-labels/assets/official-pack.template.json": "e948372dca45c848cb24a9989a299fbf250817bc1a2376034ed9d852e45309ac",
+    "plugins/medcius/servers/drug-labels/assets/sample-labels.json": "991896f6ab99704642edc19f9527ad2a6ceffa750ceb94004ffbc99f36450e2d",
+    "plugins/medcius/servers/drug-labels/scripts/ingest.mjs": "5f96b8eecd97976ad20ad5024361448d3c6dbe73918b7b0dee99179c8bd87d2d",
+    "plugins/medcius/servers/drug-labels/scripts/validate-pack.mjs": "55ffc6554ba91f534d85c7e759c6c717a3cb863d262c3ab82344fe833b9047e4",
+    "plugins/medcius/servers/drug-labels/src/calculators.mjs": "93075787f3df2c4dfe9e746b01bd0b2c2747926c5db09012348dfcafd429a9f6",
+    "plugins/medcius/servers/drug-labels/src/china-tools.mjs": "0358d5968975e2d8fb3b11c5a70ec648d7dda2969dd9ab7b8514d5c0467e360f",
+    "plugins/medcius/servers/drug-labels/src/db.mjs": "76ee6338d10e8e312c7ef3035df3d47943b4d734563a95700cae54298e11300c",
+    "plugins/medcius/servers/drug-labels/src/index.mjs": "394589473ef27b92b4876481cf62fc5b0edce40ab682ba05402f22021a448964",
+    "plugins/medcius/servers/drug-labels/src/mechanisms.mjs": "ee11840b9c438817b75730cb91b0fd0e8c01ca997737212b6f512214abf09ac2",
+    "plugins/medcius/servers/drug-labels/src/safety-handlers.mjs": "e48358ccfd1fec04da7ec3226ff8c13de7816065ddf9e2c5444dcc8f0d474cee",
+    "plugins/medcius/servers/drug-labels/src/safety-tables.mjs": "f125f95a70863287b3a0f7eb7e25c2adbedda3cb2fcc5c46d0fcee4d6d795005",
+    "plugins/medcius/servers/drug-labels/src/schemas.mjs": "0e508df10fc40accd5f9e2a22d584115072726d5c75e1a85fbac45ced9a29ab0",
+    "plugins/medcius/servers/drug-labels/src/tools.mjs": "cc56950cf38e985d297c1625d87b863c8311e837998b097bc522cd4205f47726",
+    "plugins/medcius/servers/fhir/package.json": "86b3ee7edfa4d1ae9cba7e53bee6cbce28eac1dfd106327156601f3c28a59c12",
+    "plugins/medcius/servers/fhir/tsconfig.json": "480c7537eed96185bb8f215bb2c162caad2e7bed339f1a92a371170dd8f8c237",
+    "plugins/medcius/servers/fhir/sandbox/hospital-cardiology-sandbox.mjs": "b29cd9e1e2ca77bbe52c52c3ab6dba7d85bd23bb7fdf5a0ee7d89e8f20b36c84",
+    "plugins/medcius/servers/fhir/src/documents.mjs": "277c132d211da63f526ce7ab2ef89e0e496e459405e7eb36ca0e611f38ec04da",
+    "plugins/medcius/servers/fhir/src/fhir-client.mjs": "200e2fed921e5f892c8c12a0deb9beffae5d96e21a600c6cf7a49cfc7a1c6f0a",
+    "plugins/medcius/servers/fhir/src/index.mjs": "fdf7b059a9a0d8a70e7f68fc49258b0fe72aecc41635e056b6be8ea779f38c8e",
+    "plugins/medcius/servers/fhir/src/schemas.mjs": "e11652c83a59ba9be1b7e37f94622b88b697fc4df353d62393eb95f81c433d63",
+    "plugins/medcius/servers/fhir/src/tools.mjs": "81ccd2f61ea34c01dc423cdbb21028b876d252cf0af887d526510e5097f9560a",
+    "plugins/medcius/servers/fhir/src/auth/session-file.mjs": "119952e5e1ccea827f0bedb3bda7bbee2f04827dc704181f1a1bef51df19eda1",
+    "plugins/medcius/servers/fhir/src/auth/smart.mjs": "7017dc9bb3ce9338ce5c9dc1f946a32d58c17d920a4827ec5a6c742e61bb7c1b",
+    "plugins/medcius/servers/fhir/src/auth/token-store.mjs": "9734a2a8afded2b64375ac11f3bff0dbb61fe8439f68b04dadee0c9a2c104414",
+    "plugins/medcius/servers/phiguard/package.json": "33eb39172da9da0ec506f87b085e6bce139958d607b13d8a43d6be3ca0e7f49e",
+    "plugins/medcius/servers/phiguard/tsconfig.json": "b08ad7dbf2a2e6585c65c4714466c21879c0a79902c3cb83e44723e38e67b41f",
+    "plugins/medcius/servers/phiguard/src/index.mjs": "7a3714218fe9a712d7cc0906d015b7c59c6fa088be69621d04911cb6127f2313",
+    "plugins/medcius/servers/phiguard/src/lib.mjs": "242c52ea6ab46ae51ef2ec08e8c00b951f4579c30b45d9e5d84220bfcdcc7a1a",
+    "plugins/medcius/servers/phiguard/src/schemas.mjs": "633ebb7baa0f6910825c412a7cfe017eeb6be7f9d9eb5c219ecb2b594338178e",
+    "plugins/medcius/servers/phiguard/src/tools.mjs": "88442df4ccb2f91ddf0ca8fac437cd0017af4f562ecfb2f1e335f7e0dd62877b",
+    "plugins/medcius/servers/review-app/src/config.mjs": "661f4700334a5f0b57996305c2e210c9e4e94d90c9fd28dfe00d0be0719a7ab9",
+    "plugins/medcius/servers/review-app/src/index.mjs": "1a7f602568bbe108ac88276140b436feb27dcf85280fc0d0f36d0b74775ef8c3",
+    "plugins/medcius/servers/shared/crypto.mjs": "c3a9816f754689ce38f3ec6d3b91d1835fbe8aa2661f8169417dd9835e9208fc",
+    "plugins/medcius/servers/shared/digital-signature.mjs": "c99542b11cde703640d4a13ca3cfe9e0b24f18900c9c41243087d3ef0164018e",
+    "plugins/medcius/servers/shared/immutable.mjs": "327f252d09408fe5660152c325242f8de0604fd95575b6acb3fb40299db7b920",
+    "plugins/medcius/servers/shared/integrity-metadata.mjs": "8e03430e0af2c1e994c679c9f097bbbfb5d1a2a416dfe18a1a2abc577937c13a",
+    "plugins/medcius/servers/shared/knowledge-pack.mjs": "8ac6594beb5cf09f71ad7f62a2088552d441183c2dedc35f9f4d04b9a90f4f3b",
+    "plugins/medcius/servers/shared/phi-output.mjs": "0144361f6462dc470185b16a9a1bdedf6994ff2c50e81f917a33b4a6934c065e",
+    "plugins/medcius/servers/shared/rpc.mjs": "ce7cb0407611d75cb4fafc5a345dc59d6c04f659110b43001f56f318f3108d15",
+    "plugins/medcius/servers/shared/secure-store.mjs": "dc319a66302a8af37146b307b5ff527b17dbe21008d812135e8ba8a813e5d630",
+    "plugins/medcius/servers/shared/validate.mjs": "2f24e8ee0806e411b2246317a289f2eb3012a49fae27f0991d98a5b36f7fbff0",
+    "plugins/medcius/skills/clinical-note-extract/assets/china-notes/expected.json": "652a884940b3e7bec1e6b810b80e40cd9280131c0825555a8ea3f26d249496c8",
+    "plugins/medcius/skills/clinical-note-extract/assets/sample-schemas/ade.json": "0236b0eebadeb09e7bf9faba2eba04bd0c87aaced3a702dbf7d55aedd6ccaa82",
+    "plugins/medcius/skills/clinical-note-extract/assets/sample-schemas/china-inpatient.json": "bd5bdaba2e80e8aebb230f3b8e83a60935d3624de8b4d45b7afe207ff415e4a9",
+    "plugins/medcius/skills/clinical-note-extract/assets/sample-schemas/pft.json": "e7481f22aeb96480265ebd201acd6fffc9dc5acc5ffbef02d119cd3c813aeb4f",
+    "plugins/medcius/skills/doc-extract/package.json": "48eebe7bcfd7be1ab094f3695085457e49765be7f133002d6d30523fe1183102",
+    "plugins/medcius/skills/doc-extract/tsconfig.json": "850f8545c76a90f7284a1406a4194041fe229ccac996ebd9d75b1c23754ac50f",
+    "plugins/medcius/skills/doc-extract/scripts/decoders.mjs": "34be6a0d6827fb8346e49dc237b3dba616b134559b8adc2382ac946a3730610f",
+    "scripts/benchmark-phi-paired.mjs": "2f6bae55215108233878c0a56b925a18af6c4a6b8784ba68e7c4796e29cd9d9d",
+    "scripts/benchmark-phi-burst-v2.mjs": "4fed10860621fd6104a59994c9a685026d23695ab374793a540032958fc86501",
+    "plugins/medcius/data/phi/cn-pronunciations.v1.json": "f49bbf398c9abf2eddd1f49e8b30040b2f662dbdbaa78fbe7f1eaa6dc1001c99",
+    "docs/engineering/verification/phi-v5/benchmark-three-versions.mjs": "08ac0cbf3c0ac34bc535581730db9857cadae532fc57ed4b92cd2667f71f436d"
+  },
+  "baselineSources": {
+    "plugins/medcius/.mcp.json": "3497a42dbaf256722080160df77824f049377de3f23c40eaab397ed0ba5d534f",
+    "plugins/medcius/mcp.json": "fd7e7998db39beb953160d851d4ea157cadd11b635c742483f1d21ceca35771f",
+    "plugins/medcius/plugin.json": "5f1738c02e6097c4d29d4fb6dd95200046ad3a79b8a1d8486071d0f42861caf7",
+    "plugins/medcius/.claude-plugin/plugin.json": "20f1e11beb051b9d2c1a06d1c5c905692f00d86a28061decfdb4dc252394c8cb",
+    "plugins/medcius/.codex-plugin/plugin.json": "0815a119298724376ab3eb49179591ffe3c0d51208e52268447711fc0c4f9cc7",
+    "plugins/medcius/config/groupers/jiangsu-unconfigured.v1.json": "964424e78ad7cb0f6cf7d4aba0ab7b97984de5060fcd1bb8df690d42f128c45d",
+    "plugins/medcius/config/groupers/regional-rule-registry.v1.json": "42765ed08b19e267ada9d76671fe12c2914c54c241060b13a5cbb612fe2e4f56",
+    "plugins/medcius/config/groupers/synthetic-exclusion-pack.v1.json": "9aa575241631aa7d46a5ae11b06cd04a43e81cc2fa90c30d8ae88b39d0e06592",
+    "plugins/medcius/config/record-review/jiangsu-reference.v1.json": "6e1ce3f0cd7fd58f3a9e215e522a6fa12e2b9f21009e314d190cc54d9ad5a2fb",
+    "plugins/medcius/config/site-mappings/synthetic-cn-views.v1.json": "d4ce767dc67a1f193fcc6514b6c29dc4b885c8b631afc55878054d28367972da",
+    "plugins/medcius/contracts/causal-evolution-report.v1.schema.json": "ebdf9838eb750c575992f06d8e4de4574e8cf3cb7c185207118dbc5c5b065a70",
+    "plugins/medcius/contracts/china-record-quality-report.v1.schema.json": "d0e2ec6515a69548380228c41cbd6152481332dfe12dd27b5da4d86944741649",
+    "plugins/medcius/contracts/clinical-skill-catalog.v1.schema.json": "b6b194480e0a04a42a2f2747d370324df5c3ffa56863751aca6c5f39e674300d",
+    "plugins/medcius/contracts/drg-dip-reconciliation.v1.schema.json": "80fc8dace8fda742c00c7210ac78430e966115e796fab11e8eca11a8375abc02",
+    "plugins/medcius/contracts/patient-financial-access-record.v1.schema.json": "bf20cc2e4b41efaa2e1a876a38dc93c6b06ec794f261d533847c243bbd65f779",
+    "plugins/medcius/contracts/site-view-mapping.v1.schema.json": "eb4b1bd7a4e6bd95fcf99571a33994084ac3bb1898f0dacb438856bf63560b26",
+    "plugins/medcius/contracts/temporal-evolution.v1.schema.json": "67b6e0d7bbf9feb50843c93712312f30e4d776278da6b719cbe58d919ce9b254",
+    "plugins/medcius/evals/evidence-status.mjs": "1d1d600c15f4db4113150061eede6b98bafb97e7e87a12de4551b1bba757442e",
+    "plugins/medcius/evals/report-consistency.mjs": "058d885ae55ae668114d2d083ab4f662fa283cd3b40741f1b46dda80a09be627",
+    "plugins/medcius/evals/china-skills/grade.mjs": "c1186c191f0b080660bcadacf93773eb62773894e8c3c724c52b9da4a3c5d536",
+    "plugins/medcius/evals/china-skills/run.mjs": "aa9bd403861603f5e9019b93066016663a920bd395d44ad1d28ce57f6614b376",
+    "plugins/medcius/evals/china-skills/cases/clinical-note-extract.json": "779d1b269ebda8c11a9235b0665534fb7c7c2dc42aa757b95de9887cc2702fb9",
+    "plugins/medcius/evals/china-skills/cases/nhsa-coding.json": "422e6ad90ee557c73aaf4b8ef4f9c3104beb22466c32a94eebc023d511bc3e6f",
+    "plugins/medcius/evals/china-skills/cases/nhsa-policy.json": "373ac48a4b78b436fa2d09f8b595ef40dd340951dc3486aeb57f519edcf9df52",
+    "plugins/medcius/evals/china-skills/cases/nmpa-and-trials.json": "f3199b13ad423407ef587b01c27c7686384a1ac01cbdbfe681e290edef6c3edd",
+    "plugins/medcius/evals/china-skills/cases/prescription-review.json": "ec915af58923ffcf5b9c0b291e4aef48408f6ba8aeb133f338a057fc06df2052",
+    "plugins/medcius/evals/china-skills/cases/record-quality.json": "7495af4688e3cb239f9b2ba5b7160560f22cc88e1d4a55755f4e5c4b4f2cd709",
+    "plugins/medcius/evals/china-skills/results/cne-01-allergy-negation.json": "2295089bf4ec20d0da7a05abd8e13562024e65636b0540b9dccc0d4c91ce6d82",
+    "plugins/medcius/evals/china-skills/results/cne-02-family-history.json": "2a6687df9f795f422045b2f4eccc67d5172308850c226023e640a911d2090e33",
+    "plugins/medcius/evals/china-skills/results/cne-03-uncertain-admission.json": "98c09146274b24e0f9a62d821c278df3bacba24c3bc6d9b5b3aefa059cc92312",
+    "plugins/medcius/evals/china-skills/results/cne-04-admission-vs-discharge.json": "659e51b7b157808dff5862bb6aec55d9be54306d8eeac16685f05577186b616e",
+    "plugins/medcius/evals/china-skills/results/cne-05-prior-vs-current-procedure.json": "ae82691a7ad34948c9e012de0ae3ca3631049e65ca3e3962e931f07210fe111c",
+    "plugins/medcius/evals/china-skills/results/cne-06-planned-procedure.json": "9f345b11182e428e9a299767841496c484ab3c5a02210785091a3f8cbcd7b3bf",
+    "plugins/medcius/evals/china-skills/results/cne-07-negative-physical-exam.json": "12187cf6e65359790ef0fc09637cfc3d3f693a51578b69386ebd0d92ae7e650d",
+    "plugins/medcius/evals/china-skills/results/cne-08-prophylaxis-not-diagnosis.json": "bb06b674bc78e08d4459d97351c9cecb6dc67a522e31a49d2b52cfe1bc8a5bb4",
+    "plugins/medcius/evals/china-skills/results/cne-09-lab-not-complication.json": "318db357a1a4c322051d56dfe7fdfaead952f2e7bf8d6446aef01f1d1e6520dc",
+    "plugins/medcius/evals/china-skills/results/cne-10-rule-out-mi.json": "3a3fd5288bf06b89e1be49dad48643a73c8f01813c0c0706de1c607913f79e7c",
+    "plugins/medcius/evals/china-skills/results/cne-11-outpatient.json": "0221db643203a9a3cf876202369e651228701ece939c413f9f2e1127e58e35b8",
+    "plugins/medcius/evals/china-skills/results/cne-16-labs-umol.json": "d34e184553a5eb96fbfe1a7a550747ef33ac553f414189fadd6e4de4e3c4c2f0",
+    "plugins/medcius/evals/china-skills/results/nhsa-coding-01-bare-category.json": "12cf4d14b568baf41f7fca638c8cdb40ceec42cc1e55120323d28aa370d2bf3a",
+    "plugins/medcius/evals/china-skills/results/nhsa-coding-02-specificity-8-vs-9.json": "68d1870ccda0ea523f185c4158f0f97020ccad1449642ddd08a916229cd77352",
+    "plugins/medcius/evals/china-skills/results/nhsa-coding-03-cchi-misuse.json": "f4201cc15a2f3e5caec08eb4cfa4b4e0b2633513edf2dd2b37d469df975585ee",
+    "plugins/medcius/evals/china-skills/results/nhsa-coding-04-version-unknown.json": "f76aa6bfed34155054a66350d5a9648308f9e0dd8b63e997ab07d2fccd409e6d",
+    "plugins/medcius/evals/china-skills/results/nhsa-coding-05-no-connector.json": "b9cf3d3c1ebdb374da35d9231c4bb900099922260e7821b2313824baf8605745",
+    "plugins/medcius/evals/china-skills/results/nhsa-coding-06-uncertain-diagnosis.json": "c02e64b47ed0c6509bfacf4377ede622a706c0e88c5d5a6f11a913d7ccef6761",
+    "plugins/medcius/evals/china-skills/results/nhsa-policy-01-directory-ne-reimbursement.json": "e6ea4b68e4f23ec03ab9f47fc195db82777b89e0c124dc398045893dca99e2d2",
+    "plugins/medcius/evals/china-skills/results/nhsa-policy-02-l3-number-without-citation.json": "a1d2cbc5af626cdb93bd9ee2cd9ab507212ddc564300487b6fe40f5353a36f43",
+    "plugins/medcius/evals/china-skills/results/nhsa-policy-03-l4-no-numbers.json": "d2243ab58da8a8d90e32fc28201295faec3d2b2a3df5d06b3fdd16a923fb50d8",
+    "plugins/medcius/evals/china-skills/results/nhsa-policy-04-province-no-formulary-supplement.json": "d8b74f3b3d2ba3b36a8979eee6b00f3663b20554059089fe3b3403c7a6f89b05",
+    "plugins/medcius/evals/china-skills/results/nhsa-policy-05-payment-restriction.json": "1c8e2d579e119cb1c03ac6f1a32a03be10c34ddf0a8b345b5a63cd932d7ba1b6",
+    "plugins/medcius/evals/china-skills/results/nhsa-policy-06-cross-province.json": "a304d5d9b81dc04b332976789faa7731d123e4a7bcdc203d34184900812b83bd",
+    "plugins/medcius/evals/china-skills/results/nhsa-policy-07-drug-negotiation-expiry.json": "24c662990bdc5ec1c0d41b8e8b2f9a1a88fe2d6a21296ebe8dcada7e95024c89",
+    "plugins/medcius/evals/china-skills/results/nmpa-01-approval-format.json": "e93e97c04942145b99260189c0ead4909fa99bc96795bfc799d09d0d87c3209b",
+    "plugins/medcius/evals/china-skills/results/nmpa-02-otc-rx-from-connector.json": "644f9687839be7f39836deb6d33b74060668fdba5084b094662510144c9979ce",
+    "plugins/medcius/evals/china-skills/results/nmpa-03-import-approval.json": "e58740661ce7348eb2ea47b4a4cba7eb289e7abd8e383c45eeecaa8a1f94c232",
+    "plugins/medcius/evals/china-skills/results/nmpa-04-expiry.json": "245bd29500cf78bb04930ac9252e9e8845b450151542e3cbcfec8872f8cf88f8",
+    "plugins/medcius/evals/china-skills/results/nmpa-05-no-invent-approval.json": "17a089fc41e139d758850bccc1fdf327a5eec24e64ac94eea3046d507dfabdff",
+    "plugins/medcius/evals/china-skills/results/prescription-01-missing-weight-pediatric.json": "8aaaa7eaccdbb698b210d49577cd4a06e43e2e0c8f2bd71bc6406645aa58b4d7",
+    "plugins/medcius/evals/china-skills/results/prescription-02-g3-no-query.json": "e612baa2ed420e7982f4eba9e3ee6dec85bb0935da366f488b6ea46892fe6311",
+    "plugins/medcius/evals/china-skills/results/prescription-03-memory-safety.json": "106a1e624f70c92577d31974bb00600a32a03326de61f92ec67536272e629ad9",
+    "plugins/medcius/evals/china-skills/results/prescription-04-tcm.json": "4f8aeabdbe0180fdc4459ea1dfe1baa8d2d6b487e1bb66d3f689a2b3868c0d24",
+    "plugins/medcius/evals/china-skills/results/prescription-05-duplicate-ingredient.json": "624c96720b1351e42deee61918bf8c762ca70f134f4f15f3ec22a0be1d96db9a",
+    "plugins/medcius/evals/china-skills/results/prescription-06-sample-data-flag.json": "7477b3fd7d5fb38a9fadd1ebbda149227db1dbb69b07d2a0044d884e7ce66e12",
+    "plugins/medcius/evals/china-skills/results/prescription-07-no-mention-not-no-interaction.json": "2f96e5e69dab4168ad01a8f33244cde9a37b8acf7d71e9a753e9ec5451274f4a",
+    "plugins/medcius/evals/china-skills/results/prescription-08-renal-missing.json": "581bcdc8f788e1e0107b8f50cb8cd62e4b4a4f588d7b6c9650068c381e71a145",
+    "plugins/medcius/evals/china-skills/results/prescription-09-allergy-flag.json": "f21329eb37893e7274b6bc1472c976c1bdb58f9564f080558d22f5069a68ab14",
+    "plugins/medcius/evals/china-skills/results/prescription-10-contraindication.json": "e7f328b5f82f612d6de141f9e914e538de8b4462edc78bff393a14904dff0ce7",
+    "plugins/medcius/evals/china-skills/results/prescription-11-renal-bucket.json": "5a67146f732d539d2294d704cd0b975b799c43ff3d85abb63e4d0b57fda5d9ba",
+    "plugins/medcius/evals/china-skills/results/prescription-12-pregnancy.json": "deab8ea85d3e89e4b689193363f157c992930c12af81069fa115fb376e19f0a7",
+    "plugins/medcius/evals/china-skills/results/prescription-13-duplicate.json": "a0b19069fc21e256d6baff31f0839db69f3c304ffc61ab48ca4f7088fa4a4a2c",
+    "plugins/medcius/evals/china-skills/results/prescription-14-no-mention-not-safe.json": "d98b09630a7c1249c72cadebc3144db91b1cc8215b15830a0808cdaa7fc10fb9",
+    "plugins/medcius/evals/china-skills/results/prescription-15-scr-umol.json": "8150ac736273316189442230c055519b6b202ea7d27d200a2a3e0783d10dbf71",
+    "plugins/medcius/evals/china-skills/results/prescription-16-cyp-class-signal.json": "cae6ef48742c55fe171a3c95bbe50122133bb1b3ff83baaa0ae9a5a90504077a",
+    "plugins/medcius/evals/china-skills/results/prescription-17-cross-allergy.json": "371a227a1170f9246ff25672b4219477151f3d5a9d5f4b844293f112c40a9cf4",
+    "plugins/medcius/evals/china-skills/results/prescription-18-tcm-fan.json": "f1e966727c808a12fafb5a9efb6c9edd7921e0ac84a31afb5894efb9f237b7bf",
+    "plugins/medcius/evals/china-skills/results/prescription-19-morphine-limit.json": "a9ff04f71020188fcf3702e66a9bf635f8c3da057ae3fb377c4757810f3feb0a",
+    "plugins/medcius/evals/china-skills/results/rq-01-primary-diagnosis-missing.json": "9b3255ab6fe559733a50c8ad22281996a4b8f566e147564f348cb26aba49e836",
+    "plugins/medcius/evals/china-skills/results/rq-02-discharge-method-illegal.json": "c8fc8bdc79d27edd475486eccc317b4e2c25f6fbbaae8e81dee31b5bccd8118f",
+    "plugins/medcius/evals/china-skills/results/rq-03-stay-days-algebra.json": "7da0d48905e533f80d2f1118a4c6080a1e9803fda4c4a7c3295b3546fe155e9a",
+    "plugins/medcius/evals/china-skills/results/rq-04-death-method-no-record.json": "5303fb366c68af419067da3a140a74055bea22f0f89e384702a95eb6e793a20b",
+    "plugins/medcius/evals/china-skills/results/rq-05-obstetric-sex-conflict.json": "9e1351cefd218e7e90dcd3e95a77efca1ecd570f8e498eb1623a8608d5d5f6cc",
+    "plugins/medcius/evals/china-skills/results/rq-06-fee-algebra.json": "ad177f555f97de1a80d53c40bb0133fba03da23089caa894ed9ad52ec6d871d2",
+    "plugins/medcius/evals/china-skills/results/rq-07-catalog-restriction-hint.json": "12a3701c86c6d52c2fab8f4265a78f18b809b35f5d825dca778ae1bff64380f8",
+    "plugins/medcius/evals/china-skills/results/rq-08-newborn-age-conflict.json": "5fabcafde1d6656b8bebb0c293b178eb895084301fcd6760efd2a0a5dbb4ec8d",
+    "plugins/medcius/evals/china-skills/results/rq-09-catalog-restriction-match.json": "d8646f7ddc7dcc4209ff99e93cba6981bc1d484db883b6353d3ce690863ce761",
+    "plugins/medcius/evals/china-skills/results/rq-10-death-with-documentation.json": "ed1c67f9922613362703c19d78755991c4fc17042ca5519d1bca72b121380f2c",
+    "plugins/medcius/evals/china-skills/results/trials-01-ctr-format.json": "af21e9037a7caad30f42f6eb73f0e375f741477593006ac9707e0750c851e1c9",
+    "plugins/medcius/evals/china-skills/results/trials-02-implicit-license.json": "50ab838dcbfd776026cea8132d5dafe9366fd7d633f3af40a0463ad28ee1dfc5",
+    "plugins/medcius/evals/china-skills/results/trials-03-not-in-corpus.json": "86fe3768a2e4ccc1153b6b4d24ef296c56594c74f4b90135beafe11469a052d1",
+    "plugins/medcius/evals/china-skills/results/trials-04-local-search-hit.json": "fdc71b5f85f6f5a7710ff13d782c9eecb216aaaefeaef23ff6d4492514feb16d",
+    "plugins/medcius/evals/clinical-benefit/observation-template.json": "409d6aa1addf81375d64a53026c33381e7c89c5d46253fbe81db84c16637f280",
+    "plugins/medcius/evals/clinical-benefit/observations.mjs": "24ffc0ab895650b2c55c49196f1ae7b413f51541653b70e9097afcc402ab8981",
+    "plugins/medcius/evals/clinical-benefit/run-synthetic.mjs": "898ebdd1d79f9a0546207ef77c4390ece9e73975ca9c1fdf25b603ee3a5cec1f",
+    "plugins/medcius/evals/clinical-validation/run.mjs": "32daf1de539e0390cc95cb12bdae205ed7ce06bb5b59fadc04df0d22ebec552b",
+    "plugins/medcius/evals/clinical-validation/ward-complexity-benchmark.mjs": "2e877c3fe2cb8ba653eef6b1671ea247bac37a3a3037a5c6efa3cbe358a1ff6d",
+    "plugins/medcius/evals/clinical-validation/scripts/init-batch01.mjs": "f09f72f3ed89cee4d3eec69e183d956fb267079f01e5f993e0f88603fdb976a1",
+    "plugins/medcius/evals/performance-baseline/bench.mjs": "1a1941106baca709aea92a86550b1dabc8a97494772b7265d6c252d4f6689316",
+    "plugins/medcius/evals/physician-annotation/physician-annotation-engine.mjs": "32e7d622eb4cca2f0efcf767a1c37d784614354ae31f06257bc796a060794f07",
+    "plugins/medcius/evals/physician-annotation/physician-annotation-report.mjs": "951cffcb766705da62ea84f7442f7c674ceda759984aaebd1a3f64eef37e7cd0",
+    "plugins/medcius/evals/physician-annotation/ward-annotation-cases.json": "49caa186f7e71186880923102315396ab755ff8ef803b73c0be90647f350f393",
+    "plugins/medcius/evals/public-benchmarks/convert-ccks-ner.mjs": "4d51db0633387f7e3e4f1acbc97ad5390fed4c2a5c109d72f0d16e61827264be",
+    "plugins/medcius/evals/public-reference-validation/public-reference-pack.json": "98fd7946b5f4e5e7b5ce0be3664a7dbcae7b5bac9f0eb29adaa3ff7fbb963f29",
+    "plugins/medcius/evals/public-reference-validation/reference-reviewer.mjs": "ca65271a304f335220868fe83687ebc204c7d487a9ba867449e35f1f9bcf961b",
+    "plugins/medcius/evals/public-reference-validation/run.mjs": "565775036e21cd3db0d28b682829c2f5f354b37e9b22d8bc6865afb5c10895a0",
+    "plugins/medcius/evals/public-reference-validation/scorer.mjs": "1ab9ed3a501e61f0a8df415c84c53361e123e72eb85ce296826ae029ed8d2fb0",
+    "plugins/medcius/evals/real-world-noise/grader.mjs": "f1a901246675c6d9b20a0f1d892ae3777eab9641f2c1d97f8a638f7330c1152d",
+    "plugins/medcius/evals/real-world-noise/ingest-real-data.mjs": "9aebc86dacc27796e3322824a6cab21252e66b28d06f39259ca591a7fd1ff92a",
+    "plugins/medcius/evals/real-world-noise/noise-models.mjs": "8d23143df5da1d5d5899efd55d4aa4aacaad936fcca9ce47d1bf93f35e68ce57",
+    "plugins/medcius/evals/real-world-noise/run-noise-benchmark.mjs": "8abe9f596e0ecf9235df9dfb7f5ca10506f00ed85984db402abe99b2565aa778",
+    "plugins/medcius/evals/real-world-noise/run-noise-diagnostics.mjs": "bf74e805dfb15c82352b8b6e524db064a5274ba1a63fe4d51cd8b8b7958dd4b4",
+    "plugins/medcius/evals/shadow-mode/engine-challenge.cases.json": "13a4dee78ba21e463f5d97b2dec907be61d78abccc8cd9185cbf0ef3695522c7",
+    "plugins/medcius/evals/shadow-mode/engine-challenge.expected.json": "17bc82a2ed47b875a615ad433cbdf83d8dd14c49b5f3f77c0a082369ea07bd67",
+    "plugins/medcius/evals/shadow-mode/engine-challenge.mjs": "f740075c58d2e82738fbfbcaec8bd63db7c6afaa9bed4ca3e21bbeb9b88c57bb",
+    "plugins/medcius/evals/shadow-mode/real-world-study-protocol.mjs": "536370817a321cd577973b9a01d98ebd7b971fac8b21a809549f551a60297195",
+    "plugins/medcius/evals/shadow-mode/shadow-study.mjs": "acce709bf0434e5dc4cfbce257cef0d2054e60f3baf61811b02e00d8a7a789c6",
+    "plugins/medcius/evals/shadow-mode/ward-consecutive-validation.mjs": "dcff043fcc99f9dcd8e2192aa6964f4cd47d9bcea1956b1a733e067b79e4ac57",
+    "plugins/medcius/evals/time-motion/stopwatch-protocol.mjs": "ce7e631dd83bb11015ed36513fdc6ca647e1e08e5dc9dbeb8e2b413caac4d001",
+    "plugins/medcius/evals/time-motion/time-motion-analyzer.mjs": "d331a62eaaf3cca76556f996df254143176b4c57c3320dfa8496ee06318bfb38",
+    "plugins/medcius/evals/time-motion/time-motion-study.mjs": "ee49c101f3d5bf55e5053aaefd6378b72d051f351bf7b3696af96e67e411896a",
+    "plugins/medcius/fixtures/connectors/cda-replay.json": "2a178da5aea34f7b3691ed968f940a0bdea68d1feeea259a3cc42afd70abe479",
+    "plugins/medcius/fixtures/connectors/fhir-r4-replay.json": "177905d8080708a5d1ad421f79480f6cad8a8f886e60864dde3ef9d06c5c5422",
+    "plugins/medcius/fixtures/connectors/hl7v2-replay.json": "ede6fdff524b93c6bc686288b42ecfae1c1000b0fa4ec47a2ab27e8dfa700527",
+    "plugins/medcius/fixtures/connectors/view-library-replay.json": "21790501efd54b43f2dcf64c40e417afb9c0c7c786de440c3cfe2e87259b8d2f",
+    "plugins/medcius/fixtures/connectors/viewdb-replay.json": "b094031610a142737f1c96395feb70e2a50ea05ada9cde2822274f686d11c6f0",
+    "plugins/medcius/lib/authorized-hospital-source.mjs": "fd0b8c5147f74a4db86879207c4f6d9ed7eb58245ab9dee3fe8353527c4c58f0",
+    "plugins/medcius/lib/ca-signature-adapter.mjs": "99e7e281812c766e65b6c627261b36cbf8239dc1f2863fde8384fbc452724cad",
+    "plugins/medcius/lib/calculation-reference.mjs": "95a0e8dfb744af6d67c55f9de57dc862058d524684836e6bc2094dbf53baac55",
+    "plugins/medcius/lib/causal-attribution-engine.mjs": "78cb90a2a6e8186402f2a1f8b843c0aaff8e88591f116a342fccc98f01e5e923",
+    "plugins/medcius/lib/china-clinical-rules.mjs": "b48c5a36d871217f7ae6bc630e97a2936afeb4b5615188bc54dc63ed1284edfe",
+    "plugins/medcius/lib/china-pharmacy-catalog.mjs": "5a07126272aa17e70890c8558451b18713610ba5ce3dcbc020edfa0db2e3e3f5",
+    "plugins/medcius/lib/clinical-boundary.mjs": "c8646d05b0320ac6fde4a5ef55f4bf15db9e1b045c791447ae5b70ec24d75a1d",
+    "plugins/medcius/lib/clinical-evaluation-intake.mjs": "c9f8bab1340993cd5310204a2f6416980fae1652d8a13b2e84e15114fd0a5421",
+    "plugins/medcius/lib/clinical-landing-policy.mjs": "a3f86b51304b39beae3de005aeafeb06b1de898158ede7bb4dd18013c9cd4778",
+    "plugins/medcius/lib/clinical-skill-catalog.mjs": "dd0ade7444a685bee52bee635134c47319b5d36d8007c495a69c6e791095c302",
+    "plugins/medcius/lib/clinician-directory-auth.mjs": "7910816ab9956317ad2937208a42472ba9747ef7fb98c34a830ee933371cda60",
+    "plugins/medcius/lib/clinician-review-session.mjs": "e983513a85355768d93f59360a5675e9e0963dd7f3d51be1127d0b5e0f4b5dba",
+    "plugins/medcius/lib/cn-assertion-rules.mjs": "b6a4e1379a8c22afd70464d6852e76ddf6dfd3d841cd07bfe82b334cbe215524",
+    "plugins/medcius/lib/cn-assertions.mjs": "6014f612d34a34a7eb0e920accbbe57f2d7f70fff5b9e234033a88bbe09dae8e",
+    "plugins/medcius/lib/cn-measurements.mjs": "f871027d7b97657e6ac7263a4b5eafd0b91c05cacc01db565764e18c6431bddb",
+    "plugins/medcius/lib/cn-note-candidate-contract.mjs": "d228bd5557a8f4803812826aa9c0c88ec89ce280e0c6aaf5e692e53bfc18fd9f",
+    "plugins/medcius/lib/cn-note-extraction.mjs": "edf42993d972b9cef66ca64ccc68090ef5f41469e9faae9012f4be92ea18f75b",
+    "plugins/medcius/lib/cn-note-terms.mjs": "85a5f18fad0d302f89134ba83bf66e17ea822a686751dae1e77338157151cec3",
+    "plugins/medcius/lib/consult-preparation-engine.mjs": "3d11c0ba843622accb6af12a9ae28f87f9b24d63983a65c62baa15c0070476eb",
+    "plugins/medcius/lib/consult-snapshot.mjs": "a7d4f876e1955bf5a28d2e7d8e5b20f6d9bbcf1dd01e61ef20de41e85e7c12d3",
+    "plugins/medcius/lib/critical-visibility.mjs": "f18b607a21be8c8665755cf09eb9f97dc946e8bc7c32c599e57aebe33dd50227",
+    "plugins/medcius/lib/csv.mjs": "295c6f45e95ed2d59f14a9db328c467949a0c61c74ee50946339e136295dbad9",
+    "plugins/medcius/lib/discharge-readiness-engine.mjs": "639e7f7f6174e23baf2a41d01b8d7f798582a3004a81cd0adb074d14d3261f86",
+    "plugins/medcius/lib/discharge-source-documents.mjs": "ae6624ecdceeafba7addca1e4e6c16a642e21e7dbc445e2bfcfb37fd1675c714",
+    "plugins/medcius/lib/drg-dip-reconciliation.mjs": "d347b7f8dd18f1c25d126d7636d89f59e7e41e2147253f26747e9501e666e143",
+    "plugins/medcius/lib/enhanced-phi-guard.mjs": "480dd32c45cfbe10532cd6604f195a6625b89b76f9c6c955a96c759f7d9b2714",
+    "plugins/medcius/lib/evidence-anchors.mjs": "df7328e00861557c17f8c986ec023cf030cef358cad8b3e070050d8c145b0187",
+    "plugins/medcius/lib/governance-mode.mjs": "12d67992bda3a07b2fdfd9d767bb9265e8ea76705f8dd3e57270cae3f2e7250f",
+    "plugins/medcius/lib/handover-events.mjs": "f770ef170c26257f6f660b58a160b7b3c0bfa03422e4ff5e0d9c3ff8cab44aeb",
+    "plugins/medcius/lib/high-risk-followup-tracker.mjs": "000e062f5f068afa33c84e8ba50f11bd33e26645640f0ef14ad48252b7906b1c",
+    "plugins/medcius/lib/his-embed-adapter.mjs": "18547ee87b83a8da1715de4ce02a1350755c02aeecd80b23d55b6bb66ea03916",
+    "plugins/medcius/lib/hospital-agent-adapter.mjs": "23f31653817bff0dde0796d5a86ccda54fec7e90bc71a0b8f4fed5e9b5c63bdc",
+    "plugins/medcius/lib/hospital-data-adapter.mjs": "90da918cbc9e136515305edbd155c8fc58b4388cb57455e74a9230873a0766fa",
+    "plugins/medcius/lib/idp-jwks-verifier.mjs": "98afa2a92de038ad0835997eb066008c4f60a969ce399b8dc6bb5764b1f20d8b",
+    "plugins/medcius/lib/imaging-report.mjs": "7959fcb34802784ea0b0864ecfd9c74d704983ef1018e818ab337378f4c0f372",
+    "plugins/medcius/lib/laboratory-terminology.mjs": "838bcc16f0df79b2a60b68290101837ffe8808ae67219476ffd012f518f66527",
+    "plugins/medcius/lib/llm-inference-config.mjs": "68d2e78e2e5180b673a2d86db245a893ecb046eea535fd15a378aaacb04ae93a",
+    "plugins/medcius/lib/local-cn-ner.mjs": "6f9936cb13b1dbf43fe5a4884127eeff5a1f66e7639753234c4ff525359c1181",
+    "plugins/medcius/lib/local-grouper-precheck.mjs": "6f8274d58ae15db14ae0b9f9395949bb0dde789956875ce1cbacb487b9c78d7a",
+    "plugins/medcius/lib/local-phi-egress.mjs": "e48f9d13475edfbffe094426b819c4448d2a3add299bbf87003ee26cfeb0fbe7",
+    "plugins/medcius/lib/mtls-gateway-guard.mjs": "428b4d6ad5b712740add5635f50329c2b9b47c77c5ce7ca3ebfc85e7ec810eff",
+    "plugins/medcius/lib/nhsa-record-quality-engine.mjs": "9db14e7c2a85886b44208864e3454f7e2875caa9516acca17836313707a9a16d",
+    "plugins/medcius/lib/onprem-airgap-guard.mjs": "02392ea101fffafa9851797579bd10fdad37039baddf4504ec0d785e73578181",
+    "plugins/medcius/lib/order-execution.mjs": "e9adef8f6c18b5fbfe83628b7f56d4dc518bee6eeb385c8fd27fc4c9ff11a080",
+    "plugins/medcius/lib/output-consistency.mjs": "7187dbbaf37edf5ef3a38869931cbf09f70b84682bbe1503a96216e233b3a429",
+    "plugins/medcius/lib/parse-cn-note.mjs": "51194e87641da0a5c52ac9a72347d0f93456ae012065f8c48044dfa3cbf4af5d",
+    "plugins/medcius/lib/patient-affordability-context.mjs": "cbdb5620920adcc6b0c6563810068e935f26b0e30f9503aff4bc2d918d348afc",
+    "plugins/medcius/lib/patient-evolution-engine.mjs": "c9a9b76f0cb9e78258f44391518755d99b04c1651cdc528df41fd02088b2e2c8",
+    "plugins/medcius/lib/patient-source-phi.mjs": "3e37321fc4db8c37ead75bc1fcd4a583e62023793c1acc8c26311fc8200a2d1a",
+    "plugins/medcius/lib/patient-source-snapshot.mjs": "28f92db52f07e9939b45c11454890da4ed283f11ab66085f2da9ce7be62e87c4",
+    "plugins/medcius/lib/phi-clinical-literals.mjs": "1980485db621ab1ca638b5a9a316042650917bc3be37cc32b884beeb11db96d0",
+    "plugins/medcius/lib/phi-entity-session.mjs": "64418a4952262f57279d0447d6f707a1ee823edba2879e949c2aa6df36e4300c",
+    "plugins/medcius/lib/phi-inference-scope.mjs": "b92a2c88c06724d593bebbf067d2ac6e1fda8e977b3df5dfa9ee36007d762324",
+    "plugins/medcius/lib/phi-oov-subjects.mjs": "a932e0950526ed6c21766df33d673647b3dc69923cb71054a4a015c12047de69",
+    "plugins/medcius/lib/phi-runtime.mjs": "910e40b7b462eea6885a59ab6df440846c82d5d2ae96157cb6b5f8d1427236d3",
+    "plugins/medcius/lib/phi-value-guard.mjs": "c60d955f658f22cb720b26a7e1c64f227eec70d10dce73c102f0ff261d1f7d25",
+    "plugins/medcius/lib/phi-ward-cache.mjs": "8d0a0b965f3b158da3917d10867c796a28d663eb9830709fd1884fe3fe669779",
+    "plugins/medcius/lib/plugin-version.mjs": "cdb6a6a15c114e8221a67c008a6818605d08ff2c90dc697fd3445e9bcb646b94",
+    "plugins/medcius/lib/post-hoc-verifier.mjs": "6b217e61bc0cd1c5f4dee5ec9302ebb276423171ec172443ea057947de7fad90",
+    "plugins/medcius/lib/production-guard.mjs": "12606d2982c9ea03daf268783718a869bb716a67254a59a8922fdc54fad9ec7a",
+    "plugins/medcius/lib/production-phi-policy.mjs": "b8971cfec19a2008daade4e7aa1638e19a2a87d54f6ac35a712807c6ab096d5f",
+    "plugins/medcius/lib/read-only-hospital-data-bridge.mjs": "ab2de9b463745cf03d90197b1d4a25e58f59229175fe20016237ac9f8950657d",
+    "plugins/medcius/lib/reconciliation-lifecycle.mjs": "7f228cd0117fd8edb96106264322e4d141e8cb5e09970d73a892bfd798f6c4e0",
+    "plugins/medcius/lib/reconciliation-rule-packs.mjs": "9cb05f0fb8a440d1beac03d0391c6ba6e9d5910ef96960aa1090ab6c4f48ca7b",
+    "plugins/medcius/lib/record-evidence-reconciliation.mjs": "dd82e1846874037144a16fbbadef411decaabf961c5ceed58bf3b43919d16c86",
+    "plugins/medcius/lib/record-lifecycle.mjs": "2e9f971bab955e927087e2ff434fc47566646ed1f429dacb04276f7cd3caf047",
+    "plugins/medcius/lib/research-review-workflow.mjs": "d1aa500c9bf2066a75b66137d2f3650d669f0033b160238a558acf9610ad43fc",
+    "plugins/medcius/lib/rich-note-normalization.mjs": "2e6a2c6e8e5569498059411d703c874336026f34188d2909bfb24c3d01c50a98",
+    "plugins/medcius/lib/samd-compliance-tracker.mjs": "71b2ec5a08d4aef9804589298829193fec62d2a8b8924cb2b3da48d11c7fc874",
+    "plugins/medcius/lib/settlement-from-note.mjs": "887925563512b8dc3adac0a290ebff2d5f1b46cfe404747155de03ed2baa3bb5",
+    "plugins/medcius/lib/settlement-review-workflow.mjs": "8b5a6ad4a598dc27cfd8d012c2c3ea14bd3d0996bec59d0aa705b7f9efa6b0f6",
+    "plugins/medcius/lib/shift-handover-engine.mjs": "43cb9786731b565a3351cd4b075a964d9090aa0d26d28778faccc114feb22714",
+    "plugins/medcius/lib/silent-research-archive.mjs": "f2a005795bdac5f2f3dc5fc32e73ef7fd95678c3fd7079fabbe0043907811114",
+    "plugins/medcius/lib/site-activation-gate.mjs": "cf179f236892386e6a87dac1b1aac55a1b82797523d5cc83c1f67f98c4edd28f",
+    "plugins/medcius/lib/specialty-rule-pack.mjs": "044034da24ab82440f6b2f81d01614684f1f28dad6a4c5feb18e31552cd12077",
+    "plugins/medcius/lib/staged-draft-service.mjs": "f4d1c2267e4de99cd60f43fb788d670a5df2a9d7ddd22f60be71ff3b09dc396f",
+    "plugins/medcius/lib/temporal-evolution.mjs": "1c670e4ce5e884666593ef57112766d7885e2a562ebf61818dc04fcb367e27a1",
+    "plugins/medcius/lib/terminology-crosswalk.mjs": "ed12c6d0f72b8fff7750b161ebdb9273087be57cf686300da1ef47a6033a2ff4",
+    "plugins/medcius/lib/timeline-reconstructor.mjs": "f1c7026ecf023bf0d7e11958f934751ee934b39af58d158c416960992d8b17a3",
+    "plugins/medcius/lib/connectors/bounded-xml.mjs": "ef8c10d36fa4c50ba9577d781c7e9e00836802f58450c9e2b670fb4cc6a625c2",
+    "plugins/medcius/lib/connectors/cda-document-connector.mjs": "fa7fa67da6d0c2cc723c52994b0545398fad56e74791a0c4672ae380aabdda26",
+    "plugins/medcius/lib/connectors/cn-cda-r2.mjs": "31c7739cc85565a5b1fdcbbf797e4a9dc9337bb77dc00c6eed0a882574e2b824",
+    "plugins/medcius/lib/connectors/fhir-r4-connector.mjs": "4b2fc0b934cc24a40ef36c47bc055c75ac104b0fa14e382f39a5296ef33389c5",
+    "plugins/medcius/lib/connectors/hl7v2-connector.mjs": "fea3da9f8358c73ec5e3413a6c0a145b5bc5590d7d4b2e98a6090c2706f999af",
+    "plugins/medcius/lib/connectors/phi-exit-guard.mjs": "546fa665a9dc8f523869652fd28d69f6d50b95109cf3ccb6a050b877723aa2af",
+    "plugins/medcius/lib/connectors/private-z-profile.mjs": "ac03ab9621a4964f4c61fc17f00ae6dd22df1b6e94c1d2e8b5a613f1965b318e",
+    "plugins/medcius/lib/connectors/site-connector-factory.mjs": "560db395a2aad1cae1d2902d5efb6abeb9197fb8dcd7fa49ccc6d7e82c7cc3e3",
+    "plugins/medcius/lib/connectors/site-view-mapping.mjs": "9666937f0a15034e8209232df9b4ab64100fc3b153f13024a422050708b22acd",
+    "plugins/medcius/lib/connectors/source-lifecycle.mjs": "1e5737f35120a562afc18b989d19383b107c2c152f9fca2d529406109c680fd0",
+    "plugins/medcius/lib/connectors/view-library-connector.mjs": "9bc38f54f78c8ef245c1d3cdeea983bb88e85bf1fdc82b26560f309d630235d0",
+    "plugins/medcius/lib/connectors/viewdb-connector.mjs": "2f757ac9a6e850d37f74ab01649b6cc587e6333c2ddd8a191b998b861dd5a034",
+    "plugins/medcius/packs/hospital-knowledge-pack.json": "9f428eac8146a368d39cec95898c862022ab1009570e8643770ef3fe97dd272b",
+    "plugins/medcius/packs/official-sources.json": "d108ba967fbbba3a0bfb9ee4c0330d6e30895894f8ac3de0191a3c267b63be0c",
+    "plugins/medcius/packs/site-activation.template.json": "e3d2034bb09da72c59dd107acc028e3f4316b8e0a1a211a13ca46b4f7b11ccee",
+    "plugins/medcius/rule-packs/calculation-reference.v1.json": "a6a3a9f9d3447bb7011fdcfac956028ed9f8fccc2c9a92bd9531c8863607dac3",
+    "plugins/medcius/rule-packs/china-clinical-reference.v1.json": "b170eef9a2a33cfbd6b19442693dec909f5509b35ac0bc904049fa18b67430cc",
+    "plugins/medcius/rule-packs/laboratory-terminology.v1.json": "20d61e4854493c809cd09fea6bced764037adc149a20ea2d0bdebdf9bc3efa5b",
+    "plugins/medcius/rule-packs/temporal-reference.v1.json": "50d6c8b9cc857e563c32d796caa977efc6ee8ad55db81c683fa3e48c43802ec7",
+    "plugins/medcius/rule-packs/catalogs/hospital-inpatient-skill-catalog.json": "957e5e8cea1e1289e9ee19ca0474a3b32c1200cf498fb7116b53d5c61f9143af",
+    "plugins/medcius/rule-packs/schema/medcius-specialty-rule-pack.v1.schema.json": "174fdea00615b707a63f9e3f844ff7f5c4597f85c5e0d0249844f30dbf3f837b",
+    "plugins/medcius/rule-packs/specialties/cardiology-inpatient-sandbox.json": "6e78e24456b2fdda02bebfa50a41ffd3d47ae7be53a0adce2d5905158d9f82cf",
+    "plugins/medcius/runtimes/cn-phi-ner/batch-pool.mjs": "1cc7f9303d1872ee6904e923474afe564d90aec0c1c303a0695047284f319dd3",
+    "plugins/medcius/runtimes/cn-phi-ner/batch-worker.mjs": "5341301fc822f7a46edcd67a3cc8dd1888b3170dc17a4b367bf4dbffbc7c54aa",
+    "plugins/medcius/runtimes/cn-phi-ner/bert-tokenizer.mjs": "b2fe96a9db93344503cf6150771a5c7f083d7a6272ed206cf1bb61444cacb582",
+    "plugins/medcius/runtimes/cn-phi-ner/detector.mjs": "da20c97c905e8273287a79f84f3e44382dd5096d79140a478417b7ddf386166e",
+    "plugins/medcius/runtimes/cn-phi-ner/independent-batch-graph.mjs": "5a8e05512f401d68196671a1aaff4bd4e8da3fb5f0b91c91a95059966ec7485c",
+    "plugins/medcius/runtimes/cn-phi-ner/inference-queue.mjs": "2b32bee595dae4664413891db90b44a1cb4df41c25783ae2993fb8a9e5eb2c6b",
+    "plugins/medcius/runtimes/cn-phi-ner/model-manifest.json": "d82132a125313514ec0822b7f2bee1e4ac8d5ffd48cf1e1c26d47bf36d449894",
+    "plugins/medcius/runtimes/cn-phi-ner/package-lock.json": "96a25a1643b88161ebd8d1e37a590487d02e5a5a0be1934574c4b4dd77c3b3da",
+    "plugins/medcius/runtimes/cn-phi-ner/package.json": "05ae8bd030375c34f58489891c4334914bb5063cd4fe883ea1f2be457524f2f9",
+    "plugins/medcius/runtimes/cn-phi-ner/process-pool.mjs": "ac52e2beb261075da5d26f32fa0c7ed93a10b4e433866e63a9b2530a96eb4887",
+    "plugins/medcius/runtimes/cn-phi-ner/process-worker.mjs": "837e10b53199261a0542abd76a602ff60eab2e6f2df516f3e59a4d41fd5e46c5",
+    "plugins/medcius/runtimes/cn-phi-ner/request-batcher.mjs": "9f29a12d6bd111e3c7f190d9a634797e80619f7afa3f43a96cef411451112741",
+    "plugins/medcius/scripts/codex-mcp-server.mjs": "609de5c3e60f7c9b5a2e8254fff7adde346cc570b499198d0184664353e6203d",
+    "plugins/medcius/scripts/compliance-lint.mjs": "b8d1b04cb975477c7127c3a9d2fb87ea8d071606566ac76c5327839ffb5aed8d",
+    "plugins/medcius/scripts/doctor.mjs": "0c26ec76d14242f9e2e6f98a5998bc959c03f4734e5504c03b90faaaf76b4664",
+    "plugins/medcius/scripts/gen-classification-pack.mjs": "e66f170314a8276ca12f97b9df478adbe701e1be70604ba2b8f616655b6abaa0",
+    "plugins/medcius/scripts/gen-dhf-trace.mjs": "0efa9d135469586bbb604208dc0914d35ec179a666c1a1b39fd7accf0b0ef260",
+    "plugins/medcius/scripts/generate-coverage-report.mjs": "89a52a59c08a68a5fe864a1f149aa9751eb9ebd8528eb4ffdb29607519f1d842",
+    "plugins/medcius/scripts/import-official.mjs": "8b6a25d289a8f320a59fcf388c696f24b8a48151b285a163b3e334bec73c0e07",
+    "plugins/medcius/scripts/intake-discharge.mjs": "3664e20aa21ee47e1bfcdcdedab7a06fb9544138cc6adecf4be62040d6faff20",
+    "plugins/medcius/scripts/settlement-from-note.mjs": "a4b5d01b32c682c1fa221cd58205076b42bcdb25a9b627ab23708d4c7af90bf4",
+    "plugins/medcius/servers/api/src/auth-middleware.mjs": "d781f6ca270068931c274dd76afc721944f46a1441c8f6672b0c4b1e6f60481f",
+    "plugins/medcius/servers/api/src/cds-hooks.mjs": "b1094f6bacf74b7db3cf2d888ecfce29a45ba1b92eb1564d8a8986220ab5d5d9",
+    "plugins/medcius/servers/api/src/rest-routes.mjs": "136a093bbcf7a423dbdf2fbe5b3adbf2658f07ffe99f13550a989c567b0b9260",
+    "plugins/medcius/servers/api/src/security-hardening.mjs": "7ad76268e111be09c85ab77bb1d67ffbfda552f2f593db6f57c75d746e1c731d",
+    "plugins/medcius/servers/api/src/server.mjs": "f0486c5efe21e20a3baac898e41ef6df8752bdf01e2e6be66dc562078d8e8dc3",
+    "plugins/medcius/servers/api/src/workstation-routes.mjs": "35807ac647b312e6e0e4ade7615a5e359c1b04fcf99587a2cfa6ffd56fb7af90",
+    "plugins/medcius/servers/audit/package.json": "f4f3c9622ef4e3ca14526163b9fa0de76aa67d997d15aecd747bb80b150ccae1",
+    "plugins/medcius/servers/audit/tsconfig.json": "b08ad7dbf2a2e6585c65c4714466c21879c0a79902c3cb83e44723e38e67b41f",
+    "plugins/medcius/servers/audit/src/db.mjs": "29fa228f183e2702c5ebaec95441d86c1eaaef542c36fe3adeabf597e4c89cf8",
+    "plugins/medcius/servers/audit/src/index.mjs": "7c2d75388aa522b799ab819f5a78401326d73c63fa3046d2b994aa42361b84d2",
+    "plugins/medcius/servers/audit/src/schemas.mjs": "375f6eb4f33c0f4923f3926ee998c4c7f198c7368927c0253516d4b8b0d907bd",
+    "plugins/medcius/servers/audit/src/tools.mjs": "473c06bb560a175498f3d263fe013dbd23b01a2107a0ba52484fadf48f92ea71",
+    "plugins/medcius/servers/china-codes/package.json": "e507eb3e0ef3a50c1494268f3217ba69445c15c007cf6e98856d13e322a7b806",
+    "plugins/medcius/servers/china-codes/tsconfig.json": "fb1a99b0a493d74cefe7cc273c91152a4f441d177b9ad2b73b0d0647e12f054f",
+    "plugins/medcius/servers/china-codes/assets/sample-codes.json": "3f4f6341c5d02185d5ee043a7518c6abf1db5d2c9c1f6789c34fffd57e965da5",
+    "plugins/medcius/servers/china-codes/scripts/ingest.mjs": "f7e24864a8cf9986ab6a585c71085ef298e0ce775d85847bd6948f177c500c90",
+    "plugins/medcius/servers/china-codes/src/crosswalk-store.mjs": "edbd87fd1714dc1237cf8b9dadf1f0e8daab968b9f5259fdf87278ebb80feb6e",
+    "plugins/medcius/servers/china-codes/src/db.mjs": "a0cd6cd6402b6e04164398cab5b7f667fa18ecf3ca78fe7d179b5e3734aee9b5",
+    "plugins/medcius/servers/china-codes/src/index.mjs": "89da309784721a01eeeaa79c27f46894bf72d3fe60a011d3f8277bb54fc874f7",
+    "plugins/medcius/servers/china-codes/src/list-check.mjs": "08332bcb7ce29ffae7cdb660e4e3ea91f030f72a4e44fd2494fdc39b8632c505",
+    "plugins/medcius/servers/china-codes/src/schemas.mjs": "38588cdaf8baa10be91579e633d343987c4d0ab69108a60f5ce904dde631489a",
+    "plugins/medcius/servers/china-codes/src/tools.mjs": "9c007b7ffcb6841aa437f7129873518cc54a7c86829198d0b1c6e98b1778bed4",
+    "plugins/medcius/servers/documents/package-lock.json": "0175802f0513ffa464bbee7dea284381d3b3bbac1ab3308821cdfe1d63b9347c",
+    "plugins/medcius/servers/documents/package.json": "57d7e57e556414fee9aac36856be7dfeb7690da474f4541fdeea073b7dc5dbd9",
+    "plugins/medcius/servers/documents/tsconfig.json": "052afe309c13c99f437157fe91433bbb31188741ff06345c10821af76eaef14e",
+    "plugins/medcius/servers/documents/src/citations.mjs": "75bf435f28f28027cf67d7cdbdd3190d85d56ddb4c1773fbc26d68c0f49f00cc",
+    "plugins/medcius/servers/documents/src/db.mjs": "b8a4d14c1380e8ff31499513e6b1c197e2f5b6a64d8351fe4c98ac94e9c1c8b9",
+    "plugins/medcius/servers/documents/src/die.mjs": "185ada0be7675d664432b66d0c01991c4a7008a7b1782e44e508d589ac2e1443",
+    "plugins/medcius/servers/documents/src/engine.mjs": "4b941ff9bb9a334d54cf0405919833c6b7d21696f2e765de7ae609d80461d19b",
+    "plugins/medcius/servers/documents/src/extract.mjs": "9c5cfac28793b21d8cb54aba0d9515c60d475c350fbbcad391b31c8df5e0b02d",
+    "plugins/medcius/servers/documents/src/index.mjs": "5a1479c877c8f5e77bac4606fcc0f3b9735ddd05cdb388e1fba70855dd44778b",
+    "plugins/medcius/servers/documents/src/ingest.mjs": "6c41d7284dd6afedf0e96cdfa923c34e98cd09329f782b226c8e1e922e127bc9",
+    "plugins/medcius/servers/documents/src/requirements.mjs": "f3544e99ea6c15b48710e955382063c7771c986d24261fdfc90ab0da7b72da20",
+    "plugins/medcius/servers/documents/src/schemas.mjs": "160305703a7cd10ba6cc2c4972cce70dbfa78a9c7085dad236d0ad8e1c375aec",
+    "plugins/medcius/servers/drug-labels/package.json": "a72f74369b8fe3e9e8b1c6082d6ecfd8f85a44f2137f6e0f96278c57eb8bf244",
+    "plugins/medcius/servers/drug-labels/tsconfig.json": "fb1a99b0a493d74cefe7cc273c91152a4f441d177b9ad2b73b0d0647e12f054f",
+    "plugins/medcius/servers/drug-labels/assets/official-pack.template.json": "e948372dca45c848cb24a9989a299fbf250817bc1a2376034ed9d852e45309ac",
+    "plugins/medcius/servers/drug-labels/assets/sample-labels.json": "991896f6ab99704642edc19f9527ad2a6ceffa750ceb94004ffbc99f36450e2d",
+    "plugins/medcius/servers/drug-labels/scripts/ingest.mjs": "5f96b8eecd97976ad20ad5024361448d3c6dbe73918b7b0dee99179c8bd87d2d",
+    "plugins/medcius/servers/drug-labels/scripts/validate-pack.mjs": "55ffc6554ba91f534d85c7e759c6c717a3cb863d262c3ab82344fe833b9047e4",
+    "plugins/medcius/servers/drug-labels/src/calculators.mjs": "93075787f3df2c4dfe9e746b01bd0b2c2747926c5db09012348dfcafd429a9f6",
+    "plugins/medcius/servers/drug-labels/src/china-tools.mjs": "0358d5968975e2d8fb3b11c5a70ec648d7dda2969dd9ab7b8514d5c0467e360f",
+    "plugins/medcius/servers/drug-labels/src/db.mjs": "76ee6338d10e8e312c7ef3035df3d47943b4d734563a95700cae54298e11300c",
+    "plugins/medcius/servers/drug-labels/src/index.mjs": "394589473ef27b92b4876481cf62fc5b0edce40ab682ba05402f22021a448964",
+    "plugins/medcius/servers/drug-labels/src/mechanisms.mjs": "ee11840b9c438817b75730cb91b0fd0e8c01ca997737212b6f512214abf09ac2",
+    "plugins/medcius/servers/drug-labels/src/safety-handlers.mjs": "e48358ccfd1fec04da7ec3226ff8c13de7816065ddf9e2c5444dcc8f0d474cee",
+    "plugins/medcius/servers/drug-labels/src/safety-tables.mjs": "f125f95a70863287b3a0f7eb7e25c2adbedda3cb2fcc5c46d0fcee4d6d795005",
+    "plugins/medcius/servers/drug-labels/src/schemas.mjs": "0e508df10fc40accd5f9e2a22d584115072726d5c75e1a85fbac45ced9a29ab0",
+    "plugins/medcius/servers/drug-labels/src/tools.mjs": "cc56950cf38e985d297c1625d87b863c8311e837998b097bc522cd4205f47726",
+    "plugins/medcius/servers/fhir/package.json": "86b3ee7edfa4d1ae9cba7e53bee6cbce28eac1dfd106327156601f3c28a59c12",
+    "plugins/medcius/servers/fhir/tsconfig.json": "480c7537eed96185bb8f215bb2c162caad2e7bed339f1a92a371170dd8f8c237",
+    "plugins/medcius/servers/fhir/sandbox/hospital-cardiology-sandbox.mjs": "b29cd9e1e2ca77bbe52c52c3ab6dba7d85bd23bb7fdf5a0ee7d89e8f20b36c84",
+    "plugins/medcius/servers/fhir/src/documents.mjs": "277c132d211da63f526ce7ab2ef89e0e496e459405e7eb36ca0e611f38ec04da",
+    "plugins/medcius/servers/fhir/src/fhir-client.mjs": "200e2fed921e5f892c8c12a0deb9beffae5d96e21a600c6cf7a49cfc7a1c6f0a",
+    "plugins/medcius/servers/fhir/src/index.mjs": "fdf7b059a9a0d8a70e7f68fc49258b0fe72aecc41635e056b6be8ea779f38c8e",
+    "plugins/medcius/servers/fhir/src/schemas.mjs": "e11652c83a59ba9be1b7e37f94622b88b697fc4df353d62393eb95f81c433d63",
+    "plugins/medcius/servers/fhir/src/tools.mjs": "81ccd2f61ea34c01dc423cdbb21028b876d252cf0af887d526510e5097f9560a",
+    "plugins/medcius/servers/fhir/src/auth/session-file.mjs": "119952e5e1ccea827f0bedb3bda7bbee2f04827dc704181f1a1bef51df19eda1",
+    "plugins/medcius/servers/fhir/src/auth/smart.mjs": "7017dc9bb3ce9338ce5c9dc1f946a32d58c17d920a4827ec5a6c742e61bb7c1b",
+    "plugins/medcius/servers/fhir/src/auth/token-store.mjs": "9734a2a8afded2b64375ac11f3bff0dbb61fe8439f68b04dadee0c9a2c104414",
+    "plugins/medcius/servers/phiguard/package.json": "33eb39172da9da0ec506f87b085e6bce139958d607b13d8a43d6be3ca0e7f49e",
+    "plugins/medcius/servers/phiguard/tsconfig.json": "b08ad7dbf2a2e6585c65c4714466c21879c0a79902c3cb83e44723e38e67b41f",
+    "plugins/medcius/servers/phiguard/src/index.mjs": "7a3714218fe9a712d7cc0906d015b7c59c6fa088be69621d04911cb6127f2313",
+    "plugins/medcius/servers/phiguard/src/lib.mjs": "242c52ea6ab46ae51ef2ec08e8c00b951f4579c30b45d9e5d84220bfcdcc7a1a",
+    "plugins/medcius/servers/phiguard/src/schemas.mjs": "633ebb7baa0f6910825c412a7cfe017eeb6be7f9d9eb5c219ecb2b594338178e",
+    "plugins/medcius/servers/phiguard/src/tools.mjs": "88442df4ccb2f91ddf0ca8fac437cd0017af4f562ecfb2f1e335f7e0dd62877b",
+    "plugins/medcius/servers/review-app/src/config.mjs": "661f4700334a5f0b57996305c2e210c9e4e94d90c9fd28dfe00d0be0719a7ab9",
+    "plugins/medcius/servers/review-app/src/index.mjs": "1a7f602568bbe108ac88276140b436feb27dcf85280fc0d0f36d0b74775ef8c3",
+    "plugins/medcius/servers/shared/crypto.mjs": "c3a9816f754689ce38f3ec6d3b91d1835fbe8aa2661f8169417dd9835e9208fc",
+    "plugins/medcius/servers/shared/digital-signature.mjs": "c99542b11cde703640d4a13ca3cfe9e0b24f18900c9c41243087d3ef0164018e",
+    "plugins/medcius/servers/shared/immutable.mjs": "327f252d09408fe5660152c325242f8de0604fd95575b6acb3fb40299db7b920",
+    "plugins/medcius/servers/shared/integrity-metadata.mjs": "8e03430e0af2c1e994c679c9f097bbbfb5d1a2a416dfe18a1a2abc577937c13a",
+    "plugins/medcius/servers/shared/knowledge-pack.mjs": "8ac6594beb5cf09f71ad7f62a2088552d441183c2dedc35f9f4d04b9a90f4f3b",
+    "plugins/medcius/servers/shared/phi-output.mjs": "0144361f6462dc470185b16a9a1bdedf6994ff2c50e81f917a33b4a6934c065e",
+    "plugins/medcius/servers/shared/rpc.mjs": "ce7cb0407611d75cb4fafc5a345dc59d6c04f659110b43001f56f318f3108d15",
+    "plugins/medcius/servers/shared/secure-store.mjs": "dc319a66302a8af37146b307b5ff527b17dbe21008d812135e8ba8a813e5d630",
+    "plugins/medcius/servers/shared/validate.mjs": "2f24e8ee0806e411b2246317a289f2eb3012a49fae27f0991d98a5b36f7fbff0",
+    "plugins/medcius/skills/clinical-note-extract/assets/china-notes/expected.json": "652a884940b3e7bec1e6b810b80e40cd9280131c0825555a8ea3f26d249496c8",
+    "plugins/medcius/skills/clinical-note-extract/assets/sample-schemas/ade.json": "0236b0eebadeb09e7bf9faba2eba04bd0c87aaced3a702dbf7d55aedd6ccaa82",
+    "plugins/medcius/skills/clinical-note-extract/assets/sample-schemas/china-inpatient.json": "bd5bdaba2e80e8aebb230f3b8e83a60935d3624de8b4d45b7afe207ff415e4a9",
+    "plugins/medcius/skills/clinical-note-extract/assets/sample-schemas/pft.json": "e7481f22aeb96480265ebd201acd6fffc9dc5acc5ffbef02d119cd3c813aeb4f",
+    "plugins/medcius/skills/doc-extract/package.json": "48eebe7bcfd7be1ab094f3695085457e49765be7f133002d6d30523fe1183102",
+    "plugins/medcius/skills/doc-extract/tsconfig.json": "850f8545c76a90f7284a1406a4194041fe229ccac996ebd9d75b1c23754ac50f",
+    "plugins/medcius/skills/doc-extract/scripts/decoders.mjs": "34be6a0d6827fb8346e49dc237b3dba616b134559b8adc2382ac946a3730610f",
+    "scripts/benchmark-phi-paired.mjs": "2f6bae55215108233878c0a56b925a18af6c4a6b8784ba68e7c4796e29cd9d9d",
+    "scripts/benchmark-phi-burst-v2.mjs": "4fed10860621fd6104a59994c9a685026d23695ab374793a540032958fc86501",
+    "plugins/medcius/data/phi/cn-pronunciations.v1.json": "f49bbf398c9abf2eddd1f49e8b30040b2f662dbdbaa78fbe7f1eaa6dc1001c99"
+  },
+  "v3Sources": {
+    "plugins/medcius/.mcp.json": "3497a42dbaf256722080160df77824f049377de3f23c40eaab397ed0ba5d534f",
+    "plugins/medcius/mcp.json": "fd7e7998db39beb953160d851d4ea157cadd11b635c742483f1d21ceca35771f",
+    "plugins/medcius/plugin.json": "5f1738c02e6097c4d29d4fb6dd95200046ad3a79b8a1d8486071d0f42861caf7",
+    "plugins/medcius/.claude-plugin/plugin.json": "20f1e11beb051b9d2c1a06d1c5c905692f00d86a28061decfdb4dc252394c8cb",
+    "plugins/medcius/.codex-plugin/plugin.json": "0815a119298724376ab3eb49179591ffe3c0d51208e52268447711fc0c4f9cc7",
+    "plugins/medcius/config/groupers/jiangsu-unconfigured.v1.json": "964424e78ad7cb0f6cf7d4aba0ab7b97984de5060fcd1bb8df690d42f128c45d",
+    "plugins/medcius/config/groupers/regional-rule-registry.v1.json": "42765ed08b19e267ada9d76671fe12c2914c54c241060b13a5cbb612fe2e4f56",
+    "plugins/medcius/config/groupers/synthetic-exclusion-pack.v1.json": "9aa575241631aa7d46a5ae11b06cd04a43e81cc2fa90c30d8ae88b39d0e06592",
+    "plugins/medcius/config/record-review/jiangsu-reference.v1.json": "6e1ce3f0cd7fd58f3a9e215e522a6fa12e2b9f21009e314d190cc54d9ad5a2fb",
+    "plugins/medcius/config/site-mappings/synthetic-cn-views.v1.json": "d4ce767dc67a1f193fcc6514b6c29dc4b885c8b631afc55878054d28367972da",
+    "plugins/medcius/contracts/causal-evolution-report.v1.schema.json": "ebdf9838eb750c575992f06d8e4de4574e8cf3cb7c185207118dbc5c5b065a70",
+    "plugins/medcius/contracts/china-record-quality-report.v1.schema.json": "d0e2ec6515a69548380228c41cbd6152481332dfe12dd27b5da4d86944741649",
+    "plugins/medcius/contracts/clinical-skill-catalog.v1.schema.json": "b6b194480e0a04a42a2f2747d370324df5c3ffa56863751aca6c5f39e674300d",
+    "plugins/medcius/contracts/drg-dip-reconciliation.v1.schema.json": "80fc8dace8fda742c00c7210ac78430e966115e796fab11e8eca11a8375abc02",
+    "plugins/medcius/contracts/patient-financial-access-record.v1.schema.json": "bf20cc2e4b41efaa2e1a876a38dc93c6b06ec794f261d533847c243bbd65f779",
+    "plugins/medcius/contracts/site-view-mapping.v1.schema.json": "eb4b1bd7a4e6bd95fcf99571a33994084ac3bb1898f0dacb438856bf63560b26",
+    "plugins/medcius/contracts/temporal-evolution.v1.schema.json": "67b6e0d7bbf9feb50843c93712312f30e4d776278da6b719cbe58d919ce9b254",
+    "plugins/medcius/evals/evidence-status.mjs": "1d1d600c15f4db4113150061eede6b98bafb97e7e87a12de4551b1bba757442e",
+    "plugins/medcius/evals/report-consistency.mjs": "058d885ae55ae668114d2d083ab4f662fa283cd3b40741f1b46dda80a09be627",
+    "plugins/medcius/evals/china-skills/grade.mjs": "c1186c191f0b080660bcadacf93773eb62773894e8c3c724c52b9da4a3c5d536",
+    "plugins/medcius/evals/china-skills/run.mjs": "aa9bd403861603f5e9019b93066016663a920bd395d44ad1d28ce57f6614b376",
+    "plugins/medcius/evals/china-skills/cases/clinical-note-extract.json": "779d1b269ebda8c11a9235b0665534fb7c7c2dc42aa757b95de9887cc2702fb9",
+    "plugins/medcius/evals/china-skills/cases/nhsa-coding.json": "422e6ad90ee557c73aaf4b8ef4f9c3104beb22466c32a94eebc023d511bc3e6f",
+    "plugins/medcius/evals/china-skills/cases/nhsa-policy.json": "373ac48a4b78b436fa2d09f8b595ef40dd340951dc3486aeb57f519edcf9df52",
+    "plugins/medcius/evals/china-skills/cases/nmpa-and-trials.json": "f3199b13ad423407ef587b01c27c7686384a1ac01cbdbfe681e290edef6c3edd",
+    "plugins/medcius/evals/china-skills/cases/prescription-review.json": "ec915af58923ffcf5b9c0b291e4aef48408f6ba8aeb133f338a057fc06df2052",
+    "plugins/medcius/evals/china-skills/cases/record-quality.json": "7495af4688e3cb239f9b2ba5b7160560f22cc88e1d4a55755f4e5c4b4f2cd709",
+    "plugins/medcius/evals/china-skills/results/cne-01-allergy-negation.json": "2295089bf4ec20d0da7a05abd8e13562024e65636b0540b9dccc0d4c91ce6d82",
+    "plugins/medcius/evals/china-skills/results/cne-02-family-history.json": "2a6687df9f795f422045b2f4eccc67d5172308850c226023e640a911d2090e33",
+    "plugins/medcius/evals/china-skills/results/cne-03-uncertain-admission.json": "98c09146274b24e0f9a62d821c278df3bacba24c3bc6d9b5b3aefa059cc92312",
+    "plugins/medcius/evals/china-skills/results/cne-04-admission-vs-discharge.json": "659e51b7b157808dff5862bb6aec55d9be54306d8eeac16685f05577186b616e",
+    "plugins/medcius/evals/china-skills/results/cne-05-prior-vs-current-procedure.json": "ae82691a7ad34948c9e012de0ae3ca3631049e65ca3e3962e931f07210fe111c",
+    "plugins/medcius/evals/china-skills/results/cne-06-planned-procedure.json": "9f345b11182e428e9a299767841496c484ab3c5a02210785091a3f8cbcd7b3bf",
+    "plugins/medcius/evals/china-skills/results/cne-07-negative-physical-exam.json": "12187cf6e65359790ef0fc09637cfc3d3f693a51578b69386ebd0d92ae7e650d",
+    "plugins/medcius/evals/china-skills/results/cne-08-prophylaxis-not-diagnosis.json": "bb06b674bc78e08d4459d97351c9cecb6dc67a522e31a49d2b52cfe1bc8a5bb4",
+    "plugins/medcius/evals/china-skills/results/cne-09-lab-not-complication.json": "318db357a1a4c322051d56dfe7fdfaead952f2e7bf8d6446aef01f1d1e6520dc",
+    "plugins/medcius/evals/china-skills/results/cne-10-rule-out-mi.json": "3a3fd5288bf06b89e1be49dad48643a73c8f01813c0c0706de1c607913f79e7c",
+    "plugins/medcius/evals/china-skills/results/cne-11-outpatient.json": "0221db643203a9a3cf876202369e651228701ece939c413f9f2e1127e58e35b8",
+    "plugins/medcius/evals/china-skills/results/cne-16-labs-umol.json": "d34e184553a5eb96fbfe1a7a550747ef33ac553f414189fadd6e4de4e3c4c2f0",
+    "plugins/medcius/evals/china-skills/results/nhsa-coding-01-bare-category.json": "12cf4d14b568baf41f7fca638c8cdb40ceec42cc1e55120323d28aa370d2bf3a",
+    "plugins/medcius/evals/china-skills/results/nhsa-coding-02-specificity-8-vs-9.json": "68d1870ccda0ea523f185c4158f0f97020ccad1449642ddd08a916229cd77352",
+    "plugins/medcius/evals/china-skills/results/nhsa-coding-03-cchi-misuse.json": "f4201cc15a2f3e5caec08eb4cfa4b4e0b2633513edf2dd2b37d469df975585ee",
+    "plugins/medcius/evals/china-skills/results/nhsa-coding-04-version-unknown.json": "f76aa6bfed34155054a66350d5a9648308f9e0dd8b63e997ab07d2fccd409e6d",
+    "plugins/medcius/evals/china-skills/results/nhsa-coding-05-no-connector.json": "b9cf3d3c1ebdb374da35d9231c4bb900099922260e7821b2313824baf8605745",
+    "plugins/medcius/evals/china-skills/results/nhsa-coding-06-uncertain-diagnosis.json": "c02e64b47ed0c6509bfacf4377ede622a706c0e88c5d5a6f11a913d7ccef6761",
+    "plugins/medcius/evals/china-skills/results/nhsa-policy-01-directory-ne-reimbursement.json": "e6ea4b68e4f23ec03ab9f47fc195db82777b89e0c124dc398045893dca99e2d2",
+    "plugins/medcius/evals/china-skills/results/nhsa-policy-02-l3-number-without-citation.json": "a1d2cbc5af626cdb93bd9ee2cd9ab507212ddc564300487b6fe40f5353a36f43",
+    "plugins/medcius/evals/china-skills/results/nhsa-policy-03-l4-no-numbers.json": "d2243ab58da8a8d90e32fc28201295faec3d2b2a3df5d06b3fdd16a923fb50d8",
+    "plugins/medcius/evals/china-skills/results/nhsa-policy-04-province-no-formulary-supplement.json": "d8b74f3b3d2ba3b36a8979eee6b00f3663b20554059089fe3b3403c7a6f89b05",
+    "plugins/medcius/evals/china-skills/results/nhsa-policy-05-payment-restriction.json": "1c8e2d579e119cb1c03ac6f1a32a03be10c34ddf0a8b345b5a63cd932d7ba1b6",
+    "plugins/medcius/evals/china-skills/results/nhsa-policy-06-cross-province.json": "a304d5d9b81dc04b332976789faa7731d123e4a7bcdc203d34184900812b83bd",
+    "plugins/medcius/evals/china-skills/results/nhsa-policy-07-drug-negotiation-expiry.json": "24c662990bdc5ec1c0d41b8e8b2f9a1a88fe2d6a21296ebe8dcada7e95024c89",
+    "plugins/medcius/evals/china-skills/results/nmpa-01-approval-format.json": "e93e97c04942145b99260189c0ead4909fa99bc96795bfc799d09d0d87c3209b",
+    "plugins/medcius/evals/china-skills/results/nmpa-02-otc-rx-from-connector.json": "644f9687839be7f39836deb6d33b74060668fdba5084b094662510144c9979ce",
+    "plugins/medcius/evals/china-skills/results/nmpa-03-import-approval.json": "e58740661ce7348eb2ea47b4a4cba7eb289e7abd8e383c45eeecaa8a1f94c232",
+    "plugins/medcius/evals/china-skills/results/nmpa-04-expiry.json": "245bd29500cf78bb04930ac9252e9e8845b450151542e3cbcfec8872f8cf88f8",
+    "plugins/medcius/evals/china-skills/results/nmpa-05-no-invent-approval.json": "17a089fc41e139d758850bccc1fdf327a5eec24e64ac94eea3046d507dfabdff",
+    "plugins/medcius/evals/china-skills/results/prescription-01-missing-weight-pediatric.json": "8aaaa7eaccdbb698b210d49577cd4a06e43e2e0c8f2bd71bc6406645aa58b4d7",
+    "plugins/medcius/evals/china-skills/results/prescription-02-g3-no-query.json": "e612baa2ed420e7982f4eba9e3ee6dec85bb0935da366f488b6ea46892fe6311",
+    "plugins/medcius/evals/china-skills/results/prescription-03-memory-safety.json": "106a1e624f70c92577d31974bb00600a32a03326de61f92ec67536272e629ad9",
+    "plugins/medcius/evals/china-skills/results/prescription-04-tcm.json": "4f8aeabdbe0180fdc4459ea1dfe1baa8d2d6b487e1bb66d3f689a2b3868c0d24",
+    "plugins/medcius/evals/china-skills/results/prescription-05-duplicate-ingredient.json": "624c96720b1351e42deee61918bf8c762ca70f134f4f15f3ec22a0be1d96db9a",
+    "plugins/medcius/evals/china-skills/results/prescription-06-sample-data-flag.json": "7477b3fd7d5fb38a9fadd1ebbda149227db1dbb69b07d2a0044d884e7ce66e12",
+    "plugins/medcius/evals/china-skills/results/prescription-07-no-mention-not-no-interaction.json": "2f96e5e69dab4168ad01a8f33244cde9a37b8acf7d71e9a753e9ec5451274f4a",
+    "plugins/medcius/evals/china-skills/results/prescription-08-renal-missing.json": "581bcdc8f788e1e0107b8f50cb8cd62e4b4a4f588d7b6c9650068c381e71a145",
+    "plugins/medcius/evals/china-skills/results/prescription-09-allergy-flag.json": "f21329eb37893e7274b6bc1472c976c1bdb58f9564f080558d22f5069a68ab14",
+    "plugins/medcius/evals/china-skills/results/prescription-10-contraindication.json": "e7f328b5f82f612d6de141f9e914e538de8b4462edc78bff393a14904dff0ce7",
+    "plugins/medcius/evals/china-skills/results/prescription-11-renal-bucket.json": "5a67146f732d539d2294d704cd0b975b799c43ff3d85abb63e4d0b57fda5d9ba",
+    "plugins/medcius/evals/china-skills/results/prescription-12-pregnancy.json": "deab8ea85d3e89e4b689193363f157c992930c12af81069fa115fb376e19f0a7",
+    "plugins/medcius/evals/china-skills/results/prescription-13-duplicate.json": "a0b19069fc21e256d6baff31f0839db69f3c304ffc61ab48ca4f7088fa4a4a2c",
+    "plugins/medcius/evals/china-skills/results/prescription-14-no-mention-not-safe.json": "d98b09630a7c1249c72cadebc3144db91b1cc8215b15830a0808cdaa7fc10fb9",
+    "plugins/medcius/evals/china-skills/results/prescription-15-scr-umol.json": "8150ac736273316189442230c055519b6b202ea7d27d200a2a3e0783d10dbf71",
+    "plugins/medcius/evals/china-skills/results/prescription-16-cyp-class-signal.json": "cae6ef48742c55fe171a3c95bbe50122133bb1b3ff83baaa0ae9a5a90504077a",
+    "plugins/medcius/evals/china-skills/results/prescription-17-cross-allergy.json": "371a227a1170f9246ff25672b4219477151f3d5a9d5f4b844293f112c40a9cf4",
+    "plugins/medcius/evals/china-skills/results/prescription-18-tcm-fan.json": "f1e966727c808a12fafb5a9efb6c9edd7921e0ac84a31afb5894efb9f237b7bf",
+    "plugins/medcius/evals/china-skills/results/prescription-19-morphine-limit.json": "a9ff04f71020188fcf3702e66a9bf635f8c3da057ae3fb377c4757810f3feb0a",
+    "plugins/medcius/evals/china-skills/results/rq-01-primary-diagnosis-missing.json": "9b3255ab6fe559733a50c8ad22281996a4b8f566e147564f348cb26aba49e836",
+    "plugins/medcius/evals/china-skills/results/rq-02-discharge-method-illegal.json": "c8fc8bdc79d27edd475486eccc317b4e2c25f6fbbaae8e81dee31b5bccd8118f",
+    "plugins/medcius/evals/china-skills/results/rq-03-stay-days-algebra.json": "7da0d48905e533f80d2f1118a4c6080a1e9803fda4c4a7c3295b3546fe155e9a",
+    "plugins/medcius/evals/china-skills/results/rq-04-death-method-no-record.json": "5303fb366c68af419067da3a140a74055bea22f0f89e384702a95eb6e793a20b",
+    "plugins/medcius/evals/china-skills/results/rq-05-obstetric-sex-conflict.json": "9e1351cefd218e7e90dcd3e95a77efca1ecd570f8e498eb1623a8608d5d5f6cc",
+    "plugins/medcius/evals/china-skills/results/rq-06-fee-algebra.json": "ad177f555f97de1a80d53c40bb0133fba03da23089caa894ed9ad52ec6d871d2",
+    "plugins/medcius/evals/china-skills/results/rq-07-catalog-restriction-hint.json": "12a3701c86c6d52c2fab8f4265a78f18b809b35f5d825dca778ae1bff64380f8",
+    "plugins/medcius/evals/china-skills/results/rq-08-newborn-age-conflict.json": "5fabcafde1d6656b8bebb0c293b178eb895084301fcd6760efd2a0a5dbb4ec8d",
+    "plugins/medcius/evals/china-skills/results/rq-09-catalog-restriction-match.json": "d8646f7ddc7dcc4209ff99e93cba6981bc1d484db883b6353d3ce690863ce761",
+    "plugins/medcius/evals/china-skills/results/rq-10-death-with-documentation.json": "ed1c67f9922613362703c19d78755991c4fc17042ca5519d1bca72b121380f2c",
+    "plugins/medcius/evals/china-skills/results/trials-01-ctr-format.json": "af21e9037a7caad30f42f6eb73f0e375f741477593006ac9707e0750c851e1c9",
+    "plugins/medcius/evals/china-skills/results/trials-02-implicit-license.json": "50ab838dcbfd776026cea8132d5dafe9366fd7d633f3af40a0463ad28ee1dfc5",
+    "plugins/medcius/evals/china-skills/results/trials-03-not-in-corpus.json": "86fe3768a2e4ccc1153b6b4d24ef296c56594c74f4b90135beafe11469a052d1",
+    "plugins/medcius/evals/china-skills/results/trials-04-local-search-hit.json": "fdc71b5f85f6f5a7710ff13d782c9eecb216aaaefeaef23ff6d4492514feb16d",
+    "plugins/medcius/evals/clinical-benefit/observation-template.json": "409d6aa1addf81375d64a53026c33381e7c89c5d46253fbe81db84c16637f280",
+    "plugins/medcius/evals/clinical-benefit/observations.mjs": "24ffc0ab895650b2c55c49196f1ae7b413f51541653b70e9097afcc402ab8981",
+    "plugins/medcius/evals/clinical-benefit/run-synthetic.mjs": "898ebdd1d79f9a0546207ef77c4390ece9e73975ca9c1fdf25b603ee3a5cec1f",
+    "plugins/medcius/evals/clinical-validation/run.mjs": "32daf1de539e0390cc95cb12bdae205ed7ce06bb5b59fadc04df0d22ebec552b",
+    "plugins/medcius/evals/clinical-validation/ward-complexity-benchmark.mjs": "2e877c3fe2cb8ba653eef6b1671ea247bac37a3a3037a5c6efa3cbe358a1ff6d",
+    "plugins/medcius/evals/clinical-validation/scripts/init-batch01.mjs": "f09f72f3ed89cee4d3eec69e183d956fb267079f01e5f993e0f88603fdb976a1",
+    "plugins/medcius/evals/performance-baseline/bench.mjs": "1a1941106baca709aea92a86550b1dabc8a97494772b7265d6c252d4f6689316",
+    "plugins/medcius/evals/physician-annotation/physician-annotation-engine.mjs": "32e7d622eb4cca2f0efcf767a1c37d784614354ae31f06257bc796a060794f07",
+    "plugins/medcius/evals/physician-annotation/physician-annotation-report.mjs": "951cffcb766705da62ea84f7442f7c674ceda759984aaebd1a3f64eef37e7cd0",
+    "plugins/medcius/evals/physician-annotation/ward-annotation-cases.json": "49caa186f7e71186880923102315396ab755ff8ef803b73c0be90647f350f393",
+    "plugins/medcius/evals/public-benchmarks/convert-ccks-ner.mjs": "4d51db0633387f7e3e4f1acbc97ad5390fed4c2a5c109d72f0d16e61827264be",
+    "plugins/medcius/evals/public-reference-validation/public-reference-pack.json": "98fd7946b5f4e5e7b5ce0be3664a7dbcae7b5bac9f0eb29adaa3ff7fbb963f29",
+    "plugins/medcius/evals/public-reference-validation/reference-reviewer.mjs": "ca65271a304f335220868fe83687ebc204c7d487a9ba867449e35f1f9bcf961b",
+    "plugins/medcius/evals/public-reference-validation/run.mjs": "565775036e21cd3db0d28b682829c2f5f354b37e9b22d8bc6865afb5c10895a0",
+    "plugins/medcius/evals/public-reference-validation/scorer.mjs": "1ab9ed3a501e61f0a8df415c84c53361e123e72eb85ce296826ae029ed8d2fb0",
+    "plugins/medcius/evals/real-world-noise/grader.mjs": "f1a901246675c6d9b20a0f1d892ae3777eab9641f2c1d97f8a638f7330c1152d",
+    "plugins/medcius/evals/real-world-noise/ingest-real-data.mjs": "9aebc86dacc27796e3322824a6cab21252e66b28d06f39259ca591a7fd1ff92a",
+    "plugins/medcius/evals/real-world-noise/noise-models.mjs": "8d23143df5da1d5d5899efd55d4aa4aacaad936fcca9ce47d1bf93f35e68ce57",
+    "plugins/medcius/evals/real-world-noise/run-noise-benchmark.mjs": "8abe9f596e0ecf9235df9dfb7f5ca10506f00ed85984db402abe99b2565aa778",
+    "plugins/medcius/evals/real-world-noise/run-noise-diagnostics.mjs": "bf74e805dfb15c82352b8b6e524db064a5274ba1a63fe4d51cd8b8b7958dd4b4",
+    "plugins/medcius/evals/shadow-mode/engine-challenge.cases.json": "13a4dee78ba21e463f5d97b2dec907be61d78abccc8cd9185cbf0ef3695522c7",
+    "plugins/medcius/evals/shadow-mode/engine-challenge.expected.json": "17bc82a2ed47b875a615ad433cbdf83d8dd14c49b5f3f77c0a082369ea07bd67",
+    "plugins/medcius/evals/shadow-mode/engine-challenge.mjs": "f740075c58d2e82738fbfbcaec8bd63db7c6afaa9bed4ca3e21bbeb9b88c57bb",
+    "plugins/medcius/evals/shadow-mode/real-world-study-protocol.mjs": "536370817a321cd577973b9a01d98ebd7b971fac8b21a809549f551a60297195",
+    "plugins/medcius/evals/shadow-mode/shadow-study.mjs": "acce709bf0434e5dc4cfbce257cef0d2054e60f3baf61811b02e00d8a7a789c6",
+    "plugins/medcius/evals/shadow-mode/ward-consecutive-validation.mjs": "dcff043fcc99f9dcd8e2192aa6964f4cd47d9bcea1956b1a733e067b79e4ac57",
+    "plugins/medcius/evals/time-motion/stopwatch-protocol.mjs": "ce7e631dd83bb11015ed36513fdc6ca647e1e08e5dc9dbeb8e2b413caac4d001",
+    "plugins/medcius/evals/time-motion/time-motion-analyzer.mjs": "d331a62eaaf3cca76556f996df254143176b4c57c3320dfa8496ee06318bfb38",
+    "plugins/medcius/evals/time-motion/time-motion-study.mjs": "ee49c101f3d5bf55e5053aaefd6378b72d051f351bf7b3696af96e67e411896a",
+    "plugins/medcius/fixtures/connectors/cda-replay.json": "2a178da5aea34f7b3691ed968f940a0bdea68d1feeea259a3cc42afd70abe479",
+    "plugins/medcius/fixtures/connectors/fhir-r4-replay.json": "177905d8080708a5d1ad421f79480f6cad8a8f886e60864dde3ef9d06c5c5422",
+    "plugins/medcius/fixtures/connectors/hl7v2-replay.json": "ede6fdff524b93c6bc686288b42ecfae1c1000b0fa4ec47a2ab27e8dfa700527",
+    "plugins/medcius/fixtures/connectors/view-library-replay.json": "21790501efd54b43f2dcf64c40e417afb9c0c7c786de440c3cfe2e87259b8d2f",
+    "plugins/medcius/fixtures/connectors/viewdb-replay.json": "b094031610a142737f1c96395feb70e2a50ea05ada9cde2822274f686d11c6f0",
+    "plugins/medcius/lib/authorized-hospital-source.mjs": "fd0b8c5147f74a4db86879207c4f6d9ed7eb58245ab9dee3fe8353527c4c58f0",
+    "plugins/medcius/lib/ca-signature-adapter.mjs": "99e7e281812c766e65b6c627261b36cbf8239dc1f2863fde8384fbc452724cad",
+    "plugins/medcius/lib/calculation-reference.mjs": "95a0e8dfb744af6d67c55f9de57dc862058d524684836e6bc2094dbf53baac55",
+    "plugins/medcius/lib/causal-attribution-engine.mjs": "78cb90a2a6e8186402f2a1f8b843c0aaff8e88591f116a342fccc98f01e5e923",
+    "plugins/medcius/lib/china-clinical-rules.mjs": "b48c5a36d871217f7ae6bc630e97a2936afeb4b5615188bc54dc63ed1284edfe",
+    "plugins/medcius/lib/china-pharmacy-catalog.mjs": "5a07126272aa17e70890c8558451b18713610ba5ce3dcbc020edfa0db2e3e3f5",
+    "plugins/medcius/lib/clinical-boundary.mjs": "c8646d05b0320ac6fde4a5ef55f4bf15db9e1b045c791447ae5b70ec24d75a1d",
+    "plugins/medcius/lib/clinical-evaluation-intake.mjs": "c9f8bab1340993cd5310204a2f6416980fae1652d8a13b2e84e15114fd0a5421",
+    "plugins/medcius/lib/clinical-landing-policy.mjs": "a3f86b51304b39beae3de005aeafeb06b1de898158ede7bb4dd18013c9cd4778",
+    "plugins/medcius/lib/clinical-skill-catalog.mjs": "dd0ade7444a685bee52bee635134c47319b5d36d8007c495a69c6e791095c302",
+    "plugins/medcius/lib/clinician-directory-auth.mjs": "7910816ab9956317ad2937208a42472ba9747ef7fb98c34a830ee933371cda60",
+    "plugins/medcius/lib/clinician-review-session.mjs": "e983513a85355768d93f59360a5675e9e0963dd7f3d51be1127d0b5e0f4b5dba",
+    "plugins/medcius/lib/cn-assertion-rules.mjs": "b6a4e1379a8c22afd70464d6852e76ddf6dfd3d841cd07bfe82b334cbe215524",
+    "plugins/medcius/lib/cn-assertions.mjs": "6014f612d34a34a7eb0e920accbbe57f2d7f70fff5b9e234033a88bbe09dae8e",
+    "plugins/medcius/lib/cn-measurements.mjs": "f871027d7b97657e6ac7263a4b5eafd0b91c05cacc01db565764e18c6431bddb",
+    "plugins/medcius/lib/cn-note-candidate-contract.mjs": "d228bd5557a8f4803812826aa9c0c88ec89ce280e0c6aaf5e692e53bfc18fd9f",
+    "plugins/medcius/lib/cn-note-extraction.mjs": "edf42993d972b9cef66ca64ccc68090ef5f41469e9faae9012f4be92ea18f75b",
+    "plugins/medcius/lib/cn-note-terms.mjs": "85a5f18fad0d302f89134ba83bf66e17ea822a686751dae1e77338157151cec3",
+    "plugins/medcius/lib/consult-preparation-engine.mjs": "3d11c0ba843622accb6af12a9ae28f87f9b24d63983a65c62baa15c0070476eb",
+    "plugins/medcius/lib/consult-snapshot.mjs": "a7d4f876e1955bf5a28d2e7d8e5b20f6d9bbcf1dd01e61ef20de41e85e7c12d3",
+    "plugins/medcius/lib/critical-visibility.mjs": "f18b607a21be8c8665755cf09eb9f97dc946e8bc7c32c599e57aebe33dd50227",
+    "plugins/medcius/lib/csv.mjs": "295c6f45e95ed2d59f14a9db328c467949a0c61c74ee50946339e136295dbad9",
+    "plugins/medcius/lib/discharge-readiness-engine.mjs": "639e7f7f6174e23baf2a41d01b8d7f798582a3004a81cd0adb074d14d3261f86",
+    "plugins/medcius/lib/discharge-source-documents.mjs": "ae6624ecdceeafba7addca1e4e6c16a642e21e7dbc445e2bfcfb37fd1675c714",
+    "plugins/medcius/lib/drg-dip-reconciliation.mjs": "d347b7f8dd18f1c25d126d7636d89f59e7e41e2147253f26747e9501e666e143",
+    "plugins/medcius/lib/enhanced-phi-guard.mjs": "480dd32c45cfbe10532cd6604f195a6625b89b76f9c6c955a96c759f7d9b2714",
+    "plugins/medcius/lib/evidence-anchors.mjs": "df7328e00861557c17f8c986ec023cf030cef358cad8b3e070050d8c145b0187",
+    "plugins/medcius/lib/governance-mode.mjs": "12d67992bda3a07b2fdfd9d767bb9265e8ea76705f8dd3e57270cae3f2e7250f",
+    "plugins/medcius/lib/handover-events.mjs": "f770ef170c26257f6f660b58a160b7b3c0bfa03422e4ff5e0d9c3ff8cab44aeb",
+    "plugins/medcius/lib/high-risk-followup-tracker.mjs": "000e062f5f068afa33c84e8ba50f11bd33e26645640f0ef14ad48252b7906b1c",
+    "plugins/medcius/lib/his-embed-adapter.mjs": "18547ee87b83a8da1715de4ce02a1350755c02aeecd80b23d55b6bb66ea03916",
+    "plugins/medcius/lib/hospital-agent-adapter.mjs": "23f31653817bff0dde0796d5a86ccda54fec7e90bc71a0b8f4fed5e9b5c63bdc",
+    "plugins/medcius/lib/hospital-data-adapter.mjs": "90da918cbc9e136515305edbd155c8fc58b4388cb57455e74a9230873a0766fa",
+    "plugins/medcius/lib/idp-jwks-verifier.mjs": "98afa2a92de038ad0835997eb066008c4f60a969ce399b8dc6bb5764b1f20d8b",
+    "plugins/medcius/lib/imaging-report.mjs": "7959fcb34802784ea0b0864ecfd9c74d704983ef1018e818ab337378f4c0f372",
+    "plugins/medcius/lib/laboratory-terminology.mjs": "838bcc16f0df79b2a60b68290101837ffe8808ae67219476ffd012f518f66527",
+    "plugins/medcius/lib/llm-inference-config.mjs": "68d2e78e2e5180b673a2d86db245a893ecb046eea535fd15a378aaacb04ae93a",
+    "plugins/medcius/lib/local-cn-ner.mjs": "6f9936cb13b1dbf43fe5a4884127eeff5a1f66e7639753234c4ff525359c1181",
+    "plugins/medcius/lib/local-grouper-precheck.mjs": "6f8274d58ae15db14ae0b9f9395949bb0dde789956875ce1cbacb487b9c78d7a",
+    "plugins/medcius/lib/local-phi-egress.mjs": "e48f9d13475edfbffe094426b819c4448d2a3add299bbf87003ee26cfeb0fbe7",
+    "plugins/medcius/lib/mtls-gateway-guard.mjs": "428b4d6ad5b712740add5635f50329c2b9b47c77c5ce7ca3ebfc85e7ec810eff",
+    "plugins/medcius/lib/nhsa-record-quality-engine.mjs": "9db14e7c2a85886b44208864e3454f7e2875caa9516acca17836313707a9a16d",
+    "plugins/medcius/lib/onprem-airgap-guard.mjs": "02392ea101fffafa9851797579bd10fdad37039baddf4504ec0d785e73578181",
+    "plugins/medcius/lib/order-execution.mjs": "e9adef8f6c18b5fbfe83628b7f56d4dc518bee6eeb385c8fd27fc4c9ff11a080",
+    "plugins/medcius/lib/output-consistency.mjs": "7187dbbaf37edf5ef3a38869931cbf09f70b84682bbe1503a96216e233b3a429",
+    "plugins/medcius/lib/parse-cn-note.mjs": "51194e87641da0a5c52ac9a72347d0f93456ae012065f8c48044dfa3cbf4af5d",
+    "plugins/medcius/lib/patient-affordability-context.mjs": "cbdb5620920adcc6b0c6563810068e935f26b0e30f9503aff4bc2d918d348afc",
+    "plugins/medcius/lib/patient-evolution-engine.mjs": "c9a9b76f0cb9e78258f44391518755d99b04c1651cdc528df41fd02088b2e2c8",
+    "plugins/medcius/lib/patient-source-phi.mjs": "3e37321fc4db8c37ead75bc1fcd4a583e62023793c1acc8c26311fc8200a2d1a",
+    "plugins/medcius/lib/patient-source-snapshot.mjs": "28f92db52f07e9939b45c11454890da4ed283f11ab66085f2da9ce7be62e87c4",
+    "plugins/medcius/lib/phi-clinical-literals.mjs": "1980485db621ab1ca638b5a9a316042650917bc3be37cc32b884beeb11db96d0",
+    "plugins/medcius/lib/phi-entity-session.mjs": "64418a4952262f57279d0447d6f707a1ee823edba2879e949c2aa6df36e4300c",
+    "plugins/medcius/lib/phi-inference-scope.mjs": "b92a2c88c06724d593bebbf067d2ac6e1fda8e977b3df5dfa9ee36007d762324",
+    "plugins/medcius/lib/phi-oov-subjects.mjs": "a932e0950526ed6c21766df33d673647b3dc69923cb71054a4a015c12047de69",
+    "plugins/medcius/lib/phi-runtime.mjs": "910e40b7b462eea6885a59ab6df440846c82d5d2ae96157cb6b5f8d1427236d3",
+    "plugins/medcius/lib/phi-value-guard.mjs": "c60d955f658f22cb720b26a7e1c64f227eec70d10dce73c102f0ff261d1f7d25",
+    "plugins/medcius/lib/phi-ward-cache.mjs": "8d0a0b965f3b158da3917d10867c796a28d663eb9830709fd1884fe3fe669779",
+    "plugins/medcius/lib/plugin-version.mjs": "cdb6a6a15c114e8221a67c008a6818605d08ff2c90dc697fd3445e9bcb646b94",
+    "plugins/medcius/lib/post-hoc-verifier.mjs": "6b217e61bc0cd1c5f4dee5ec9302ebb276423171ec172443ea057947de7fad90",
+    "plugins/medcius/lib/production-guard.mjs": "12606d2982c9ea03daf268783718a869bb716a67254a59a8922fdc54fad9ec7a",
+    "plugins/medcius/lib/production-phi-policy.mjs": "b8971cfec19a2008daade4e7aa1638e19a2a87d54f6ac35a712807c6ab096d5f",
+    "plugins/medcius/lib/read-only-hospital-data-bridge.mjs": "ab2de9b463745cf03d90197b1d4a25e58f59229175fe20016237ac9f8950657d",
+    "plugins/medcius/lib/reconciliation-lifecycle.mjs": "7f228cd0117fd8edb96106264322e4d141e8cb5e09970d73a892bfd798f6c4e0",
+    "plugins/medcius/lib/reconciliation-rule-packs.mjs": "9cb05f0fb8a440d1beac03d0391c6ba6e9d5910ef96960aa1090ab6c4f48ca7b",
+    "plugins/medcius/lib/record-evidence-reconciliation.mjs": "dd82e1846874037144a16fbbadef411decaabf961c5ceed58bf3b43919d16c86",
+    "plugins/medcius/lib/record-lifecycle.mjs": "2e9f971bab955e927087e2ff434fc47566646ed1f429dacb04276f7cd3caf047",
+    "plugins/medcius/lib/research-review-workflow.mjs": "d1aa500c9bf2066a75b66137d2f3650d669f0033b160238a558acf9610ad43fc",
+    "plugins/medcius/lib/rich-note-normalization.mjs": "2e6a2c6e8e5569498059411d703c874336026f34188d2909bfb24c3d01c50a98",
+    "plugins/medcius/lib/samd-compliance-tracker.mjs": "71b2ec5a08d4aef9804589298829193fec62d2a8b8924cb2b3da48d11c7fc874",
+    "plugins/medcius/lib/settlement-from-note.mjs": "887925563512b8dc3adac0a290ebff2d5f1b46cfe404747155de03ed2baa3bb5",
+    "plugins/medcius/lib/settlement-review-workflow.mjs": "8b5a6ad4a598dc27cfd8d012c2c3ea14bd3d0996bec59d0aa705b7f9efa6b0f6",
+    "plugins/medcius/lib/shift-handover-engine.mjs": "43cb9786731b565a3351cd4b075a964d9090aa0d26d28778faccc114feb22714",
+    "plugins/medcius/lib/silent-research-archive.mjs": "f2a005795bdac5f2f3dc5fc32e73ef7fd95678c3fd7079fabbe0043907811114",
+    "plugins/medcius/lib/site-activation-gate.mjs": "cf179f236892386e6a87dac1b1aac55a1b82797523d5cc83c1f67f98c4edd28f",
+    "plugins/medcius/lib/specialty-rule-pack.mjs": "044034da24ab82440f6b2f81d01614684f1f28dad6a4c5feb18e31552cd12077",
+    "plugins/medcius/lib/staged-draft-service.mjs": "f4d1c2267e4de99cd60f43fb788d670a5df2a9d7ddd22f60be71ff3b09dc396f",
+    "plugins/medcius/lib/temporal-evolution.mjs": "1c670e4ce5e884666593ef57112766d7885e2a562ebf61818dc04fcb367e27a1",
+    "plugins/medcius/lib/terminology-crosswalk.mjs": "ed12c6d0f72b8fff7750b161ebdb9273087be57cf686300da1ef47a6033a2ff4",
+    "plugins/medcius/lib/timeline-reconstructor.mjs": "f1c7026ecf023bf0d7e11958f934751ee934b39af58d158c416960992d8b17a3",
+    "plugins/medcius/lib/connectors/bounded-xml.mjs": "ef8c10d36fa4c50ba9577d781c7e9e00836802f58450c9e2b670fb4cc6a625c2",
+    "plugins/medcius/lib/connectors/cda-document-connector.mjs": "fa7fa67da6d0c2cc723c52994b0545398fad56e74791a0c4672ae380aabdda26",
+    "plugins/medcius/lib/connectors/cn-cda-r2.mjs": "31c7739cc85565a5b1fdcbbf797e4a9dc9337bb77dc00c6eed0a882574e2b824",
+    "plugins/medcius/lib/connectors/fhir-r4-connector.mjs": "4b2fc0b934cc24a40ef36c47bc055c75ac104b0fa14e382f39a5296ef33389c5",
+    "plugins/medcius/lib/connectors/hl7v2-connector.mjs": "fea3da9f8358c73ec5e3413a6c0a145b5bc5590d7d4b2e98a6090c2706f999af",
+    "plugins/medcius/lib/connectors/phi-exit-guard.mjs": "546fa665a9dc8f523869652fd28d69f6d50b95109cf3ccb6a050b877723aa2af",
+    "plugins/medcius/lib/connectors/private-z-profile.mjs": "ac03ab9621a4964f4c61fc17f00ae6dd22df1b6e94c1d2e8b5a613f1965b318e",
+    "plugins/medcius/lib/connectors/site-connector-factory.mjs": "560db395a2aad1cae1d2902d5efb6abeb9197fb8dcd7fa49ccc6d7e82c7cc3e3",
+    "plugins/medcius/lib/connectors/site-view-mapping.mjs": "9666937f0a15034e8209232df9b4ab64100fc3b153f13024a422050708b22acd",
+    "plugins/medcius/lib/connectors/source-lifecycle.mjs": "1e5737f35120a562afc18b989d19383b107c2c152f9fca2d529406109c680fd0",
+    "plugins/medcius/lib/connectors/view-library-connector.mjs": "9bc38f54f78c8ef245c1d3cdeea983bb88e85bf1fdc82b26560f309d630235d0",
+    "plugins/medcius/lib/connectors/viewdb-connector.mjs": "2f757ac9a6e850d37f74ab01649b6cc587e6333c2ddd8a191b998b861dd5a034",
+    "plugins/medcius/packs/hospital-knowledge-pack.json": "9f428eac8146a368d39cec95898c862022ab1009570e8643770ef3fe97dd272b",
+    "plugins/medcius/packs/official-sources.json": "d108ba967fbbba3a0bfb9ee4c0330d6e30895894f8ac3de0191a3c267b63be0c",
+    "plugins/medcius/packs/site-activation.template.json": "e3d2034bb09da72c59dd107acc028e3f4316b8e0a1a211a13ca46b4f7b11ccee",
+    "plugins/medcius/rule-packs/calculation-reference.v1.json": "a6a3a9f9d3447bb7011fdcfac956028ed9f8fccc2c9a92bd9531c8863607dac3",
+    "plugins/medcius/rule-packs/china-clinical-reference.v1.json": "b170eef9a2a33cfbd6b19442693dec909f5509b35ac0bc904049fa18b67430cc",
+    "plugins/medcius/rule-packs/laboratory-terminology.v1.json": "20d61e4854493c809cd09fea6bced764037adc149a20ea2d0bdebdf9bc3efa5b",
+    "plugins/medcius/rule-packs/temporal-reference.v1.json": "50d6c8b9cc857e563c32d796caa977efc6ee8ad55db81c683fa3e48c43802ec7",
+    "plugins/medcius/rule-packs/catalogs/hospital-inpatient-skill-catalog.json": "957e5e8cea1e1289e9ee19ca0474a3b32c1200cf498fb7116b53d5c61f9143af",
+    "plugins/medcius/rule-packs/schema/medcius-specialty-rule-pack.v1.schema.json": "174fdea00615b707a63f9e3f844ff7f5c4597f85c5e0d0249844f30dbf3f837b",
+    "plugins/medcius/rule-packs/specialties/cardiology-inpatient-sandbox.json": "6e78e24456b2fdda02bebfa50a41ffd3d47ae7be53a0adce2d5905158d9f82cf",
+    "plugins/medcius/runtimes/cn-phi-ner/batch-pool.mjs": "5cb211205f9d9362d283d144130a0902f669d64fde009e9c0fb702b7543f15ae",
+    "plugins/medcius/runtimes/cn-phi-ner/batch-worker.mjs": "5341301fc822f7a46edcd67a3cc8dd1888b3170dc17a4b367bf4dbffbc7c54aa",
+    "plugins/medcius/runtimes/cn-phi-ner/bert-tokenizer.mjs": "b2fe96a9db93344503cf6150771a5c7f083d7a6272ed206cf1bb61444cacb582",
+    "plugins/medcius/runtimes/cn-phi-ner/detector.mjs": "da20c97c905e8273287a79f84f3e44382dd5096d79140a478417b7ddf386166e",
+    "plugins/medcius/runtimes/cn-phi-ner/independent-batch-graph.mjs": "5a8e05512f401d68196671a1aaff4bd4e8da3fb5f0b91c91a95059966ec7485c",
+    "plugins/medcius/runtimes/cn-phi-ner/inference-queue.mjs": "2b32bee595dae4664413891db90b44a1cb4df41c25783ae2993fb8a9e5eb2c6b",
+    "plugins/medcius/runtimes/cn-phi-ner/model-manifest.json": "d82132a125313514ec0822b7f2bee1e4ac8d5ffd48cf1e1c26d47bf36d449894",
+    "plugins/medcius/runtimes/cn-phi-ner/package-lock.json": "96a25a1643b88161ebd8d1e37a590487d02e5a5a0be1934574c4b4dd77c3b3da",
+    "plugins/medcius/runtimes/cn-phi-ner/package.json": "05ae8bd030375c34f58489891c4334914bb5063cd4fe883ea1f2be457524f2f9",
+    "plugins/medcius/runtimes/cn-phi-ner/process-pool.mjs": "ac52e2beb261075da5d26f32fa0c7ed93a10b4e433866e63a9b2530a96eb4887",
+    "plugins/medcius/runtimes/cn-phi-ner/process-worker.mjs": "837e10b53199261a0542abd76a602ff60eab2e6f2df516f3e59a4d41fd5e46c5",
+    "plugins/medcius/runtimes/cn-phi-ner/request-batcher.mjs": "9f29a12d6bd111e3c7f190d9a634797e80619f7afa3f43a96cef411451112741",
+    "plugins/medcius/scripts/codex-mcp-server.mjs": "609de5c3e60f7c9b5a2e8254fff7adde346cc570b499198d0184664353e6203d",
+    "plugins/medcius/scripts/compliance-lint.mjs": "b8d1b04cb975477c7127c3a9d2fb87ea8d071606566ac76c5327839ffb5aed8d",
+    "plugins/medcius/scripts/doctor.mjs": "0c26ec76d14242f9e2e6f98a5998bc959c03f4734e5504c03b90faaaf76b4664",
+    "plugins/medcius/scripts/gen-classification-pack.mjs": "e66f170314a8276ca12f97b9df478adbe701e1be70604ba2b8f616655b6abaa0",
+    "plugins/medcius/scripts/gen-dhf-trace.mjs": "0efa9d135469586bbb604208dc0914d35ec179a666c1a1b39fd7accf0b0ef260",
+    "plugins/medcius/scripts/generate-coverage-report.mjs": "89a52a59c08a68a5fe864a1f149aa9751eb9ebd8528eb4ffdb29607519f1d842",
+    "plugins/medcius/scripts/import-official.mjs": "8b6a25d289a8f320a59fcf388c696f24b8a48151b285a163b3e334bec73c0e07",
+    "plugins/medcius/scripts/intake-discharge.mjs": "3664e20aa21ee47e1bfcdcdedab7a06fb9544138cc6adecf4be62040d6faff20",
+    "plugins/medcius/scripts/settlement-from-note.mjs": "a4b5d01b32c682c1fa221cd58205076b42bcdb25a9b627ab23708d4c7af90bf4",
+    "plugins/medcius/servers/api/src/auth-middleware.mjs": "d781f6ca270068931c274dd76afc721944f46a1441c8f6672b0c4b1e6f60481f",
+    "plugins/medcius/servers/api/src/cds-hooks.mjs": "b1094f6bacf74b7db3cf2d888ecfce29a45ba1b92eb1564d8a8986220ab5d5d9",
+    "plugins/medcius/servers/api/src/rest-routes.mjs": "136a093bbcf7a423dbdf2fbe5b3adbf2658f07ffe99f13550a989c567b0b9260",
+    "plugins/medcius/servers/api/src/security-hardening.mjs": "7ad76268e111be09c85ab77bb1d67ffbfda552f2f593db6f57c75d746e1c731d",
+    "plugins/medcius/servers/api/src/server.mjs": "f0486c5efe21e20a3baac898e41ef6df8752bdf01e2e6be66dc562078d8e8dc3",
+    "plugins/medcius/servers/api/src/workstation-routes.mjs": "35807ac647b312e6e0e4ade7615a5e359c1b04fcf99587a2cfa6ffd56fb7af90",
+    "plugins/medcius/servers/audit/package.json": "f4f3c9622ef4e3ca14526163b9fa0de76aa67d997d15aecd747bb80b150ccae1",
+    "plugins/medcius/servers/audit/tsconfig.json": "b08ad7dbf2a2e6585c65c4714466c21879c0a79902c3cb83e44723e38e67b41f",
+    "plugins/medcius/servers/audit/src/db.mjs": "29fa228f183e2702c5ebaec95441d86c1eaaef542c36fe3adeabf597e4c89cf8",
+    "plugins/medcius/servers/audit/src/index.mjs": "7c2d75388aa522b799ab819f5a78401326d73c63fa3046d2b994aa42361b84d2",
+    "plugins/medcius/servers/audit/src/schemas.mjs": "375f6eb4f33c0f4923f3926ee998c4c7f198c7368927c0253516d4b8b0d907bd",
+    "plugins/medcius/servers/audit/src/tools.mjs": "473c06bb560a175498f3d263fe013dbd23b01a2107a0ba52484fadf48f92ea71",
+    "plugins/medcius/servers/china-codes/package.json": "e507eb3e0ef3a50c1494268f3217ba69445c15c007cf6e98856d13e322a7b806",
+    "plugins/medcius/servers/china-codes/tsconfig.json": "fb1a99b0a493d74cefe7cc273c91152a4f441d177b9ad2b73b0d0647e12f054f",
+    "plugins/medcius/servers/china-codes/assets/sample-codes.json": "3f4f6341c5d02185d5ee043a7518c6abf1db5d2c9c1f6789c34fffd57e965da5",
+    "plugins/medcius/servers/china-codes/scripts/ingest.mjs": "f7e24864a8cf9986ab6a585c71085ef298e0ce775d85847bd6948f177c500c90",
+    "plugins/medcius/servers/china-codes/src/crosswalk-store.mjs": "edbd87fd1714dc1237cf8b9dadf1f0e8daab968b9f5259fdf87278ebb80feb6e",
+    "plugins/medcius/servers/china-codes/src/db.mjs": "a0cd6cd6402b6e04164398cab5b7f667fa18ecf3ca78fe7d179b5e3734aee9b5",
+    "plugins/medcius/servers/china-codes/src/index.mjs": "89da309784721a01eeeaa79c27f46894bf72d3fe60a011d3f8277bb54fc874f7",
+    "plugins/medcius/servers/china-codes/src/list-check.mjs": "08332bcb7ce29ffae7cdb660e4e3ea91f030f72a4e44fd2494fdc39b8632c505",
+    "plugins/medcius/servers/china-codes/src/schemas.mjs": "38588cdaf8baa10be91579e633d343987c4d0ab69108a60f5ce904dde631489a",
+    "plugins/medcius/servers/china-codes/src/tools.mjs": "9c007b7ffcb6841aa437f7129873518cc54a7c86829198d0b1c6e98b1778bed4",
+    "plugins/medcius/servers/documents/package-lock.json": "0175802f0513ffa464bbee7dea284381d3b3bbac1ab3308821cdfe1d63b9347c",
+    "plugins/medcius/servers/documents/package.json": "57d7e57e556414fee9aac36856be7dfeb7690da474f4541fdeea073b7dc5dbd9",
+    "plugins/medcius/servers/documents/tsconfig.json": "052afe309c13c99f437157fe91433bbb31188741ff06345c10821af76eaef14e",
+    "plugins/medcius/servers/documents/src/citations.mjs": "75bf435f28f28027cf67d7cdbdd3190d85d56ddb4c1773fbc26d68c0f49f00cc",
+    "plugins/medcius/servers/documents/src/db.mjs": "b8a4d14c1380e8ff31499513e6b1c197e2f5b6a64d8351fe4c98ac94e9c1c8b9",
+    "plugins/medcius/servers/documents/src/die.mjs": "185ada0be7675d664432b66d0c01991c4a7008a7b1782e44e508d589ac2e1443",
+    "plugins/medcius/servers/documents/src/engine.mjs": "4b941ff9bb9a334d54cf0405919833c6b7d21696f2e765de7ae609d80461d19b",
+    "plugins/medcius/servers/documents/src/extract.mjs": "9c5cfac28793b21d8cb54aba0d9515c60d475c350fbbcad391b31c8df5e0b02d",
+    "plugins/medcius/servers/documents/src/index.mjs": "5a1479c877c8f5e77bac4606fcc0f3b9735ddd05cdb388e1fba70855dd44778b",
+    "plugins/medcius/servers/documents/src/ingest.mjs": "6c41d7284dd6afedf0e96cdfa923c34e98cd09329f782b226c8e1e922e127bc9",
+    "plugins/medcius/servers/documents/src/requirements.mjs": "f3544e99ea6c15b48710e955382063c7771c986d24261fdfc90ab0da7b72da20",
+    "plugins/medcius/servers/documents/src/schemas.mjs": "160305703a7cd10ba6cc2c4972cce70dbfa78a9c7085dad236d0ad8e1c375aec",
+    "plugins/medcius/servers/drug-labels/package.json": "a72f74369b8fe3e9e8b1c6082d6ecfd8f85a44f2137f6e0f96278c57eb8bf244",
+    "plugins/medcius/servers/drug-labels/tsconfig.json": "fb1a99b0a493d74cefe7cc273c91152a4f441d177b9ad2b73b0d0647e12f054f",
+    "plugins/medcius/servers/drug-labels/assets/official-pack.template.json": "e948372dca45c848cb24a9989a299fbf250817bc1a2376034ed9d852e45309ac",
+    "plugins/medcius/servers/drug-labels/assets/sample-labels.json": "991896f6ab99704642edc19f9527ad2a6ceffa750ceb94004ffbc99f36450e2d",
+    "plugins/medcius/servers/drug-labels/scripts/ingest.mjs": "5f96b8eecd97976ad20ad5024361448d3c6dbe73918b7b0dee99179c8bd87d2d",
+    "plugins/medcius/servers/drug-labels/scripts/validate-pack.mjs": "55ffc6554ba91f534d85c7e759c6c717a3cb863d262c3ab82344fe833b9047e4",
+    "plugins/medcius/servers/drug-labels/src/calculators.mjs": "93075787f3df2c4dfe9e746b01bd0b2c2747926c5db09012348dfcafd429a9f6",
+    "plugins/medcius/servers/drug-labels/src/china-tools.mjs": "0358d5968975e2d8fb3b11c5a70ec648d7dda2969dd9ab7b8514d5c0467e360f",
+    "plugins/medcius/servers/drug-labels/src/db.mjs": "76ee6338d10e8e312c7ef3035df3d47943b4d734563a95700cae54298e11300c",
+    "plugins/medcius/servers/drug-labels/src/index.mjs": "394589473ef27b92b4876481cf62fc5b0edce40ab682ba05402f22021a448964",
+    "plugins/medcius/servers/drug-labels/src/mechanisms.mjs": "ee11840b9c438817b75730cb91b0fd0e8c01ca997737212b6f512214abf09ac2",
+    "plugins/medcius/servers/drug-labels/src/safety-handlers.mjs": "e48358ccfd1fec04da7ec3226ff8c13de7816065ddf9e2c5444dcc8f0d474cee",
+    "plugins/medcius/servers/drug-labels/src/safety-tables.mjs": "f125f95a70863287b3a0f7eb7e25c2adbedda3cb2fcc5c46d0fcee4d6d795005",
+    "plugins/medcius/servers/drug-labels/src/schemas.mjs": "0e508df10fc40accd5f9e2a22d584115072726d5c75e1a85fbac45ced9a29ab0",
+    "plugins/medcius/servers/drug-labels/src/tools.mjs": "cc56950cf38e985d297c1625d87b863c8311e837998b097bc522cd4205f47726",
+    "plugins/medcius/servers/fhir/package.json": "86b3ee7edfa4d1ae9cba7e53bee6cbce28eac1dfd106327156601f3c28a59c12",
+    "plugins/medcius/servers/fhir/tsconfig.json": "480c7537eed96185bb8f215bb2c162caad2e7bed339f1a92a371170dd8f8c237",
+    "plugins/medcius/servers/fhir/sandbox/hospital-cardiology-sandbox.mjs": "b29cd9e1e2ca77bbe52c52c3ab6dba7d85bd23bb7fdf5a0ee7d89e8f20b36c84",
+    "plugins/medcius/servers/fhir/src/documents.mjs": "277c132d211da63f526ce7ab2ef89e0e496e459405e7eb36ca0e611f38ec04da",
+    "plugins/medcius/servers/fhir/src/fhir-client.mjs": "200e2fed921e5f892c8c12a0deb9beffae5d96e21a600c6cf7a49cfc7a1c6f0a",
+    "plugins/medcius/servers/fhir/src/index.mjs": "fdf7b059a9a0d8a70e7f68fc49258b0fe72aecc41635e056b6be8ea779f38c8e",
+    "plugins/medcius/servers/fhir/src/schemas.mjs": "e11652c83a59ba9be1b7e37f94622b88b697fc4df353d62393eb95f81c433d63",
+    "plugins/medcius/servers/fhir/src/tools.mjs": "81ccd2f61ea34c01dc423cdbb21028b876d252cf0af887d526510e5097f9560a",
+    "plugins/medcius/servers/fhir/src/auth/session-file.mjs": "119952e5e1ccea827f0bedb3bda7bbee2f04827dc704181f1a1bef51df19eda1",
+    "plugins/medcius/servers/fhir/src/auth/smart.mjs": "7017dc9bb3ce9338ce5c9dc1f946a32d58c17d920a4827ec5a6c742e61bb7c1b",
+    "plugins/medcius/servers/fhir/src/auth/token-store.mjs": "9734a2a8afded2b64375ac11f3bff0dbb61fe8439f68b04dadee0c9a2c104414",
+    "plugins/medcius/servers/phiguard/package.json": "33eb39172da9da0ec506f87b085e6bce139958d607b13d8a43d6be3ca0e7f49e",
+    "plugins/medcius/servers/phiguard/tsconfig.json": "b08ad7dbf2a2e6585c65c4714466c21879c0a79902c3cb83e44723e38e67b41f",
+    "plugins/medcius/servers/phiguard/src/index.mjs": "7a3714218fe9a712d7cc0906d015b7c59c6fa088be69621d04911cb6127f2313",
+    "plugins/medcius/servers/phiguard/src/lib.mjs": "242c52ea6ab46ae51ef2ec08e8c00b951f4579c30b45d9e5d84220bfcdcc7a1a",
+    "plugins/medcius/servers/phiguard/src/schemas.mjs": "633ebb7baa0f6910825c412a7cfe017eeb6be7f9d9eb5c219ecb2b594338178e",
+    "plugins/medcius/servers/phiguard/src/tools.mjs": "88442df4ccb2f91ddf0ca8fac437cd0017af4f562ecfb2f1e335f7e0dd62877b",
+    "plugins/medcius/servers/review-app/src/config.mjs": "661f4700334a5f0b57996305c2e210c9e4e94d90c9fd28dfe00d0be0719a7ab9",
+    "plugins/medcius/servers/review-app/src/index.mjs": "1a7f602568bbe108ac88276140b436feb27dcf85280fc0d0f36d0b74775ef8c3",
+    "plugins/medcius/servers/shared/crypto.mjs": "c3a9816f754689ce38f3ec6d3b91d1835fbe8aa2661f8169417dd9835e9208fc",
+    "plugins/medcius/servers/shared/digital-signature.mjs": "c99542b11cde703640d4a13ca3cfe9e0b24f18900c9c41243087d3ef0164018e",
+    "plugins/medcius/servers/shared/immutable.mjs": "327f252d09408fe5660152c325242f8de0604fd95575b6acb3fb40299db7b920",
+    "plugins/medcius/servers/shared/integrity-metadata.mjs": "8e03430e0af2c1e994c679c9f097bbbfb5d1a2a416dfe18a1a2abc577937c13a",
+    "plugins/medcius/servers/shared/knowledge-pack.mjs": "8ac6594beb5cf09f71ad7f62a2088552d441183c2dedc35f9f4d04b9a90f4f3b",
+    "plugins/medcius/servers/shared/phi-output.mjs": "0144361f6462dc470185b16a9a1bdedf6994ff2c50e81f917a33b4a6934c065e",
+    "plugins/medcius/servers/shared/rpc.mjs": "ce7cb0407611d75cb4fafc5a345dc59d6c04f659110b43001f56f318f3108d15",
+    "plugins/medcius/servers/shared/secure-store.mjs": "dc319a66302a8af37146b307b5ff527b17dbe21008d812135e8ba8a813e5d630",
+    "plugins/medcius/servers/shared/validate.mjs": "2f24e8ee0806e411b2246317a289f2eb3012a49fae27f0991d98a5b36f7fbff0",
+    "plugins/medcius/skills/clinical-note-extract/assets/china-notes/expected.json": "652a884940b3e7bec1e6b810b80e40cd9280131c0825555a8ea3f26d249496c8",
+    "plugins/medcius/skills/clinical-note-extract/assets/sample-schemas/ade.json": "0236b0eebadeb09e7bf9faba2eba04bd0c87aaced3a702dbf7d55aedd6ccaa82",
+    "plugins/medcius/skills/clinical-note-extract/assets/sample-schemas/china-inpatient.json": "bd5bdaba2e80e8aebb230f3b8e83a60935d3624de8b4d45b7afe207ff415e4a9",
+    "plugins/medcius/skills/clinical-note-extract/assets/sample-schemas/pft.json": "e7481f22aeb96480265ebd201acd6fffc9dc5acc5ffbef02d119cd3c813aeb4f",
+    "plugins/medcius/skills/doc-extract/package.json": "48eebe7bcfd7be1ab094f3695085457e49765be7f133002d6d30523fe1183102",
+    "plugins/medcius/skills/doc-extract/tsconfig.json": "850f8545c76a90f7284a1406a4194041fe229ccac996ebd9d75b1c23754ac50f",
+    "plugins/medcius/skills/doc-extract/scripts/decoders.mjs": "34be6a0d6827fb8346e49dc237b3dba616b134559b8adc2382ac946a3730610f",
+    "scripts/benchmark-phi-paired.mjs": "2f6bae55215108233878c0a56b925a18af6c4a6b8784ba68e7c4796e29cd9d9d",
+    "scripts/benchmark-phi-burst-v2.mjs": "4fed10860621fd6104a59994c9a685026d23695ab374793a540032958fc86501",
+    "plugins/medcius/data/phi/cn-pronunciations.v1.json": "f49bbf398c9abf2eddd1f49e8b30040b2f662dbdbaa78fbe7f1eaa6dc1001c99"
+  },
+  "runs": [
+    {
+      "arm": "v3",
+      "burst": 64,
+      "round": 1,
+      "order": [
+        "v3",
+        "v4",
+        "v5"
+      ],
+      "duration_ms": 571.5738000000001,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 480.9078218750002,
+        "p50_ms": 452.2602999999999,
+        "p95_ms": 567.807499999999,
+        "p99_ms": 567.8982000000015,
+        "max_ms": 567.8982000000015
+      },
+      "throughput_per_second": 111.97154243249075
+    },
+    {
+      "arm": "v4",
+      "burst": 64,
+      "round": 1,
+      "order": [
+        "v3",
+        "v4",
+        "v5"
+      ],
+      "duration_ms": 682.2754999999997,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 582.6980312499996,
+        "p50_ms": 558.8057000000008,
+        "p95_ms": 679.3949999999986,
+        "p99_ms": 679.4678000000004,
+        "max_ms": 679.4678000000004
+      },
+      "throughput_per_second": 93.80374936517583
+    },
+    {
+      "arm": "v5",
+      "burst": 64,
+      "round": 1,
+      "order": [
+        "v3",
+        "v4",
+        "v5"
+      ],
+      "duration_ms": 399.8087999999989,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 325.5313890624999,
+        "p50_ms": 302.83699999999953,
+        "p95_ms": 397.5023999999994,
+        "p99_ms": 397.77399999999943,
+        "max_ms": 397.77399999999943
+      },
+      "throughput_per_second": 160.07651657492326
+    },
+    {
+      "arm": "v4",
+      "burst": 64,
+      "round": 2,
+      "order": [
+        "v4",
+        "v5",
+        "v3"
+      ],
+      "duration_ms": 619.8323999999993,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 536.0491328124999,
+        "p50_ms": 511.40049999999974,
+        "p95_ms": 618.0371999999988,
+        "p99_ms": 618.1026999999995,
+        "max_ms": 618.1026999999995
+      },
+      "throughput_per_second": 103.25371826319514
+    },
+    {
+      "arm": "v5",
+      "burst": 64,
+      "round": 2,
+      "order": [
+        "v4",
+        "v5",
+        "v3"
+      ],
+      "duration_ms": 476.46190000000024,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 407.7196812500001,
+        "p50_ms": 391.47999999999956,
+        "p95_ms": 474.6281999999992,
+        "p99_ms": 474.6660000000011,
+        "max_ms": 474.6660000000011
+      },
+      "throughput_per_second": 134.32343698415335
+    },
+    {
+      "arm": "v3",
+      "burst": 64,
+      "round": 2,
+      "order": [
+        "v4",
+        "v5",
+        "v3"
+      ],
+      "duration_ms": 612.8099000000002,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 533.02458125,
+        "p50_ms": 509.83870000000024,
+        "p95_ms": 611.2353000000003,
+        "p99_ms": 611.2943000000014,
+        "max_ms": 611.2943000000014
+      },
+      "throughput_per_second": 104.43695508182876
+    },
+    {
+      "arm": "v5",
+      "burst": 64,
+      "round": 3,
+      "order": [
+        "v5",
+        "v3",
+        "v4"
+      ],
+      "duration_ms": 398.1368000000002,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 332.3032968750002,
+        "p50_ms": 311.65459999999985,
+        "p95_ms": 396.7993000000006,
+        "p99_ms": 396.8737000000001,
+        "max_ms": 396.8737000000001
+      },
+      "throughput_per_second": 160.74876776022705
+    },
+    {
+      "arm": "v3",
+      "burst": 64,
+      "round": 3,
+      "order": [
+        "v5",
+        "v3",
+        "v4"
+      ],
+      "duration_ms": 633.7927,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 547.5533828125001,
+        "p50_ms": 521.6797000000006,
+        "p95_ms": 632.1050999999989,
+        "p99_ms": 632.1679000000004,
+        "max_ms": 632.1679000000004
+      },
+      "throughput_per_second": 100.97938963323497
+    },
+    {
+      "arm": "v4",
+      "burst": 64,
+      "round": 3,
+      "order": [
+        "v5",
+        "v3",
+        "v4"
+      ],
+      "duration_ms": 616.6983,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 515.4516249999998,
+        "p50_ms": 484.53999999999905,
+        "p95_ms": 615.7780000000002,
+        "p99_ms": 615.8266999999996,
+        "max_ms": 615.8266999999996
+      },
+      "throughput_per_second": 103.77846022925634
+    },
+    {
+      "arm": "v5",
+      "burst": 64,
+      "round": 4,
+      "order": [
+        "v5",
+        "v4",
+        "v3"
+      ],
+      "duration_ms": 368.85579999999936,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 307.4255906249999,
+        "p50_ms": 287.5465000000004,
+        "p95_ms": 367.66169999999875,
+        "p99_ms": 367.7052999999996,
+        "max_ms": 367.7052999999996
+      },
+      "throughput_per_second": 173.5095395002603
+    },
+    {
+      "arm": "v4",
+      "burst": 64,
+      "round": 4,
+      "order": [
+        "v5",
+        "v4",
+        "v3"
+      ],
+      "duration_ms": 652.1661000000004,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 548.7002359375001,
+        "p50_ms": 514.2483000000011,
+        "p95_ms": 650.9332999999988,
+        "p99_ms": 650.9956000000002,
+        "max_ms": 650.9956000000002
+      },
+      "throughput_per_second": 98.13450898475091
+    },
+    {
+      "arm": "v3",
+      "burst": 64,
+      "round": 4,
+      "order": [
+        "v5",
+        "v4",
+        "v3"
+      ],
+      "duration_ms": 644.2294000000002,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 554.1002781250002,
+        "p50_ms": 528.9867000000013,
+        "p95_ms": 643.2023000000008,
+        "p99_ms": 643.2494999999999,
+        "max_ms": 643.2494999999999
+      },
+      "throughput_per_second": 99.34349472408428
+    },
+    {
+      "arm": "v4",
+      "burst": 64,
+      "round": 5,
+      "order": [
+        "v4",
+        "v3",
+        "v5"
+      ],
+      "duration_ms": 557.3217000000004,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 452.9665828125002,
+        "p50_ms": 417.29089999999997,
+        "p95_ms": 556.3267999999989,
+        "p99_ms": 556.3694999999989,
+        "max_ms": 556.3694999999989
+      },
+      "throughput_per_second": 114.83493285834727
+    },
+    {
+      "arm": "v3",
+      "burst": 64,
+      "round": 5,
+      "order": [
+        "v4",
+        "v3",
+        "v5"
+      ],
+      "duration_ms": 619.224299999998,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 532.9451890625003,
+        "p50_ms": 510.10440000000017,
+        "p95_ms": 618.0668000000005,
+        "p99_ms": 618.1163000000015,
+        "max_ms": 618.1163000000015
+      },
+      "throughput_per_second": 103.35511703917336
+    },
+    {
+      "arm": "v5",
+      "burst": 64,
+      "round": 5,
+      "order": [
+        "v4",
+        "v3",
+        "v5"
+      ],
+      "duration_ms": 396.3634999999995,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 326.7290234375004,
+        "p50_ms": 306.527100000003,
+        "p95_ms": 395.358400000001,
+        "p99_ms": 395.3946999999971,
+        "max_ms": 395.3946999999971
+      },
+      "throughput_per_second": 161.46794545915577
+    },
+    {
+      "arm": "v3",
+      "burst": 64,
+      "round": 6,
+      "order": [
+        "v3",
+        "v5",
+        "v4"
+      ],
+      "duration_ms": 641.0521999999983,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 557.6307249999999,
+        "p50_ms": 531.145999999997,
+        "p95_ms": 639.3120999999992,
+        "p99_ms": 639.3788999999997,
+        "max_ms": 639.3788999999997
+      },
+      "throughput_per_second": 99.83586360049956
+    },
+    {
+      "arm": "v5",
+      "burst": 64,
+      "round": 6,
+      "order": [
+        "v3",
+        "v5",
+        "v4"
+      ],
+      "duration_ms": 392.48259999999937,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 325.1618406250001,
+        "p50_ms": 304.8850999999995,
+        "p95_ms": 391.51330000000235,
+        "p99_ms": 391.5483000000022,
+        "max_ms": 391.5483000000022
+      },
+      "throughput_per_second": 163.06455368976893
+    },
+    {
+      "arm": "v4",
+      "burst": 64,
+      "round": 6,
+      "order": [
+        "v3",
+        "v5",
+        "v4"
+      ],
+      "duration_ms": 586.7079999999987,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 507.6545890625002,
+        "p50_ms": 485.14689999999973,
+        "p95_ms": 584.9167999999991,
+        "p99_ms": 584.9940000000024,
+        "max_ms": 584.9940000000024
+      },
+      "throughput_per_second": 109.08322368196811
+    },
+    {
+      "arm": "v3",
+      "burst": 64,
+      "round": 7,
+      "order": [
+        "v3",
+        "v4",
+        "v5"
+      ],
+      "duration_ms": 631.0748999999996,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 525.2091140624998,
+        "p50_ms": 497.14970000000176,
+        "p95_ms": 629.9121000000014,
+        "p99_ms": 629.9784,
+        "max_ms": 629.9784
+      },
+      "throughput_per_second": 101.41426952648574
+    },
+    {
+      "arm": "v4",
+      "burst": 64,
+      "round": 7,
+      "order": [
+        "v3",
+        "v4",
+        "v5"
+      ],
+      "duration_ms": 813.4665999999997,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 690.7984109375004,
+        "p50_ms": 650.5164000000004,
+        "p95_ms": 812.4045000000006,
+        "p99_ms": 812.4465000000018,
+        "max_ms": 812.4465000000018
+      },
+      "throughput_per_second": 78.67563339416766
+    },
+    {
+      "arm": "v5",
+      "burst": 64,
+      "round": 7,
+      "order": [
+        "v3",
+        "v4",
+        "v5"
+      ],
+      "duration_ms": 580.8165999999983,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 480.8966531250001,
+        "p50_ms": 461.6789000000026,
+        "p95_ms": 579.2416999999987,
+        "p99_ms": 579.2991000000002,
+        "max_ms": 579.2991000000002
+      },
+      "throughput_per_second": 110.18968810464473
+    },
+    {
+      "arm": "v4",
+      "burst": 64,
+      "round": 8,
+      "order": [
+        "v4",
+        "v5",
+        "v3"
+      ],
+      "duration_ms": 699.4195,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 589.2353734375004,
+        "p50_ms": 554.0553,
+        "p95_ms": 698.3032000000021,
+        "p99_ms": 698.3614000000016,
+        "max_ms": 698.3614000000016
+      },
+      "throughput_per_second": 91.50445476570214
+    },
+    {
+      "arm": "v5",
+      "burst": 64,
+      "round": 8,
+      "order": [
+        "v4",
+        "v5",
+        "v3"
+      ],
+      "duration_ms": 593.6847999999991,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 446.13519531249995,
+        "p50_ms": 399.09280000000217,
+        "p95_ms": 592.5865999999987,
+        "p99_ms": 592.6349000000009,
+        "max_ms": 592.6349000000009
+      },
+      "throughput_per_second": 107.80131140295337
+    },
+    {
+      "arm": "v3",
+      "burst": 64,
+      "round": 8,
+      "order": [
+        "v4",
+        "v5",
+        "v3"
+      ],
+      "duration_ms": 996.3158999999978,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 875.0016484374996,
+        "p50_ms": 837.2127999999975,
+        "p95_ms": 994.859999999997,
+        "p99_ms": 994.9252000000015,
+        "max_ms": 994.9252000000015
+      },
+      "throughput_per_second": 64.23665425795186
+    },
+    {
+      "arm": "v5",
+      "burst": 64,
+      "round": 9,
+      "order": [
+        "v5",
+        "v3",
+        "v4"
+      ],
+      "duration_ms": 460.4487999999983,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 391.8621437500002,
+        "p50_ms": 370.52410000000236,
+        "p95_ms": 459.0792999999976,
+        "p99_ms": 459.1304000000018,
+        "max_ms": 459.1304000000018
+      },
+      "throughput_per_second": 138.9948241802351
+    },
+    {
+      "arm": "v3",
+      "burst": 64,
+      "round": 9,
+      "order": [
+        "v5",
+        "v3",
+        "v4"
+      ],
+      "duration_ms": 669.2884999999987,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 561.3528156250002,
+        "p50_ms": 528.1065999999992,
+        "p95_ms": 667.9039000000012,
+        "p99_ms": 667.9671000000017,
+        "max_ms": 667.9671000000017
+      },
+      "throughput_per_second": 95.6239349697479
+    },
+    {
+      "arm": "v4",
+      "burst": 64,
+      "round": 9,
+      "order": [
+        "v5",
+        "v3",
+        "v4"
+      ],
+      "duration_ms": 562.8044000000009,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 488.28600000000034,
+        "p50_ms": 464.57450000000244,
+        "p95_ms": 561.5052000000032,
+        "p99_ms": 561.5322999999989,
+        "max_ms": 561.5322999999989
+      },
+      "throughput_per_second": 113.71623960295958
+    },
+    {
+      "arm": "v5",
+      "burst": 64,
+      "round": 10,
+      "order": [
+        "v5",
+        "v4",
+        "v3"
+      ],
+      "duration_ms": 467.09289999999964,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 399.3626437499998,
+        "p50_ms": 378.85210000000006,
+        "p95_ms": 466.2453999999998,
+        "p99_ms": 466.27980000000025,
+        "max_ms": 466.27980000000025
+      },
+      "throughput_per_second": 137.01771103778296
+    },
+    {
+      "arm": "v4",
+      "burst": 64,
+      "round": 10,
+      "order": [
+        "v5",
+        "v4",
+        "v3"
+      ],
+      "duration_ms": 598.3426,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 506.49262656250005,
+        "p50_ms": 473.40179999999964,
+        "p95_ms": 597.3654999999999,
+        "p99_ms": 597.4127999999982,
+        "max_ms": 597.4127999999982
+      },
+      "throughput_per_second": 106.96213172854483
+    },
+    {
+      "arm": "v3",
+      "burst": 64,
+      "round": 10,
+      "order": [
+        "v5",
+        "v4",
+        "v3"
+      ],
+      "duration_ms": 630.446899999999,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 530.7999484375002,
+        "p50_ms": 498.21570000000065,
+        "p95_ms": 629.3317999999999,
+        "p99_ms": 629.4629000000023,
+        "max_ms": 629.4629000000023
+      },
+      "throughput_per_second": 101.51529018542259
+    },
+    {
+      "arm": "v4",
+      "burst": 64,
+      "round": 11,
+      "order": [
+        "v4",
+        "v3",
+        "v5"
+      ],
+      "duration_ms": 519.3565000000017,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 439.53252031249986,
+        "p50_ms": 418.88140000000203,
+        "p95_ms": 518.2393999999986,
+        "p99_ms": 518.2775999999976,
+        "max_ms": 518.2775999999976
+      },
+      "throughput_per_second": 123.22941948353356
+    },
+    {
+      "arm": "v3",
+      "burst": 64,
+      "round": 11,
+      "order": [
+        "v4",
+        "v3",
+        "v5"
+      ],
+      "duration_ms": 650.5613999999987,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 566.1841562500001,
+        "p50_ms": 545.7635999999984,
+        "p95_ms": 649.7692000000025,
+        "p99_ms": 649.8028000000013,
+        "max_ms": 649.8028000000013
+      },
+      "throughput_per_second": 98.37657137358615
+    },
+    {
+      "arm": "v5",
+      "burst": 64,
+      "round": 11,
+      "order": [
+        "v4",
+        "v3",
+        "v5"
+      ],
+      "duration_ms": 354.8197999999975,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 297.5190812499999,
+        "p50_ms": 282.0646000000015,
+        "p95_ms": 353.78150000000096,
+        "p99_ms": 353.83220000000074,
+        "max_ms": 353.83220000000074
+      },
+      "throughput_per_second": 180.3732486180322
+    },
+    {
+      "arm": "v3",
+      "burst": 64,
+      "round": 12,
+      "order": [
+        "v3",
+        "v5",
+        "v4"
+      ],
+      "duration_ms": 663.2151999999987,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 577.0612312499999,
+        "p50_ms": 552.7891000000018,
+        "p95_ms": 662.4535999999971,
+        "p99_ms": 662.489800000003,
+        "max_ms": 662.489800000003
+      },
+      "throughput_per_second": 96.4995977173022
+    },
+    {
+      "arm": "v5",
+      "burst": 64,
+      "round": 12,
+      "order": [
+        "v3",
+        "v5",
+        "v4"
+      ],
+      "duration_ms": 353.8116000000009,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 297.5418078124999,
+        "p50_ms": 279.2386000000006,
+        "p95_ms": 353.0709999999999,
+        "p99_ms": 353.10429999999906,
+        "max_ms": 353.10429999999906
+      },
+      "throughput_per_second": 180.8872292485601
+    },
+    {
+      "arm": "v4",
+      "burst": 64,
+      "round": 12,
+      "order": [
+        "v3",
+        "v5",
+        "v4"
+      ],
+      "duration_ms": 651.6545000000006,
+      "completed": 64,
+      "rejected": 0,
+      "crop_probes": 64,
+      "completed_latency": {
+        "n": 64,
+        "mean_ms": 558.4677890625001,
+        "p50_ms": 537.5370000000003,
+        "p95_ms": 650.7813999999998,
+        "p99_ms": 650.8176999999996,
+        "max_ms": 650.8176999999996
+      },
+      "throughput_per_second": 98.21155228729326
+    }
+  ],
+  "diagnostics": [
+    {
+      "arm": "v3",
+      "startup_ms": 2891.591,
+      "mode": "process_pool",
+      "state": "READY",
+      "processes": 2,
+      "threads_per_session": 2,
+      "batch_workers_per_process": 2,
+      "cpu_budget": 8,
+      "maximum_active_native_threads": 8,
+      "warmup": "SINGLE_AND_BATCH_EXECUTED",
+      "context_warmup": "SOURCE_CROP_EXECUTED",
+      "completed_operations": 1542,
+      "completed_native_batches": 198,
+      "microbatch_max_requests": 8,
+      "worker_pids": [
+        37720,
+        37972
+      ],
+      "worker_rss_bytes": [
+        569049088,
+        567693312
+      ],
+      "queue": {
+        "mode": "bounded_microbatch",
+        "queue_unit": "independent_native_batch",
+        "pending_unit": "logical_request",
+        "state": "READY",
+        "concurrency": 2,
+        "max_pending": 32,
+        "timeout_ms": 30000,
+        "active": 0,
+        "pending": 0,
+        "active_requests": 0,
+        "waiting_batches": 0,
+        "outstanding_requests": 0,
+        "retained_utf16": 0,
+        "retained_texts": 0,
+        "max_requests_per_batch": 8,
+        "max_outstanding_requests": 128,
+        "max_outstanding_utf16": 1000000,
+        "max_outstanding_texts": 8192,
+        "max_batch_texts": 128,
+        "max_batch_utf16": 32000,
+        "collection_wait_ms": 0,
+        "submitted": 1542,
+        "admitted": 1542,
+        "started": 1542,
+        "settled": 1542,
+        "expired": 0,
+        "aborted": 0,
+        "rejected_full": 0,
+        "rejected_memory": 0,
+        "peak_active": 2,
+        "peak_pending": 64,
+        "peak_waiting_batches": 8,
+        "peak_outstanding": 64,
+        "peak_retained_utf16": 2432,
+        "peak_retained_texts": 64,
+        "completed_batches": 198,
+        "batch_size_histogram": [
+          {
+            "requests": 1,
+            "count": 6
+          },
+          {
+            "requests": 2,
+            "count": 0
+          },
+          {
+            "requests": 3,
+            "count": 0
+          },
+          {
+            "requests": 4,
+            "count": 0
+          },
+          {
+            "requests": 5,
+            "count": 0
+          },
+          {
+            "requests": 6,
+            "count": 0
+          },
+          {
+            "requests": 7,
+            "count": 0
+          },
+          {
+            "requests": 8,
+            "count": 192
+          }
+        ],
+        "queue_wait": {
+          "count": 1542,
+          "total_ms": 310538.28419999935,
+          "max_ms": 530.8875999999982,
+          "histogram": [
+            {
+              "upper_ms": 1,
+              "count": 46
+            },
+            {
+              "upper_ms": 5,
+              "count": 152
+            },
+            {
+              "upper_ms": 10,
+              "count": 0
+            },
+            {
+              "upper_ms": 25,
+              "count": 0
+            },
+            {
+              "upper_ms": 50,
+              "count": 0
+            },
+            {
+              "upper_ms": 100,
+              "count": 48
+            },
+            {
+              "upper_ms": 250,
+              "count": 768
+            },
+            {
+              "upper_ms": 500,
+              "count": 512
+            },
+            {
+              "upper_ms": 1000,
+              "count": 16
+            },
+            {
+              "upper_ms": 2000,
+              "count": 0
+            },
+            {
+              "upper_ms": 5000,
+              "count": 0
+            },
+            {
+              "upper_ms": 10000,
+              "count": 0
+            },
+            {
+              "upper_ms": 30000,
+              "count": 0
+            },
+            {
+              "upper_ms": 60000,
+              "count": 0
+            },
+            {
+              "upper_ms": null,
+              "count": 0
+            }
+          ]
+        },
+        "service": {
+          "count": 1542,
+          "total_ms": 126844.01819999967,
+          "max_ms": 247.4630999999972,
+          "histogram": [
+            {
+              "upper_ms": 1,
+              "count": 0
+            },
+            {
+              "upper_ms": 5,
+              "count": 0
+            },
+            {
+              "upper_ms": 10,
+              "count": 0
+            },
+            {
+              "upper_ms": 25,
+              "count": 6
+            },
+            {
+              "upper_ms": 50,
+              "count": 40
+            },
+            {
+              "upper_ms": 100,
+              "count": 1064
+            },
+            {
+              "upper_ms": 250,
+              "count": 432
+            },
+            {
+              "upper_ms": 500,
+              "count": 0
+            },
+            {
+              "upper_ms": 1000,
+              "count": 0
+            },
+            {
+              "upper_ms": 2000,
+              "count": 0
+            },
+            {
+              "upper_ms": 5000,
+              "count": 0
+            },
+            {
+              "upper_ms": 10000,
+              "count": 0
+            },
+            {
+              "upper_ms": 30000,
+              "count": 0
+            },
+            {
+              "upper_ms": 60000,
+              "count": 0
+            },
+            {
+              "upper_ms": null,
+              "count": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "arm": "v4",
+      "startup_ms": 2811.3865000000005,
+      "mode": "process_pool",
+      "state": "READY",
+      "processes": 2,
+      "threads_per_session": 2,
+      "batch_workers_per_process": 2,
+      "cpu_budget": 8,
+      "maximum_active_native_threads": 8,
+      "warmup": "SINGLE_AND_BATCH_EXECUTED",
+      "context_warmup": "SOURCE_CROP_EXECUTED",
+      "completed_operations": 1542,
+      "completed_native_batches": 198,
+      "microbatch_max_requests": 8,
+      "worker_pids": [
+        33256,
+        35324
+      ],
+      "worker_rss_bytes": [
+        561168384,
+        567193600
+      ],
+      "queue": {
+        "mode": "bounded_microbatch",
+        "queue_unit": "independent_native_batch",
+        "pending_unit": "logical_request",
+        "state": "READY",
+        "concurrency": 2,
+        "max_pending": 32,
+        "timeout_ms": 30000,
+        "active": 0,
+        "pending": 0,
+        "active_requests": 0,
+        "waiting_batches": 0,
+        "outstanding_requests": 0,
+        "retained_utf16": 0,
+        "retained_texts": 0,
+        "max_requests_per_batch": 8,
+        "max_outstanding_requests": 128,
+        "max_outstanding_utf16": 1000000,
+        "max_outstanding_texts": 8192,
+        "max_batch_texts": 128,
+        "max_batch_utf16": 32000,
+        "collection_wait_ms": 0,
+        "submitted": 1542,
+        "admitted": 1542,
+        "started": 1542,
+        "settled": 1542,
+        "expired": 0,
+        "aborted": 0,
+        "rejected_full": 0,
+        "rejected_memory": 0,
+        "peak_active": 2,
+        "peak_pending": 64,
+        "peak_waiting_batches": 8,
+        "peak_outstanding": 64,
+        "peak_retained_utf16": 2432,
+        "peak_retained_texts": 64,
+        "completed_batches": 198,
+        "batch_size_histogram": [
+          {
+            "requests": 1,
+            "count": 6
+          },
+          {
+            "requests": 2,
+            "count": 0
+          },
+          {
+            "requests": 3,
+            "count": 0
+          },
+          {
+            "requests": 4,
+            "count": 0
+          },
+          {
+            "requests": 5,
+            "count": 0
+          },
+          {
+            "requests": 6,
+            "count": 0
+          },
+          {
+            "requests": 7,
+            "count": 0
+          },
+          {
+            "requests": 8,
+            "count": 192
+          }
+        ],
+        "queue_wait": {
+          "count": 1542,
+          "total_ms": 289903.94250000006,
+          "max_ms": 381.8286999999982,
+          "histogram": [
+            {
+              "upper_ms": 1,
+              "count": 66
+            },
+            {
+              "upper_ms": 5,
+              "count": 132
+            },
+            {
+              "upper_ms": 10,
+              "count": 0
+            },
+            {
+              "upper_ms": 25,
+              "count": 0
+            },
+            {
+              "upper_ms": 50,
+              "count": 0
+            },
+            {
+              "upper_ms": 100,
+              "count": 112
+            },
+            {
+              "upper_ms": 250,
+              "count": 768
+            },
+            {
+              "upper_ms": 500,
+              "count": 464
+            },
+            {
+              "upper_ms": 1000,
+              "count": 0
+            },
+            {
+              "upper_ms": 2000,
+              "count": 0
+            },
+            {
+              "upper_ms": 5000,
+              "count": 0
+            },
+            {
+              "upper_ms": 10000,
+              "count": 0
+            },
+            {
+              "upper_ms": 30000,
+              "count": 0
+            },
+            {
+              "upper_ms": 60000,
+              "count": 0
+            },
+            {
+              "upper_ms": null,
+              "count": 0
+            }
+          ]
+        },
+        "service": {
+          "count": 1542,
+          "total_ms": 120255.4112999998,
+          "max_ms": 141.45769999999902,
+          "histogram": [
+            {
+              "upper_ms": 1,
+              "count": 0
+            },
+            {
+              "upper_ms": 5,
+              "count": 0
+            },
+            {
+              "upper_ms": 10,
+              "count": 3
+            },
+            {
+              "upper_ms": 25,
+              "count": 3
+            },
+            {
+              "upper_ms": 50,
+              "count": 112
+            },
+            {
+              "upper_ms": 100,
+              "count": 1224
+            },
+            {
+              "upper_ms": 250,
+              "count": 200
+            },
+            {
+              "upper_ms": 500,
+              "count": 0
+            },
+            {
+              "upper_ms": 1000,
+              "count": 0
+            },
+            {
+              "upper_ms": 2000,
+              "count": 0
+            },
+            {
+              "upper_ms": 5000,
+              "count": 0
+            },
+            {
+              "upper_ms": 10000,
+              "count": 0
+            },
+            {
+              "upper_ms": 30000,
+              "count": 0
+            },
+            {
+              "upper_ms": 60000,
+              "count": 0
+            },
+            {
+              "upper_ms": null,
+              "count": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "arm": "v5",
+      "startup_ms": 3137.0892000000003,
+      "mode": "process_pool",
+      "state": "READY",
+      "processes": 2,
+      "threads_per_session": 2,
+      "batch_workers_per_process": 2,
+      "cpu_budget": 8,
+      "maximum_active_native_threads": 8,
+      "warmup": "SINGLE_AND_BATCH_EXECUTED",
+      "context_warmup": "SOURCE_CROP_EXECUTED",
+      "completed_operations": 1542,
+      "completed_native_batches": 198,
+      "microbatch_max_requests": 8,
+      "worker_pids": [
+        21272,
+        27360
+      ],
+      "worker_rss_bytes": [
+        566419456,
+        566558720
+      ],
+      "queue": {
+        "mode": "bounded_microbatch",
+        "queue_unit": "independent_native_batch",
+        "pending_unit": "logical_request",
+        "state": "READY",
+        "concurrency": 2,
+        "max_pending": 32,
+        "timeout_ms": 30000,
+        "active": 0,
+        "pending": 0,
+        "active_requests": 0,
+        "waiting_batches": 0,
+        "outstanding_requests": 0,
+        "retained_utf16": 0,
+        "retained_texts": 0,
+        "max_requests_per_batch": 8,
+        "max_outstanding_requests": 128,
+        "max_outstanding_utf16": 1000000,
+        "max_outstanding_texts": 8192,
+        "max_batch_texts": 128,
+        "max_batch_utf16": 32000,
+        "collection_wait_ms": 0,
+        "submitted": 1542,
+        "admitted": 1542,
+        "started": 1542,
+        "settled": 1542,
+        "expired": 0,
+        "aborted": 0,
+        "rejected_full": 0,
+        "rejected_memory": 0,
+        "peak_active": 2,
+        "peak_pending": 64,
+        "peak_waiting_batches": 8,
+        "peak_outstanding": 64,
+        "peak_retained_utf16": 2432,
+        "peak_retained_texts": 64,
+        "completed_batches": 198,
+        "batch_size_histogram": [
+          {
+            "requests": 1,
+            "count": 6
+          },
+          {
+            "requests": 2,
+            "count": 0
+          },
+          {
+            "requests": 3,
+            "count": 0
+          },
+          {
+            "requests": 4,
+            "count": 0
+          },
+          {
+            "requests": 5,
+            "count": 0
+          },
+          {
+            "requests": 6,
+            "count": 0
+          },
+          {
+            "requests": 7,
+            "count": 0
+          },
+          {
+            "requests": 8,
+            "count": 192
+          }
+        ],
+        "queue_wait": {
+          "count": 1542,
+          "total_ms": 194200.1825000001,
+          "max_ms": 257.42139999999927,
+          "histogram": [
+            {
+              "upper_ms": 1,
+              "count": 89
+            },
+            {
+              "upper_ms": 5,
+              "count": 109
+            },
+            {
+              "upper_ms": 10,
+              "count": 0
+            },
+            {
+              "upper_ms": 25,
+              "count": 0
+            },
+            {
+              "upper_ms": 50,
+              "count": 0
+            },
+            {
+              "upper_ms": 100,
+              "count": 208
+            },
+            {
+              "upper_ms": 250,
+              "count": 1128
+            },
+            {
+              "upper_ms": 500,
+              "count": 8
+            },
+            {
+              "upper_ms": 1000,
+              "count": 0
+            },
+            {
+              "upper_ms": 2000,
+              "count": 0
+            },
+            {
+              "upper_ms": 5000,
+              "count": 0
+            },
+            {
+              "upper_ms": 10000,
+              "count": 0
+            },
+            {
+              "upper_ms": 30000,
+              "count": 0
+            },
+            {
+              "upper_ms": 60000,
+              "count": 0
+            },
+            {
+              "upper_ms": null,
+              "count": 0
+            }
+          ]
+        },
+        "service": {
+          "count": 1542,
+          "total_ms": 82936.25240000004,
+          "max_ms": 120.32849999999962,
+          "histogram": [
+            {
+              "upper_ms": 1,
+              "count": 0
+            },
+            {
+              "upper_ms": 5,
+              "count": 0
+            },
+            {
+              "upper_ms": 10,
+              "count": 0
+            },
+            {
+              "upper_ms": 25,
+              "count": 5
+            },
+            {
+              "upper_ms": 50,
+              "count": 697
+            },
+            {
+              "upper_ms": 100,
+              "count": 832
+            },
+            {
+              "upper_ms": 250,
+              "count": 8
+            },
+            {
+              "upper_ms": 500,
+              "count": 0
+            },
+            {
+              "upper_ms": 1000,
+              "count": 0
+            },
+            {
+              "upper_ms": 2000,
+              "count": 0
+            },
+            {
+              "upper_ms": 5000,
+              "count": 0
+            },
+            {
+              "upper_ms": 10000,
+              "count": 0
+            },
+            {
+              "upper_ms": 30000,
+              "count": 0
+            },
+            {
+              "upper_ms": 60000,
+              "count": 0
+            },
+            {
+              "upper_ms": null,
+              "count": 0
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "Deterministic alternating order, 12 balanced three-version bursts; not independent clinical samples or formal equivalence.",
+    "Three model pools stay resident, but only one arm executes at a time; each arm has the same eight-thread native budget.",
+    "The reference 80-ms full-workflow gate is not evaluated."
+  ],
+  "clinical_evidence": "NOT_ESTABLISHED"
+}

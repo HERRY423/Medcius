@@ -1,0 +1,1192 @@
+{
+  "rows": [
+    {
+      "id": "n0",
+      "category": "bare_name",
+      "text": "今晨查琮有胸痛，午后减轻。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "n1",
+      "category": "bare_name",
+      "text": "复评：查琮自诉恶心，饮食欠佳。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 5,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "n2",
+      "category": "bare_name",
+      "text": "交班记录：查琮仍无寒战，体温如前。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 7,
+          "end": 17
+        }
+      ]
+    },
+    {
+      "id": "n3",
+      "category": "bare_name",
+      "text": "今晨闻人晞有胸痛，午后减轻。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 5,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "n4",
+      "category": "bare_name",
+      "text": "复评：闻人晞自诉恶心，饮食欠佳。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 6
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 6,
+          "end": 16
+        }
+      ]
+    },
+    {
+      "id": "n5",
+      "category": "bare_name",
+      "text": "交班记录：闻人晞仍无寒战，体温如前。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 8
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 8,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "n6",
+      "category": "bare_name",
+      "text": "今晨季遥有胸痛，午后减轻。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "n7",
+      "category": "bare_name",
+      "text": "复评：季遥自诉恶心，饮食欠佳。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 5,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "n8",
+      "category": "bare_name",
+      "text": "交班记录：季遥仍无寒战，体温如前。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 7,
+          "end": 17
+        }
+      ]
+    },
+    {
+      "id": "n9",
+      "category": "bare_name",
+      "text": "今晨郗珞有胸痛，午后减轻。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "n10",
+      "category": "bare_name",
+      "text": "复评：郗珞自诉恶心，饮食欠佳。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 5,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "n11",
+      "category": "bare_name",
+      "text": "交班记录：郗珞仍无寒战，体温如前。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 7,
+          "end": 17
+        }
+      ]
+    },
+    {
+      "id": "n12",
+      "category": "bare_name",
+      "text": "今晨仇忻有胸痛，午后减轻。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "n13",
+      "category": "bare_name",
+      "text": "复评：仇忻自诉恶心，饮食欠佳。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 5,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "n14",
+      "category": "bare_name",
+      "text": "交班记录：仇忻仍无寒战，体温如前。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 7,
+          "end": 17
+        }
+      ]
+    },
+    {
+      "id": "n15",
+      "category": "bare_name",
+      "text": "今晨南宫湛有胸痛，午后减轻。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 5,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "n16",
+      "category": "bare_name",
+      "text": "复评：南宫湛自诉恶心，饮食欠佳。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 6
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 6,
+          "end": 16
+        }
+      ]
+    },
+    {
+      "id": "n17",
+      "category": "bare_name",
+      "text": "交班记录：南宫湛仍无寒战，体温如前。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 8
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 8,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "n18",
+      "category": "bare_name",
+      "text": "今晨阚栀有胸痛，午后减轻。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "n19",
+      "category": "bare_name",
+      "text": "复评：阚栀自诉恶心，饮食欠佳。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 5,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "n20",
+      "category": "bare_name",
+      "text": "交班记录：阚栀仍无寒战，体温如前。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 7,
+          "end": 17
+        }
+      ]
+    },
+    {
+      "id": "n21",
+      "category": "bare_name",
+      "text": "今晨令狐熙有胸痛，午后减轻。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 5,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "n22",
+      "category": "bare_name",
+      "text": "复评：令狐熙自诉恶心，饮食欠佳。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 6
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 6,
+          "end": 16
+        }
+      ]
+    },
+    {
+      "id": "n23",
+      "category": "bare_name",
+      "text": "交班记录：令狐熙仍无寒战，体温如前。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 8
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 8,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "n24",
+      "category": "bare_name",
+      "text": "今晨郤璐有胸痛，午后减轻。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "n25",
+      "category": "bare_name",
+      "text": "复评：郤璐自诉恶心，饮食欠佳。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 5,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "n26",
+      "category": "bare_name",
+      "text": "交班记录：郤璐仍无寒战，体温如前。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 7,
+          "end": 17
+        }
+      ]
+    },
+    {
+      "id": "n27",
+      "category": "bare_name",
+      "text": "今晨支玠有胸痛，午后减轻。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "n28",
+      "category": "bare_name",
+      "text": "复评：支玠自诉恶心，饮食欠佳。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 5,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "n29",
+      "category": "bare_name",
+      "text": "交班记录：支玠仍无寒战，体温如前。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 7,
+          "end": 17
+        }
+      ]
+    },
+    {
+      "id": "n30",
+      "category": "bare_name",
+      "text": "今晨万俟灏有胸痛，午后减轻。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 5,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "n31",
+      "category": "bare_name",
+      "text": "复评：万俟灏自诉恶心，饮食欠佳。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 6
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 6,
+          "end": 16
+        }
+      ]
+    },
+    {
+      "id": "n32",
+      "category": "bare_name",
+      "text": "交班记录：万俟灏仍无寒战，体温如前。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 8
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 8,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "n33",
+      "category": "bare_name",
+      "text": "今晨傅蕴有胸痛，午后减轻。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "n34",
+      "category": "bare_name",
+      "text": "复评：傅蕴自诉恶心，饮食欠佳。",
+      "phi": [
+        {
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 3
+        },
+        {
+          "start": 5,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "n35",
+      "category": "bare_name",
+      "text": "交班记录：傅蕴仍无寒战，体温如前。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 7,
+          "end": 17
+        }
+      ]
+    },
+    {
+      "id": "c36",
+      "category": "clinical",
+      "text": "窦缓无明显头晕，睡眠一般。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "c37",
+      "category": "clinical",
+      "text": "窦缓有胸闷，复查心电图。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "c38",
+      "category": "clinical",
+      "text": "窦速无明显头晕，睡眠一般。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "c39",
+      "category": "clinical",
+      "text": "窦速有胸闷，复查心电图。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "c40",
+      "category": "clinical",
+      "text": "结早无明显头晕，睡眠一般。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "c41",
+      "category": "clinical",
+      "text": "结早有胸闷，复查心电图。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "c42",
+      "category": "clinical",
+      "text": "房颤无明显头晕，睡眠一般。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "c43",
+      "category": "clinical",
+      "text": "房颤有胸闷，复查心电图。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "c44",
+      "category": "clinical",
+      "text": "活动后无明显头晕，睡眠一般。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "c45",
+      "category": "clinical",
+      "text": "活动后有胸闷，复查心电图。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "c46",
+      "category": "clinical",
+      "text": "午后无明显头晕，睡眠一般。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "c47",
+      "category": "clinical",
+      "text": "午后有胸闷，复查心电图。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "c48",
+      "category": "clinical",
+      "text": "进食后无明显头晕，睡眠一般。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "c49",
+      "category": "clinical",
+      "text": "进食后有胸闷，复查心电图。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "c50",
+      "category": "clinical",
+      "text": "平卧后无明显头晕，睡眠一般。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "c51",
+      "category": "clinical",
+      "text": "平卧后有胸闷，复查心电图。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "m52",
+      "category": "medication",
+      "text": "药物：栀子 3克，另煎。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "m53",
+      "category": "medication",
+      "text": "服用栀子期间偶有头晕。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "m54",
+      "category": "medication",
+      "text": "药物：黄柏 3克，另煎。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "m55",
+      "category": "medication",
+      "text": "服用黄柏期间偶有头晕。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "m56",
+      "category": "medication",
+      "text": "药物：白前 3克，另煎。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "m57",
+      "category": "medication",
+      "text": "服用白前期间偶有头晕。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "m58",
+      "category": "medication",
+      "text": "药物：藿香 3克，另煎。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "m59",
+      "category": "medication",
+      "text": "服用藿香期间偶有头晕。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "m60",
+      "category": "medication",
+      "text": "药物：苍术 3克，另煎。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "m61",
+      "category": "medication",
+      "text": "服用苍术期间偶有头晕。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "m62",
+      "category": "medication",
+      "text": "药物：川芎 3克，另煎。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "m63",
+      "category": "medication",
+      "text": "服用川芎期间偶有头晕。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "m64",
+      "category": "medication",
+      "text": "药物：牡丹皮 3克，另煎。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "m65",
+      "category": "medication",
+      "text": "服用牡丹皮期间偶有头晕。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "m66",
+      "category": "medication",
+      "text": "药物：厚朴 3克，另煎。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "m67",
+      "category": "medication",
+      "text": "服用厚朴期间偶有头晕。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "m68",
+      "category": "medication",
+      "text": "药物：泽泻 3克，另煎。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "m69",
+      "category": "medication",
+      "text": "服用泽泻期间偶有头晕。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "m70",
+      "category": "medication",
+      "text": "药物：甘草 3克，另煎。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "m71",
+      "category": "medication",
+      "text": "服用甘草期间偶有头晕。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 11
+        }
+      ]
+    }
+  ]
+}

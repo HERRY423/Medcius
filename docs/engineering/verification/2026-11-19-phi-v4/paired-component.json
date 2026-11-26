@@ -1,0 +1,1363 @@
+{
+  "created_at": "2026-11-19T14:21:25.839Z",
+  "scope": "PAIRED_LOCAL_CROP_COMPONENT_ONLY",
+  "sources": {
+    "scripts/benchmark-ner-crops-v4.mjs": "58e519d99d052eba97fc1f5ee3b16a087c7f0687602760add60177733eb53ad8",
+    "plugins/medcius/runtimes/cn-phi-ner/batch-pool.mjs": "1cc7f9303d1872ee6904e923474afe564d90aec0c1c303a0695047284f319dd3",
+    "plugins/medcius/runtimes/cn-phi-ner/batch-worker.mjs": "5341301fc822f7a46edcd67a3cc8dd1888b3170dc17a4b367bf4dbffbc7c54aa",
+    "plugins/medcius/runtimes/cn-phi-ner/independent-batch-graph.mjs": "5a8e05512f401d68196671a1aaff4bd4e8da3fb5f0b91c91a95059966ec7485c"
+  },
+  "baseline_pool_sha256": "5cb211205f9d9362d283d144130a0902f669d64fde009e9c0fb702b7543f15ae",
+  "model_sha256": "7f8e1a4dac9c65d880b41c8ebedda02f074536f5ab249bdae66cfe41ae709dee",
+  "options": {
+    "threads": 2,
+    "batchWorkers": 2,
+    "rounds": 12
+  },
+  "runs": [
+    {
+      "count": 1,
+      "round": 1,
+      "arm": "before",
+      "ms": 6.637800000000425,
+      "native_batches": 1
+    },
+    {
+      "count": 1,
+      "round": 1,
+      "arm": "after",
+      "ms": 5.781799999999748,
+      "native_batches": 1
+    },
+    {
+      "count": 1,
+      "round": 2,
+      "arm": "after",
+      "ms": 5.494300000000294,
+      "native_batches": 1
+    },
+    {
+      "count": 1,
+      "round": 2,
+      "arm": "before",
+      "ms": 6.153400000000147,
+      "native_batches": 1
+    },
+    {
+      "count": 1,
+      "round": 3,
+      "arm": "before",
+      "ms": 5.228099999999813,
+      "native_batches": 1
+    },
+    {
+      "count": 1,
+      "round": 3,
+      "arm": "after",
+      "ms": 6.540799999999763,
+      "native_batches": 1
+    },
+    {
+      "count": 1,
+      "round": 4,
+      "arm": "after",
+      "ms": 7.683400000000347,
+      "native_batches": 1
+    },
+    {
+      "count": 1,
+      "round": 4,
+      "arm": "before",
+      "ms": 7.012499999999818,
+      "native_batches": 1
+    },
+    {
+      "count": 1,
+      "round": 5,
+      "arm": "before",
+      "ms": 8.619100000000344,
+      "native_batches": 1
+    },
+    {
+      "count": 1,
+      "round": 5,
+      "arm": "after",
+      "ms": 7.0733000000000175,
+      "native_batches": 1
+    },
+    {
+      "count": 1,
+      "round": 6,
+      "arm": "after",
+      "ms": 8.31750000000011,
+      "native_batches": 1
+    },
+    {
+      "count": 1,
+      "round": 6,
+      "arm": "before",
+      "ms": 8.23929999999973,
+      "native_batches": 1
+    },
+    {
+      "count": 1,
+      "round": 7,
+      "arm": "before",
+      "ms": 7.528299999999945,
+      "native_batches": 1
+    },
+    {
+      "count": 1,
+      "round": 7,
+      "arm": "after",
+      "ms": 7.278699999999844,
+      "native_batches": 1
+    },
+    {
+      "count": 1,
+      "round": 8,
+      "arm": "after",
+      "ms": 7.2546000000002095,
+      "native_batches": 1
+    },
+    {
+      "count": 1,
+      "round": 8,
+      "arm": "before",
+      "ms": 7.014000000000124,
+      "native_batches": 1
+    },
+    {
+      "count": 1,
+      "round": 9,
+      "arm": "before",
+      "ms": 6.9625999999998385,
+      "native_batches": 1
+    },
+    {
+      "count": 1,
+      "round": 9,
+      "arm": "after",
+      "ms": 8.309799999999996,
+      "native_batches": 1
+    },
+    {
+      "count": 1,
+      "round": 10,
+      "arm": "after",
+      "ms": 6.9780000000000655,
+      "native_batches": 1
+    },
+    {
+      "count": 1,
+      "round": 10,
+      "arm": "before",
+      "ms": 8.303699999999935,
+      "native_batches": 1
+    },
+    {
+      "count": 1,
+      "round": 11,
+      "arm": "before",
+      "ms": 8.056299999999737,
+      "native_batches": 1
+    },
+    {
+      "count": 1,
+      "round": 11,
+      "arm": "after",
+      "ms": 6.878200000000106,
+      "native_batches": 1
+    },
+    {
+      "count": 1,
+      "round": 12,
+      "arm": "after",
+      "ms": 5.47609999999986,
+      "native_batches": 1
+    },
+    {
+      "count": 1,
+      "round": 12,
+      "arm": "before",
+      "ms": 6.673099999999977,
+      "native_batches": 1
+    },
+    {
+      "count": 2,
+      "round": 1,
+      "arm": "before",
+      "ms": 8.143299999999726,
+      "native_batches": 1
+    },
+    {
+      "count": 2,
+      "round": 1,
+      "arm": "after",
+      "ms": 8.293500000000222,
+      "native_batches": 2
+    },
+    {
+      "count": 2,
+      "round": 2,
+      "arm": "after",
+      "ms": 6.440399999999954,
+      "native_batches": 2
+    },
+    {
+      "count": 2,
+      "round": 2,
+      "arm": "before",
+      "ms": 8.953100000000177,
+      "native_batches": 1
+    },
+    {
+      "count": 2,
+      "round": 3,
+      "arm": "before",
+      "ms": 8.374099999999999,
+      "native_batches": 1
+    },
+    {
+      "count": 2,
+      "round": 3,
+      "arm": "after",
+      "ms": 8.493600000000242,
+      "native_batches": 2
+    },
+    {
+      "count": 2,
+      "round": 4,
+      "arm": "after",
+      "ms": 6.617099999999937,
+      "native_batches": 2
+    },
+    {
+      "count": 2,
+      "round": 4,
+      "arm": "before",
+      "ms": 9.280399999999645,
+      "native_batches": 1
+    },
+    {
+      "count": 2,
+      "round": 5,
+      "arm": "before",
+      "ms": 8.076899999999569,
+      "native_batches": 1
+    },
+    {
+      "count": 2,
+      "round": 5,
+      "arm": "after",
+      "ms": 7.857100000000173,
+      "native_batches": 2
+    },
+    {
+      "count": 2,
+      "round": 6,
+      "arm": "after",
+      "ms": 6.819900000000416,
+      "native_batches": 2
+    },
+    {
+      "count": 2,
+      "round": 6,
+      "arm": "before",
+      "ms": 9.088800000000447,
+      "native_batches": 1
+    },
+    {
+      "count": 2,
+      "round": 7,
+      "arm": "before",
+      "ms": 8.081499999999323,
+      "native_batches": 1
+    },
+    {
+      "count": 2,
+      "round": 7,
+      "arm": "after",
+      "ms": 7.196600000000217,
+      "native_batches": 2
+    },
+    {
+      "count": 2,
+      "round": 8,
+      "arm": "after",
+      "ms": 7.38169999999991,
+      "native_batches": 2
+    },
+    {
+      "count": 2,
+      "round": 8,
+      "arm": "before",
+      "ms": 8.54870000000028,
+      "native_batches": 1
+    },
+    {
+      "count": 2,
+      "round": 9,
+      "arm": "before",
+      "ms": 8.369299999999384,
+      "native_batches": 1
+    },
+    {
+      "count": 2,
+      "round": 9,
+      "arm": "after",
+      "ms": 6.513299999999617,
+      "native_batches": 2
+    },
+    {
+      "count": 2,
+      "round": 10,
+      "arm": "after",
+      "ms": 7.1568999999999505,
+      "native_batches": 2
+    },
+    {
+      "count": 2,
+      "round": 10,
+      "arm": "before",
+      "ms": 8.227199999999357,
+      "native_batches": 1
+    },
+    {
+      "count": 2,
+      "round": 11,
+      "arm": "before",
+      "ms": 9.794499999999971,
+      "native_batches": 1
+    },
+    {
+      "count": 2,
+      "round": 11,
+      "arm": "after",
+      "ms": 6.522100000000137,
+      "native_batches": 2
+    },
+    {
+      "count": 2,
+      "round": 12,
+      "arm": "after",
+      "ms": 7.3753999999999,
+      "native_batches": 2
+    },
+    {
+      "count": 2,
+      "round": 12,
+      "arm": "before",
+      "ms": 8.215100000000348,
+      "native_batches": 1
+    },
+    {
+      "count": 4,
+      "round": 1,
+      "arm": "before",
+      "ms": 13.10779999999977,
+      "native_batches": 1
+    },
+    {
+      "count": 4,
+      "round": 1,
+      "arm": "after",
+      "ms": 10.326500000000124,
+      "native_batches": 2
+    },
+    {
+      "count": 4,
+      "round": 2,
+      "arm": "after",
+      "ms": 9.992799999999988,
+      "native_batches": 2
+    },
+    {
+      "count": 4,
+      "round": 2,
+      "arm": "before",
+      "ms": 13.00839999999971,
+      "native_batches": 1
+    },
+    {
+      "count": 4,
+      "round": 3,
+      "arm": "before",
+      "ms": 13.093499999999949,
+      "native_batches": 1
+    },
+    {
+      "count": 4,
+      "round": 3,
+      "arm": "after",
+      "ms": 10.58179999999993,
+      "native_batches": 2
+    },
+    {
+      "count": 4,
+      "round": 4,
+      "arm": "after",
+      "ms": 9.062300000000505,
+      "native_batches": 2
+    },
+    {
+      "count": 4,
+      "round": 4,
+      "arm": "before",
+      "ms": 13.900700000000143,
+      "native_batches": 1
+    },
+    {
+      "count": 4,
+      "round": 5,
+      "arm": "before",
+      "ms": 14.313400000000001,
+      "native_batches": 1
+    },
+    {
+      "count": 4,
+      "round": 5,
+      "arm": "after",
+      "ms": 10.494499999999789,
+      "native_batches": 2
+    },
+    {
+      "count": 4,
+      "round": 6,
+      "arm": "after",
+      "ms": 9.093799999999646,
+      "native_batches": 2
+    },
+    {
+      "count": 4,
+      "round": 6,
+      "arm": "before",
+      "ms": 12.728799999999865,
+      "native_batches": 1
+    },
+    {
+      "count": 4,
+      "round": 7,
+      "arm": "before",
+      "ms": 13.514500000000226,
+      "native_batches": 1
+    },
+    {
+      "count": 4,
+      "round": 7,
+      "arm": "after",
+      "ms": 8.578199999999924,
+      "native_batches": 2
+    },
+    {
+      "count": 4,
+      "round": 8,
+      "arm": "after",
+      "ms": 8.846800000000258,
+      "native_batches": 2
+    },
+    {
+      "count": 4,
+      "round": 8,
+      "arm": "before",
+      "ms": 13.175199999999677,
+      "native_batches": 1
+    },
+    {
+      "count": 4,
+      "round": 9,
+      "arm": "before",
+      "ms": 12.645800000000236,
+      "native_batches": 1
+    },
+    {
+      "count": 4,
+      "round": 9,
+      "arm": "after",
+      "ms": 9.904099999999744,
+      "native_batches": 2
+    },
+    {
+      "count": 4,
+      "round": 10,
+      "arm": "after",
+      "ms": 9.34270000000015,
+      "native_batches": 2
+    },
+    {
+      "count": 4,
+      "round": 10,
+      "arm": "before",
+      "ms": 12.259900000000016,
+      "native_batches": 1
+    },
+    {
+      "count": 4,
+      "round": 11,
+      "arm": "before",
+      "ms": 13.8104000000003,
+      "native_batches": 1
+    },
+    {
+      "count": 4,
+      "round": 11,
+      "arm": "after",
+      "ms": 9.506199999999808,
+      "native_batches": 2
+    },
+    {
+      "count": 4,
+      "round": 12,
+      "arm": "after",
+      "ms": 8.759700000000521,
+      "native_batches": 2
+    },
+    {
+      "count": 4,
+      "round": 12,
+      "arm": "before",
+      "ms": 12.486499999999978,
+      "native_batches": 1
+    },
+    {
+      "count": 8,
+      "round": 1,
+      "arm": "before",
+      "ms": 21.81630000000041,
+      "native_batches": 1
+    },
+    {
+      "count": 8,
+      "round": 1,
+      "arm": "after",
+      "ms": 15.394400000000132,
+      "native_batches": 2
+    },
+    {
+      "count": 8,
+      "round": 2,
+      "arm": "after",
+      "ms": 14.19880000000012,
+      "native_batches": 2
+    },
+    {
+      "count": 8,
+      "round": 2,
+      "arm": "before",
+      "ms": 21.629299999999603,
+      "native_batches": 1
+    },
+    {
+      "count": 8,
+      "round": 3,
+      "arm": "before",
+      "ms": 22.101700000000164,
+      "native_batches": 1
+    },
+    {
+      "count": 8,
+      "round": 3,
+      "arm": "after",
+      "ms": 14.715799999999945,
+      "native_batches": 2
+    },
+    {
+      "count": 8,
+      "round": 4,
+      "arm": "after",
+      "ms": 13.493099999999686,
+      "native_batches": 2
+    },
+    {
+      "count": 8,
+      "round": 4,
+      "arm": "before",
+      "ms": 20.536799999999857,
+      "native_batches": 1
+    },
+    {
+      "count": 8,
+      "round": 5,
+      "arm": "before",
+      "ms": 20.22490000000016,
+      "native_batches": 1
+    },
+    {
+      "count": 8,
+      "round": 5,
+      "arm": "after",
+      "ms": 14.92489999999998,
+      "native_batches": 2
+    },
+    {
+      "count": 8,
+      "round": 6,
+      "arm": "after",
+      "ms": 13.455399999999827,
+      "native_batches": 2
+    },
+    {
+      "count": 8,
+      "round": 6,
+      "arm": "before",
+      "ms": 20.946399999999812,
+      "native_batches": 1
+    },
+    {
+      "count": 8,
+      "round": 7,
+      "arm": "before",
+      "ms": 22.084499999999935,
+      "native_batches": 1
+    },
+    {
+      "count": 8,
+      "round": 7,
+      "arm": "after",
+      "ms": 13.360399999999572,
+      "native_batches": 2
+    },
+    {
+      "count": 8,
+      "round": 8,
+      "arm": "after",
+      "ms": 13.29910000000018,
+      "native_batches": 2
+    },
+    {
+      "count": 8,
+      "round": 8,
+      "arm": "before",
+      "ms": 21.315099999999802,
+      "native_batches": 1
+    },
+    {
+      "count": 8,
+      "round": 9,
+      "arm": "before",
+      "ms": 22.405399999999645,
+      "native_batches": 1
+    },
+    {
+      "count": 8,
+      "round": 9,
+      "arm": "after",
+      "ms": 14.478500000000167,
+      "native_batches": 2
+    },
+    {
+      "count": 8,
+      "round": 10,
+      "arm": "after",
+      "ms": 13.668399999999565,
+      "native_batches": 2
+    },
+    {
+      "count": 8,
+      "round": 10,
+      "arm": "before",
+      "ms": 21.99279999999999,
+      "native_batches": 1
+    },
+    {
+      "count": 8,
+      "round": 11,
+      "arm": "before",
+      "ms": 22.580299999999625,
+      "native_batches": 1
+    },
+    {
+      "count": 8,
+      "round": 11,
+      "arm": "after",
+      "ms": 14.511099999999715,
+      "native_batches": 2
+    },
+    {
+      "count": 8,
+      "round": 12,
+      "arm": "after",
+      "ms": 14.303399999999783,
+      "native_batches": 2
+    },
+    {
+      "count": 8,
+      "round": 12,
+      "arm": "before",
+      "ms": 21.664600000000064,
+      "native_batches": 1
+    },
+    {
+      "count": 13,
+      "round": 1,
+      "arm": "before",
+      "ms": 29.392700000000332,
+      "native_batches": 2
+    },
+    {
+      "count": 13,
+      "round": 1,
+      "arm": "after",
+      "ms": 20.502599999999802,
+      "native_batches": 2
+    },
+    {
+      "count": 13,
+      "round": 2,
+      "arm": "after",
+      "ms": 20.07890000000043,
+      "native_batches": 2
+    },
+    {
+      "count": 13,
+      "round": 2,
+      "arm": "before",
+      "ms": 28.590900000000147,
+      "native_batches": 2
+    },
+    {
+      "count": 13,
+      "round": 3,
+      "arm": "before",
+      "ms": 30.4320000000007,
+      "native_batches": 2
+    },
+    {
+      "count": 13,
+      "round": 3,
+      "arm": "after",
+      "ms": 23.502300000000105,
+      "native_batches": 2
+    },
+    {
+      "count": 13,
+      "round": 4,
+      "arm": "after",
+      "ms": 21.3166999999994,
+      "native_batches": 2
+    },
+    {
+      "count": 13,
+      "round": 4,
+      "arm": "before",
+      "ms": 29.422300000000178,
+      "native_batches": 2
+    },
+    {
+      "count": 13,
+      "round": 5,
+      "arm": "before",
+      "ms": 29.9412999999995,
+      "native_batches": 2
+    },
+    {
+      "count": 13,
+      "round": 5,
+      "arm": "after",
+      "ms": 22.986799999999675,
+      "native_batches": 2
+    },
+    {
+      "count": 13,
+      "round": 6,
+      "arm": "after",
+      "ms": 19.849299999999857,
+      "native_batches": 2
+    },
+    {
+      "count": 13,
+      "round": 6,
+      "arm": "before",
+      "ms": 30.188100000000304,
+      "native_batches": 2
+    },
+    {
+      "count": 13,
+      "round": 7,
+      "arm": "before",
+      "ms": 28.156599999999344,
+      "native_batches": 2
+    },
+    {
+      "count": 13,
+      "round": 7,
+      "arm": "after",
+      "ms": 21.07799999999952,
+      "native_batches": 2
+    },
+    {
+      "count": 13,
+      "round": 8,
+      "arm": "after",
+      "ms": 19.28480000000036,
+      "native_batches": 2
+    },
+    {
+      "count": 13,
+      "round": 8,
+      "arm": "before",
+      "ms": 28.464100000000144,
+      "native_batches": 2
+    },
+    {
+      "count": 13,
+      "round": 9,
+      "arm": "before",
+      "ms": 28.602100000000064,
+      "native_batches": 2
+    },
+    {
+      "count": 13,
+      "round": 9,
+      "arm": "after",
+      "ms": 20.722600000000057,
+      "native_batches": 2
+    },
+    {
+      "count": 13,
+      "round": 10,
+      "arm": "after",
+      "ms": 20.468300000000454,
+      "native_batches": 2
+    },
+    {
+      "count": 13,
+      "round": 10,
+      "arm": "before",
+      "ms": 29.35489999999936,
+      "native_batches": 2
+    },
+    {
+      "count": 13,
+      "round": 11,
+      "arm": "before",
+      "ms": 29.525100000000748,
+      "native_batches": 2
+    },
+    {
+      "count": 13,
+      "round": 11,
+      "arm": "after",
+      "ms": 23.062200000000303,
+      "native_batches": 2
+    },
+    {
+      "count": 13,
+      "round": 12,
+      "arm": "after",
+      "ms": 19.831500000000233,
+      "native_batches": 2
+    },
+    {
+      "count": 13,
+      "round": 12,
+      "arm": "before",
+      "ms": 28.97490000000016,
+      "native_batches": 2
+    },
+    {
+      "count": 24,
+      "round": 1,
+      "arm": "before",
+      "ms": 29.824000000000524,
+      "native_batches": 2
+    },
+    {
+      "count": 24,
+      "round": 1,
+      "arm": "after",
+      "ms": 32.318999999999505,
+      "native_batches": 2
+    },
+    {
+      "count": 24,
+      "round": 2,
+      "arm": "after",
+      "ms": 31.14639999999963,
+      "native_batches": 2
+    },
+    {
+      "count": 24,
+      "round": 2,
+      "arm": "before",
+      "ms": 31.521600000000035,
+      "native_batches": 2
+    },
+    {
+      "count": 24,
+      "round": 3,
+      "arm": "before",
+      "ms": 29.91190000000006,
+      "native_batches": 2
+    },
+    {
+      "count": 24,
+      "round": 3,
+      "arm": "after",
+      "ms": 29.999399999999696,
+      "native_batches": 2
+    },
+    {
+      "count": 24,
+      "round": 4,
+      "arm": "after",
+      "ms": 30.352499999999964,
+      "native_batches": 2
+    },
+    {
+      "count": 24,
+      "round": 4,
+      "arm": "before",
+      "ms": 30.81790000000001,
+      "native_batches": 2
+    },
+    {
+      "count": 24,
+      "round": 5,
+      "arm": "before",
+      "ms": 30.54780000000028,
+      "native_batches": 2
+    },
+    {
+      "count": 24,
+      "round": 5,
+      "arm": "after",
+      "ms": 30.833300000000236,
+      "native_batches": 2
+    },
+    {
+      "count": 24,
+      "round": 6,
+      "arm": "after",
+      "ms": 31.12920000000031,
+      "native_batches": 2
+    },
+    {
+      "count": 24,
+      "round": 6,
+      "arm": "before",
+      "ms": 31.827700000000732,
+      "native_batches": 2
+    },
+    {
+      "count": 24,
+      "round": 7,
+      "arm": "before",
+      "ms": 30.15440000000035,
+      "native_batches": 2
+    },
+    {
+      "count": 24,
+      "round": 7,
+      "arm": "after",
+      "ms": 31.29989999999998,
+      "native_batches": 2
+    },
+    {
+      "count": 24,
+      "round": 8,
+      "arm": "after",
+      "ms": 32.77599999999984,
+      "native_batches": 2
+    },
+    {
+      "count": 24,
+      "round": 8,
+      "arm": "before",
+      "ms": 30.610099999999875,
+      "native_batches": 2
+    },
+    {
+      "count": 24,
+      "round": 9,
+      "arm": "before",
+      "ms": 30.20010000000002,
+      "native_batches": 2
+    },
+    {
+      "count": 24,
+      "round": 9,
+      "arm": "after",
+      "ms": 30.819800000000214,
+      "native_batches": 2
+    },
+    {
+      "count": 24,
+      "round": 10,
+      "arm": "after",
+      "ms": 31.902100000000246,
+      "native_batches": 2
+    },
+    {
+      "count": 24,
+      "round": 10,
+      "arm": "before",
+      "ms": 30.157400000000052,
+      "native_batches": 2
+    },
+    {
+      "count": 24,
+      "round": 11,
+      "arm": "before",
+      "ms": 31.32720000000063,
+      "native_batches": 2
+    },
+    {
+      "count": 24,
+      "round": 11,
+      "arm": "after",
+      "ms": 30.66280000000006,
+      "native_batches": 2
+    },
+    {
+      "count": 24,
+      "round": 12,
+      "arm": "after",
+      "ms": 31.897899999999936,
+      "native_batches": 2
+    },
+    {
+      "count": 24,
+      "round": 12,
+      "arm": "before",
+      "ms": 31.07039999999961,
+      "native_batches": 2
+    },
+    {
+      "count": 25,
+      "round": 1,
+      "arm": "before",
+      "ms": 37.98460000000068,
+      "native_batches": 3
+    },
+    {
+      "count": 25,
+      "round": 1,
+      "arm": "after",
+      "ms": 37.59779999999955,
+      "native_batches": 4
+    },
+    {
+      "count": 25,
+      "round": 2,
+      "arm": "after",
+      "ms": 37.71600000000035,
+      "native_batches": 4
+    },
+    {
+      "count": 25,
+      "round": 2,
+      "arm": "before",
+      "ms": 37.42439999999988,
+      "native_batches": 3
+    },
+    {
+      "count": 25,
+      "round": 3,
+      "arm": "before",
+      "ms": 37.834899999999834,
+      "native_batches": 3
+    },
+    {
+      "count": 25,
+      "round": 3,
+      "arm": "after",
+      "ms": 37.845800000000054,
+      "native_batches": 4
+    },
+    {
+      "count": 25,
+      "round": 4,
+      "arm": "after",
+      "ms": 37.10580000000027,
+      "native_batches": 4
+    },
+    {
+      "count": 25,
+      "round": 4,
+      "arm": "before",
+      "ms": 36.6304999999993,
+      "native_batches": 3
+    },
+    {
+      "count": 25,
+      "round": 5,
+      "arm": "before",
+      "ms": 35.98989999999958,
+      "native_batches": 3
+    },
+    {
+      "count": 25,
+      "round": 5,
+      "arm": "after",
+      "ms": 36.493900000000394,
+      "native_batches": 4
+    },
+    {
+      "count": 25,
+      "round": 6,
+      "arm": "after",
+      "ms": 36.97029999999995,
+      "native_batches": 4
+    },
+    {
+      "count": 25,
+      "round": 6,
+      "arm": "before",
+      "ms": 36.432700000000295,
+      "native_batches": 3
+    },
+    {
+      "count": 25,
+      "round": 7,
+      "arm": "before",
+      "ms": 35.975499999999556,
+      "native_batches": 3
+    },
+    {
+      "count": 25,
+      "round": 7,
+      "arm": "after",
+      "ms": 38.669200000000274,
+      "native_batches": 4
+    },
+    {
+      "count": 25,
+      "round": 8,
+      "arm": "after",
+      "ms": 37.20460000000003,
+      "native_batches": 4
+    },
+    {
+      "count": 25,
+      "round": 8,
+      "arm": "before",
+      "ms": 38.01379999999972,
+      "native_batches": 3
+    },
+    {
+      "count": 25,
+      "round": 9,
+      "arm": "before",
+      "ms": 38.58609999999953,
+      "native_batches": 3
+    },
+    {
+      "count": 25,
+      "round": 9,
+      "arm": "after",
+      "ms": 36.96060000000034,
+      "native_batches": 4
+    },
+    {
+      "count": 25,
+      "round": 10,
+      "arm": "after",
+      "ms": 37.034599999999955,
+      "native_batches": 4
+    },
+    {
+      "count": 25,
+      "round": 10,
+      "arm": "before",
+      "ms": 37.80969999999979,
+      "native_batches": 3
+    },
+    {
+      "count": 25,
+      "round": 11,
+      "arm": "before",
+      "ms": 36.78229999999985,
+      "native_batches": 3
+    },
+    {
+      "count": 25,
+      "round": 11,
+      "arm": "after",
+      "ms": 37.457900000000336,
+      "native_batches": 4
+    },
+    {
+      "count": 25,
+      "round": 12,
+      "arm": "after",
+      "ms": 38.09680000000026,
+      "native_batches": 4
+    },
+    {
+      "count": 25,
+      "round": 12,
+      "arm": "before",
+      "ms": 37.09979999999996,
+      "native_batches": 3
+    },
+    {
+      "count": 64,
+      "round": 1,
+      "arm": "before",
+      "ms": 88.77569999999923,
+      "native_batches": 6
+    },
+    {
+      "count": 64,
+      "round": 1,
+      "arm": "after",
+      "ms": 83.05109999999968,
+      "native_batches": 6
+    },
+    {
+      "count": 64,
+      "round": 2,
+      "arm": "after",
+      "ms": 81.92350000000079,
+      "native_batches": 6
+    },
+    {
+      "count": 64,
+      "round": 2,
+      "arm": "before",
+      "ms": 88.88979999999992,
+      "native_batches": 6
+    },
+    {
+      "count": 64,
+      "round": 3,
+      "arm": "before",
+      "ms": 90.54929999999968,
+      "native_batches": 6
+    },
+    {
+      "count": 64,
+      "round": 3,
+      "arm": "after",
+      "ms": 81.98419999999987,
+      "native_batches": 6
+    },
+    {
+      "count": 64,
+      "round": 4,
+      "arm": "after",
+      "ms": 84.4971000000005,
+      "native_batches": 6
+    },
+    {
+      "count": 64,
+      "round": 4,
+      "arm": "before",
+      "ms": 87.65669999999955,
+      "native_batches": 6
+    },
+    {
+      "count": 64,
+      "round": 5,
+      "arm": "before",
+      "ms": 88.16350000000057,
+      "native_batches": 6
+    },
+    {
+      "count": 64,
+      "round": 5,
+      "arm": "after",
+      "ms": 82.11219999999958,
+      "native_batches": 6
+    },
+    {
+      "count": 64,
+      "round": 6,
+      "arm": "after",
+      "ms": 82.51970000000074,
+      "native_batches": 6
+    },
+    {
+      "count": 64,
+      "round": 6,
+      "arm": "before",
+      "ms": 86.84259999999995,
+      "native_batches": 6
+    },
+    {
+      "count": 64,
+      "round": 7,
+      "arm": "before",
+      "ms": 90.79249999999956,
+      "native_batches": 6
+    },
+    {
+      "count": 64,
+      "round": 7,
+      "arm": "after",
+      "ms": 79.48909999999887,
+      "native_batches": 6
+    },
+    {
+      "count": 64,
+      "round": 8,
+      "arm": "after",
+      "ms": 82.51699999999983,
+      "native_batches": 6
+    },
+    {
+      "count": 64,
+      "round": 8,
+      "arm": "before",
+      "ms": 89.18139999999948,
+      "native_batches": 6
+    },
+    {
+      "count": 64,
+      "round": 9,
+      "arm": "before",
+      "ms": 89.96619999999893,
+      "native_batches": 6
+    },
+    {
+      "count": 64,
+      "round": 9,
+      "arm": "after",
+      "ms": 83.4423999999999,
+      "native_batches": 6
+    },
+    {
+      "count": 64,
+      "round": 10,
+      "arm": "after",
+      "ms": 84.07799999999952,
+      "native_batches": 6
+    },
+    {
+      "count": 64,
+      "round": 10,
+      "arm": "before",
+      "ms": 90.5038999999997,
+      "native_batches": 6
+    },
+    {
+      "count": 64,
+      "round": 11,
+      "arm": "before",
+      "ms": 94.91320000000087,
+      "native_batches": 6
+    },
+    {
+      "count": 64,
+      "round": 11,
+      "arm": "after",
+      "ms": 80.66489999999976,
+      "native_batches": 6
+    },
+    {
+      "count": 64,
+      "round": 12,
+      "arm": "after",
+      "ms": 81.0588000000007,
+      "native_batches": 6
+    },
+    {
+      "count": 64,
+      "round": 12,
+      "arm": "before",
+      "ms": 86.98650000000089,
+      "native_batches": 6
+    }
+  ]
+}

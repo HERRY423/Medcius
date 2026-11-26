@@ -1,0 +1,1681 @@
+{
+  "scope": "same-author synthetic holdout",
+  "rows": [
+    {
+      "id": "subject-0",
+      "category": "subject",
+      "text": "昨晚查芮自述气短，今日缓解。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "subject-1",
+      "category": "subject",
+      "text": "查芮无明显腹痛，饮水可。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keep": [
+        {
+          "start": 2,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "subject-2",
+      "category": "subject",
+      "text": "交班记录：查芮今日出现头晕，需复评。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 7,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "subject-3",
+      "category": "subject",
+      "text": "昨晚查栩自述气短，今日缓解。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "subject-4",
+      "category": "subject",
+      "text": "查栩无明显腹痛，饮水可。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keep": [
+        {
+          "start": 2,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "subject-5",
+      "category": "subject",
+      "text": "交班记录：查栩今日出现头晕，需复评。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 7,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "subject-6",
+      "category": "subject",
+      "text": "昨晚闻人昀自述气短，今日缓解。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 5,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "subject-7",
+      "category": "subject",
+      "text": "闻人昀无明显腹痛，饮水可。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 3
+        }
+      ],
+      "keep": [
+        {
+          "start": 3,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "subject-8",
+      "category": "subject",
+      "text": "交班记录：闻人昀今日出现头晕，需复评。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 8
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 8,
+          "end": 19
+        }
+      ]
+    },
+    {
+      "id": "subject-9",
+      "category": "subject",
+      "text": "昨晚闻人苒自述气短，今日缓解。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 5,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "subject-10",
+      "category": "subject",
+      "text": "闻人苒无明显腹痛，饮水可。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 3
+        }
+      ],
+      "keep": [
+        {
+          "start": 3,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "subject-11",
+      "category": "subject",
+      "text": "交班记录：闻人苒今日出现头晕，需复评。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 8
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 8,
+          "end": 19
+        }
+      ]
+    },
+    {
+      "id": "subject-12",
+      "category": "subject",
+      "text": "昨晚夏侯澍自述气短，今日缓解。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 5,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "subject-13",
+      "category": "subject",
+      "text": "夏侯澍无明显腹痛，饮水可。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 3
+        }
+      ],
+      "keep": [
+        {
+          "start": 3,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "subject-14",
+      "category": "subject",
+      "text": "交班记录：夏侯澍今日出现头晕，需复评。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 8
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 8,
+          "end": 19
+        }
+      ]
+    },
+    {
+      "id": "subject-15",
+      "category": "subject",
+      "text": "昨晚公冶绫自述气短，今日缓解。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 5,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "subject-16",
+      "category": "subject",
+      "text": "公冶绫无明显腹痛，饮水可。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 3
+        }
+      ],
+      "keep": [
+        {
+          "start": 3,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "subject-17",
+      "category": "subject",
+      "text": "交班记录：公冶绫今日出现头晕，需复评。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 8
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 8,
+          "end": 19
+        }
+      ]
+    },
+    {
+      "id": "subject-18",
+      "category": "subject",
+      "text": "昨晚乐苇自述气短，今日缓解。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "subject-19",
+      "category": "subject",
+      "text": "乐苇无明显腹痛，饮水可。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keep": [
+        {
+          "start": 2,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "subject-20",
+      "category": "subject",
+      "text": "交班记录：乐苇今日出现头晕，需复评。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 7,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "subject-21",
+      "category": "subject",
+      "text": "昨晚解昀自述气短，今日缓解。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "subject-22",
+      "category": "subject",
+      "text": "解昀无明显腹痛，饮水可。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keep": [
+        {
+          "start": 2,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "subject-23",
+      "category": "subject",
+      "text": "交班记录：解昀今日出现头晕，需复评。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 7,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "subject-24",
+      "category": "subject",
+      "text": "昨晚宿苓自述气短，今日缓解。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "subject-25",
+      "category": "subject",
+      "text": "宿苓无明显腹痛，饮水可。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keep": [
+        {
+          "start": 2,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "subject-26",
+      "category": "subject",
+      "text": "交班记录：宿苓今日出现头晕，需复评。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 7,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "subject-27",
+      "category": "subject",
+      "text": "昨晚薄祉自述气短，今日缓解。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "subject-28",
+      "category": "subject",
+      "text": "薄祉无明显腹痛，饮水可。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keep": [
+        {
+          "start": 2,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "subject-29",
+      "category": "subject",
+      "text": "交班记录：薄祉今日出现头晕，需复评。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 7,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "subject-30",
+      "category": "subject",
+      "text": "昨晚宓谦自述气短，今日缓解。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "subject-31",
+      "category": "subject",
+      "text": "宓谦无明显腹痛，饮水可。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keep": [
+        {
+          "start": 2,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "subject-32",
+      "category": "subject",
+      "text": "交班记录：宓谦今日出现头晕，需复评。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 7,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "subject-33",
+      "category": "subject",
+      "text": "昨晚晏泓自述气短，今日缓解。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "subject-34",
+      "category": "subject",
+      "text": "晏泓无明显腹痛，饮水可。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keep": [
+        {
+          "start": 2,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "subject-35",
+      "category": "subject",
+      "text": "交班记录：晏泓今日出现头晕，需复评。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 7,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "subject-36",
+      "category": "subject",
+      "text": "昨晚郇宛自述气短，今日缓解。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "subject-37",
+      "category": "subject",
+      "text": "郇宛无明显腹痛，饮水可。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keep": [
+        {
+          "start": 2,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "subject-38",
+      "category": "subject",
+      "text": "交班记录：郇宛今日出现头晕，需复评。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 7,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "subject-39",
+      "category": "subject",
+      "text": "昨晚单睿自述气短，今日缓解。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "subject-40",
+      "category": "subject",
+      "text": "单睿无明显腹痛，饮水可。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keep": [
+        {
+          "start": 2,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "subject-41",
+      "category": "subject",
+      "text": "交班记录：单睿今日出现头晕，需复评。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 7,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "subject-42",
+      "category": "subject",
+      "text": "昨晚鄢芮自述气短，今日缓解。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 4,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "subject-43",
+      "category": "subject",
+      "text": "鄢芮无明显腹痛，饮水可。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keep": [
+        {
+          "start": 2,
+          "end": 12
+        }
+      ]
+    },
+    {
+      "id": "subject-44",
+      "category": "subject",
+      "text": "交班记录：鄢芮今日出现头晕，需复评。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 7,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "subject-45",
+      "category": "subject",
+      "text": "昨晚尉迟桢自述气短，今日缓解。",
+      "phi": [
+        {
+          "start": 2,
+          "end": 5
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 2
+        },
+        {
+          "start": 5,
+          "end": 15
+        }
+      ]
+    },
+    {
+      "id": "subject-46",
+      "category": "subject",
+      "text": "尉迟桢无明显腹痛，饮水可。",
+      "phi": [
+        {
+          "start": 0,
+          "end": 3
+        }
+      ],
+      "keep": [
+        {
+          "start": 3,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "subject-47",
+      "category": "subject",
+      "text": "交班记录：尉迟桢今日出现头晕，需复评。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 8
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 8,
+          "end": 19
+        }
+      ]
+    },
+    {
+      "id": "clinical-48",
+      "category": "clinical",
+      "text": "窦缓伴乏力，心率偏低。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "clinical-49",
+      "category": "clinical",
+      "text": "窦速无明显胸闷。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 8
+        }
+      ]
+    },
+    {
+      "id": "clinical-50",
+      "category": "clinical",
+      "text": "心电图提示窦性停搏。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 10
+        }
+      ]
+    },
+    {
+      "id": "clinical-51",
+      "category": "clinical",
+      "text": "房早频发，复查心电图。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "clinical-52",
+      "category": "clinical",
+      "text": "室速有心悸。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 6
+        }
+      ]
+    },
+    {
+      "id": "clinical-53",
+      "category": "clinical",
+      "text": "腓浅神经感觉减退。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 9
+        }
+      ]
+    },
+    {
+      "id": "clinical-54",
+      "category": "clinical",
+      "text": "腓深神经查体可。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 8
+        }
+      ]
+    },
+    {
+      "id": "clinical-55",
+      "category": "clinical",
+      "text": "正中神经支配区麻木。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 10
+        }
+      ]
+    },
+    {
+      "id": "clinical-56",
+      "category": "clinical",
+      "text": "尺神经查体无异常。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 9
+        }
+      ]
+    },
+    {
+      "id": "clinical-57",
+      "category": "clinical",
+      "text": "桡神经体征待复查。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 9
+        }
+      ]
+    },
+    {
+      "id": "clinical-58",
+      "category": "clinical",
+      "text": "肌腱反射减弱。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 7
+        }
+      ]
+    },
+    {
+      "id": "clinical-59",
+      "category": "clinical",
+      "text": "窦房传导时间延长。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 9
+        }
+      ]
+    },
+    {
+      "id": "clinical-60",
+      "category": "clinical",
+      "text": "查体见巩膜黄染。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 8
+        }
+      ]
+    },
+    {
+      "id": "clinical-61",
+      "category": "clinical",
+      "text": "闻及干啰音，未诉气促。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "clinical-62",
+      "category": "clinical",
+      "text": "双侧膝反射对称。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 8
+        }
+      ]
+    },
+    {
+      "id": "clinical-63",
+      "category": "clinical",
+      "text": "心率趋稳，仍无胸痛。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 10
+        }
+      ]
+    },
+    {
+      "id": "prescription-64",
+      "category": "prescription",
+      "text": "处方：厚朴 9克，水煎服。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "administration-65",
+      "category": "administration",
+      "text": "加用厚朴后腹胀减轻。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 10
+        }
+      ]
+    },
+    {
+      "id": "prescription-66",
+      "category": "prescription",
+      "text": "处方：葛根 9克，水煎服。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "administration-67",
+      "category": "administration",
+      "text": "加用葛根后腹胀减轻。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 10
+        }
+      ]
+    },
+    {
+      "id": "prescription-68",
+      "category": "prescription",
+      "text": "处方：牡丹皮 9克，水煎服。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "administration-69",
+      "category": "administration",
+      "text": "加用牡丹皮后腹胀减轻。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "prescription-70",
+      "category": "prescription",
+      "text": "处方：丹皮 9克，水煎服。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "administration-71",
+      "category": "administration",
+      "text": "加用丹皮后腹胀减轻。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 10
+        }
+      ]
+    },
+    {
+      "id": "prescription-72",
+      "category": "prescription",
+      "text": "处方：紫菀 9克，水煎服。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "administration-73",
+      "category": "administration",
+      "text": "加用紫菀后腹胀减轻。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 10
+        }
+      ]
+    },
+    {
+      "id": "prescription-74",
+      "category": "prescription",
+      "text": "处方：木香 9克，水煎服。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "administration-75",
+      "category": "administration",
+      "text": "加用木香后腹胀减轻。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 10
+        }
+      ]
+    },
+    {
+      "id": "prescription-76",
+      "category": "prescription",
+      "text": "处方：泽兰 9克，水煎服。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "administration-77",
+      "category": "administration",
+      "text": "加用泽兰后腹胀减轻。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 10
+        }
+      ]
+    },
+    {
+      "id": "prescription-78",
+      "category": "prescription",
+      "text": "处方：五味子 9克，水煎服。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "administration-79",
+      "category": "administration",
+      "text": "加用五味子后腹胀减轻。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "prescription-80",
+      "category": "prescription",
+      "text": "处方：苏叶 9克，水煎服。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "administration-81",
+      "category": "administration",
+      "text": "加用苏叶后腹胀减轻。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 10
+        }
+      ]
+    },
+    {
+      "id": "prescription-82",
+      "category": "prescription",
+      "text": "处方：杜仲 9克，水煎服。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 13
+        }
+      ]
+    },
+    {
+      "id": "administration-83",
+      "category": "administration",
+      "text": "加用杜仲后腹胀减轻。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 10
+        }
+      ]
+    },
+    {
+      "id": "prescription-84",
+      "category": "prescription",
+      "text": "处方：刘寄奴 9克，水煎服。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "administration-85",
+      "category": "administration",
+      "text": "加用刘寄奴后腹胀减轻。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "prescription-86",
+      "category": "prescription",
+      "text": "处方：徐长卿 9克，水煎服。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 14
+        }
+      ]
+    },
+    {
+      "id": "administration-87",
+      "category": "administration",
+      "text": "加用徐长卿后腹胀减轻。",
+      "phi": [],
+      "keep": [
+        {
+          "start": 0,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "mixed-88",
+      "category": "mixed",
+      "text": "交班：患者葛根否认胸闷。中药处方：杜仲6g。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 7,
+          "end": 22
+        }
+      ]
+    },
+    {
+      "id": "mixed-89",
+      "category": "mixed",
+      "text": "交班：患者厚朴否认胸闷。中药处方：杜仲6g。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 7,
+          "end": 22
+        }
+      ]
+    },
+    {
+      "id": "mixed-90",
+      "category": "mixed",
+      "text": "交班：患者窦缓否认胸闷。中药处方：杜仲6g。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 7,
+          "end": 22
+        }
+      ]
+    },
+    {
+      "id": "mixed-91",
+      "category": "mixed",
+      "text": "交班：患者杜仲否认胸闷。中药处方：杜仲6g。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 7,
+          "end": 22
+        }
+      ]
+    },
+    {
+      "id": "mixed-92",
+      "category": "mixed",
+      "text": "交班：患者闻人荻否认胸闷。中药处方：杜仲6g。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 8
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 8,
+          "end": 23
+        }
+      ]
+    },
+    {
+      "id": "mixed-93",
+      "category": "mixed",
+      "text": "交班：患者查棠否认胸闷。中药处方：杜仲6g。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 7,
+          "end": 22
+        }
+      ]
+    },
+    {
+      "id": "unicode-94",
+      "category": "unicode",
+      "text": "病程：\r\n郜​ 泓自诉头痛，体温正常。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 9
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 9,
+          "end": 19
+        }
+      ]
+    },
+    {
+      "id": "unicode-95",
+      "category": "unicode",
+      "text": "病程：\r\n闻人​瑶自诉头痛，体温正常。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 9
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 9,
+          "end": 19
+        }
+      ]
+    },
+    {
+      "id": "unicode-96",
+      "category": "unicode",
+      "text": "病程：\r\n查 芩自诉头痛，体温正常。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 8
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 8,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "unicode-97",
+      "category": "unicode",
+      "text": "病程：\r\n闾丘琬自诉头痛，体温正常。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 8
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 8,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "unicode-98",
+      "category": "unicode",
+      "text": "病程：\r\n𠮷菡自诉头痛，体温正常。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 8
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 8,
+          "end": 18
+        }
+      ]
+    },
+    {
+      "id": "unicode-99",
+      "category": "unicode",
+      "text": "病程：\r\n仉颐自诉头痛，体温正常。",
+      "phi": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "keep": [
+        {
+          "start": 0,
+          "end": 5
+        },
+        {
+          "start": 7,
+          "end": 17
+        }
+      ]
+    }
+  ]
+}

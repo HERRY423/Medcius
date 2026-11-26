@@ -1,6 +1,7 @@
 // Actual pinned CPU inference. Synthetic identities only; no remote calls.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {availableParallelism} from 'node:os';
 import {setTimeout as delay} from 'node:timers/promises';
 import {createLocalChineseNer,createLocalChineseNerPool,detectManyLocalChineseNer,getLocalNerDiagnostics,isVerifiedLocalChineseNer} from '../plugins/medcius/runtimes/cn-phi-ner/detector.mjs';
 import {createPatientSourceSnapshotAsync,getPatientSnapshotPhiSession} from '../plugins/medcius/lib/patient-source-snapshot.mjs';
@@ -26,7 +27,7 @@ test('microbatch options require a pool and reject invalid or oversubscribed lim
 });
 
 test('real microbatches preserve exact output, clinical text, patient isolation and fail-closed semantics',async t=>{
-  const pool=await createLocalChineseNerPool({modelDirectory,processes:2,threads:2,batchWorkers:2,cpuBudget:8,microBatchMaxRequests:8});
+  const pool=await createLocalChineseNerPool({modelDirectory,processes:2,batchWorkers:availableParallelism()>=4?2:1,microBatchMaxRequests:8});
   const reference=await createLocalChineseNer({modelDirectory,threads:1,batchWorkers:1});
   try {
     await t.test('mixed Unicode, unknown tokens, window lengths and duplicate text match single inference',async()=>{

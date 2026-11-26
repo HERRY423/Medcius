@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Worker} from 'node:worker_threads';
 import {createHash} from 'node:crypto';
+import {availableParallelism} from 'node:os';
 import {createLocalChineseNer,createLocalChineseNerPool,detectManyLocalChineseNer,getLocalNerDiagnostics,isVerifiedLocalChineseNer} from '../plugins/medcius/runtimes/cn-phi-ner/detector.mjs';
 import {guardFreeTextEgress} from '../plugins/medcius/lib/local-phi-egress.mjs';
 import {createPhiEntitySession} from '../plugins/medcius/lib/phi-entity-session.mjs';
@@ -128,7 +129,7 @@ test('actual CPU context review and clinical negative controls',async t=>{
 });
 
 test('64 production requests with new context probes preserve patient binding and isolated dictionaries',async()=>{
-  const detector=await createLocalChineseNerPool({modelDirectory,processes:2,threads:2,batchWorkers:2,cpuBudget:8,microBatchMaxRequests:8});
+  const detector=await createLocalChineseNerPool({modelDirectory,processes:2,batchWorkers:availableParallelism()>=4?2:1,microBatchMaxRequests:8});
   try {
     assert.equal(getLocalNerDiagnostics(detector).context_warmup,'SOURCE_CROP_EXECUTED');
     await Promise.all(Array.from({length:64},async(_,i)=>{

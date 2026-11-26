@@ -1,0 +1,293 @@
+{
+  "schema_version": "medcius.phi-development.v1",
+  "created_at": "2026-11-15T12:43:04.621Z",
+  "scope": "AUTHORED_SYNTHETIC_DEVELOPMENT_NOT_CLINICAL_VALIDATION",
+  "detector": {
+    "id": "Xenova/bert-base-chinese-ner",
+    "version": "be592940bc954f32492c831bdd1d086a04036597"
+  },
+  "sources": {
+    "tests/fixtures/phi-clinical-development.mjs": "51b3cd7420b33df346e14d3a4c27cbafb5cc102cfbedaa9ca9c6b1c48f07cbb3",
+    "plugins/medcius/lib/phi-entity-session.mjs": "64418a4952262f57279d0447d6f707a1ee823edba2879e949c2aa6df36e4300c",
+    "plugins/medcius/lib/local-phi-egress.mjs": "3583fc80e19cc1a644ba673d0eeeb409c67f3734b5087594fdf853364ad5c4ea",
+    "plugins/medcius/runtimes/cn-phi-ner/detector.mjs": "94d35ec48f360ece406fe433754ef9ef78edf35a8d41cdfc61297119b54c95c5"
+  },
+  "summary": {
+    "cases": 24,
+    "blocked": 0,
+    "entities": 19,
+    "completely_masked": 17,
+    "clinical_literals": 28,
+    "clinical_literals_retained": 28
+  },
+  "rows": [
+    {
+      "id": "rare-known",
+      "category": "known_name",
+      "status": "RELEASED",
+      "entities": 1,
+      "completely_masked": 1,
+      "residual_entity_indices": [],
+      "clinical_literals": 1,
+      "clinical_literals_retained": 1,
+      "clinical_loss_indices": []
+    },
+    {
+      "id": "astral-known",
+      "category": "known_name",
+      "status": "RELEASED",
+      "entities": 1,
+      "completely_masked": 1,
+      "residual_entity_indices": [],
+      "clinical_literals": 1,
+      "clinical_literals_retained": 1,
+      "clinical_loss_indices": []
+    },
+    {
+      "id": "separated-known",
+      "category": "known_name",
+      "status": "RELEASED",
+      "entities": 1,
+      "completely_masked": 1,
+      "residual_entity_indices": [],
+      "clinical_literals": 1,
+      "clinical_literals_retained": 1,
+      "clinical_loss_indices": []
+    },
+    {
+      "id": "rare-unseeded",
+      "category": "unseeded_name",
+      "status": "RELEASED",
+      "entities": 1,
+      "completely_masked": 0,
+      "residual_entity_indices": [
+        0
+      ],
+      "clinical_literals": 1,
+      "clinical_literals_retained": 1,
+      "clinical_loss_indices": []
+    },
+    {
+      "id": "astral-unseeded",
+      "category": "unseeded_name",
+      "status": "RELEASED",
+      "entities": 1,
+      "completely_masked": 0,
+      "residual_entity_indices": [
+        0
+      ],
+      "clinical_literals": 1,
+      "clinical_literals_retained": 1,
+      "clinical_loss_indices": []
+    },
+    {
+      "id": "ordinary-unseeded",
+      "category": "unseeded_name",
+      "status": "RELEASED",
+      "entities": 1,
+      "completely_masked": 1,
+      "residual_entity_indices": [],
+      "clinical_literals": 1,
+      "clinical_literals_retained": 1,
+      "clinical_loss_indices": []
+    },
+    {
+      "id": "staff-title",
+      "category": "clinician_alias",
+      "status": "RELEASED",
+      "entities": 1,
+      "completely_masked": 1,
+      "residual_entity_indices": [],
+      "clinical_literals": 1,
+      "clinical_literals_retained": 1,
+      "clinical_loss_indices": []
+    },
+    {
+      "id": "staff-compound",
+      "category": "clinician_alias",
+      "status": "RELEASED",
+      "entities": 1,
+      "completely_masked": 1,
+      "residual_entity_indices": [],
+      "clinical_literals": 1,
+      "clinical_literals_retained": 1,
+      "clinical_loss_indices": []
+    },
+    {
+      "id": "staff-nurse",
+      "category": "clinician_alias",
+      "status": "RELEASED",
+      "entities": 1,
+      "completely_masked": 1,
+      "residual_entity_indices": [],
+      "clinical_literals": 1,
+      "clinical_literals_retained": 1,
+      "clinical_loss_indices": []
+    },
+    {
+      "id": "staff-familiar",
+      "category": "clinician_alias",
+      "status": "RELEASED",
+      "entities": 1,
+      "completely_masked": 1,
+      "residual_entity_indices": [],
+      "clinical_literals": 1,
+      "clinical_literals_retained": 1,
+      "clinical_loss_indices": []
+    },
+    {
+      "id": "staff-note-author",
+      "category": "clinician_alias",
+      "status": "RELEASED",
+      "entities": 1,
+      "completely_masked": 1,
+      "residual_entity_indices": [],
+      "clinical_literals": 1,
+      "clinical_literals_retained": 1,
+      "clinical_loss_indices": []
+    },
+    {
+      "id": "hospital-alias",
+      "category": "institution",
+      "status": "RELEASED",
+      "entities": 1,
+      "completely_masked": 1,
+      "residual_entity_indices": [],
+      "clinical_literals": 1,
+      "clinical_literals_retained": 1,
+      "clinical_loss_indices": []
+    },
+    {
+      "id": "hospital-name",
+      "category": "institution",
+      "status": "RELEASED",
+      "entities": 1,
+      "completely_masked": 1,
+      "residual_entity_indices": [],
+      "clinical_literals": 1,
+      "clinical_literals_retained": 1,
+      "clinical_loss_indices": []
+    },
+    {
+      "id": "ward-alias",
+      "category": "institution",
+      "status": "RELEASED",
+      "entities": 1,
+      "completely_masked": 1,
+      "residual_entity_indices": [],
+      "clinical_literals": 1,
+      "clinical_literals_retained": 1,
+      "clinical_loss_indices": []
+    },
+    {
+      "id": "encounter-org",
+      "category": "institution",
+      "status": "RELEASED",
+      "entities": 1,
+      "completely_masked": 1,
+      "residual_entity_indices": [],
+      "clinical_literals": 1,
+      "clinical_literals_retained": 1,
+      "clinical_loss_indices": []
+    },
+    {
+      "id": "unusual-address",
+      "category": "address",
+      "status": "RELEASED",
+      "entities": 1,
+      "completely_masked": 1,
+      "residual_entity_indices": [],
+      "clinical_literals": 1,
+      "clinical_literals_retained": 1,
+      "clinical_loss_indices": []
+    },
+    {
+      "id": "address-city",
+      "category": "address",
+      "status": "RELEASED",
+      "entities": 1,
+      "completely_masked": 1,
+      "residual_entity_indices": [],
+      "clinical_literals": 1,
+      "clinical_literals_retained": 1,
+      "clinical_loss_indices": []
+    },
+    {
+      "id": "address-number",
+      "category": "address",
+      "status": "RELEASED",
+      "entities": 1,
+      "completely_masked": 1,
+      "residual_entity_indices": [],
+      "clinical_literals": 0,
+      "clinical_literals_retained": 0,
+      "clinical_loss_indices": []
+    },
+    {
+      "id": "medicine-aspirin",
+      "category": "clinical_preservation",
+      "status": "RELEASED",
+      "entities": 0,
+      "completely_masked": 0,
+      "residual_entity_indices": [],
+      "clinical_literals": 1,
+      "clinical_literals_retained": 1,
+      "clinical_loss_indices": []
+    },
+    {
+      "id": "medicine-loop",
+      "category": "clinical_preservation",
+      "status": "RELEASED",
+      "entities": 0,
+      "completely_masked": 0,
+      "residual_entity_indices": [],
+      "clinical_literals": 2,
+      "clinical_literals_retained": 2,
+      "clinical_loss_indices": []
+    },
+    {
+      "id": "clinical-terms",
+      "category": "clinical_preservation",
+      "status": "RELEASED",
+      "entities": 0,
+      "completely_masked": 0,
+      "residual_entity_indices": [],
+      "clinical_literals": 4,
+      "clinical_literals_retained": 4,
+      "clinical_loss_indices": []
+    },
+    {
+      "id": "clinical-specialty",
+      "category": "clinical_preservation",
+      "status": "RELEASED",
+      "entities": 0,
+      "completely_masked": 0,
+      "residual_entity_indices": [],
+      "clinical_literals": 2,
+      "clinical_literals_retained": 2,
+      "clinical_loss_indices": []
+    },
+    {
+      "id": "clinical-ambiguous-alias",
+      "category": "clinical_preservation",
+      "status": "RELEASED",
+      "entities": 0,
+      "completely_masked": 0,
+      "residual_entity_indices": [],
+      "clinical_literals": 2,
+      "clinical_literals_retained": 2,
+      "clinical_loss_indices": []
+    },
+    {
+      "id": "dictionary-overrides-drug",
+      "category": "clinical_name_collision",
+      "status": "RELEASED",
+      "entities": 1,
+      "completely_masked": 1,
+      "residual_entity_indices": [],
+      "clinical_literals": 0,
+      "clinical_literals_retained": 0,
+      "clinical_loss_indices": []
+    }
+  ]
+}

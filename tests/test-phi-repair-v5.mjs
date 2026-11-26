@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
+import {availableParallelism} from 'node:os';
 import {Worker} from 'node:worker_threads';
 import {createLocalChineseNer,createLocalChineseNerPool,isVerifiedLocalChineseNer} from '../plugins/medcius/runtimes/cn-phi-ner/detector.mjs';
 import {guardFreeTextEgress} from '../plugins/medcius/lib/local-phi-egress.mjs';
@@ -21,7 +22,7 @@ const modelDirectory=process.env.MEDCIUS_CN_NER_MODEL_DIR;
 const hash=text=>createHash('sha256').update(text).digest('hex');
 
 test('all prior challenge positions pass through the production guard with isolated sessions',async()=>{
-  const detector=await createLocalChineseNerPool({modelDirectory,processes:2,batchWorkers:2,threads:2,cpuBudget:8,microBatchMaxRequests:8});
+  const detector=await createLocalChineseNerPool({modelDirectory,processes:2,batchWorkers:availableParallelism()>=4?2:1,microBatchMaxRequests:8});
   try {
     for(let offset=0;offset<rows.length;offset+=64) {
       await Promise.all(rows.slice(offset,offset+64).map(async(f,index)=>{
