@@ -18,6 +18,7 @@ jobs:
   release:
     if: github.ref_type == 'tag' || (github.repository == 'HERRY423/Medcius' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -38,9 +39,30 @@ jobs:
               ? require(`${process.cwd()}/.github/release-requests/V1.1.0.json`)
               : null;
             const tag = request?.tag ?? process.env.GITHUB_REF_NAME;
-            const sha = request?.commit ?? (await github.rest.repos.getCommit({owner, repo, ref: context.ref})).data.sha;
-            const policy = request ? {referenceWaiverTag: tag} : {};
-            for (const accepted of await requireReleaseCi(github, {owner,repo}, sha, policy)) {
+            const sha = request ? context.sha : (await github.rest.repos.getCommit({owner, repo, ref: context.ref})).data.sha;
+            const policy = {};
+            if (request) {
+              const {execFileSync} = require('node:child_process');
+              const source = request.source_commit;
+              if (source !== 'fd31ec144967edf7b22d596b5af109a053938c68') throw new Error('RELEASE_SOURCE_INVALID');
+              execFileSync('git', ['merge-base', '--is-ancestor', source, sha]);
+              policy.referenceWaiverTag = tag;
+              policy.referenceWaiverPluginTree = execFileSync(
+                'git', ['rev-parse', `${sha}:plugins/medcius`], {encoding:'utf8'}
+              ).trim();
+            }
+            const deadline = Date.now() + 12 * 60_000;
+            let checks;
+            while (checks === undefined) {
+              try {
+                checks = await requireReleaseCi(github, {owner,repo}, sha, policy);
+              } catch (error) {
+                if (!request || error.code !== 'RELEASE_CI_PENDING' || Date.now() >= deadline) throw error;
+                core.info(error.message);
+                await new Promise(resolve => setTimeout(resolve, 20_000));
+              }
+            }
+            for (const accepted of checks) {
               core.info(`${accepted.workflow}: ${accepted.url}`);
             }
             if (request) core.notice(`One-time reference-performance waiver for ${tag} at ${sha}`);
@@ -68,6 +90,8 @@ jobs:
               await github.rest.git.getRef({owner,repo,ref});
             } catch (error) {
               if (error.status !== 404) throw error;
+              const {data: main} = await github.rest.git.getRef({owner,repo,ref:'heads/main'});
+              if (main.object.sha !== process.env.RELEASE_SHA) throw new Error('RELEASE_BRANCH_CHANGED');
               await github.rest.git.createRef({owner,repo,ref:`refs/${ref}`,sha:process.env.RELEASE_SHA});
             }
             const {data: commit} = await github.rest.repos.getCommit({owner,repo,ref:`refs/${ref}`});

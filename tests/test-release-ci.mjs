@@ -16,7 +16,10 @@ test('missing reference performance blocks release',async()=>{
 });
 test('failed, skipped and unfinished checks block release',async()=>{
   for(const state of [{conclusion:'failure'},{conclusion:'skipped'},{status:'in_progress',conclusion:null}]) {
-    await assert.rejects(requireReleaseCi(fake((id,run)=>[{...run,...state}]),repo,sha),/RELEASE_CI_NOT_PASSED/);
+    await assert.rejects(requireReleaseCi(fake((id,run)=>[{...run,...state}]),repo,sha),{
+      code:state.status==='in_progress'?'RELEASE_CI_PENDING':'RELEASE_CI_FAILED',
+      message:/RELEASE_CI_NOT_PASSED/
+    });
   }
 });
 test('different commit, branch or event cannot authorize release',async()=>{
@@ -32,27 +35,27 @@ test('invalid commit is rejected before API access',async()=>{
 });
 
 const medcius = {owner:'HERRY423',repo:'Medcius'};
-const approved = 'fd31ec144967edf7b22d596b5af109a053938c68';
-const waiver = {referenceWaiverTag:'V1.1.0'};
+const releaseCommit = 'c'.repeat(40);
+const waiver = {referenceWaiverTag:'V1.1.0',referenceWaiverPluginTree:'47190c31d29d106cb60d42da1ffcefbfb16f330b'};
 
-test('V1.1.0 waiver requires the exact commit and both hosted checks',async()=>{
+test('V1.1.0 waiver verifies both hosted checks for the exact release commit',async()=>{
   const result=await requireReleaseCi(fake((id,run)=>{
     assert.notEqual(id,'performance-reference.yml');
     return [run];
-  },approved),medcius,approved,waiver);
+  },releaseCommit),medcius,releaseCommit,waiver);
   assert.deepEqual(result.map(x=>x.workflow),['plugin-validate.yml','secret-scan.yml']);
   for (const check of ['plugin-validate.yml','secret-scan.yml']) {
     await assert.rejects(requireReleaseCi(
-      fake((id,run)=>id===check?[]:[run],approved),medcius,approved,waiver
+      fake((id,run)=>id===check?[]:[run],releaseCommit),medcius,releaseCommit,waiver
     ),/RELEASE_CI_NOT_PASSED/);
   }
 });
 
-test('default, another repository, tag or commit cannot reuse the waiver',async()=>{
+test('default, another repository, tag or plugin tree cannot reuse the waiver',async()=>{
   await assert.rejects(requireReleaseCi(
-    fake((id,run)=>id==='performance-reference.yml'?[]:[run],approved),medcius,approved
+    fake((id,run)=>id==='performance-reference.yml'?[]:[run],releaseCommit),medcius,releaseCommit
   ),/RELEASE_CI_NOT_PASSED/);
-  await assert.rejects(requireReleaseCi({},repo,approved,waiver),/RELEASE_REFERENCE_WAIVER_INVALID/);
-  await assert.rejects(requireReleaseCi({},medcius,sha,waiver),/RELEASE_REFERENCE_WAIVER_INVALID/);
-  await assert.rejects(requireReleaseCi({},medcius,approved,{referenceWaiverTag:'V1.2.0'}),/RELEASE_REFERENCE_WAIVER_INVALID/);
+  await assert.rejects(requireReleaseCi({},repo,releaseCommit,waiver),/RELEASE_REFERENCE_WAIVER_INVALID/);
+  await assert.rejects(requireReleaseCi({},medcius,releaseCommit,{...waiver,referenceWaiverPluginTree:sha}),/RELEASE_REFERENCE_WAIVER_INVALID/);
+  await assert.rejects(requireReleaseCi({},medcius,releaseCommit,{...waiver,referenceWaiverTag:'V1.2.0'}),/RELEASE_REFERENCE_WAIVER_INVALID/);
 });
