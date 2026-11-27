@@ -3,45 +3,84 @@ name: Release
 on:
   push:
     tags: ['v*', 'V*']
+    branches: [main]
+    paths: ['.github/release-requests/V1.1.0.json']
 
 permissions:
   contents: write
   actions: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.ref_type == 'tag' && github.ref_name || 'V1.1.0' }}
   cancel-in-progress: false
 
 jobs:
   release:
+    if: github.ref_type == 'tag' || (github.repository == 'HERRY423/Medcius' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
       - name: Require successful CI for the exact release commit
+        id: target
         uses: actions/github-script@v7
         with:
           script: |
             const {owner, repo} = context.repo;
-            const {data: commit} = await github.rest.repos.getCommit({owner, repo, ref: context.ref});
             const {requireReleaseCi} = require(`${process.cwd()}/scripts/lib/release-ci.cjs`);
-            for (const accepted of await requireReleaseCi(github, {owner,repo}, commit.sha)) {
+            const request = context.ref === 'refs/heads/main'
+              ? require(`${process.cwd()}/.github/release-requests/V1.1.0.json`)
+              : null;
+            const tag = request?.tag ?? process.env.GITHUB_REF_NAME;
+            const sha = request?.commit ?? (await github.rest.repos.getCommit({owner, repo, ref: context.ref})).data.sha;
+            const policy = request ? {referenceWaiverTag: tag} : {};
+            for (const accepted of await requireReleaseCi(github, {owner,repo}, sha, policy)) {
               core.info(`${accepted.workflow}: ${accepted.url}`);
             }
+            if (request) core.notice(`One-time reference-performance waiver for ${tag} at ${sha}`);
+            core.setOutput('tag', tag);
+            core.setOutput('sha', sha);
+            core.setOutput('waiver', String(Boolean(request)));
 
       - name: Build and verify committed plugin archive
-        run: python scripts/package-release.py --tag "$GITHUB_REF_NAME"
+        env:
+          RELEASE_TAG: ${{ steps.target.outputs.tag }}
+          RELEASE_SHA: ${{ steps.target.outputs.sha }}
+        run: python scripts/package-release.py --tag "$RELEASE_TAG" --ref "$RELEASE_SHA"
+
+      - name: Create or verify the pinned V1.1.0 tag
+        if: steps.target.outputs.waiver == 'true'
+        uses: actions/github-script@v7
+        env:
+          RELEASE_TAG: ${{ steps.target.outputs.tag }}
+          RELEASE_SHA: ${{ steps.target.outputs.sha }}
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            const ref = `tags/${process.env.RELEASE_TAG}`;
+            try {
+              await github.rest.git.getRef({owner,repo,ref});
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              await github.rest.git.createRef({owner,repo,ref:`refs/${ref}`,sha:process.env.RELEASE_SHA});
+            }
+            const {data: commit} = await github.rest.repos.getCommit({owner,repo,ref:`refs/${ref}`});
+            if (commit.sha !== process.env.RELEASE_SHA) throw new Error('RELEASE_TAG_TARGET_MISMATCH');
 
       - name: Publish versioned release with checksums
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.target.outputs.tag }}
         run: |
           set -euo pipefail
-          gh release create "$GITHUB_REF_NAME" \
-            "output/release/medcius-${GITHUB_REF_NAME}.zip" \
+          gh release create "$RELEASE_TAG" \
+            "output/release/medcius-${RELEASE_TAG}.zip" \
             output/release/SHA256SUMS.txt output/release/release-manifest.json \
-            --verify-tag --latest --title "Medcius ${GITHUB_REF_NAME}" \
-            --notes-file "docs/releases/${GITHUB_REF_NAME}.md"
+            --verify-tag --latest --title "Medcius ${RELEASE_TAG}" \
+            --notes-file "docs/releases/${RELEASE_TAG}.md"
